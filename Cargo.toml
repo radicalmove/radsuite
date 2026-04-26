@@ -1,0 +1,35 @@
+[workspace]
+resolver = "2"
+members = [
+  "crates/radsuite-core",
+  "crates/radsuite-db",
+  "crates/radsuite-sync",
+  "crates/radsuite-engines",
+  "crates/radsuite-server",
+  "crates/radsuite-desktop",
+  "apps/desktop-ui/src-tauri",
+]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/radicalmove/RADsuite"
+rust-version = "1.88"
+
+[workspace.dependencies]
+anyhow = "1"
+argon2 = "0.5"
+async-trait = "0.1"
+axum = "0.8"
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+password-hash = "0.5"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls-ring-native-roots", "sqlite", "postgres", "uuid", "chrono", "json", "migrate"] }
+thiserror = "2"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+uuid = { version = "1", features = ["serde", "v4", "v7"] }

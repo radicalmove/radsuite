@@ -1,1 +1,13 @@
 .worktrees/
+/target/
+/.env
+/.env.*
+!.env.example
+/apps/desktop-ui/node_modules/
+/apps/desktop-ui/dist/
+/apps/desktop-ui/src-tauri/target/
+/.DS_Store
+Thumbs.db
+*.log
+*.sqlite
+*.sqlite3
