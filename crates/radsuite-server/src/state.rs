@@ -5,6 +5,7 @@ use std::{
 
 use radsuite_core::{Project, ProjectId, ProjectRole, UserId};
 use radsuite_db::migrate;
+use radsuite_sync::{AssetManifest, LocalChange};
 use sqlx::SqlitePool;
 
 use crate::AppConfig;
@@ -14,6 +15,8 @@ pub struct AppState {
     pub db: SqlitePool,
     pub auth: Arc<Mutex<AuthStore>>,
     pub projects: Arc<Mutex<ProjectStore>>,
+    pub assets: Arc<Mutex<AssetStore>>,
+    pub sync: Arc<Mutex<SyncStore>>,
 }
 
 #[derive(Debug, Default)]
@@ -37,6 +40,16 @@ pub struct ProjectStore {
     pub members: HashMap<ProjectId, HashMap<String, ProjectRole>>,
 }
 
+#[derive(Debug, Default)]
+pub struct AssetStore {
+    pub manifests: HashMap<ProjectId, Vec<AssetManifest>>,
+}
+
+#[derive(Debug, Default)]
+pub struct SyncStore {
+    pub records: HashMap<ProjectId, Vec<LocalChange>>,
+}
+
 impl AppState {
     pub async fn from_config(config: &AppConfig) -> anyhow::Result<Self> {
         let db = SqlitePool::connect(&config.database_url).await?;
@@ -45,6 +58,8 @@ impl AppState {
             db,
             auth: Arc::new(Mutex::new(AuthStore::default())),
             projects: Arc::new(Mutex::new(ProjectStore::default())),
+            assets: Arc::new(Mutex::new(AssetStore::default())),
+            sync: Arc::new(Mutex::new(SyncStore::default())),
         })
     }
 
@@ -57,6 +72,8 @@ impl AppState {
             db,
             auth: Arc::new(Mutex::new(AuthStore::default())),
             projects: Arc::new(Mutex::new(ProjectStore::default())),
+            assets: Arc::new(Mutex::new(AssetStore::default())),
+            sync: Arc::new(Mutex::new(SyncStore::default())),
         }
     }
 }

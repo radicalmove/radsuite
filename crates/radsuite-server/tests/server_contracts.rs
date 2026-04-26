@@ -4,6 +4,7 @@ use axum::{
 };
 use radsuite_core::{ApiProjectSummary, LoginResponse, ProjectRole};
 use radsuite_server::{AppConfig, AppState, build_router};
+use radsuite_sync::{AssetManifest, AssetSyncPolicy, LocalChange, SyncOperation};
 use serde_json::json;
 use tower::ServiceExt;
 
@@ -179,6 +180,90 @@ async fn project_owner_can_share_project_with_editor() {
     assert_eq!(projects[0].role, ProjectRole::Editor);
 }
 
+#[tokio::test]
+async fn asset_project_member_can_register_manifest() {
+    let state = AppState::for_tests().await;
+    let app = build_router(state, AppConfig::test());
+
+    let (app, token) = register_user(app, "owner@example.com").await;
+    let project = create_project(app.clone(), &token).await;
+    let response = app
+        .oneshot(bearer_json_request(
+            Method::POST,
+            &format!("/projects/{}/assets", project.id.0),
+            &token,
+            serde_json::to_value(sample_asset(project.id)).unwrap(),
+        ))
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let body: serde_json::Value = json_response(response).await;
+    assert_eq!(body["upload_required"], true);
+}
+
+#[tokio::test]
+async fn asset_non_member_cannot_register_manifest() {
+    let state = AppState::for_tests().await;
+    let app = build_router(state, AppConfig::test());
+
+    let (app, owner_token) = register_user(app, "owner@example.com").await;
+    let (app, other_token) = register_user(app, "other@example.com").await;
+    let project = create_project(app.clone(), &owner_token).await;
+    let response = app
+        .oneshot(bearer_json_request(
+            Method::POST,
+            &format!("/projects/{}/assets", project.id.0),
+            &other_token,
+            serde_json::to_value(sample_asset(project.id)).unwrap(),
+        ))
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+}
+
+#[tokio::test]
+async fn sync_project_member_can_push_and_pull_records() {
+    let state = AppState::for_tests().await;
+    let app = build_router(state, AppConfig::test());
+
+    let (app, token) = register_user(app, "owner@example.com").await;
+    let project = create_project(app.clone(), &token).await;
+    let change = LocalChange {
+        project_id: project.id,
+        entity_type: "project".to_string(),
+        entity_id: project.id.to_string(),
+        operation: SyncOperation::Update,
+        payload: json!({ "title": "Updated" }),
+    };
+
+    let push_response = app
+        .clone()
+        .oneshot(bearer_json_request(
+            Method::POST,
+            &format!("/projects/{}/sync/push", project.id.0),
+            &token,
+            json!({ "changes": [change] }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(push_response.status(), StatusCode::OK);
+
+    let pull_response = app
+        .oneshot(bearer_request(
+            Method::GET,
+            &format!("/projects/{}/sync/pull?after=0", project.id.0),
+            &token,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(pull_response.status(), StatusCode::OK);
+    let body: serde_json::Value = json_response(pull_response).await;
+    assert_eq!(body["records"].as_array().unwrap().len(), 1);
+    assert_eq!(body["next_cursor"], 1);
+}
+
 fn json_request(method: Method, uri: &str, body: serde_json::Value) -> Request<Body> {
     Request::builder()
         .method(method)
@@ -271,4 +356,15 @@ async fn create_project(app: axum::Router, token: &str) -> ApiProjectSummary {
         .unwrap();
     assert_eq!(response.status(), StatusCode::CREATED);
     json_response(response).await
+}
+
+fn sample_asset(project_id: radsuite_core::ProjectId) -> AssetManifest {
+    AssetManifest {
+        project_id,
+        sha256: "b".repeat(64),
+        byte_size: 2048,
+        mime_type: "application/pdf".to_string(),
+        original_name: "reading.pdf".to_string(),
+        sync_policy: AssetSyncPolicy::CollaborativeSource,
+    }
 }

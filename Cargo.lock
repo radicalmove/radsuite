@@ -1190,6 +1190,7 @@ dependencies = [
  "password-hash",
  "radsuite-core",
  "radsuite-db",
+ "radsuite-sync",
  "rand_core",
  "serde",
  "serde_json",
