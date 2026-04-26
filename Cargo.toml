@@ -4,6 +4,7 @@ members = [
   "crates/radsuite-core",
   "crates/radsuite-db",
   "crates/radsuite-sync",
+  "crates/radsuite-cite",
   "crates/radsuite-engines",
   "crates/radsuite-server",
   "crates/radsuite-desktop",
@@ -26,6 +27,7 @@ chrono = { version = "0.4", features = ["serde"] }
 directories = "6"
 password-hash = "0.5"
 rand_core = { version = "0.6", features = ["getrandom"] }
+regex = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-rustls-ring-native-roots", "sqlite", "postgres", "uuid", "chrono", "json", "migrate"] }
