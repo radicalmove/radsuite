@@ -18,7 +18,7 @@ impl DesktopState {
             paths: AppPaths::for_app("RADsuite").expect("resolve RADsuite app paths"),
             database_ready: true,
             sync_configured: false,
-            engine_registry: EngineRegistry,
+            engine_registry: EngineRegistry::default(),
         }
     }
 }

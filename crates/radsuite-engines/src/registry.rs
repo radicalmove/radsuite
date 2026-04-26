@@ -1,7 +1,9 @@
 use crate::EngineStatus;
 
 #[derive(Debug, Default, Clone)]
-pub struct EngineRegistry;
+pub struct EngineRegistry {
+    _private: (),
+}
 
 impl EngineRegistry {
     pub fn list(&self) -> Vec<EngineStatus> {
