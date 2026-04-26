@@ -5,7 +5,8 @@ fn app_paths_resolve_platform_data_directory_for_radsuite() {
     let paths = AppPaths::for_app("RADsuite").expect("resolve app paths");
     let data_dir = paths.data_dir.to_string_lossy();
 
-    assert!(data_dir.contains("RADsuite"));
+    assert!(paths.data_dir.is_absolute());
+    assert!(data_dir.to_lowercase().contains("radsuite"));
 }
 
 #[test]
