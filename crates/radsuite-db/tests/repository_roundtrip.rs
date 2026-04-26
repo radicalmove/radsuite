@@ -1,10 +1,12 @@
 use radsuite_core::{Project, ProjectRole, UserId};
 use radsuite_db::{ProjectRepository, SqliteProjectRepository, migrate};
-use sqlx::SqlitePool;
+use sqlx::sqlite::SqlitePoolOptions;
 
 #[tokio::test]
 async fn project_can_be_inserted_and_listed_for_owner() {
-    let pool = SqlitePool::connect("sqlite::memory:")
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
         .await
         .expect("connect");
     migrate(&pool).await.expect("migrate");

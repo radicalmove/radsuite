@@ -6,7 +6,7 @@ use std::{
 use radsuite_core::{Project, ProjectId, ProjectRole, UserId};
 use radsuite_db::migrate;
 use radsuite_sync::{AssetManifest, LocalChange};
-use sqlx::SqlitePool;
+use sqlx::{SqlitePool, sqlite::SqlitePoolOptions};
 
 use crate::AppConfig;
 
@@ -64,7 +64,9 @@ impl AppState {
     }
 
     pub async fn for_tests() -> Self {
-        let db = SqlitePool::connect("sqlite::memory:")
+        let db = SqlitePoolOptions::new()
+            .max_connections(1)
+            .connect("sqlite::memory:")
             .await
             .expect("connect test sqlite");
         migrate(&db).await.expect("migrate test sqlite");
