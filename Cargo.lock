@@ -972,6 +972,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "radsuite-sync"
+version = "0.1.0"
+dependencies = [
+ "radsuite-core",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "rand"
 version = "0.8.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -3,6 +3,7 @@ resolver = "2"
 members = [
   "crates/radsuite-core",
   "crates/radsuite-db",
+  "crates/radsuite-sync",
 ]
 
 [workspace.package]
