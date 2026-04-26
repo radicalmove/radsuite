@@ -1181,6 +1181,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "radsuite-engines"
+version = "0.1.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "radsuite-server"
 version = "0.1.0"
 dependencies = [
