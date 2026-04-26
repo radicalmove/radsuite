@@ -2,12 +2,6 @@
 resolver = "2"
 members = [
   "crates/radsuite-core",
-  "crates/radsuite-db",
-  "crates/radsuite-sync",
-  "crates/radsuite-engines",
-  "crates/radsuite-server",
-  "crates/radsuite-desktop",
-  "apps/desktop-ui/src-tauri",
 ]
 
 [workspace.package]
