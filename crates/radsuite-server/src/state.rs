@@ -3,6 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use radsuite_core::{Project, ProjectId, ProjectRole, UserId};
 use radsuite_db::migrate;
 use sqlx::SqlitePool;
 
@@ -12,6 +13,7 @@ use crate::AppConfig;
 pub struct AppState {
     pub db: SqlitePool,
     pub auth: Arc<Mutex<AuthStore>>,
+    pub projects: Arc<Mutex<ProjectStore>>,
 }
 
 #[derive(Debug, Default)]
@@ -22,9 +24,17 @@ pub struct AuthStore {
 
 #[derive(Debug, Clone)]
 pub struct AuthUser {
+    pub id: UserId,
     pub email: String,
     pub display_name: String,
     pub password_hash: String,
+    pub is_admin: bool,
+}
+
+#[derive(Debug, Default)]
+pub struct ProjectStore {
+    pub projects: HashMap<ProjectId, Project>,
+    pub members: HashMap<ProjectId, HashMap<String, ProjectRole>>,
 }
 
 impl AppState {
@@ -34,6 +44,7 @@ impl AppState {
         Ok(Self {
             db,
             auth: Arc::new(Mutex::new(AuthStore::default())),
+            projects: Arc::new(Mutex::new(ProjectStore::default())),
         })
     }
 
@@ -45,6 +56,7 @@ impl AppState {
         Self {
             db,
             auth: Arc::new(Mutex::new(AuthStore::default())),
+            projects: Arc::new(Mutex::new(ProjectStore::default())),
         }
     }
 }

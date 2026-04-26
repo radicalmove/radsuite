@@ -21,6 +21,18 @@ pub struct LoginResponse {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CreateProjectRequest {
+    pub code: Option<String>,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AddProjectMemberRequest {
+    pub email: String,
+    pub role: ProjectRole,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ApiProjectSummary {
     pub id: ProjectId,
     pub code: Option<String>,

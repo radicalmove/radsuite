@@ -5,7 +5,7 @@ use argon2::{
 use axum::{
     Json, Router,
     extract::State,
-    http::StatusCode,
+    http::{HeaderMap, StatusCode, header},
     response::{IntoResponse, Response},
     routing::post,
 };
@@ -15,6 +15,13 @@ use serde::Serialize;
 use uuid::Uuid;
 
 use crate::{AppState, state::AuthUser};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct AuthenticatedUser {
+    pub id: radsuite_core::UserId,
+    pub email: String,
+    pub is_admin: bool,
+}
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -39,9 +46,11 @@ async fn register(
     let password_hash = hash_password(&req.password)?;
     let token = Uuid::new_v4().to_string();
     let user = AuthUser {
+        id: radsuite_core::UserId::new(),
         email: email.clone(),
         display_name: req.display_name.trim().to_string(),
         password_hash,
+        is_admin: false,
     };
 
     let mut auth = state.auth.lock().expect("auth store lock");
@@ -102,34 +111,48 @@ fn verify_password(password: &str, password_hash: &str) -> Result<bool, ApiError
 }
 
 #[derive(Debug)]
-struct ApiError {
+pub(crate) struct ApiError {
     status: StatusCode,
     message: &'static str,
 }
 
 impl ApiError {
-    fn bad_request(message: &'static str) -> Self {
+    pub(crate) fn bad_request(message: &'static str) -> Self {
         Self {
             status: StatusCode::BAD_REQUEST,
             message,
         }
     }
 
-    fn conflict(message: &'static str) -> Self {
+    pub(crate) fn conflict(message: &'static str) -> Self {
         Self {
             status: StatusCode::CONFLICT,
             message,
         }
     }
 
-    fn unauthorized() -> Self {
+    pub(crate) fn unauthorized() -> Self {
         Self {
             status: StatusCode::UNAUTHORIZED,
             message: "invalid credentials",
         }
     }
 
-    fn internal(message: &'static str) -> Self {
+    pub(crate) fn forbidden(message: &'static str) -> Self {
+        Self {
+            status: StatusCode::FORBIDDEN,
+            message,
+        }
+    }
+
+    pub(crate) fn not_found(message: &'static str) -> Self {
+        Self {
+            status: StatusCode::NOT_FOUND,
+            message,
+        }
+    }
+
+    pub(crate) fn internal(message: &'static str) -> Self {
         Self {
             status: StatusCode::INTERNAL_SERVER_ERROR,
             message,
@@ -152,4 +175,31 @@ impl IntoResponse for ApiError {
         )
             .into_response()
     }
+}
+
+pub(crate) fn require_auth(
+    headers: &HeaderMap,
+    state: &AppState,
+) -> Result<AuthenticatedUser, ApiError> {
+    let token = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.strip_prefix("Bearer "))
+        .ok_or_else(ApiError::unauthorized)?;
+
+    let auth = state.auth.lock().expect("auth store lock");
+    let email = auth
+        .sessions_by_token
+        .get(token)
+        .ok_or_else(ApiError::unauthorized)?;
+    let user = auth
+        .users_by_email
+        .get(email)
+        .ok_or_else(ApiError::unauthorized)?;
+
+    Ok(AuthenticatedUser {
+        id: user.id,
+        email: user.email.clone(),
+        is_admin: user.is_admin,
+    })
 }
