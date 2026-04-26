@@ -6,6 +6,7 @@
 /apps/desktop-ui/node_modules/
 /apps/desktop-ui/dist/
 /apps/desktop-ui/src-tauri/target/
+/apps/desktop-ui/src-tauri/gen/
 /.DS_Store
 Thumbs.db
 *.log
