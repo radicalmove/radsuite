@@ -69,7 +69,7 @@ async fn radcite_document_can_be_inserted_and_loaded() {
         .insert_document_analysis(
             &document,
             &[cited.clone(), missing.clone()],
-            &[citation.clone()],
+            std::slice::from_ref(&citation),
         )
         .await
         .expect("insert document analysis");
