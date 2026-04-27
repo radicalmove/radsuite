@@ -15,4 +15,6 @@ thiserror.workspace = true
 uuid.workspace = true
 
 [dev-dependencies]
+radsuite-cite = { path = "../radsuite-cite" }
 tokio.workspace = true
+zip.workspace = true
