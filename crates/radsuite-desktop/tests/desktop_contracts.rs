@@ -1,4 +1,15 @@
-use radsuite_desktop::{AppPaths, DesktopState, get_app_status};
+use std::{
+    fs::File,
+    io::Write,
+    path::{Path, PathBuf},
+};
+
+use radsuite_db::migrate;
+use radsuite_desktop::{
+    AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState, analyse_docx_path, get_app_status,
+};
+use sqlx::sqlite::SqlitePoolOptions;
+use zip::{ZipWriter, write::SimpleFileOptions};
 
 #[test]
 fn app_paths_resolve_platform_data_directory_for_radsuite() {
@@ -9,8 +20,8 @@ fn app_paths_resolve_platform_data_directory_for_radsuite() {
     assert!(data_dir.to_lowercase().contains("radsuite"));
 }
 
-#[test]
-fn app_status_exposes_database_sync_and_engine_state() {
+#[tokio::test]
+async fn app_status_exposes_database_sync_and_engine_state() {
     let state = DesktopState::for_tests();
     let status = get_app_status(&state);
 
@@ -18,4 +29,97 @@ fn app_status_exposes_database_sync_and_engine_state() {
     assert!(status.database_ready);
     assert!(!status.sync_configured);
     assert_eq!(status.engines.len(), 4);
+}
+
+#[tokio::test]
+async fn analyse_docx_path_persists_document_and_returns_summary() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-command-analysis.docx");
+
+    let response = analyse_docx_path(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("lesson-3.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx");
+
+    assert_eq!(response.original_filename, "lesson-3.docx");
+    assert_eq!(response.paragraph_count, 2);
+    assert_eq!(response.citation_count, 1);
+    assert_eq!(response.missing_citation_count, 1);
+    assert_eq!(response.project_title, "RADcite Functional Testing");
+}
+
+#[tokio::test]
+async fn analyse_docx_path_rejects_empty_path() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let error = analyse_docx_path(
+        &state,
+        AnalyseDocxRequest {
+            path: "  ".to_string(),
+            original_filename: None,
+        },
+    )
+    .await
+    .expect_err("reject empty path");
+
+    assert!(matches!(error, AnalyseDocxError::EmptyPath));
+}
+
+async fn desktop_state_with_migrated_pool() -> DesktopState {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+    DesktopState::for_tests_with_pool(pool)
+}
+
+fn write_minimal_docx(filename: &str) -> PathBuf {
+    let path = std::env::temp_dir().join(format!("radsuite-{filename}"));
+    let file = File::create(&path).expect("create docx fixture");
+    let mut zip = ZipWriter::new(file);
+    let options = SimpleFileOptions::default();
+
+    start_file(&mut zip, "[Content_Types].xml", options);
+    zip.write_all(
+        br#"<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>"#,
+    )
+    .expect("write content types");
+
+    start_file(&mut zip, "word/document.xml", options);
+    zip.write_all(document_xml().as_bytes())
+        .expect("write document XML");
+
+    zip.finish().expect("finish docx");
+    path
+}
+
+fn start_file(zip: &mut ZipWriter<File>, path: &str, options: SimpleFileOptions) {
+    zip.start_file(Path::new(path).to_string_lossy(), options)
+        .expect("start zip file");
+}
+
+fn document_xml() -> &'static str {
+    r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Smith (2020) explains worked examples.</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>A 2021 survey reported that 64 percent of respondents changed their study habits.</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>"#
 }

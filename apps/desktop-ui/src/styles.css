@@ -27,6 +27,14 @@ select {
   font: inherit;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
 .app-shell {
   min-height: 100vh;
   padding: 28px;
@@ -127,17 +135,113 @@ h2 {
   border-bottom: 1px solid rgba(32, 37, 34, 0.12);
 }
 
-.empty-state {
+.analysis-form {
   display: grid;
-  gap: 8px;
-  max-width: 420px;
-  margin-top: 28px;
+  gap: 9px;
+  margin-top: 22px;
+}
+
+.field-label {
+  color: #47524c;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.path-input {
+  width: 100%;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid rgba(32, 37, 34, 0.22);
+  border-radius: 6px;
+  color: #202522;
+  background: rgba(255, 255, 255, 0.74);
+}
+
+.path-input:focus {
+  border-color: rgba(31, 112, 92, 0.72);
+  outline: 3px solid rgba(31, 112, 92, 0.15);
+}
+
+.primary-button {
+  min-height: 42px;
+  min-width: 110px;
+  padding: 0 16px;
+  border: 1px solid rgba(31, 112, 92, 0.18);
+  border-radius: 6px;
+  color: #ffffff;
+  background: #1f705c;
+  font-weight: 760;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: #185946;
+}
+
+.primary-button:disabled {
+  color: rgba(255, 255, 255, 0.72);
+  background: #7f9088;
+}
+
+.analysis-notice {
+  margin-top: 16px;
+}
+
+.analysis-result {
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(32, 37, 34, 0.12);
+}
+
+.analysis-result h3 {
+  margin: 0 0 5px;
+  color: #202522;
+  font-size: 1.28rem;
+  letter-spacing: 0;
+}
+
+.analysis-result span {
   color: #5a625d;
 }
 
-.empty-state strong {
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.metric {
+  display: grid;
+  gap: 4px;
+  min-height: 94px;
+  padding: 14px;
+  border: 1px solid rgba(32, 37, 34, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.metric strong {
   color: #202522;
-  font-size: 1rem;
+  font-size: 1.7rem;
+  line-height: 1;
+}
+
+.metric span {
+  color: #5a625d;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.metric-warn {
+  border-color: rgba(180, 92, 61, 0.2);
+  background: rgba(252, 238, 227, 0.55);
 }
 
 .engine-list {
@@ -180,6 +284,11 @@ h2 {
 
   .status-strip {
     justify-content: flex-start;
+  }
+
+  .path-row,
+  .metric-grid {
+    grid-template-columns: 1fr;
   }
 
   .panel {
