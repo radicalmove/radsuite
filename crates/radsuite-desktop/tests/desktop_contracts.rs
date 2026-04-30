@@ -6,7 +6,8 @@ use std::{
 
 use radsuite_db::migrate;
 use radsuite_desktop::{
-    AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState, analyse_docx_path, get_app_status,
+    AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState, analyse_docx_for_review,
+    analyse_docx_path, get_app_status,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -51,6 +52,35 @@ async fn analyse_docx_path_persists_document_and_returns_summary() {
     assert_eq!(response.citation_count, 1);
     assert_eq!(response.missing_citation_count, 1);
     assert_eq!(response.project_title, "RADcite Functional Testing");
+}
+
+#[tokio::test]
+async fn analyse_docx_for_review_returns_ordered_paragraphs_and_citations() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-review-analysis.docx");
+
+    let response = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("review-source.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+
+    assert_eq!(response.original_filename, "review-source.docx");
+    assert_eq!(response.summary.paragraph_count, 2);
+    assert_eq!(response.summary.citation_count, 1);
+    assert_eq!(response.summary.cited_paragraph_count, 1);
+    assert_eq!(response.summary.missing_citation_count, 1);
+    assert_eq!(response.paragraphs.len(), 2);
+    assert_eq!(response.paragraphs[0].order_index, 0);
+    assert_eq!(response.paragraphs[0].citations.len(), 1);
+    assert_eq!(response.paragraphs[0].citations[0].text, "Smith (2020)");
+    assert!(!response.paragraphs[0].needs_citation);
+    assert_eq!(response.paragraphs[1].order_index, 1);
+    assert!(response.paragraphs[1].needs_citation);
 }
 
 #[tokio::test]
