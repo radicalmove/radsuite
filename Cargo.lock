@@ -3100,8 +3100,15 @@ name = "radsuite-desktop"
 version = "0.1.0"
 dependencies = [
  "directories",
+ "radsuite-cite",
+ "radsuite-core",
+ "radsuite-db",
  "radsuite-engines",
  "serde",
+ "sqlx",
+ "thiserror 2.0.18",
+ "tokio",
+ "zip",
 ]
 
 [[package]]

@@ -8,5 +8,14 @@ rust-version.workspace = true
 
 [dependencies]
 directories.workspace = true
+radsuite-cite = { path = "../radsuite-cite" }
+radsuite-core = { path = "../radsuite-core" }
+radsuite-db = { path = "../radsuite-db" }
 radsuite-engines = { path = "../radsuite-engines" }
 serde.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
+zip.workspace = true
