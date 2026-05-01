@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">RADcite logo</title>
+  <desc id="desc">Stylized red document outline with citation lines and a verification accent</desc>
+  <path d="M18 12H36L46 22V52H18V12Z" fill="none" stroke="#CE3E2E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M36 12V22H46" fill="none" stroke="#CE3E2E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M24 30H36" fill="none" stroke="#CE3E2E" stroke-width="4" stroke-linecap="round"/>
+  <path d="M24 40H40" fill="none" stroke="#CE3E2E" stroke-width="4" stroke-linecap="round"/>
+  <g transform="translate(48,47)">
+    <circle cx="0" cy="0" r="9" fill="#CE3E2E"/>
+    <path d="M-4 0L-1 3L5 -4" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

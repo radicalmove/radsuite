@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ProjectNavItem, ToolArea } from "../types";
+  import radciteLogo from "../assets/radcite-logo.svg";
 
   type Props = {
     projects: ProjectNavItem[];
@@ -21,8 +22,16 @@
 
 <aside class="project-sidebar" aria-label="Project navigation">
   <div class="sidebar-header">
-    <p class="eyebrow">Workspace</p>
-    <h1>RADsuite</h1>
+    <div class="brand-lockup">
+      <span class="brand-mark">
+        <img src={radciteLogo} alt="" aria-hidden="true" />
+      </span>
+      <div>
+        <p class="eyebrow">Workspace</p>
+        <h1>RADsuite</h1>
+      </div>
+    </div>
+    <div class="active-product">RADcite review</div>
   </div>
 
   <div class="project-section-heading">
