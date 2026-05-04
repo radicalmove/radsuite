@@ -101,6 +101,24 @@ button:disabled {
   background: var(--bg-soft);
 }
 
+.app-shell[data-theme="dark"] {
+  --bg: #101113;
+  --bg-soft: #111214;
+  --bg-panel: #17191d;
+  --bg-panel-alt: #1d2024;
+  --fg-1: #f4f4f5;
+  --fg-2: #d8dce0;
+  --fg-3: #a6adb5;
+  --fg-4: #777f88;
+  --line: #30343a;
+  --line-soft: #25282d;
+  --success-tint: rgba(99, 153, 34, 0.18);
+  --danger-tint: rgba(206, 62, 46, 0.16);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --shadow-md: 0 8px 18px rgba(0, 0, 0, 0.32);
+  color: var(--fg-1);
+}
+
 .project-sidebar {
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -299,6 +317,25 @@ button:disabled {
   margin-top: 2px;
 }
 
+.media-tool-button {
+  display: grid;
+  gap: 2px;
+  min-height: 42px;
+  align-content: center;
+}
+
+.media-tool-button span {
+  color: var(--fg-on-dark-2);
+  font-size: 0.82rem;
+}
+
+.media-tool-button small {
+  color: var(--fg-on-dark-dim);
+  font-size: 0.66rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
 .main-workspace {
   min-width: 0;
   padding: var(--s-5) var(--s-6);
@@ -329,28 +366,80 @@ button:disabled {
 .status-strip {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--s-2);
 }
 
-.pill {
+.status-chip {
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   min-height: 27px;
-  padding: 4px 10px;
-  border: 1px solid rgba(206, 62, 46, 0.24);
-  border-radius: var(--r-pill);
+  padding: 4px 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
   color: var(--danger-deep);
-  background: var(--danger-tint);
-  font-size: 0.74rem;
+  background: var(--bg-panel);
+  font-size: 0.72rem;
   font-weight: 650;
   white-space: nowrap;
 }
 
-.pill-active {
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--radcite-red);
+  box-shadow: 0 0 0 3px rgba(206, 62, 46, 0.14);
+  flex-shrink: 0;
+}
+
+.status-chip.is-ready {
   border-color: rgba(99, 153, 34, 0.26);
   color: var(--success-deep);
   background: var(--success-tint);
+}
+
+.status-chip.is-ready .status-dot {
+  background: var(--success);
+  box-shadow: 0 0 0 3px rgba(99, 153, 34, 0.16);
+}
+
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--fg-2);
+  background: var(--bg-panel);
+}
+
+.theme-toggle:hover {
+  border-color: rgba(206, 62, 46, 0.38);
+  background: var(--danger-tint);
+}
+
+.theme-toggle img {
+  display: block;
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.app-shell[data-theme="dark"] .status-chip {
+  color: #f0a8a0;
+}
+
+.app-shell[data-theme="dark"] .status-chip.is-ready {
+  color: #b7dc8c;
+}
+
+.app-shell[data-theme="dark"] .theme-toggle img {
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.24));
 }
 
 .notice {
@@ -455,6 +544,10 @@ button:disabled {
   background: #eef0f2;
 }
 
+.app-shell[data-theme="dark"] .primary-button:disabled {
+  background: #24272c;
+}
+
 .secondary-button {
   border: 1px solid var(--line);
   color: var(--fg-2);
@@ -492,8 +585,20 @@ button:disabled {
 
 .summary-chip.is-active,
 .summary-chip:hover {
+  border-color: #aeb6be;
+  background: var(--bg-panel-alt);
+  box-shadow: var(--shadow-sm);
+}
+
+.summary-chip[data-filter="needs-citation"].is-active,
+.summary-chip[data-filter="needs-citation"]:hover {
   border-color: rgba(206, 62, 46, 0.36);
   background: var(--danger-tint);
+}
+
+.app-shell[data-theme="dark"] .summary-chip.is-active,
+.app-shell[data-theme="dark"] .summary-chip:hover {
+  border-color: #4a5058;
 }
 
 .summary-chip span {
@@ -541,6 +646,15 @@ button:disabled {
   background: #fffafa;
 }
 
+.app-shell[data-theme="dark"] .paragraph-row:hover,
+.app-shell[data-theme="dark"] .paragraph-row.is-selected {
+  background: #1d2024;
+}
+
+.app-shell[data-theme="dark"] .paragraph-row:has(.status-warning) {
+  background: rgba(206, 62, 46, 0.09);
+}
+
 .paragraph-index {
   color: var(--radcite-red-deep);
   font-family: var(--font-mono);
@@ -577,6 +691,10 @@ button:disabled {
   background: #eef0f2;
 }
 
+.app-shell[data-theme="dark"] .paragraph-meta span {
+  background: #24272c;
+}
+
 .paragraph-preview {
   color: var(--fg-2);
   line-height: 1.52;
@@ -600,6 +718,15 @@ button:disabled {
   gap: var(--s-2);
   min-height: 220px;
   color: var(--fg-3);
+}
+
+.actions-empty {
+  align-content: start;
+  min-height: 168px;
+  padding: var(--s-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-panel-alt);
 }
 
 .document-empty strong,

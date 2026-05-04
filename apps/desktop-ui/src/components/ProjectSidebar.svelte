@@ -66,8 +66,14 @@
             {/each}
           </div>
 
-          <button class="tool-area-button tool-area-button-root" type="button" disabled>RADcast</button>
-          <button class="tool-area-button tool-area-button-root" type="button" disabled>RADTTS</button>
+          <button class="tool-area-button tool-area-button-root media-tool-button" type="button" disabled>
+            <span>Audio cleanup</span>
+            <small>RADcast</small>
+          </button>
+          <button class="tool-area-button tool-area-button-root media-tool-button" type="button" disabled>
+            <span>Voice generation</span>
+            <small>RADTTS</small>
+          </button>
         </div>
       </section>
     {/each}

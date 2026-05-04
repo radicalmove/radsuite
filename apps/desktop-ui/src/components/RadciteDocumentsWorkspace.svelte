@@ -129,6 +129,7 @@
       <button
         class="summary-chip"
         class:is-active={activeFilter === "all"}
+        data-filter="all"
         type="button"
         onclick={() => onFilterChange("all")}
       >
@@ -138,6 +139,7 @@
       <button
         class="summary-chip"
         class:is-active={activeFilter === "citation-total"}
+        data-filter="citation-total"
         type="button"
         onclick={() => onFilterChange("citation-total")}
       >
@@ -147,6 +149,7 @@
       <button
         class="summary-chip"
         class:is-active={activeFilter === "has-citation"}
+        data-filter="has-citation"
         type="button"
         onclick={() => onFilterChange("has-citation")}
       >
@@ -156,6 +159,7 @@
       <button
         class="summary-chip"
         class:is-active={activeFilter === "needs-citation"}
+        data-filter="needs-citation"
         type="button"
         onclick={() => onFilterChange("needs-citation")}
       >
