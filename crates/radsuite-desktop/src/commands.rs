@@ -87,6 +87,19 @@ pub struct ReviewCitation {
     pub verified: bool,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateParagraphReviewRequest {
+    pub document_id: DocumentId,
+    pub paragraph_id: ParagraphId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AddManualCitationRequest {
+    pub document_id: DocumentId,
+    pub paragraph_id: ParagraphId,
+    pub citation_text: String,
+}
+
 #[derive(Debug, Error)]
 pub enum AnalyseDocxError {
     #[error("choose a DOCX file before running RADcite analysis")]
@@ -95,6 +108,18 @@ pub enum AnalyseDocxError {
     MissingFilename,
     #[error(transparent)]
     Ingestion(#[from] DocxIngestionError),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum ReviewActionError {
+    #[error("enter citation text before adding a manual citation")]
+    EmptyCitationText,
+    #[error("could not load RADcite review document {0}")]
+    MissingDocument(DocumentId),
+    #[error("could not load project {0} for RADcite review document")]
+    MissingProject(ProjectId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -133,6 +158,44 @@ pub async fn analyse_docx_for_review(
         summary,
         paragraphs,
     })
+}
+
+pub async fn mark_paragraph_resolved_for_review(
+    state: &DesktopState,
+    request: UpdateParagraphReviewRequest,
+) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
+    SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .mark_paragraph_resolved(request.paragraph_id)
+        .await?;
+
+    load_review_response(state, request.document_id).await
+}
+
+pub async fn verify_paragraph_citations_for_review(
+    state: &DesktopState,
+    request: UpdateParagraphReviewRequest,
+) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
+    SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .verify_paragraph_citations(request.paragraph_id)
+        .await?;
+
+    load_review_response(state, request.document_id).await
+}
+
+pub async fn add_manual_citation_for_review(
+    state: &DesktopState,
+    request: AddManualCitationRequest,
+) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
+    let citation_text = request.citation_text.trim();
+    if citation_text.is_empty() {
+        return Err(ReviewActionError::EmptyCitationText);
+    }
+
+    SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .insert_manual_citation(request.paragraph_id, citation_text)
+        .await?;
+
+    load_review_response(state, request.document_id).await
 }
 
 #[derive(Debug)]
@@ -190,6 +253,36 @@ async fn analyse_docx(
         document: analysed.document,
         paragraphs: analysed.paragraphs,
         citations: analysed.citations,
+    })
+}
+
+async fn load_review_response(
+    state: &DesktopState,
+    document_id: DocumentId,
+) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
+    let document_repo = SqliteCitationDocumentRepository::new(state.database_pool.clone());
+    let analysis = document_repo
+        .load_document_analysis(document_id)
+        .await?
+        .ok_or(ReviewActionError::MissingDocument(document_id))?;
+
+    let project = SqliteProjectRepository::new(state.database_pool.clone())
+        .load_project(analysis.document.project_id)
+        .await?
+        .ok_or(ReviewActionError::MissingProject(
+            analysis.document.project_id,
+        ))?;
+
+    let summary = build_summary(&analysis.paragraphs, &analysis.citations);
+    let paragraphs = build_review_paragraphs(analysis.paragraphs, analysis.citations);
+
+    Ok(AnalyseDocxReviewResponse {
+        project_id: project.id,
+        project_title: project.title,
+        document_id: analysis.document.id,
+        original_filename: analysis.document.original_filename,
+        summary,
+        paragraphs,
     })
 }
 

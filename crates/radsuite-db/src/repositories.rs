@@ -16,6 +16,7 @@ pub trait ProjectRepository {
         &self,
         user_id: UserId,
     ) -> Result<Vec<ApiProjectSummary>, DbError>;
+    async fn load_project(&self, project_id: ProjectId) -> Result<Option<Project>, DbError>;
 }
 
 #[derive(Debug, Clone)]
@@ -114,6 +115,21 @@ impl ProjectRepository for SqliteProjectRepository {
             })
             .collect()
     }
+
+    async fn load_project(&self, project_id: ProjectId) -> Result<Option<Project>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT id, owner_id, code, title, created_at, updated_at
+            FROM projects
+            WHERE id = ?1
+            "#,
+        )
+        .bind(project_id.0.to_string())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.as_ref().map(project_from_row).transpose()
+    }
 }
 
 fn parse_role(value: &str) -> Result<ProjectRole, DbError> {
@@ -161,6 +177,16 @@ pub trait CitationDocumentRepository {
         &self,
         document_id: DocumentId,
     ) -> Result<Option<CitationDocumentAnalysis>, DbError>;
+
+    async fn mark_paragraph_resolved(&self, paragraph_id: ParagraphId) -> Result<(), DbError>;
+
+    async fn verify_paragraph_citations(&self, paragraph_id: ParagraphId) -> Result<(), DbError>;
+
+    async fn insert_manual_citation(
+        &self,
+        paragraph_id: ParagraphId,
+        citation_text: &str,
+    ) -> Result<Citation, DbError>;
 }
 
 #[derive(Debug, Clone)]
@@ -373,6 +399,115 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             citations,
         }))
     }
+
+    async fn mark_paragraph_resolved(&self, paragraph_id: ParagraphId) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            UPDATE paragraphs
+            SET needs_citation = 0,
+                updated_at = ?1
+            WHERE id = ?2
+            "#,
+        )
+        .bind(Utc::now().to_rfc3339())
+        .bind(paragraph_id.0.to_string())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn verify_paragraph_citations(&self, paragraph_id: ParagraphId) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            UPDATE paragraph_citations
+            SET verified = 1,
+                updated_at = ?1
+            WHERE paragraph_id = ?2
+            "#,
+        )
+        .bind(Utc::now().to_rfc3339())
+        .bind(paragraph_id.0.to_string())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn insert_manual_citation(
+        &self,
+        paragraph_id: ParagraphId,
+        citation_text: &str,
+    ) -> Result<Citation, DbError> {
+        let now = Utc::now();
+        let citation = Citation {
+            id: CitationId::new(),
+            paragraph_id,
+            reference_entry_id: None,
+            citation_text: citation_text.trim().to_string(),
+            position_start: None,
+            position_end: None,
+            verified: true,
+            created_at: now,
+            updated_at: now,
+        };
+
+        let mut tx = self.pool.begin().await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO paragraph_citations
+                (id, paragraph_id, reference_entry_id, citation_text, position_start,
+                 position_end, verified, created_at, updated_at)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            "#,
+        )
+        .bind(citation.id.0.to_string())
+        .bind(citation.paragraph_id.0.to_string())
+        .bind(citation.reference_entry_id.map(|id| id.0.to_string()))
+        .bind(&citation.citation_text)
+        .bind(citation.position_start)
+        .bind(citation.position_end)
+        .bind(citation.verified)
+        .bind(citation.created_at.to_rfc3339())
+        .bind(citation.updated_at.to_rfc3339())
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE paragraphs
+            SET needs_citation = 0,
+                updated_at = ?1
+            WHERE id = ?2
+            "#,
+        )
+        .bind(now.to_rfc3339())
+        .bind(paragraph_id.0.to_string())
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(citation)
+    }
+}
+
+fn project_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Project, DbError> {
+    let id: String = row.try_get("id")?;
+    let owner_id: String = row.try_get("owner_id")?;
+    let created_at: String = row.try_get("created_at")?;
+    let updated_at: String = row.try_get("updated_at")?;
+
+    Ok(Project {
+        id: ProjectId(Uuid::parse_str(&id)?),
+        owner_id: UserId(Uuid::parse_str(&owner_id)?),
+        code: row.try_get("code")?,
+        title: row.try_get("title")?,
+        created_at: parse_datetime(&created_at)?,
+        updated_at: parse_datetime(&updated_at)?,
+    })
 }
 
 fn document_file_type_as_str(value: DocumentFileType) -> &'static str {

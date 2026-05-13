@@ -6,8 +6,10 @@ use std::{
 
 use radsuite_db::migrate;
 use radsuite_desktop::{
-    AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState, analyse_docx_for_review,
-    analyse_docx_path, get_app_status,
+    AddManualCitationRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState,
+    UpdateParagraphReviewRequest, add_manual_citation_for_review, analyse_docx_for_review,
+    analyse_docx_path, get_app_status, mark_paragraph_resolved_for_review,
+    verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -81,6 +83,79 @@ async fn analyse_docx_for_review_returns_ordered_paragraphs_and_citations() {
     assert!(!response.paragraphs[0].needs_citation);
     assert_eq!(response.paragraphs[1].order_index, 1);
     assert!(response.paragraphs[1].needs_citation);
+}
+
+#[tokio::test]
+async fn radcite_review_actions_persist_and_return_refreshed_review() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-review-actions.docx");
+
+    let response = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("review-actions.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+
+    let cited_paragraph_id = response.paragraphs[0].id;
+    let missing_paragraph_id = response.paragraphs[1].id;
+
+    let verified = verify_paragraph_citations_for_review(
+        &state,
+        UpdateParagraphReviewRequest {
+            document_id: response.document_id,
+            paragraph_id: cited_paragraph_id,
+        },
+    )
+    .await
+    .expect("verify citations");
+
+    assert!(
+        verified.paragraphs[0]
+            .citations
+            .iter()
+            .all(|citation| citation.verified)
+    );
+
+    let resolved = mark_paragraph_resolved_for_review(
+        &state,
+        UpdateParagraphReviewRequest {
+            document_id: response.document_id,
+            paragraph_id: missing_paragraph_id,
+        },
+    )
+    .await
+    .expect("mark resolved");
+
+    assert!(!resolved.paragraphs[1].needs_citation);
+    assert_eq!(resolved.summary.missing_citation_count, 0);
+
+    let with_manual_citation = add_manual_citation_for_review(
+        &state,
+        AddManualCitationRequest {
+            document_id: response.document_id,
+            paragraph_id: missing_paragraph_id,
+            citation_text: " Jones (2024) ".to_string(),
+        },
+    )
+    .await
+    .expect("add manual citation");
+
+    assert_eq!(with_manual_citation.summary.citation_count, 2);
+    assert!(
+        with_manual_citation.paragraphs[1]
+            .citations
+            .iter()
+            .any(|citation| {
+                citation.text == "Jones (2024)"
+                    && citation.start.is_none()
+                    && citation.end.is_none()
+                    && citation.verified
+            })
+    );
 }
 
 #[tokio::test]

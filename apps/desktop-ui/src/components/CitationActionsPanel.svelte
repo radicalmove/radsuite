@@ -3,9 +3,9 @@
 
   type Props = {
     selectedParagraph: ReviewParagraph | null;
-    onMarkResolved: (paragraphId: string) => void;
-    onAddManualCitation: (paragraphId: string, citationText: string) => void;
-    onVerifyCitation: (paragraphId: string) => void;
+    onMarkResolved: (paragraphId: string) => void | Promise<void>;
+    onAddManualCitation: (paragraphId: string, citationText: string) => void | Promise<void>;
+    onVerifyCitation: (paragraphId: string) => void | Promise<void>;
   };
 
   let {
@@ -30,7 +30,7 @@
       return;
     }
 
-    onAddManualCitation(selectedParagraph.id, manualCitationText);
+    void onAddManualCitation(selectedParagraph.id, manualCitationText);
     manualCitationText = "";
   }
 </script>
@@ -90,7 +90,7 @@
           class="secondary-button"
           type="button"
           disabled={verifyDisabled}
-          onclick={() => onVerifyCitation(selectedParagraph.id)}
+          onclick={() => void onVerifyCitation(selectedParagraph.id)}
         >
           Verify citation
         </button>
@@ -98,7 +98,7 @@
           class="secondary-button"
           type="button"
           disabled={!selectedParagraph.needs_citation}
-          onclick={() => onMarkResolved(selectedParagraph.id)}
+          onclick={() => void onMarkResolved(selectedParagraph.id)}
         >
           Mark as resolved
         </button>
@@ -125,7 +125,7 @@
             Add
           </button>
         </div>
-        <p class="action-note">These changes update the current review session only.</p>
+        <p class="action-note">These changes are saved to the Local DB.</p>
       </form>
     </section>
   {:else}
