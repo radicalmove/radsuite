@@ -303,6 +303,12 @@ pub trait CitationDocumentRepository {
         paragraph_id: ParagraphId,
         citation_text: &str,
     ) -> Result<Citation, DbError>;
+
+    async fn link_citation_to_reference(
+        &self,
+        citation_id: CitationId,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<(), DbError>;
 }
 
 #[derive(Debug, Clone)]
@@ -632,6 +638,28 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         tx.commit().await?;
 
         Ok(citation)
+    }
+
+    async fn link_citation_to_reference(
+        &self,
+        citation_id: CitationId,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            UPDATE paragraph_citations
+            SET reference_entry_id = ?1,
+                updated_at = ?2
+            WHERE id = ?3
+            "#,
+        )
+        .bind(reference_entry_id.0.to_string())
+        .bind(Utc::now().to_rfc3339())
+        .bind(citation_id.0.to_string())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
     }
 }
 

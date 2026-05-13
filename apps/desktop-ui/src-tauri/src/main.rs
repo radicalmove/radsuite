@@ -1,7 +1,8 @@
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AnalyseDocxRequest, AnalyseDocxResponse,
     AnalyseDocxReviewResponse, AppStatus, CourseReferenceSummary, DesktopState,
-    LoadSavedReviewRequest, SavedRadciteReviewSummary, UpdateParagraphReviewRequest,
+    LinkCitationReferenceRequest, LoadSavedReviewRequest, SavedRadciteReviewSummary,
+    UpdateParagraphReviewRequest,
 };
 
 #[tauri::command]
@@ -97,6 +98,16 @@ async fn add_radcite_manual_citation(
         .map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+async fn link_radcite_citation_reference(
+    state: tauri::State<'_, DesktopState>,
+    request: LinkCitationReferenceRequest,
+) -> Result<AnalyseDocxReviewResponse, String> {
+    radsuite_desktop::link_citation_to_reference_for_review(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
 fn main() {
     let state = tauri::async_runtime::block_on(DesktopState::for_app("RADsuite"))
         .expect("initialize RADsuite desktop state");
@@ -114,7 +125,8 @@ fn main() {
             add_course_reference,
             mark_radcite_paragraph_resolved,
             verify_radcite_paragraph_citations,
-            add_radcite_manual_citation
+            add_radcite_manual_citation,
+            link_radcite_citation_reference
         ])
         .run(tauri::generate_context!())
         .expect("failed to run RADsuite desktop app");

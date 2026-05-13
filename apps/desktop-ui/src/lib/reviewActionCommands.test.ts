@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { AnalyseDocxReviewResponse, ReviewParagraph } from "../types";
 import {
   persistAddManualCitation,
+  persistLinkCitationToReference,
   persistMarkParagraphResolved,
   persistVerifyParagraphCitations,
 } from "./reviewActionCommands";
@@ -66,7 +67,14 @@ describe("review action commands", () => {
       paragraph({
         id: "paragraph-1",
         citations: [
-          { id: "citation-1", text: "Smith (2020)", start: null, end: null, verified: false },
+          {
+            id: "citation-1",
+            text: "Smith (2020)",
+            start: null,
+            end: null,
+            verified: false,
+            reference_entry_id: null,
+          },
         ],
       }),
     ]);
@@ -74,7 +82,14 @@ describe("review action commands", () => {
       paragraph({
         id: "paragraph-1",
         citations: [
-          { id: "citation-1", text: "Smith (2020)", start: null, end: null, verified: true },
+          {
+            id: "citation-1",
+            text: "Smith (2020)",
+            start: null,
+            end: null,
+            verified: true,
+            reference_entry_id: null,
+          },
         ],
       }),
     ]);
@@ -96,7 +111,14 @@ describe("review action commands", () => {
       paragraph({
         id: "paragraph-1",
         citations: [
-          { id: "citation-1", text: "Jones (2024)", start: null, end: null, verified: true },
+          {
+            id: "citation-1",
+            text: "Jones (2024)",
+            start: null,
+            end: null,
+            verified: true,
+            reference_entry_id: null,
+          },
         ],
       }),
     ]);
@@ -111,6 +133,52 @@ describe("review action commands", () => {
         document_id: "document-1",
         paragraph_id: "paragraph-1",
         citation_text: "Jones (2024)",
+      },
+    });
+  });
+
+  test("persists citation reference links with the current document id", async () => {
+    const source = analysis([
+      paragraph({
+        id: "paragraph-1",
+        citations: [
+          {
+            id: "citation-1",
+            text: "Smith (2020)",
+            start: null,
+            end: null,
+            verified: false,
+            reference_entry_id: null,
+          },
+        ],
+      }),
+    ]);
+    const refreshed = analysis([
+      paragraph({
+        id: "paragraph-1",
+        citations: [
+          {
+            id: "citation-1",
+            text: "Smith (2020)",
+            start: null,
+            end: null,
+            verified: false,
+            reference_entry_id: "reference-1",
+          },
+        ],
+      }),
+    ]);
+    vi.mocked(invoke).mockResolvedValue(refreshed);
+
+    await expect(
+      persistLinkCitationToReference(source, "citation-1", "reference-1"),
+    ).resolves.toBe(refreshed);
+
+    expect(invoke).toHaveBeenCalledWith("link_radcite_citation_reference", {
+      request: {
+        document_id: "document-1",
+        citation_id: "citation-1",
+        reference_entry_id: "reference-1",
       },
     });
   });

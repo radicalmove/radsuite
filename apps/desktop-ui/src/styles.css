@@ -875,6 +875,8 @@ button:disabled {
 
 .citation-badge {
   gap: 6px;
+  max-width: 100%;
+  min-width: 0;
   color: var(--success-deep);
   background: var(--success-tint);
 }
@@ -884,10 +886,14 @@ button:disabled {
 }
 
 .citation-badge small {
+  max-width: 100%;
+  overflow: hidden;
   color: inherit;
   font-size: 0.62rem;
   font-weight: 700;
+  text-overflow: ellipsis;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .status-warning {
@@ -992,6 +998,16 @@ button:disabled {
   gap: var(--s-2);
 }
 
+.citation-link-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s-2);
+}
+
+.citation-link-row .primary-button {
+  width: 100%;
+}
+
 .action-note {
   margin: 0;
   color: var(--fg-3);
@@ -1026,6 +1042,7 @@ button:disabled {
   .workspace-header,
   .path-row,
   .manual-citation-row,
+  .citation-link-row,
   .summary-strip {
     grid-template-columns: 1fr;
   }

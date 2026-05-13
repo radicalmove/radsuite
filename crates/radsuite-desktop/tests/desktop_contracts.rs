@@ -7,8 +7,9 @@ use std::{
 use radsuite_db::migrate;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AnalyseDocxError, AnalyseDocxRequest,
-    AppPaths, DesktopState, UpdateParagraphReviewRequest, add_course_reference,
-    add_manual_citation_for_review, analyse_docx_for_review, analyse_docx_path, get_app_status,
+    AppPaths, DesktopState, LinkCitationReferenceRequest, UpdateParagraphReviewRequest,
+    add_course_reference, add_manual_citation_for_review, analyse_docx_for_review,
+    analyse_docx_path, get_app_status, link_citation_to_reference_for_review,
     list_course_references, list_saved_radcite_reviews, load_saved_radcite_review,
     mark_paragraph_resolved_for_review, verify_paragraph_citations_for_review,
 };
@@ -292,6 +293,60 @@ async fn local_course_references_are_added_to_the_radcite_project() {
 
     assert_eq!(references.len(), 1);
     assert_eq!(references[0], added);
+}
+
+#[tokio::test]
+async fn paragraph_citations_can_be_linked_to_course_references() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-linked-reference.docx");
+
+    let analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("linked-reference.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+    let citation_id = analysis.paragraphs[0].citations[0].id;
+
+    let reference = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    let linked = link_citation_to_reference_for_review(
+        &state,
+        LinkCitationReferenceRequest {
+            document_id: analysis.document_id,
+            citation_id,
+            reference_entry_id: reference.id,
+        },
+    )
+    .await
+    .expect("link citation to reference");
+
+    assert_eq!(
+        linked.paragraphs[0].citations[0].reference_entry_id,
+        Some(reference.id)
+    );
+    assert!(!linked.paragraphs[0].citations[0].verified);
+
+    let loaded = load_saved_radcite_review(&state, analysis.document_id)
+        .await
+        .expect("load saved review");
+
+    assert_eq!(
+        loaded.paragraphs[0].citations[0].reference_entry_id,
+        Some(reference.id)
+    );
 }
 
 #[tokio::test]

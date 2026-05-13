@@ -9,6 +9,7 @@
   import { addCourseReference, listCourseReferences } from "./lib/referenceCommands";
   import {
     persistAddManualCitation,
+    persistLinkCitationToReference,
     persistMarkParagraphResolved,
     persistVerifyParagraphCitations,
   } from "./lib/reviewActionCommands";
@@ -165,6 +166,24 @@
     }
   }
 
+  async function handleLinkCitation(citationId: string, referenceEntryId: string) {
+    if (!analysisResult) {
+      return;
+    }
+
+    reviewActionError = null;
+    try {
+      analysisResult = await persistLinkCitationToReference(
+        analysisResult,
+        citationId,
+        referenceEntryId,
+      );
+      void refreshSavedReviews();
+    } catch (reason: unknown) {
+      reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
+    }
+  }
+
   function applyTheme(nextTheme: "light" | "dark") {
     theme = nextTheme;
     document.documentElement.dataset.theme = nextTheme;
@@ -292,8 +311,10 @@
 
   <CitationActionsPanel
     {selectedParagraph}
+    {courseReferences}
     onMarkResolved={handleMarkResolved}
     onAddManualCitation={handleAddManualCitation}
     onVerifyCitation={handleVerifyCitation}
+    onLinkCitation={handleLinkCitation}
   />
 </main>

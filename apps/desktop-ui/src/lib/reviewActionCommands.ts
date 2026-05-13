@@ -10,6 +10,12 @@ type AddManualCitationRequest = UpdateParagraphReviewRequest & {
   citation_text: string;
 };
 
+type LinkCitationReferenceRequest = {
+  document_id: string;
+  citation_id: string;
+  reference_entry_id: string;
+};
+
 function paragraphRequest(
   analysis: AnalyseDocxReviewResponse,
   paragraphId: string,
@@ -49,6 +55,22 @@ export function persistAddManualCitation(
   };
 
   return invoke<AnalyseDocxReviewResponse>("add_radcite_manual_citation", {
+    request,
+  });
+}
+
+export function persistLinkCitationToReference(
+  analysis: AnalyseDocxReviewResponse,
+  citationId: string,
+  referenceEntryId: string,
+): Promise<AnalyseDocxReviewResponse> {
+  const request: LinkCitationReferenceRequest = {
+    document_id: analysis.document_id,
+    citation_id: citationId,
+    reference_entry_id: referenceEntryId,
+  };
+
+  return invoke<AnalyseDocxReviewResponse>("link_radcite_citation_reference", {
     request,
   });
 }
