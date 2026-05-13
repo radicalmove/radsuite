@@ -3106,6 +3106,7 @@ dependencies = [
  "radsuite-core",
  "radsuite-db",
  "radsuite-engines",
+ "regex",
  "serde",
  "sqlx",
  "thiserror 2.0.18",

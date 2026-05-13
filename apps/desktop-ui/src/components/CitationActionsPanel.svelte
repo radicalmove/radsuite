@@ -1,5 +1,15 @@
 <script lang="ts">
-  import type { CourseReferenceSummary, ReviewParagraph } from "../types";
+  import type {
+    CourseReferenceSummary,
+    ReviewCitationReferenceSuggestion,
+    ReviewParagraph,
+  } from "../types";
+
+  type SuggestedCitationLink = {
+    citationId: string;
+    citationText: string;
+    suggestion: ReviewCitationReferenceSuggestion;
+  };
 
   type Props = {
     selectedParagraph: ReviewParagraph | null;
@@ -36,6 +46,19 @@
       courseReferences.length === 0 ||
       selectedCitationId.length === 0 ||
       selectedReferenceId.length === 0,
+  );
+  let suggestedCitationLinks = $derived<SuggestedCitationLink[]>(
+    selectedParagraph?.citations.flatMap((citation) => {
+      if (citation.reference_entry_id) {
+        return [];
+      }
+
+      return citation.reference_suggestions.map((suggestion) => ({
+        citationId: citation.id,
+        citationText: citation.text,
+        suggestion,
+      }));
+    }) ?? [],
   );
 
   $effect(() => {
@@ -127,6 +150,34 @@
           <p>This paragraph does not currently need citation action.</p>
         {/if}
       </div>
+
+      {#if suggestedCitationLinks.length}
+        <div class="citation-detail-block suggestion-list-block">
+          <h3>Suggested references</h3>
+          <div class="suggestion-list">
+            {#each suggestedCitationLinks as item (`${item.citationId}-${item.suggestion.reference_entry_id}`)}
+              <div class="suggestion-card">
+                <div class="suggestion-card-main">
+                  <span class="suggestion-citation">{item.citationText}</span>
+                  <strong>{item.suggestion.label}</strong>
+                  <span>{item.suggestion.reason}</span>
+                </div>
+                <span class="confidence-badge" data-confidence={item.suggestion.confidence}>
+                  {item.suggestion.confidence}
+                </span>
+                <button
+                  class="secondary-button compact-button"
+                  type="button"
+                  onclick={() =>
+                    void onLinkCitation(item.citationId, item.suggestion.reference_entry_id)}
+                >
+                  Accept
+                </button>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
 
       <div class="action-stack">
         <button class="secondary-button" type="button" disabled>Search sources</button>

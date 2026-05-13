@@ -980,6 +980,76 @@ button:disabled {
   border-radius: var(--r-sm);
 }
 
+.suggestion-list-block {
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+}
+
+.suggestion-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.suggestion-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
+  align-items: start;
+  padding: var(--s-3);
+  border: 1px solid rgba(42, 124, 94, 0.22);
+  border-radius: var(--r-sm);
+  background: var(--success-tint);
+}
+
+.suggestion-card .compact-button {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.suggestion-card-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.suggestion-card-main strong,
+.suggestion-card-main span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestion-card-main strong {
+  color: var(--fg-1);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.suggestion-card-main span {
+  color: var(--fg-3);
+  font-size: 0.74rem;
+}
+
+.suggestion-citation {
+  color: var(--success-deep) !important;
+  font-weight: 700;
+}
+
+.confidence-badge {
+  padding: 3px 7px;
+  border-radius: var(--r-pill);
+  color: var(--success-deep);
+  background: var(--bg);
+  font-size: 0.66rem;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.confidence-badge[data-confidence="possible"] {
+  color: var(--fg-3);
+}
+
 .action-stack {
   display: grid;
   gap: var(--s-2);

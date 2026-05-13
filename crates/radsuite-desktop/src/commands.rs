@@ -10,6 +10,7 @@ use radsuite_db::{
     SqliteCitationDocumentRepository, SqliteProjectRepository, SqliteReferenceEntryRepository,
 };
 use radsuite_engines::EngineStatus;
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -117,6 +118,15 @@ pub struct ReviewCitation {
     pub end: Option<i32>,
     pub verified: bool,
     pub reference_entry_id: Option<ReferenceEntryId>,
+    pub reference_suggestions: Vec<ReviewCitationReferenceSuggestion>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReviewCitationReferenceSuggestion {
+    pub reference_entry_id: ReferenceEntryId,
+    pub label: String,
+    pub confidence: String,
+    pub reason: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -206,7 +216,12 @@ pub async fn analyse_docx_for_review(
 ) -> Result<AnalyseDocxReviewResponse, AnalyseDocxError> {
     let analysed = analyse_docx(state, request).await?;
     let summary = build_summary(&analysed.paragraphs, &analysed.citations);
-    let paragraphs = build_review_paragraphs(analysed.paragraphs, analysed.citations);
+    let references = load_course_reference_entries(state, analysed.project.id).await?;
+    let paragraphs = build_review_paragraphs(
+        analysed.paragraphs,
+        analysed.citations,
+        references.as_slice(),
+    );
 
     Ok(AnalyseDocxReviewResponse {
         project_id: analysed.project.id,
@@ -407,7 +422,12 @@ async fn load_review_response(
         ))?;
 
     let summary = build_summary(&analysis.paragraphs, &analysis.citations);
-    let paragraphs = build_review_paragraphs(analysis.paragraphs, analysis.citations);
+    let references = load_course_reference_entries(state, project.id).await?;
+    let paragraphs = build_review_paragraphs(
+        analysis.paragraphs,
+        analysis.citations,
+        references.as_slice(),
+    );
 
     Ok(AnalyseDocxReviewResponse {
         project_id: project.id,
@@ -437,6 +457,15 @@ async fn load_or_create_local_radcite_project(state: &DesktopState) -> Result<Pr
     project_repo.insert_project(&project).await?;
 
     Ok(project)
+}
+
+async fn load_course_reference_entries(
+    state: &DesktopState,
+    project_id: ProjectId,
+) -> Result<Vec<ReferenceEntry>, DbError> {
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .list_reference_entries_for_project(project_id, ReferenceEntryType::Reference)
+        .await
 }
 
 fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary {
@@ -497,6 +526,7 @@ fn build_summary(paragraphs: &[Paragraph], citations: &[Citation]) -> AnalyseDoc
 fn build_review_paragraphs(
     paragraphs: Vec<Paragraph>,
     citations: Vec<Citation>,
+    references: &[ReferenceEntry],
 ) -> Vec<ReviewParagraph> {
     paragraphs
         .into_iter()
@@ -511,6 +541,7 @@ fn build_review_paragraphs(
                     end: citation.position_end,
                     verified: citation.verified,
                     reference_entry_id: citation.reference_entry_id,
+                    reference_suggestions: reference_suggestions_for_citation(citation, references),
                 })
                 .collect();
 
@@ -526,4 +557,124 @@ fn build_review_paragraphs(
             }
         })
         .collect()
+}
+
+fn reference_suggestions_for_citation(
+    citation: &Citation,
+    references: &[ReferenceEntry],
+) -> Vec<ReviewCitationReferenceSuggestion> {
+    if citation.reference_entry_id.is_some() {
+        return Vec::new();
+    }
+
+    let mut scored_suggestions: Vec<(i32, ReviewCitationReferenceSuggestion)> = references
+        .iter()
+        .filter_map(|reference| suggestion_for_reference(citation, reference))
+        .collect();
+
+    scored_suggestions.sort_by(|(left_score, left), (right_score, right)| {
+        right_score
+            .cmp(left_score)
+            .then_with(|| left.label.cmp(&right.label))
+    });
+
+    scored_suggestions
+        .into_iter()
+        .map(|(_, suggestion)| suggestion)
+        .collect()
+}
+
+fn suggestion_for_reference(
+    citation: &Citation,
+    reference: &ReferenceEntry,
+) -> Option<(i32, ReviewCitationReferenceSuggestion)> {
+    let citation_year = extract_year(&citation.citation_text);
+    let reference_search = reference_search_text(reference);
+    let reference_year = reference
+        .publication_year
+        .as_deref()
+        .map(str::to_string)
+        .or_else(|| extract_year(&reference_search));
+    let year_matches = citation_year.is_some() && citation_year == reference_year;
+    let author_tokens = citation_author_tokens(&citation.citation_text);
+    let author_matches = author_tokens
+        .iter()
+        .any(|token| reference_search.contains(token));
+    let text_overlaps = citation_keyword_tokens(&citation.citation_text)
+        .iter()
+        .any(|token| reference_search.contains(token));
+
+    let (score, confidence, reason) = if year_matches && author_matches {
+        (100, "strong", "Author and year match")
+    } else if year_matches && text_overlaps {
+        (60, "possible", "Year and text overlap")
+    } else if author_matches && citation_year.is_none() {
+        (50, "possible", "Author match")
+    } else {
+        return None;
+    };
+
+    Some((
+        score,
+        ReviewCitationReferenceSuggestion {
+            reference_entry_id: reference.id,
+            label: reference_label(reference),
+            confidence: confidence.to_string(),
+            reason: reason.to_string(),
+        },
+    ))
+}
+
+fn extract_year(text: &str) -> Option<String> {
+    let year = Regex::new(r"(?:19|20)\d{2}").expect("valid year regex");
+    year.find(text).map(|hit| hit.as_str().to_string())
+}
+
+fn citation_author_tokens(citation_text: &str) -> Vec<String> {
+    let without_years = Regex::new(r"(?:19|20)\d{2}[a-z]?")
+        .expect("valid year regex")
+        .replace_all(citation_text, "");
+
+    Regex::new(r"[A-Za-z][A-Za-z\-']+")
+        .expect("valid word regex")
+        .find_iter(&without_years)
+        .map(|hit| hit.as_str().trim_matches('\'').to_lowercase())
+        .filter(|token| {
+            token.len() > 1
+                && !matches!(
+                    token.as_str(),
+                    "and" | "et" | "al" | "al." | "s" | "see" | "also"
+                )
+        })
+        .collect()
+}
+
+fn citation_keyword_tokens(citation_text: &str) -> Vec<String> {
+    citation_author_tokens(citation_text)
+}
+
+fn reference_search_text(reference: &ReferenceEntry) -> String {
+    [
+        reference.apa_citation.as_deref(),
+        reference.citation_text.as_deref(),
+        reference.title.as_deref(),
+        reference.publication_year.as_deref(),
+        reference.source.as_deref(),
+        Some(reference.authors.join(" ")).as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" ")
+    .to_lowercase()
+}
+
+fn reference_label(reference: &ReferenceEntry) -> String {
+    reference
+        .apa_citation
+        .as_deref()
+        .or(reference.citation_text.as_deref())
+        .or(reference.title.as_deref())
+        .unwrap_or("Untitled reference")
+        .to_string()
 }
