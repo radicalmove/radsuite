@@ -74,6 +74,7 @@ describe("review action commands", () => {
             end: null,
             verified: false,
             reference_entry_id: null,
+            reference_suggestions: [],
           },
         ],
       }),
@@ -89,6 +90,7 @@ describe("review action commands", () => {
             end: null,
             verified: true,
             reference_entry_id: null,
+            reference_suggestions: [],
           },
         ],
       }),
@@ -118,6 +120,7 @@ describe("review action commands", () => {
             end: null,
             verified: true,
             reference_entry_id: null,
+            reference_suggestions: [],
           },
         ],
       }),
@@ -149,6 +152,14 @@ describe("review action commands", () => {
             end: null,
             verified: false,
             reference_entry_id: null,
+            reference_suggestions: [
+              {
+                reference_entry_id: "reference-1",
+                label: "Smith, J. (2020). Worked examples in practice. Learning Press.",
+                confidence: "strong",
+                reason: "Author and year match",
+              },
+            ],
           },
         ],
       }),
@@ -164,6 +175,7 @@ describe("review action commands", () => {
             end: null,
             verified: false,
             reference_entry_id: "reference-1",
+            reference_suggestions: [],
           },
         ],
       }),
@@ -172,6 +184,63 @@ describe("review action commands", () => {
 
     await expect(
       persistLinkCitationToReference(source, "citation-1", "reference-1"),
+    ).resolves.toBe(refreshed);
+
+    expect(invoke).toHaveBeenCalledWith("link_radcite_citation_reference", {
+      request: {
+        document_id: "document-1",
+        citation_id: "citation-1",
+        reference_entry_id: "reference-1",
+      },
+    });
+  });
+
+  test("persists accepted citation suggestions through the link command", async () => {
+    const source = analysis([
+      paragraph({
+        id: "paragraph-1",
+        citations: [
+          {
+            id: "citation-1",
+            text: "Smith (2020)",
+            start: null,
+            end: null,
+            verified: false,
+            reference_entry_id: null,
+            reference_suggestions: [
+              {
+                reference_entry_id: "reference-1",
+                label: "Smith, J. (2020). Worked examples in practice. Learning Press.",
+                confidence: "strong",
+                reason: "Author and year match",
+              },
+            ],
+          },
+        ],
+      }),
+    ]);
+    const refreshed = analysis([
+      paragraph({
+        id: "paragraph-1",
+        citations: [
+          {
+            id: "citation-1",
+            text: "Smith (2020)",
+            start: null,
+            end: null,
+            verified: false,
+            reference_entry_id: "reference-1",
+            reference_suggestions: [],
+          },
+        ],
+      }),
+    ]);
+    vi.mocked(invoke).mockResolvedValue(refreshed);
+
+    const suggestion = source.paragraphs[0].citations[0].reference_suggestions[0];
+
+    await expect(
+      persistLinkCitationToReference(source, "citation-1", suggestion.reference_entry_id),
     ).resolves.toBe(refreshed);
 
     expect(invoke).toHaveBeenCalledWith("link_radcite_citation_reference", {

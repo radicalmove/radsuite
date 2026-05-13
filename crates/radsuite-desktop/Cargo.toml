@@ -12,6 +12,7 @@ radsuite-cite = { path = "../radsuite-cite" }
 radsuite-core = { path = "../radsuite-core" }
 radsuite-db = { path = "../radsuite-db" }
 radsuite-engines = { path = "../radsuite-engines" }
+regex.workspace = true
 serde.workspace = true
 sqlx.workspace = true
 thiserror.workspace = true

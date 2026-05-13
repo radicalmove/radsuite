@@ -23,6 +23,13 @@ export type ToolArea = "documents" | "references" | "readings" | "exports" | "ra
 
 export type ParagraphFilter = "all" | "citation-total" | "has-citation" | "needs-citation";
 
+export type ReviewCitationReferenceSuggestion = {
+  reference_entry_id: string;
+  label: string;
+  confidence: "strong" | "possible";
+  reason: string;
+};
+
 export type ReviewCitation = {
   id: string;
   text: string;
@@ -30,6 +37,7 @@ export type ReviewCitation = {
   end: number | null;
   verified: boolean;
   reference_entry_id: string | null;
+  reference_suggestions: ReviewCitationReferenceSuggestion[];
 };
 
 export type ReviewParagraph = {

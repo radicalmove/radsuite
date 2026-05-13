@@ -91,6 +91,10 @@ for (const needle of [
   "onVerifyCitation",
   "onLinkCitation",
   "reference_entry_id",
+  "reference_suggestions",
+  "Suggested references",
+  "suggestion-card",
+  "Accept",
 ]) {
   if (!actionsPanel.includes(needle)) {
     missing.push(`citation actions include ${needle}`);

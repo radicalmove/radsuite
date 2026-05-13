@@ -350,6 +350,77 @@ async fn paragraph_citations_can_be_linked_to_course_references() {
 }
 
 #[tokio::test]
+async fn reference_suggestions_include_strong_course_reference_matches() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-reference-suggestions.docx");
+
+    let reference = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    let analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("reference-suggestions.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+
+    let suggestions = &analysis.paragraphs[0].citations[0].reference_suggestions;
+
+    assert_eq!(suggestions.len(), 1);
+    assert_eq!(suggestions[0].reference_entry_id, reference.id);
+    assert_eq!(suggestions[0].confidence, "strong");
+    assert_eq!(suggestions[0].reason, "Author and year match");
+    assert_eq!(
+        suggestions[0].label,
+        "Smith, J. (2020). Worked examples in practice. Learning Press."
+    );
+}
+
+#[tokio::test]
+async fn reference_suggestions_are_empty_when_course_references_do_not_match() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-reference-suggestions-empty.docx");
+
+    add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Jones, A. (2024). Assessment rubrics in practice. Teaching Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    let analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("reference-suggestions-empty.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+
+    assert!(
+        analysis.paragraphs[0].citations[0]
+            .reference_suggestions
+            .is_empty()
+    );
+}
+
+#[tokio::test]
 async fn analyse_docx_path_rejects_empty_path() {
     let state = desktop_state_with_migrated_pool().await;
 
