@@ -21,7 +21,14 @@ export type ProjectNavItem = {
 
 export type ToolArea = "documents" | "references" | "readings" | "exports" | "radcast" | "radtts";
 
-export type ParagraphFilter = "all" | "citation-total" | "has-citation" | "needs-citation";
+export type ParagraphFilter =
+  | "all"
+  | "citation-total"
+  | "has-citation"
+  | "needs-citation"
+  | "linked-citation"
+  | "suggested-citation"
+  | "unlinked-citation";
 
 export type ReviewCitationReferenceSuggestion = {
   reference_entry_id: string;
@@ -56,6 +63,9 @@ export type AnalyseDocxSummary = {
   citation_count: number;
   cited_paragraph_count: number;
   missing_citation_count: number;
+  linked_citation_count: number;
+  suggested_citation_count: number;
+  unlinked_citation_count: number;
 };
 
 export type AnalyseDocxReviewResponse = {

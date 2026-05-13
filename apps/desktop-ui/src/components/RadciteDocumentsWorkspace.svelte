@@ -1,6 +1,12 @@
 <script lang="ts">
   import { open } from "@tauri-apps/plugin-dialog";
   import { invoke } from "@tauri-apps/api/core";
+  import {
+    filterParagraphs,
+    hasLinkedCitation,
+    hasSuggestedCitation,
+    hasUnlinkedCitation,
+  } from "../lib/paragraphFilters";
   import type {
     AnalyseDocxReviewResponse,
     ParagraphFilter,
@@ -44,20 +50,7 @@
   let analysisDisabled = $derived(analysisLoading || docxPath.trim().length === 0);
 
   let filteredParagraphs = $derived(
-    analysisResult
-      ? analysisResult.paragraphs.filter((paragraph) => {
-          if (activeFilter === "citation-total") {
-            return paragraph.citations.length > 0;
-          }
-          if (activeFilter === "has-citation") {
-            return paragraph.citations.length > 0;
-          }
-          if (activeFilter === "needs-citation") {
-            return paragraph.needs_citation;
-          }
-          return true;
-        })
-      : [],
+    analysisResult ? filterParagraphs(analysisResult.paragraphs, activeFilter) : [],
   );
 
   function toErrorMessage(reason: unknown): string {
@@ -259,6 +252,36 @@
         <span>Needs citations</span>
         <strong>{analysisResult.summary.missing_citation_count}</strong>
       </button>
+      <button
+        class="summary-chip"
+        class:is-active={activeFilter === "linked-citation"}
+        data-filter="linked-citation"
+        type="button"
+        onclick={() => onFilterChange("linked-citation")}
+      >
+        <span>Linked citations</span>
+        <strong>{analysisResult.summary.linked_citation_count}</strong>
+      </button>
+      <button
+        class="summary-chip"
+        class:is-active={activeFilter === "suggested-citation"}
+        data-filter="suggested-citation"
+        type="button"
+        onclick={() => onFilterChange("suggested-citation")}
+      >
+        <span>Suggested matches</span>
+        <strong>{analysisResult.summary.suggested_citation_count}</strong>
+      </button>
+      <button
+        class="summary-chip"
+        class:is-active={activeFilter === "unlinked-citation"}
+        data-filter="unlinked-citation"
+        type="button"
+        onclick={() => onFilterChange("unlinked-citation")}
+      >
+        <span>Unlinked citations</span>
+        <strong>{analysisResult.summary.unlinked_citation_count}</strong>
+      </button>
     </div>
 
     <div class="paragraph-list" aria-label="Analysed paragraphs">
@@ -280,6 +303,15 @@
               {/if}
               {#if paragraph.needs_citation}
                 <span class="status-warning">Needs citation</span>
+              {/if}
+              {#if hasSuggestedCitation(paragraph)}
+                <span class="queue-status is-suggested">Suggested match</span>
+              {/if}
+              {#if hasUnlinkedCitation(paragraph)}
+                <span class="queue-status is-unlinked">Unlinked citation</span>
+              {/if}
+              {#if hasLinkedCitation(paragraph)}
+                <span class="queue-status is-linked">Linked</span>
               {/if}
             </span>
             <span class="paragraph-preview">{paragraphPreview(paragraph)}</span>

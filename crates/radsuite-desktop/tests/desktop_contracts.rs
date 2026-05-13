@@ -388,6 +388,55 @@ async fn reference_suggestions_include_strong_course_reference_matches() {
 }
 
 #[tokio::test]
+async fn review_queue_summary_tracks_linked_suggested_and_unlinked_citations() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-review-queue.docx");
+
+    let reference = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    let analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("review-queue.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+
+    assert_eq!(analysis.summary.citation_count, 1);
+    assert_eq!(analysis.summary.linked_citation_count, 0);
+    assert_eq!(analysis.summary.suggested_citation_count, 1);
+    assert_eq!(analysis.summary.unlinked_citation_count, 1);
+
+    let citation_id = analysis.paragraphs[0].citations[0].id;
+    let linked = link_citation_to_reference_for_review(
+        &state,
+        LinkCitationReferenceRequest {
+            document_id: analysis.document_id,
+            citation_id,
+            reference_entry_id: reference.id,
+        },
+    )
+    .await
+    .expect("link citation to reference");
+
+    assert_eq!(linked.summary.citation_count, 1);
+    assert_eq!(linked.summary.linked_citation_count, 1);
+    assert_eq!(linked.summary.suggested_citation_count, 0);
+    assert_eq!(linked.summary.unlinked_citation_count, 0);
+}
+
+#[tokio::test]
 async fn reference_suggestions_are_empty_when_course_references_do_not_match() {
     let state = desktop_state_with_migrated_pool().await;
     let path = write_minimal_docx("desktop-reference-suggestions-empty.docx");
