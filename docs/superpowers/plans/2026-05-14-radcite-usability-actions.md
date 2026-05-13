@@ -79,8 +79,8 @@
 - [x] Run `cargo fmt --all --check`.
 - [x] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
 - [x] Run `cargo test --workspace --all-features`.
-- [ ] Commit and push the branch.
-- [ ] Open a draft PR.
+- [x] Commit and push the branch.
+- [x] Open a draft PR.
 
 ## Review Note
 
