@@ -84,10 +84,13 @@ for (const needle of ["@tauri-apps/plugin-dialog", "choose-docx-button", "onChoo
 
 for (const needle of [
   "review-action-form",
+  "citation-link-form",
   "manualCitationText",
   "onMarkResolved",
   "onAddManualCitation",
   "onVerifyCitation",
+  "onLinkCitation",
+  "reference_entry_id",
 ]) {
   if (!actionsPanel.includes(needle)) {
     missing.push(`citation actions include ${needle}`);

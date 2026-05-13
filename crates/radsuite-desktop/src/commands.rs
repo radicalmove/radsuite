@@ -116,6 +116,7 @@ pub struct ReviewCitation {
     pub start: Option<i32>,
     pub end: Option<i32>,
     pub verified: bool,
+    pub reference_entry_id: Option<ReferenceEntryId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -129,6 +130,13 @@ pub struct AddManualCitationRequest {
     pub document_id: DocumentId,
     pub paragraph_id: ParagraphId,
     pub citation_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LinkCitationReferenceRequest {
+    pub document_id: DocumentId,
+    pub citation_id: CitationId,
+    pub reference_entry_id: ReferenceEntryId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -315,6 +323,17 @@ pub async fn add_manual_citation_for_review(
     load_review_response(state, request.document_id).await
 }
 
+pub async fn link_citation_to_reference_for_review(
+    state: &DesktopState,
+    request: LinkCitationReferenceRequest,
+) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
+    SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .link_citation_to_reference(request.citation_id, request.reference_entry_id)
+        .await?;
+
+    load_review_response(state, request.document_id).await
+}
+
 #[derive(Debug)]
 struct DesktopAnalysedDocument {
     project: Project,
@@ -491,6 +510,7 @@ fn build_review_paragraphs(
                     start: citation.position_start,
                     end: citation.position_end,
                     verified: citation.verified,
+                    reference_entry_id: citation.reference_entry_id,
                 })
                 .collect();
 

@@ -29,6 +29,7 @@ export type ReviewCitation = {
   start: number | null;
   end: number | null;
   verified: boolean;
+  reference_entry_id: string | null;
 };
 
 export type ReviewParagraph = {
