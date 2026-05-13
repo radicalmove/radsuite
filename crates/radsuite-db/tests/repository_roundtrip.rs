@@ -48,6 +48,36 @@ async fn project_can_be_inserted_and_listed_for_owner() {
 }
 
 #[tokio::test]
+async fn project_can_be_loaded_by_code() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let repo = SqliteProjectRepository::new(pool);
+    let owner_id = UserId::new();
+    let project = Project::new("CRJU150", "Legal Method", owner_id);
+
+    repo.insert_project(&project).await.expect("insert project");
+
+    let loaded = repo
+        .load_project_by_code("CRJU150")
+        .await
+        .expect("load project by code")
+        .expect("project exists");
+
+    assert_eq!(loaded, project);
+    assert!(
+        repo.load_project_by_code("UNKNOWN")
+            .await
+            .expect("load missing project by code")
+            .is_none()
+    );
+}
+
+#[tokio::test]
 async fn radcite_document_can_be_inserted_and_loaded() {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)

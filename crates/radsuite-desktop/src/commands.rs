@@ -14,6 +14,9 @@ use thiserror::Error;
 
 use crate::DesktopState;
 
+const LOCAL_RADCITE_PROJECT_CODE: &str = "CRJU150";
+const LOCAL_RADCITE_PROJECT_TITLE: &str = "RADcite Functional Testing";
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppStatus {
     pub app_name: String,
@@ -271,10 +274,7 @@ async fn analyse_docx(
         })
         .ok_or(AnalyseDocxError::MissingFilename)?;
 
-    let project = Project::new("RADCITE-DEMO", "RADcite Functional Testing", UserId::new());
-    SqliteProjectRepository::new(state.database_pool.clone())
-        .insert_project(&project)
-        .await?;
+    let project = load_or_create_local_radcite_project(state).await?;
 
     let analysed = ingest_docx(DocxIngestionRequest {
         project_id: project.id,
@@ -326,6 +326,28 @@ async fn load_review_response(
         summary,
         paragraphs,
     })
+}
+
+async fn load_or_create_local_radcite_project(
+    state: &DesktopState,
+) -> Result<Project, AnalyseDocxError> {
+    let project_repo = SqliteProjectRepository::new(state.database_pool.clone());
+
+    if let Some(project) = project_repo
+        .load_project_by_code(LOCAL_RADCITE_PROJECT_CODE)
+        .await?
+    {
+        return Ok(project);
+    }
+
+    let project = Project::new(
+        LOCAL_RADCITE_PROJECT_CODE,
+        LOCAL_RADCITE_PROJECT_TITLE,
+        UserId::new(),
+    );
+    project_repo.insert_project(&project).await?;
+
+    Ok(project)
 }
 
 fn build_summary(paragraphs: &[Paragraph], citations: &[Citation]) -> AnalyseDocxSummary {

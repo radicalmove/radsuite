@@ -210,6 +210,48 @@ async fn saved_radcite_review_can_be_listed_and_loaded() {
 }
 
 #[tokio::test]
+async fn analysed_docx_reviews_reuse_the_local_radcite_project() {
+    let state = desktop_state_with_migrated_pool().await;
+    let first_path = write_minimal_docx("desktop-first-local-project.docx");
+    let second_path = write_minimal_docx("desktop-second-local-project.docx");
+
+    let first = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: first_path.to_string_lossy().into_owned(),
+            original_filename: Some("first-local-project.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse first docx for review");
+
+    let second = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: second_path.to_string_lossy().into_owned(),
+            original_filename: Some("second-local-project.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse second docx for review");
+
+    assert_eq!(first.project_id, second.project_id);
+    assert_eq!(first.project_title, "RADcite Functional Testing");
+    assert_eq!(second.project_title, "RADcite Functional Testing");
+
+    let saved_reviews = list_saved_radcite_reviews(&state)
+        .await
+        .expect("list saved reviews");
+
+    assert_eq!(saved_reviews.len(), 2);
+    assert!(
+        saved_reviews
+            .iter()
+            .all(|review| review.project_id == first.project_id)
+    );
+}
+
+#[tokio::test]
 async fn analyse_docx_path_rejects_empty_path() {
     let state = desktop_state_with_migrated_pool().await;
 
