@@ -1,6 +1,7 @@
 use radsuite_desktop::{
     AddManualCitationRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
-    AppStatus, DesktopState, UpdateParagraphReviewRequest,
+    AppStatus, DesktopState, LoadSavedReviewRequest, SavedRadciteReviewSummary,
+    UpdateParagraphReviewRequest,
 };
 
 #[tauri::command]
@@ -24,6 +25,25 @@ async fn analyse_docx_for_review(
     request: AnalyseDocxRequest,
 ) -> Result<AnalyseDocxReviewResponse, String> {
     radsuite_desktop::analyse_docx_for_review(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn list_saved_radcite_reviews(
+    state: tauri::State<'_, DesktopState>,
+) -> Result<Vec<SavedRadciteReviewSummary>, String> {
+    radsuite_desktop::list_saved_radcite_reviews(&state)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn load_saved_radcite_review(
+    state: tauri::State<'_, DesktopState>,
+    request: LoadSavedReviewRequest,
+) -> Result<AnalyseDocxReviewResponse, String> {
+    radsuite_desktop::load_saved_radcite_review(&state, request.document_id)
         .await
         .map_err(|error| error.to_string())
 }
@@ -69,6 +89,8 @@ fn main() {
             get_app_status,
             analyse_docx_path,
             analyse_docx_for_review,
+            list_saved_radcite_reviews,
+            load_saved_radcite_review,
             mark_radcite_paragraph_resolved,
             verify_radcite_paragraph_citations,
             add_radcite_manual_citation

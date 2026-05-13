@@ -57,3 +57,12 @@ export type AnalyseDocxReviewResponse = {
   summary: AnalyseDocxSummary;
   paragraphs: ReviewParagraph[];
 };
+
+export type SavedRadciteReviewSummary = {
+  document_id: string;
+  project_id: string;
+  original_filename: string;
+  paragraph_count: number;
+  citation_count: number;
+  missing_citation_count: number;
+};

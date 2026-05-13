@@ -8,8 +8,8 @@ use radsuite_db::migrate;
 use radsuite_desktop::{
     AddManualCitationRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState,
     UpdateParagraphReviewRequest, add_manual_citation_for_review, analyse_docx_for_review,
-    analyse_docx_path, get_app_status, mark_paragraph_resolved_for_review,
-    verify_paragraph_citations_for_review,
+    analyse_docx_path, get_app_status, list_saved_radcite_reviews, load_saved_radcite_review,
+    mark_paragraph_resolved_for_review, verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -156,6 +156,57 @@ async fn radcite_review_actions_persist_and_return_refreshed_review() {
                     && citation.verified
             })
     );
+}
+
+#[tokio::test]
+async fn saved_radcite_review_can_be_listed_and_loaded() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-saved-review.docx");
+
+    let response = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("saved-review.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+    let missing_paragraph_id = response.paragraphs[1].id;
+
+    add_manual_citation_for_review(
+        &state,
+        AddManualCitationRequest {
+            document_id: response.document_id,
+            paragraph_id: missing_paragraph_id,
+            citation_text: "Jones (2024)".to_string(),
+        },
+    )
+    .await
+    .expect("add manual citation");
+
+    let saved_reviews = list_saved_radcite_reviews(&state)
+        .await
+        .expect("list saved reviews");
+
+    assert_eq!(saved_reviews.len(), 1);
+    assert_eq!(saved_reviews[0].document_id, response.document_id);
+    assert_eq!(saved_reviews[0].original_filename, "saved-review.docx");
+    assert_eq!(saved_reviews[0].paragraph_count, 2);
+    assert_eq!(saved_reviews[0].citation_count, 2);
+    assert_eq!(saved_reviews[0].missing_citation_count, 0);
+
+    let loaded = load_saved_radcite_review(&state, response.document_id)
+        .await
+        .expect("load saved review");
+
+    assert_eq!(loaded.document_id, response.document_id);
+    assert_eq!(loaded.original_filename, "saved-review.docx");
+    assert_eq!(loaded.summary.citation_count, 2);
+    assert_eq!(loaded.summary.missing_citation_count, 0);
+    assert!(loaded.paragraphs[1].citations.iter().any(|citation| {
+        citation.text == "Jones (2024)" && citation.verified && citation.start.is_none()
+    }));
 }
 
 #[tokio::test]

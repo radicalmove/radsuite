@@ -10,12 +10,14 @@
     persistMarkParagraphResolved,
     persistVerifyParagraphCitations,
   } from "./lib/reviewActionCommands";
+  import { listSavedRadciteReviews, loadSavedRadciteReview } from "./lib/savedReviewCommands";
   import type {
     AnalyseDocxReviewResponse,
     AppStatus,
     ParagraphFilter,
     ProjectNavItem,
     ReviewParagraph,
+    SavedRadciteReviewSummary,
     ToolArea,
   } from "./types";
 
@@ -45,6 +47,9 @@
   let selectedParagraphId = $state<string | null>(null);
   let theme = $state<"light" | "dark">("light");
   let reviewActionError = $state<string | null>(null);
+  let savedReviews = $state<SavedRadciteReviewSummary[]>([]);
+  let savedReviewsLoading = $state(false);
+  let savedReviewsError = $state<string | null>(null);
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0],
@@ -61,6 +66,33 @@
     analysisResult = result;
     selectedParagraphId = null;
     reviewActionError = null;
+    if (result) {
+      void refreshSavedReviews();
+    }
+  }
+
+  async function refreshSavedReviews() {
+    savedReviewsLoading = true;
+    savedReviewsError = null;
+    try {
+      savedReviews = await listSavedRadciteReviews();
+    } catch (reason: unknown) {
+      savedReviewsError = `Could not load saved reviews: ${toErrorMessage(reason)}`;
+    } finally {
+      savedReviewsLoading = false;
+    }
+  }
+
+  async function handleLoadSavedReview(documentId: string) {
+    savedReviewsError = null;
+    reviewActionError = null;
+    selectedParagraphId = null;
+    try {
+      analysisResult = await loadSavedRadciteReview(documentId);
+      activeFilter = "all";
+    } catch (reason: unknown) {
+      savedReviewsError = `Could not open saved review: ${toErrorMessage(reason)}`;
+    }
   }
 
   async function handleMarkResolved(paragraphId: string) {
@@ -71,6 +103,7 @@
     reviewActionError = null;
     try {
       analysisResult = await persistMarkParagraphResolved(analysisResult, paragraphId);
+      void refreshSavedReviews();
     } catch (reason: unknown) {
       reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
     }
@@ -84,6 +117,7 @@
     reviewActionError = null;
     try {
       analysisResult = await persistAddManualCitation(analysisResult, paragraphId, citationText);
+      void refreshSavedReviews();
     } catch (reason: unknown) {
       reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
     }
@@ -97,6 +131,7 @@
     reviewActionError = null;
     try {
       analysisResult = await persistVerifyParagraphCitations(analysisResult, paragraphId);
+      void refreshSavedReviews();
     } catch (reason: unknown) {
       reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
     }
@@ -125,6 +160,7 @@
       .catch((reason: unknown) => {
         bridgeError = toErrorMessage(reason);
       });
+    void refreshSavedReviews();
   });
 </script>
 
@@ -181,12 +217,22 @@
       <RadciteDocumentsWorkspace
         {activeFilter}
         {analysisResult}
+        {savedReviews}
+        {savedReviewsLoading}
+        {savedReviewsError}
         {selectedParagraphId}
+        selectedDocumentId={analysisResult?.document_id ?? null}
         onFilterChange={(filter) => {
           activeFilter = filter;
           selectedParagraphId = null;
         }}
         onAnalysisResult={handleAnalysisResult}
+        onLoadSavedReview={(documentId) => {
+          void handleLoadSavedReview(documentId);
+        }}
+        onRefreshSavedReviews={() => {
+          void refreshSavedReviews();
+        }}
         onSelectParagraph={(paragraphId) => {
           selectedParagraphId = paragraphId;
         }}

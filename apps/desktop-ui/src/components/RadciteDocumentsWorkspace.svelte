@@ -5,23 +5,36 @@
     AnalyseDocxReviewResponse,
     ParagraphFilter,
     ReviewParagraph,
+    SavedRadciteReviewSummary,
   } from "../types";
 
   type Props = {
     activeFilter: ParagraphFilter;
     analysisResult: AnalyseDocxReviewResponse | null;
+    savedReviews: SavedRadciteReviewSummary[];
+    savedReviewsLoading: boolean;
+    savedReviewsError: string | null;
     selectedParagraphId: string | null;
+    selectedDocumentId: string | null;
     onFilterChange: (filter: ParagraphFilter) => void;
     onAnalysisResult: (result: AnalyseDocxReviewResponse | null) => void;
+    onLoadSavedReview: (documentId: string) => void | Promise<void>;
+    onRefreshSavedReviews: () => void | Promise<void>;
     onSelectParagraph: (paragraphId: string | null) => void;
   };
 
   let {
     activeFilter,
     analysisResult,
+    savedReviews,
+    savedReviewsLoading,
+    savedReviewsError,
     selectedParagraphId,
+    selectedDocumentId,
     onFilterChange,
     onAnalysisResult,
+    onLoadSavedReview,
+    onRefreshSavedReviews,
     onSelectParagraph,
   }: Props = $props();
 
@@ -53,6 +66,10 @@
 
   function paragraphPreview(paragraph: ReviewParagraph): string {
     return paragraph.text.length > 360 ? `${paragraph.text.slice(0, 360)}...` : paragraph.text;
+  }
+
+  function reviewStats(review: SavedRadciteReviewSummary): string {
+    return `${review.paragraph_count} paragraphs · ${review.citation_count} citations · ${review.missing_citation_count} flagged`;
   }
 
   async function onChooseDocx() {
@@ -157,6 +174,48 @@
   {#if analysisError}
     <div class="notice analysis-notice">{analysisError}</div>
   {/if}
+
+  <section class="saved-reviews" aria-labelledby="saved-reviews-heading">
+    <div class="saved-reviews-heading">
+      <div>
+        <p class="eyebrow">Local DB</p>
+        <h3 id="saved-reviews-heading">Saved reviews</h3>
+      </div>
+      <button
+        class="secondary-button compact-button"
+        type="button"
+        disabled={savedReviewsLoading}
+        onclick={() => void onRefreshSavedReviews()}
+      >
+        Refresh
+      </button>
+    </div>
+
+    {#if savedReviewsError}
+      <div class="notice saved-reviews-notice">{savedReviewsError}</div>
+    {:else if savedReviewsLoading}
+      <div class="saved-reviews-empty">Loading saved reviews</div>
+    {:else if savedReviews.length}
+      <div class="saved-reviews-list" aria-label="Saved RADcite reviews">
+        {#each savedReviews as review (review.document_id)}
+          <button
+            class="saved-review-row"
+            class:is-active={selectedDocumentId === review.document_id}
+            type="button"
+            onclick={() => void onLoadSavedReview(review.document_id)}
+          >
+            <span>
+              <strong>{review.original_filename}</strong>
+              <small>{reviewStats(review)}</small>
+            </span>
+            <span class="saved-review-action">Open</span>
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <div class="saved-reviews-empty">No saved RADcite reviews yet.</div>
+    {/if}
+  </section>
 
   {#if analysisResult}
     <div class="summary-strip" aria-label="Document summary">

@@ -173,6 +173,8 @@ pub trait CitationDocumentRepository {
         project_id: ProjectId,
     ) -> Result<Vec<CitationDocumentSummary>, DbError>;
 
+    async fn list_saved_documents(&self) -> Result<Vec<CitationDocumentSummary>, DbError>;
+
     async fn load_document_analysis(
         &self,
         document_id: DocumentId,
@@ -330,6 +332,31 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 })
             })
             .collect()
+    }
+
+    async fn list_saved_documents(&self) -> Result<Vec<CitationDocumentSummary>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                d.id,
+                d.project_id,
+                d.original_filename,
+                d.file_type,
+                COUNT(DISTINCT p.id) AS paragraph_count,
+                COUNT(DISTINCT pc.id) AS citation_count,
+                COUNT(DISTINCT CASE WHEN p.needs_citation = 1 THEN p.id END) AS missing_citation_count
+            FROM documents d
+            LEFT JOIN paragraphs p ON p.document_id = d.id
+            LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
+            WHERE d.archived_at IS NULL
+            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.uploaded_at
+            ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter().map(citation_summary_from_row).collect()
     }
 
     async fn load_document_analysis(
@@ -492,6 +519,24 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
 
         Ok(citation)
     }
+}
+
+fn citation_summary_from_row(
+    row: sqlx::sqlite::SqliteRow,
+) -> Result<CitationDocumentSummary, DbError> {
+    let document_id: String = row.try_get("id")?;
+    let row_project_id: String = row.try_get("project_id")?;
+    let file_type: String = row.try_get("file_type")?;
+
+    Ok(CitationDocumentSummary {
+        document_id: DocumentId(Uuid::parse_str(&document_id)?),
+        project_id: ProjectId(Uuid::parse_str(&row_project_id)?),
+        original_filename: row.try_get("original_filename")?,
+        file_type: parse_document_file_type(&file_type)?,
+        paragraph_count: row.try_get("paragraph_count")?,
+        citation_count: row.try_get("citation_count")?,
+        missing_citation_count: row.try_get("missing_citation_count")?,
+    })
 }
 
 fn project_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Project, DbError> {
