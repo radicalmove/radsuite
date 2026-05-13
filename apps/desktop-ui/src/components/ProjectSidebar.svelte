@@ -16,7 +16,7 @@
     { id: "documents", label: "Documents" },
     { id: "references", label: "References" },
     { id: "readings", label: "Readings", disabled: true },
-    { id: "exports", label: "Exports", disabled: true },
+    { id: "exports", label: "Exports" },
   ];
 </script>
 

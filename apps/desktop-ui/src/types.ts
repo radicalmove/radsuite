@@ -101,3 +101,14 @@ export type CourseReferenceSummary = {
   notes: string | null;
   validation_status: "unknown" | "valid" | "needs_fix";
 };
+
+export type CourseReferencesExportRequest = {
+  for_ako_learn: boolean;
+};
+
+export type CourseReferencesExport = {
+  filename: string;
+  content_type: string;
+  html: string;
+  reference_count: number;
+};
