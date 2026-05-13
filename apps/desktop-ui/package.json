@@ -7,7 +7,8 @@
     "dev": "vite",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "build": "npm run check && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:style": "node scripts/verify-style-contract.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0"

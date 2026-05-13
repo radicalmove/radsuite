@@ -1,30 +1,18 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
-
-  type EngineStatus = {
-    id: string;
-    label: string;
-    available: boolean;
-    detail: string;
-  };
-
-  type AppStatus = {
-    app_name: string;
-    database_ready: boolean;
-    sync_configured: boolean;
-    engines: EngineStatus[];
-  };
-
-  type AnalyseDocxResponse = {
-    project_id: string;
-    project_title: string;
-    document_id: string;
-    original_filename: string;
-    paragraph_count: number;
-    citation_count: number;
-    missing_citation_count: number;
-  };
+  import CitationActionsPanel from "./components/CitationActionsPanel.svelte";
+  import ProjectSidebar from "./components/ProjectSidebar.svelte";
+  import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
+  import moonIcon from "./assets/moon.png";
+  import type {
+    AnalyseDocxReviewResponse,
+    AppStatus,
+    ParagraphFilter,
+    ProjectNavItem,
+    ReviewParagraph,
+    ToolArea,
+  } from "./types";
 
   const fallbackStatus: AppStatus = {
     app_name: "RADsuite",
@@ -32,148 +20,136 @@
     sync_configured: false,
     engines: [],
   };
+  const themeStorageKey = "radciteTheme";
+
+  const projects: ProjectNavItem[] = [
+    {
+      id: "radcite-demo",
+      code: "CRJU150",
+      title: "RADcite Functional Testing",
+      structureMode: "modules",
+    },
+  ];
 
   let status = $state<AppStatus>(fallbackStatus);
-  let error = $state<string | null>(null);
-  let docxPath = $state("");
-  let analysisLoading = $state(false);
-  let analysisResult = $state<AnalyseDocxResponse | null>(null);
-  let analysisError = $state<string | null>(null);
-  let analysisDisabled = $derived(analysisLoading || docxPath.trim().length === 0);
+  let bridgeError = $state<string | null>(null);
+  let selectedProjectId = $state(projects[0].id);
+  let activeArea = $state<ToolArea>("documents");
+  let analysisResult = $state<AnalyseDocxReviewResponse | null>(null);
+  let activeFilter = $state<ParagraphFilter>("all");
+  let selectedParagraphId = $state<string | null>(null);
+  let theme = $state<"light" | "dark">("light");
+
+  let selectedProject = $derived(
+    projects.find((project) => project.id === selectedProjectId) ?? projects[0],
+  );
+  let selectedParagraph = $derived<ReviewParagraph | null>(
+    analysisResult?.paragraphs.find((paragraph) => paragraph.id === selectedParagraphId) ?? null,
+  );
 
   function toErrorMessage(reason: unknown): string {
     return reason instanceof Error ? reason.message : String(reason);
   }
 
-  async function analyseDocx() {
-    const path = docxPath.trim();
-    if (!path) {
-      analysisError = "Choose a DOCX file before running RADcite analysis.";
-      return;
-    }
+  function handleAnalysisResult(result: AnalyseDocxReviewResponse | null) {
+    analysisResult = result;
+    selectedParagraphId = null;
+  }
 
-    analysisLoading = true;
-    analysisError = null;
-    analysisResult = null;
+  function applyTheme(nextTheme: "light" | "dark") {
+    theme = nextTheme;
+    document.documentElement.dataset.theme = nextTheme;
+  }
 
-    try {
-      analysisResult = await invoke<AnalyseDocxResponse>("analyse_docx_path", {
-        request: {
-          path,
-          original_filename: null,
-        },
-      });
-    } catch (reason: unknown) {
-      analysisError = toErrorMessage(reason);
-    } finally {
-      analysisLoading = false;
-    }
+  function toggleTheme() {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+    applyTheme(nextTheme);
+    localStorage.setItem(themeStorageKey, nextTheme);
   }
 
   onMount(() => {
+    const savedTheme = localStorage.getItem(themeStorageKey);
+    applyTheme(savedTheme === "dark" ? "dark" : "light");
+
     invoke<AppStatus>("get_app_status")
       .then((nextStatus) => {
         status = nextStatus;
-        error = null;
+        bridgeError = null;
       })
       .catch((reason: unknown) => {
-        error = toErrorMessage(reason);
+        bridgeError = toErrorMessage(reason);
       });
   });
 </script>
 
-<main class="app-shell">
-  <header class="topbar">
-    <div>
-      <p class="eyebrow">Internal alpha</p>
-      <h1>{status.app_name}</h1>
-    </div>
-    <div class="status-strip" aria-label="Application status">
-      <span class="pill" class:pill-active={status.database_ready}>Local DB</span>
-      <span class="pill" class:pill-active={status.sync_configured}>Sync</span>
-    </div>
-  </header>
+<main class="app-shell" data-theme={theme}>
+  <ProjectSidebar
+    {projects}
+    {selectedProjectId}
+    {activeArea}
+    onSelectProject={(projectId) => {
+      selectedProjectId = projectId;
+    }}
+    onSelectArea={(area) => {
+      activeArea = area;
+      selectedParagraphId = null;
+    }}
+  />
 
-  {#if error}
-    <div class="notice">Command bridge unavailable: {error}</div>
-  {/if}
-
-  <section class="workspace-grid">
-    <section class="panel project-panel" aria-labelledby="projects-heading">
-      <div class="panel-heading">
-        <p class="eyebrow">RADcite</p>
-        <h2 id="projects-heading">DOCX Analysis</h2>
+  <section class="main-workspace" aria-label="Main workspace">
+    <header class="workspace-topbar">
+      <div>
+        <p class="eyebrow">Project</p>
+        <h2>{selectedProject.code} · {selectedProject.title}</h2>
       </div>
-      <form
-        class="analysis-form"
-        onsubmit={(event) => {
-          event.preventDefault();
-          void analyseDocx();
+      <div class="status-strip" aria-label="Application status">
+        <span class="status-chip" class:is-ready={status.database_ready}>
+          <span class="status-dot"></span>
+          <span>{status.database_ready ? "Local DB ready" : "Local DB offline"}</span>
+        </span>
+        <span class="status-chip" class:is-ready={status.sync_configured}>
+          <span class="status-dot"></span>
+          <span>{status.sync_configured ? "Sync configured" : "Sync off"}</span>
+        </span>
+        <button
+          class="theme-toggle"
+          type="button"
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          aria-pressed={theme === "dark"}
+          title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          onclick={toggleTheme}
+        >
+          <img src={moonIcon} alt="" aria-hidden="true" />
+        </button>
+      </div>
+    </header>
+
+    {#if bridgeError}
+      <div class="notice">Command bridge unavailable: {bridgeError}</div>
+    {/if}
+
+    {#if activeArea === "documents"}
+      <RadciteDocumentsWorkspace
+        {activeFilter}
+        {analysisResult}
+        {selectedParagraphId}
+        onFilterChange={(filter) => {
+          activeFilter = filter;
+          selectedParagraphId = null;
         }}
-      >
-        <label class="field-label" for="docx-path">DOCX file path</label>
-        <div class="path-row">
-          <input
-            id="docx-path"
-            class="path-input"
-            type="text"
-            bind:value={docxPath}
-            placeholder="/Users/name/Documents/source.docx"
-            autocomplete="off"
-          />
-          <button class="primary-button" type="submit" disabled={analysisDisabled}>
-            {analysisLoading ? "Analysing" : "Analyse"}
-          </button>
-        </div>
-      </form>
-
-      {#if analysisError}
-        <div class="notice analysis-notice">{analysisError}</div>
-      {/if}
-
-      {#if analysisResult}
-        <section class="analysis-result" aria-live="polite">
-          <div>
-            <p class="eyebrow">Result</p>
-            <h3>{analysisResult.original_filename}</h3>
-            <span>{analysisResult.project_title}</span>
-          </div>
-          <div class="metric-grid" aria-label="RADcite analysis counts">
-            <div class="metric">
-              <strong>{analysisResult.paragraph_count}</strong>
-              <span>Paragraphs</span>
-            </div>
-            <div class="metric">
-              <strong>{analysisResult.citation_count}</strong>
-              <span>Citations</span>
-            </div>
-            <div class="metric metric-warn">
-              <strong>{analysisResult.missing_citation_count}</strong>
-              <span>Need citations</span>
-            </div>
-          </div>
-        </section>
-      {/if}
-    </section>
-
-    <section class="panel" aria-labelledby="engines-heading">
-      <div class="panel-heading">
-        <p class="eyebrow">Native runtimes</p>
-        <h2 id="engines-heading">Engines</h2>
-      </div>
-      <div class="engine-list">
-        {#each status.engines as engine (engine.id)}
-          <article class="engine-row">
-            <div>
-              <strong>{engine.label}</strong>
-              <span>{engine.detail}</span>
-            </div>
-            <span class="pill" class:pill-active={engine.available}>
-              {engine.available ? "Ready" : "Missing"}
-            </span>
-          </article>
-        {/each}
-      </div>
-    </section>
+        onAnalysisResult={handleAnalysisResult}
+        onSelectParagraph={(paragraphId) => {
+          selectedParagraphId = paragraphId;
+        }}
+      />
+    {:else}
+      <section class="workspace-placeholder">
+        <p class="eyebrow">Coming later</p>
+        <h2>{activeArea}</h2>
+        <span>This area will be connected after the document review workspace is stable.</span>
+      </section>
+    {/if}
   </section>
+
+  <CitationActionsPanel {selectedParagraph} />
 </main>
