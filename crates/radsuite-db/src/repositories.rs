@@ -1,8 +1,9 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use radsuite_core::{
-    ApiProjectSummary, AssetId, Citation, CitationId, Document, DocumentFileType, DocumentId,
-    DocumentVariant, Paragraph, ParagraphId, Project, ProjectId, ProjectRole, UserId,
+    ApaValidationStatus, ApiProjectSummary, AssetId, Citation, CitationId, Document,
+    DocumentFileType, DocumentId, DocumentVariant, Paragraph, ParagraphId, Project, ProjectId,
+    ProjectRole, ReferenceEntry, ReferenceEntryId, ReferenceEntryType, UserId,
 };
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
@@ -156,6 +157,101 @@ fn parse_role(value: &str) -> Result<ProjectRole, DbError> {
         "editor" => Ok(ProjectRole::Editor),
         "viewer" => Ok(ProjectRole::Viewer),
         other => Err(DbError::UnknownRole(other.to_string())),
+    }
+}
+
+#[async_trait]
+pub trait ReferenceEntryRepository {
+    async fn insert_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError>;
+    async fn list_reference_entries_for_project(
+        &self,
+        project_id: ProjectId,
+        reference_type: ReferenceEntryType,
+    ) -> Result<Vec<ReferenceEntry>, DbError>;
+}
+
+#[derive(Debug, Clone)]
+pub struct SqliteReferenceEntryRepository {
+    pool: SqlitePool,
+}
+
+impl SqliteReferenceEntryRepository {
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
+    async fn insert_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError> {
+        let authors_json = serde_json::to_string(&entry.authors)?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO reference_entries
+                (id, project_id, document_id, paragraph_id, reference_type, display_order,
+                 citation_text, apa_citation, title, authors_json, publication_year, source,
+                 doi, url, notes, apa_validation_status, apa_validation_report, archived_at,
+                 created_at, updated_at)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17,
+                 ?18, ?19, ?20)
+            "#,
+        )
+        .bind(entry.id.0.to_string())
+        .bind(entry.project_id.0.to_string())
+        .bind(entry.document_id.map(|id| id.0.to_string()))
+        .bind(entry.paragraph_id.map(|id| id.0.to_string()))
+        .bind(reference_entry_type_as_str(entry.reference_type))
+        .bind(entry.display_order)
+        .bind(entry.citation_text.as_deref())
+        .bind(entry.apa_citation.as_deref())
+        .bind(entry.title.as_deref())
+        .bind(authors_json)
+        .bind(entry.publication_year.as_deref())
+        .bind(entry.source.as_deref())
+        .bind(entry.doi.as_deref())
+        .bind(entry.url.as_deref())
+        .bind(entry.notes.as_deref())
+        .bind(apa_validation_status_as_str(entry.apa_validation_status))
+        .bind(entry.apa_validation_report.as_deref())
+        .bind(entry.archived_at.map(|value| value.to_rfc3339()))
+        .bind(entry.created_at.to_rfc3339())
+        .bind(entry.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn list_reference_entries_for_project(
+        &self,
+        project_id: ProjectId,
+        reference_type: ReferenceEntryType,
+    ) -> Result<Vec<ReferenceEntry>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id, project_id, document_id, paragraph_id, reference_type, display_order,
+                citation_text, apa_citation, title, authors_json, publication_year, source,
+                doi, url, notes, apa_validation_status, apa_validation_report, archived_at,
+                created_at, updated_at
+            FROM reference_entries
+            WHERE project_id = ?1
+              AND reference_type = ?2
+              AND archived_at IS NULL
+            ORDER BY
+                COALESCE(display_order, 2147483647),
+                COALESCE(apa_citation, citation_text, title, '') COLLATE NOCASE,
+                id
+            "#,
+        )
+        .bind(project_id.0.to_string())
+        .bind(reference_entry_type_as_str(reference_type))
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.iter().map(reference_entry_from_row).collect()
     }
 }
 
@@ -568,6 +664,81 @@ fn project_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Project, DbError> {
         owner_id: UserId(Uuid::parse_str(&owner_id)?),
         code: row.try_get("code")?,
         title: row.try_get("title")?,
+        created_at: parse_datetime(&created_at)?,
+        updated_at: parse_datetime(&updated_at)?,
+    })
+}
+
+fn reference_entry_type_as_str(value: ReferenceEntryType) -> &'static str {
+    match value {
+        ReferenceEntryType::Reference => "reference",
+        ReferenceEntryType::Reading => "reading",
+    }
+}
+
+fn parse_reference_entry_type(value: &str) -> Result<ReferenceEntryType, DbError> {
+    match value {
+        "reference" => Ok(ReferenceEntryType::Reference),
+        "reading" => Ok(ReferenceEntryType::Reading),
+        other => Err(DbError::UnknownReferenceEntryType(other.to_string())),
+    }
+}
+
+fn apa_validation_status_as_str(value: ApaValidationStatus) -> &'static str {
+    match value {
+        ApaValidationStatus::Unknown => "unknown",
+        ApaValidationStatus::Valid => "valid",
+        ApaValidationStatus::NeedsFix => "needs_fix",
+    }
+}
+
+fn parse_apa_validation_status(value: &str) -> Result<ApaValidationStatus, DbError> {
+    match value {
+        "unknown" => Ok(ApaValidationStatus::Unknown),
+        "valid" => Ok(ApaValidationStatus::Valid),
+        "needs_fix" => Ok(ApaValidationStatus::NeedsFix),
+        other => Err(DbError::UnknownApaValidationStatus(other.to_string())),
+    }
+}
+
+fn reference_entry_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<ReferenceEntry, DbError> {
+    let id: String = row.try_get("id")?;
+    let project_id: String = row.try_get("project_id")?;
+    let document_id: Option<String> = row.try_get("document_id")?;
+    let paragraph_id: Option<String> = row.try_get("paragraph_id")?;
+    let reference_type: String = row.try_get("reference_type")?;
+    let authors_json: String = row.try_get("authors_json")?;
+    let apa_validation_status: String = row.try_get("apa_validation_status")?;
+    let created_at: String = row.try_get("created_at")?;
+    let updated_at: String = row.try_get("updated_at")?;
+
+    Ok(ReferenceEntry {
+        id: ReferenceEntryId(Uuid::parse_str(&id)?),
+        project_id: ProjectId(Uuid::parse_str(&project_id)?),
+        document_id: document_id
+            .as_deref()
+            .map(Uuid::parse_str)
+            .transpose()?
+            .map(DocumentId),
+        paragraph_id: paragraph_id
+            .as_deref()
+            .map(Uuid::parse_str)
+            .transpose()?
+            .map(ParagraphId),
+        reference_type: parse_reference_entry_type(&reference_type)?,
+        display_order: row.try_get("display_order")?,
+        citation_text: row.try_get("citation_text")?,
+        apa_citation: row.try_get("apa_citation")?,
+        title: row.try_get("title")?,
+        authors: serde_json::from_str(&authors_json)?,
+        publication_year: row.try_get("publication_year")?,
+        source: row.try_get("source")?,
+        doi: row.try_get("doi")?,
+        url: row.try_get("url")?,
+        notes: row.try_get("notes")?,
+        apa_validation_status: parse_apa_validation_status(&apa_validation_status)?,
+        apa_validation_report: row.try_get("apa_validation_report")?,
+        archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
         created_at: parse_datetime(&created_at)?,
         updated_at: parse_datetime(&updated_at)?,
     })

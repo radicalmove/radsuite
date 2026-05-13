@@ -6,9 +6,10 @@ use std::{
 
 use radsuite_db::migrate;
 use radsuite_desktop::{
-    AddManualCitationRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState,
-    UpdateParagraphReviewRequest, add_manual_citation_for_review, analyse_docx_for_review,
-    analyse_docx_path, get_app_status, list_saved_radcite_reviews, load_saved_radcite_review,
+    AddCourseReferenceRequest, AddManualCitationRequest, AnalyseDocxError, AnalyseDocxRequest,
+    AppPaths, DesktopState, UpdateParagraphReviewRequest, add_course_reference,
+    add_manual_citation_for_review, analyse_docx_for_review, analyse_docx_path, get_app_status,
+    list_course_references, list_saved_radcite_reviews, load_saved_radcite_review,
     mark_paragraph_resolved_for_review, verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
@@ -249,6 +250,48 @@ async fn analysed_docx_reviews_reuse_the_local_radcite_project() {
             .iter()
             .all(|review| review.project_id == first.project_id)
     );
+}
+
+#[tokio::test]
+async fn local_course_references_are_added_to_the_radcite_project() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-reference-project.docx");
+
+    let analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("reference-project.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+
+    let added = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: Some("Core course reference".to_string()),
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    assert_eq!(added.project_id, analysis.project_id);
+    assert_eq!(
+        added.apa_citation.as_deref(),
+        Some("Smith, J. (2020). Worked examples in practice. Learning Press.")
+    );
+    assert_eq!(added.notes.as_deref(), Some("Core course reference"));
+    assert_eq!(added.reference_type, "reference");
+
+    let references = list_course_references(&state)
+        .await
+        .expect("list course references");
+
+    assert_eq!(references.len(), 1);
+    assert_eq!(references[0], added);
 }
 
 #[tokio::test]

@@ -11,6 +11,9 @@ pub enum DbError {
     #[error(transparent)]
     Chrono(#[from] chrono::ParseError),
 
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+
     #[error("unknown project role: {0}")]
     UnknownRole(String),
 

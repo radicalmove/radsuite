@@ -2,11 +2,12 @@ use std::path::PathBuf;
 
 use radsuite_cite::{DocxIngestionError, DocxIngestionRequest, ingest_docx};
 use radsuite_core::{
-    Citation, CitationId, Document, DocumentId, Paragraph, ParagraphId, Project, ProjectId, UserId,
+    Citation, CitationId, Document, DocumentId, Paragraph, ParagraphId, Project, ProjectId,
+    ReferenceEntry, ReferenceEntryId, ReferenceEntryType, UserId,
 };
 use radsuite_db::{
-    CitationDocumentRepository, DbError, ProjectRepository, SqliteCitationDocumentRepository,
-    SqliteProjectRepository,
+    CitationDocumentRepository, DbError, ProjectRepository, ReferenceEntryRepository,
+    SqliteCitationDocumentRepository, SqliteProjectRepository, SqliteReferenceEntryRepository,
 };
 use radsuite_engines::EngineStatus;
 use serde::{Deserialize, Serialize};
@@ -80,6 +81,23 @@ pub struct SavedRadciteReviewSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CourseReferenceSummary {
+    pub id: ReferenceEntryId,
+    pub project_id: ProjectId,
+    pub reference_type: String,
+    pub apa_citation: Option<String>,
+    pub citation_text: Option<String>,
+    pub title: Option<String>,
+    pub authors: Vec<String>,
+    pub publication_year: Option<String>,
+    pub source: Option<String>,
+    pub doi: Option<String>,
+    pub url: Option<String>,
+    pub notes: Option<String>,
+    pub validation_status: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReviewParagraph {
     pub id: ParagraphId,
     pub order_index: i32,
@@ -118,6 +136,12 @@ pub struct LoadSavedReviewRequest {
     pub document_id: DocumentId,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AddCourseReferenceRequest {
+    pub apa_citation: String,
+    pub notes: Option<String>,
+}
+
 #[derive(Debug, Error)]
 pub enum AnalyseDocxError {
     #[error("choose a DOCX file before running RADcite analysis")]
@@ -138,6 +162,14 @@ pub enum ReviewActionError {
     MissingDocument(DocumentId),
     #[error("could not load project {0} for RADcite review document")]
     MissingProject(ProjectId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum CourseReferenceError {
+    #[error("enter reference text before adding a course reference")]
+    EmptyReferenceText,
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -203,6 +235,46 @@ pub async fn load_saved_radcite_review(
     document_id: DocumentId,
 ) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
     load_review_response(state, document_id).await
+}
+
+pub async fn list_course_references(
+    state: &DesktopState,
+) -> Result<Vec<CourseReferenceSummary>, CourseReferenceError> {
+    let project = load_or_create_local_radcite_project(state).await?;
+    let references = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .list_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
+        .await?;
+
+    Ok(references
+        .into_iter()
+        .map(course_reference_summary)
+        .collect())
+}
+
+pub async fn add_course_reference(
+    state: &DesktopState,
+    request: AddCourseReferenceRequest,
+) -> Result<CourseReferenceSummary, CourseReferenceError> {
+    let apa_citation = request.apa_citation.trim();
+    if apa_citation.is_empty() {
+        return Err(CourseReferenceError::EmptyReferenceText);
+    }
+
+    let project = load_or_create_local_radcite_project(state).await?;
+    let mut reference = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
+    reference.apa_citation = Some(apa_citation.to_string());
+    reference.notes = request
+        .notes
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .insert_reference_entry(&reference)
+        .await?;
+
+    Ok(course_reference_summary(reference))
 }
 
 pub async fn mark_paragraph_resolved_for_review(
@@ -328,9 +400,7 @@ async fn load_review_response(
     })
 }
 
-async fn load_or_create_local_radcite_project(
-    state: &DesktopState,
-) -> Result<Project, AnalyseDocxError> {
+async fn load_or_create_local_radcite_project(state: &DesktopState) -> Result<Project, DbError> {
     let project_repo = SqliteProjectRepository::new(state.database_pool.clone());
 
     if let Some(project) = project_repo
@@ -348,6 +418,39 @@ async fn load_or_create_local_radcite_project(
     project_repo.insert_project(&project).await?;
 
     Ok(project)
+}
+
+fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary {
+    CourseReferenceSummary {
+        id: reference.id,
+        project_id: reference.project_id,
+        reference_type: reference_type_label(reference.reference_type).to_string(),
+        apa_citation: reference.apa_citation,
+        citation_text: reference.citation_text,
+        title: reference.title,
+        authors: reference.authors,
+        publication_year: reference.publication_year,
+        source: reference.source,
+        doi: reference.doi,
+        url: reference.url,
+        notes: reference.notes,
+        validation_status: validation_status_label(reference.apa_validation_status).to_string(),
+    }
+}
+
+fn reference_type_label(reference_type: ReferenceEntryType) -> &'static str {
+    match reference_type {
+        ReferenceEntryType::Reference => "reference",
+        ReferenceEntryType::Reading => "reading",
+    }
+}
+
+fn validation_status_label(status: radsuite_core::ApaValidationStatus) -> &'static str {
+    match status {
+        radsuite_core::ApaValidationStatus::Unknown => "unknown",
+        radsuite_core::ApaValidationStatus::Valid => "valid",
+        radsuite_core::ApaValidationStatus::NeedsFix => "needs_fix",
+    }
 }
 
 fn build_summary(paragraphs: &[Paragraph], citations: &[Citation]) -> AnalyseDocxSummary {

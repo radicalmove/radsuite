@@ -6,11 +6,13 @@ use std::{
 
 use radsuite_cite::{DocxIngestionRequest, ingest_docx};
 use radsuite_core::{
-    Citation, Document, DocumentFileType, Paragraph, Project, ProjectRole, UserId,
+    ApaValidationStatus, Citation, Document, DocumentFileType, Paragraph, Project, ProjectRole,
+    ReferenceEntry, ReferenceEntryType, UserId,
 };
 use radsuite_db::{
-    CitationDocumentRepository, ProjectRepository, SqliteCitationDocumentRepository,
-    SqliteProjectRepository, migrate,
+    CitationDocumentRepository, ProjectRepository, ReferenceEntryRepository,
+    SqliteCitationDocumentRepository, SqliteProjectRepository, SqliteReferenceEntryRepository,
+    migrate,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -141,6 +143,50 @@ async fn radcite_document_can_be_inserted_and_loaded() {
     assert_eq!(loaded.document.id, document.id);
     assert_eq!(loaded.paragraphs, vec![cited, missing]);
     assert_eq!(loaded.citations, vec![citation]);
+}
+
+#[tokio::test]
+async fn reference_entries_can_be_inserted_and_listed_for_project() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let owner_id = UserId::new();
+    let project = Project::new("CRJU150", "Legal Method", owner_id);
+    project_repo
+        .insert_project(&project)
+        .await
+        .expect("insert project");
+
+    let reference_repo = SqliteReferenceEntryRepository::new(pool);
+    let mut reference = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
+    reference.apa_citation =
+        Some("Smith, J. (2020). Worked examples in practice. Learning Press.".to_string());
+    reference.authors = vec!["Smith, J.".to_string()];
+    reference.publication_year = Some("2020".to_string());
+    reference.title = Some("Worked examples in practice".to_string());
+    reference.source = Some("Learning Press".to_string());
+    reference.display_order = Some(1);
+
+    reference_repo
+        .insert_reference_entry(&reference)
+        .await
+        .expect("insert reference entry");
+
+    let references = reference_repo
+        .list_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
+        .await
+        .expect("list reference entries");
+
+    assert_eq!(references, vec![reference]);
+    assert_eq!(
+        references[0].apa_validation_status,
+        ApaValidationStatus::Unknown
+    );
 }
 
 #[tokio::test]
