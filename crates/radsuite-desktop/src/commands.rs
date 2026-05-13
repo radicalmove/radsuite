@@ -163,6 +163,19 @@ pub struct AddCourseReferenceRequest {
     pub notes: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExportCourseReferencesRequest {
+    pub for_ako_learn: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CourseReferencesExport {
+    pub filename: String,
+    pub content_type: String,
+    pub html: String,
+    pub reference_count: usize,
+}
+
 #[derive(Debug, Error)]
 pub enum AnalyseDocxError {
     #[error("choose a DOCX file before running RADcite analysis")]
@@ -191,6 +204,12 @@ pub enum ReviewActionError {
 pub enum CourseReferenceError {
     #[error("enter reference text before adding a course reference")]
     EmptyReferenceText,
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum CourseReferenceExportError {
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -301,6 +320,26 @@ pub async fn add_course_reference(
         .await?;
 
     Ok(course_reference_summary(reference))
+}
+
+pub async fn export_course_references(
+    state: &DesktopState,
+    request: ExportCourseReferencesRequest,
+) -> Result<CourseReferencesExport, CourseReferenceExportError> {
+    let project = load_or_create_local_radcite_project(state).await?;
+    let references = load_course_reference_entries(state, project.id).await?;
+    let reference_count = references.len();
+    let html = format_course_references_html(&references, request.for_ako_learn);
+
+    Ok(CourseReferencesExport {
+        filename: format!(
+            "{}-course-references.html",
+            filename_slug(project.code.as_deref().unwrap_or(&project.title))
+        ),
+        content_type: "text/html; charset=utf-8".to_string(),
+        html,
+        reference_count,
+    })
 }
 
 pub async fn mark_paragraph_resolved_for_review(
@@ -501,6 +540,77 @@ fn validation_status_label(status: radsuite_core::ApaValidationStatus) -> &'stat
         radsuite_core::ApaValidationStatus::Unknown => "unknown",
         radsuite_core::ApaValidationStatus::Valid => "valid",
         radsuite_core::ApaValidationStatus::NeedsFix => "needs_fix",
+    }
+}
+
+fn format_course_references_html(references: &[ReferenceEntry], for_ako_learn: bool) -> String {
+    let mut lines = Vec::new();
+
+    if !for_ako_learn {
+        lines.push(r#"<p>{GENERICO:type="references"}</p>"#.to_string());
+    }
+
+    if references.is_empty() {
+        lines.push("<p>No course references recorded yet.</p>".to_string());
+    } else {
+        lines.extend(
+            references.iter().map(|reference| {
+                format!("<p>{}</p>", escape_html(&reference_export_text(reference)))
+            }),
+        );
+    }
+
+    if !for_ako_learn {
+        lines.push(r#"<p>{GENERICO:type="references_end"}</p>"#.to_string());
+    }
+
+    lines.join("\n")
+}
+
+fn reference_export_text(reference: &ReferenceEntry) -> String {
+    reference
+        .apa_citation
+        .as_deref()
+        .or(reference.citation_text.as_deref())
+        .or(reference.title.as_deref())
+        .unwrap_or("Reference pending.")
+        .trim()
+        .to_string()
+}
+
+fn escape_html(value: &str) -> String {
+    value
+        .chars()
+        .flat_map(|character| match character {
+            '&' => "&amp;".chars().collect::<Vec<_>>(),
+            '<' => "&lt;".chars().collect(),
+            '>' => "&gt;".chars().collect(),
+            '"' => "&quot;".chars().collect(),
+            '\'' => "&#39;".chars().collect(),
+            other => vec![other],
+        })
+        .collect()
+}
+
+fn filename_slug(value: &str) -> String {
+    let mut slug = String::new();
+    let mut last_was_separator = false;
+
+    for character in value.chars().flat_map(char::to_lowercase) {
+        if character.is_ascii_alphanumeric() {
+            slug.push(character);
+            last_was_separator = false;
+        } else if !last_was_separator && !slug.is_empty() {
+            slug.push('-');
+            last_was_separator = true;
+        }
+    }
+
+    let slug = slug.trim_matches('-');
+    if slug.is_empty() {
+        "radcite".to_string()
+    } else {
+        slug.to_string()
     }
 }
 

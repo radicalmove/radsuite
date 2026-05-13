@@ -7,11 +7,12 @@ use std::{
 use radsuite_db::migrate;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AnalyseDocxError, AnalyseDocxRequest,
-    AppPaths, DesktopState, LinkCitationReferenceRequest, UpdateParagraphReviewRequest,
-    add_course_reference, add_manual_citation_for_review, analyse_docx_for_review,
-    analyse_docx_path, get_app_status, link_citation_to_reference_for_review,
-    list_course_references, list_saved_radcite_reviews, load_saved_radcite_review,
-    mark_paragraph_resolved_for_review, verify_paragraph_citations_for_review,
+    AppPaths, DesktopState, ExportCourseReferencesRequest, LinkCitationReferenceRequest,
+    UpdateParagraphReviewRequest, add_course_reference, add_manual_citation_for_review,
+    analyse_docx_for_review, analyse_docx_path, export_course_references, get_app_status,
+    link_citation_to_reference_for_review, list_course_references, list_saved_radcite_reviews,
+    load_saved_radcite_review, mark_paragraph_resolved_for_review,
+    verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -467,6 +468,77 @@ async fn reference_suggestions_are_empty_when_course_references_do_not_match() {
             .reference_suggestions
             .is_empty()
     );
+}
+
+#[tokio::test]
+async fn course_references_can_be_exported_as_html() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Smith, J. (2020). Worked examples & practice. Learning Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add first reference");
+    add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Jones, A. (2024). Assessment rubrics <revised>. Teaching Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add second reference");
+
+    let export = export_course_references(
+        &state,
+        ExportCourseReferencesRequest {
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export course references");
+
+    assert_eq!(export.reference_count, 2);
+    assert_eq!(export.content_type, "text/html; charset=utf-8");
+    assert!(export.filename.ends_with("course-references.html"));
+    assert!(export.html.contains(r#"{GENERICO:type="references"}"#));
+    assert!(export.html.contains("Worked examples &amp; practice."));
+    assert!(export.html.contains("Assessment rubrics &lt;revised&gt;."));
+}
+
+#[tokio::test]
+async fn course_reference_export_can_omit_generico_tags() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    let export = export_course_references(
+        &state,
+        ExportCourseReferencesRequest {
+            for_ako_learn: true,
+        },
+    )
+    .await
+    .expect("export course references");
+
+    assert_eq!(export.reference_count, 1);
+    assert!(!export.html.contains("GENERICO"));
+    assert!(export.html.contains("Smith, J. (2020)."));
 }
 
 #[tokio::test]

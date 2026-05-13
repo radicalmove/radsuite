@@ -1,8 +1,8 @@
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AnalyseDocxRequest, AnalyseDocxResponse,
-    AnalyseDocxReviewResponse, AppStatus, CourseReferenceSummary, DesktopState,
-    LinkCitationReferenceRequest, LoadSavedReviewRequest, SavedRadciteReviewSummary,
-    UpdateParagraphReviewRequest,
+    AnalyseDocxReviewResponse, AppStatus, CourseReferenceSummary, CourseReferencesExport,
+    DesktopState, ExportCourseReferencesRequest, LinkCitationReferenceRequest,
+    LoadSavedReviewRequest, SavedRadciteReviewSummary, UpdateParagraphReviewRequest,
 };
 
 #[tauri::command]
@@ -69,6 +69,16 @@ async fn add_course_reference(
 }
 
 #[tauri::command]
+async fn export_course_references(
+    state: tauri::State<'_, DesktopState>,
+    request: ExportCourseReferencesRequest,
+) -> Result<CourseReferencesExport, String> {
+    radsuite_desktop::export_course_references(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn mark_radcite_paragraph_resolved(
     state: tauri::State<'_, DesktopState>,
     request: UpdateParagraphReviewRequest,
@@ -123,6 +133,7 @@ fn main() {
             load_saved_radcite_review,
             list_course_references,
             add_course_reference,
+            export_course_references,
             mark_radcite_paragraph_resolved,
             verify_radcite_paragraph_citations,
             add_radcite_manual_citation,

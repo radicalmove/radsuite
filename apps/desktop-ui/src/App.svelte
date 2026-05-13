@@ -4,8 +4,10 @@
   import CitationActionsPanel from "./components/CitationActionsPanel.svelte";
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
+  import RadciteExportsWorkspace from "./components/RadciteExportsWorkspace.svelte";
   import RadciteReferencesWorkspace from "./components/RadciteReferencesWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
+  import { exportCourseReferences } from "./lib/exportCommands";
   import { addCourseReference, listCourseReferences } from "./lib/referenceCommands";
   import {
     persistAddManualCitation,
@@ -18,6 +20,7 @@
     AnalyseDocxReviewResponse,
     AppStatus,
     CourseReferenceSummary,
+    CourseReferencesExport,
     ParagraphFilter,
     ProjectNavItem,
     ReviewParagraph,
@@ -57,6 +60,9 @@
   let courseReferences = $state<CourseReferenceSummary[]>([]);
   let courseReferencesLoading = $state(false);
   let courseReferencesError = $state<string | null>(null);
+  let referencesExport = $state<CourseReferencesExport | null>(null);
+  let referencesExportLoading = $state(false);
+  let referencesExportError = $state<string | null>(null);
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0],
@@ -118,9 +124,22 @@
     courseReferencesError = null;
     try {
       await addCourseReference({ apa_citation: apaCitation, notes });
+      referencesExport = null;
       await refreshCourseReferences();
     } catch (reason: unknown) {
       courseReferencesError = `Could not add course reference: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleExportCourseReferences(forAkoLearn: boolean) {
+    referencesExportLoading = true;
+    referencesExportError = null;
+    try {
+      referencesExport = await exportCourseReferences({ for_ako_learn: forAkoLearn });
+    } catch (reason: unknown) {
+      referencesExportError = `Could not export course references: ${toErrorMessage(reason)}`;
+    } finally {
+      referencesExportLoading = false;
     }
   }
 
@@ -223,7 +242,7 @@
     onSelectArea={(area) => {
       activeArea = area;
       selectedParagraphId = null;
-      if (area === "references") {
+      if (area === "references" || area === "exports") {
         void refreshCourseReferences();
       }
     }}
@@ -295,6 +314,20 @@
         referencesError={courseReferencesError}
         onAddReference={(apaCitation, notes) => {
           void handleAddCourseReference(apaCitation, notes);
+        }}
+        onRefreshReferences={() => {
+          void refreshCourseReferences();
+        }}
+      />
+    {:else if activeArea === "exports"}
+      <RadciteExportsWorkspace
+        references={courseReferences}
+        referencesLoading={courseReferencesLoading}
+        exportResult={referencesExport}
+        exportLoading={referencesExportLoading}
+        exportError={referencesExportError}
+        onExportReferences={(forAkoLearn) => {
+          void handleExportCourseReferences(forAkoLearn);
         }}
         onRefreshReferences={() => {
           void refreshCourseReferences();

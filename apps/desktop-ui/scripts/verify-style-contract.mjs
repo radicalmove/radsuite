@@ -20,6 +20,10 @@ const referencesWorkspace = readFileSync(
   resolve(root, "src/components/RadciteReferencesWorkspace.svelte"),
   "utf8",
 );
+const exportsWorkspace = readFileSync(
+  resolve(root, "src/components/RadciteExportsWorkspace.svelte"),
+  "utf8",
+);
 
 const checks = [
   ["RADcite red token", "--radcite-red: #ce3e2e"],
@@ -42,6 +46,8 @@ const checks = [
   ["suggested-citation summary emphasis", '[data-filter="suggested-citation"].is-active'],
   ["unlinked-citation summary emphasis", '[data-filter="unlinked-citation"].is-active'],
   ["review queue status styling", ".queue-status"],
+  ["export panel styling", ".export-panel"],
+  ["export preview styling", ".export-preview"],
 ];
 
 const missing = checks
@@ -65,6 +71,16 @@ for (const needle of ["reference-add-form", "reference-list-panel", "Course Refe
 }
 
 for (const needle of ["listCourseReferences", "addCourseReference"]) {
+  if (!app.includes(needle)) {
+    missing.push(`app includes ${needle}`);
+  }
+}
+
+for (const needle of [
+  "RadciteExportsWorkspace",
+  'activeArea === "exports"',
+  "exportCourseReferences",
+]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
   }
@@ -98,6 +114,25 @@ for (const needle of [
 for (const needle of ["@tauri-apps/plugin-dialog", "choose-docx-button", "onChooseDocx"]) {
   if (!workspace.includes(needle) && !packageJson.includes(needle)) {
     missing.push(`document workspace includes ${needle}`);
+  }
+}
+
+for (const needle of [
+  "Course References Export",
+  "AKO | LEARN",
+  "Generate HTML",
+  "Copy HTML",
+  "Download HTML",
+  "export-preview",
+]) {
+  if (!exportsWorkspace.includes(needle)) {
+    missing.push(`exports workspace includes ${needle}`);
+  }
+}
+
+for (const needle of ["export_course_references", "ExportCourseReferencesRequest"]) {
+  if (!tauriMain.includes(needle)) {
+    missing.push(`Tauri main includes ${needle}`);
   }
 }
 
