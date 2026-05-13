@@ -37,6 +37,26 @@ function analysis(paragraphs: ReviewParagraph[]): AnalyseDocxReviewResponse {
       citation_count: paragraphs.reduce((count, item) => count + item.citations.length, 0),
       cited_paragraph_count: paragraphs.filter((item) => item.citations.length > 0).length,
       missing_citation_count: paragraphs.filter((item) => item.needs_citation).length,
+      linked_citation_count: paragraphs.reduce(
+        (count, item) =>
+          count + item.citations.filter((citation) => citation.reference_entry_id !== null).length,
+        0,
+      ),
+      suggested_citation_count: paragraphs.reduce(
+        (count, item) =>
+          count +
+          item.citations.filter(
+            (citation) =>
+              citation.reference_entry_id === null &&
+              citation.reference_suggestions.length > 0,
+          ).length,
+        0,
+      ),
+      unlinked_citation_count: paragraphs.reduce(
+        (count, item) =>
+          count + item.citations.filter((citation) => citation.reference_entry_id === null).length,
+        0,
+      ),
     },
     paragraphs,
   };

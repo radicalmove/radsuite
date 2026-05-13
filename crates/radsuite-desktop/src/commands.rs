@@ -69,6 +69,9 @@ pub struct AnalyseDocxSummary {
     pub citation_count: usize,
     pub cited_paragraph_count: usize,
     pub missing_citation_count: usize,
+    pub linked_citation_count: usize,
+    pub suggested_citation_count: usize,
+    pub unlinked_citation_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -215,13 +218,13 @@ pub async fn analyse_docx_for_review(
     request: AnalyseDocxRequest,
 ) -> Result<AnalyseDocxReviewResponse, AnalyseDocxError> {
     let analysed = analyse_docx(state, request).await?;
-    let summary = build_summary(&analysed.paragraphs, &analysed.citations);
     let references = load_course_reference_entries(state, analysed.project.id).await?;
     let paragraphs = build_review_paragraphs(
         analysed.paragraphs,
         analysed.citations,
         references.as_slice(),
     );
+    let summary = build_review_summary(&paragraphs);
 
     Ok(AnalyseDocxReviewResponse {
         project_id: analysed.project.id,
@@ -421,13 +424,13 @@ async fn load_review_response(
             analysis.document.project_id,
         ))?;
 
-    let summary = build_summary(&analysis.paragraphs, &analysis.citations);
     let references = load_course_reference_entries(state, project.id).await?;
     let paragraphs = build_review_paragraphs(
         analysis.paragraphs,
         analysis.citations,
         references.as_slice(),
     );
+    let summary = build_review_summary(&paragraphs);
 
     Ok(AnalyseDocxReviewResponse {
         project_id: project.id,
@@ -514,12 +517,62 @@ fn build_summary(paragraphs: &[Paragraph], citations: &[Citation]) -> AnalyseDoc
         .iter()
         .filter(|paragraph| paragraph.needs_citation)
         .count();
+    let linked_citation_count = citations
+        .iter()
+        .filter(|citation| citation.reference_entry_id.is_some())
+        .count();
+    let unlinked_citation_count = citations.len() - linked_citation_count;
 
     AnalyseDocxSummary {
         paragraph_count: paragraphs.len(),
         citation_count: citations.len(),
         cited_paragraph_count,
         missing_citation_count,
+        linked_citation_count,
+        suggested_citation_count: 0,
+        unlinked_citation_count,
+    }
+}
+
+fn build_review_summary(paragraphs: &[ReviewParagraph]) -> AnalyseDocxSummary {
+    let citation_count = paragraphs
+        .iter()
+        .map(|paragraph| paragraph.citations.len())
+        .sum();
+    let cited_paragraph_count = paragraphs
+        .iter()
+        .filter(|paragraph| !paragraph.citations.is_empty())
+        .count();
+    let missing_citation_count = paragraphs
+        .iter()
+        .filter(|paragraph| paragraph.needs_citation)
+        .count();
+    let linked_citation_count = paragraphs
+        .iter()
+        .flat_map(|paragraph| paragraph.citations.iter())
+        .filter(|citation| citation.reference_entry_id.is_some())
+        .count();
+    let suggested_citation_count = paragraphs
+        .iter()
+        .flat_map(|paragraph| paragraph.citations.iter())
+        .filter(|citation| {
+            citation.reference_entry_id.is_none() && !citation.reference_suggestions.is_empty()
+        })
+        .count();
+    let unlinked_citation_count = paragraphs
+        .iter()
+        .flat_map(|paragraph| paragraph.citations.iter())
+        .filter(|citation| citation.reference_entry_id.is_none())
+        .count();
+
+    AnalyseDocxSummary {
+        paragraph_count: paragraphs.len(),
+        citation_count,
+        cited_paragraph_count,
+        missing_citation_count,
+        linked_citation_count,
+        suggested_citation_count,
+        unlinked_citation_count,
     }
 }
 

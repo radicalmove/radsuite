@@ -132,7 +132,7 @@
                   <small>{linkedReferenceLabel(citation.reference_entry_id)}</small>
                 {/if}
                 {#if citation.verified}
-                  <small>Verified</small>
+                  <small>Reviewed</small>
                 {/if}
               </span>
             {/each}
@@ -187,7 +187,7 @@
           disabled={verifyDisabled}
           onclick={() => void onVerifyCitation(selectedParagraph.id)}
         >
-          Verify citation
+          Mark citations reviewed
         </button>
         <button
           class="secondary-button"

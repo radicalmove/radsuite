@@ -113,6 +113,7 @@ button:disabled {
   --line: #30343a;
   --line-soft: #25282d;
   --success-tint: rgba(99, 153, 34, 0.18);
+  --warning-tint: rgba(232, 164, 0, 0.16);
   --danger-tint: rgba(206, 62, 46, 0.16);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.28);
   --shadow-md: 0 8px 18px rgba(0, 0, 0, 0.32);
@@ -740,7 +741,7 @@ button:disabled {
 
 .summary-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: var(--s-2);
 }
 
@@ -766,6 +767,24 @@ button:disabled {
 .summary-chip[data-filter="needs-citation"].is-active,
 .summary-chip[data-filter="needs-citation"]:hover {
   border-color: rgba(206, 62, 46, 0.36);
+  background: var(--danger-tint);
+}
+
+.summary-chip[data-filter="linked-citation"].is-active,
+.summary-chip[data-filter="linked-citation"]:hover {
+  border-color: rgba(99, 153, 34, 0.32);
+  background: var(--success-tint);
+}
+
+.summary-chip[data-filter="suggested-citation"].is-active,
+.summary-chip[data-filter="suggested-citation"]:hover {
+  border-color: rgba(232, 164, 0, 0.34);
+  background: var(--warning-tint);
+}
+
+.summary-chip[data-filter="unlinked-citation"].is-active,
+.summary-chip[data-filter="unlinked-citation"]:hover {
+  border-color: rgba(206, 62, 46, 0.28);
   background: var(--danger-tint);
 }
 
@@ -899,6 +918,21 @@ button:disabled {
 .status-warning {
   color: var(--danger-deep) !important;
   background: var(--danger-tint) !important;
+}
+
+.paragraph-meta .queue-status.is-linked {
+  color: var(--success-deep);
+  background: var(--success-tint);
+}
+
+.paragraph-meta .queue-status.is-suggested {
+  color: var(--warning-deep);
+  background: var(--warning-tint);
+}
+
+.paragraph-meta .queue-status.is-unlinked {
+  color: var(--danger-deep);
+  background: var(--danger-tint);
 }
 
 .document-empty,

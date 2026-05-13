@@ -26,6 +26,9 @@ const loadedReview: AnalyseDocxReviewResponse = {
     citation_count: 2,
     cited_paragraph_count: 2,
     missing_citation_count: 0,
+    linked_citation_count: 1,
+    suggested_citation_count: 1,
+    unlinked_citation_count: 1,
   },
   paragraphs: [],
 };

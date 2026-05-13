@@ -38,6 +38,10 @@ const checks = [
   ["theme toggle styling", ".theme-toggle"],
   ["dark theme selector", '[data-theme="dark"]'],
   ["needs-citation summary emphasis", '[data-filter="needs-citation"].is-active'],
+  ["linked-citation summary emphasis", '[data-filter="linked-citation"].is-active'],
+  ["suggested-citation summary emphasis", '[data-filter="suggested-citation"].is-active'],
+  ["unlinked-citation summary emphasis", '[data-filter="unlinked-citation"].is-active'],
+  ["review queue status styling", ".queue-status"],
 ];
 
 const missing = checks
@@ -76,6 +80,21 @@ if (!workspace.includes('data-filter="needs-citation"')) {
   missing.push("workspace marks needs-citation summary filter");
 }
 
+for (const needle of [
+  'data-filter="linked-citation"',
+  'data-filter="suggested-citation"',
+  'data-filter="unlinked-citation"',
+  "Linked citations",
+  "Suggested matches",
+  "Unlinked citations",
+  "Suggested match",
+  "Unlinked citation",
+]) {
+  if (!workspace.includes(needle)) {
+    missing.push(`workspace includes ${needle}`);
+  }
+}
+
 for (const needle of ["@tauri-apps/plugin-dialog", "choose-docx-button", "onChooseDocx"]) {
   if (!workspace.includes(needle) && !packageJson.includes(needle)) {
     missing.push(`document workspace includes ${needle}`);
@@ -95,6 +114,8 @@ for (const needle of [
   "Suggested references",
   "suggestion-card",
   "Accept",
+  "Mark citations reviewed",
+  "Reviewed",
 ]) {
   if (!actionsPanel.includes(needle)) {
     missing.push(`citation actions include ${needle}`);
