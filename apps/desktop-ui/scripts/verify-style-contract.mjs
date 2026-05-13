@@ -4,10 +4,16 @@ import { dirname, resolve } from "node:path";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const css = readFileSync(resolve(root, "src/styles.css"), "utf8").toLowerCase();
+const packageJson = readFileSync(resolve(root, "package.json"), "utf8");
+const tauriMain = readFileSync(resolve(root, "src-tauri/src/main.rs"), "utf8");
 const app = readFileSync(resolve(root, "src/App.svelte"), "utf8");
 const sidebar = readFileSync(resolve(root, "src/components/ProjectSidebar.svelte"), "utf8");
 const workspace = readFileSync(
   resolve(root, "src/components/RadciteDocumentsWorkspace.svelte"),
+  "utf8",
+);
+const actionsPanel = readFileSync(
+  resolve(root, "src/components/CitationActionsPanel.svelte"),
   "utf8",
 );
 
@@ -52,6 +58,28 @@ for (const needle of ["theme-toggle", "radciteTheme", "moonIcon", "data-theme={t
 
 if (!workspace.includes('data-filter="needs-citation"')) {
   missing.push("workspace marks needs-citation summary filter");
+}
+
+for (const needle of ["@tauri-apps/plugin-dialog", "choose-docx-button", "onChooseDocx"]) {
+  if (!workspace.includes(needle) && !packageJson.includes(needle)) {
+    missing.push(`document workspace includes ${needle}`);
+  }
+}
+
+for (const needle of [
+  "review-action-form",
+  "manualCitationText",
+  "onMarkResolved",
+  "onAddManualCitation",
+  "onVerifyCitation",
+]) {
+  if (!actionsPanel.includes(needle)) {
+    missing.push(`citation actions include ${needle}`);
+  }
+}
+
+if (!tauriMain.includes("tauri_plugin_dialog::init()")) {
+  missing.push("Tauri registers dialog plugin");
 }
 
 if (missing.length > 0) {

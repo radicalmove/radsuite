@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { open } from "@tauri-apps/plugin-dialog";
   import { invoke } from "@tauri-apps/api/core";
   import type {
     AnalyseDocxReviewResponse,
@@ -52,6 +53,31 @@
 
   function paragraphPreview(paragraph: ReviewParagraph): string {
     return paragraph.text.length > 360 ? `${paragraph.text.slice(0, 360)}...` : paragraph.text;
+  }
+
+  async function onChooseDocx() {
+    analysisError = null;
+
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: "Word documents",
+            extensions: ["docx"],
+          },
+        ],
+      });
+
+      if (typeof selected === "string") {
+        docxPath = selected;
+      } else if (Array.isArray(selected) && typeof selected[0] === "string") {
+        docxPath = selected[0];
+      }
+    } catch (reason: unknown) {
+      analysisError = `Could not open the DOCX picker: ${toErrorMessage(reason)}`;
+    }
   }
 
   async function analyseDocx() {
@@ -114,6 +140,14 @@
         placeholder="/Users/name/Documents/source.docx"
         autocomplete="off"
       />
+      <button
+        class="secondary-button choose-docx-button"
+        type="button"
+        disabled={analysisLoading}
+        onclick={() => void onChooseDocx()}
+      >
+        Choose DOCX
+      </button>
       <button class="primary-button" type="submit" disabled={analysisDisabled}>
         {analysisLoading ? "Analysing" : "Analyse"}
       </button>

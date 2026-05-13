@@ -5,6 +5,11 @@
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
+  import {
+    addManualCitation,
+    markParagraphResolved,
+    verifyParagraphCitations,
+  } from "./lib/reviewActions";
   import type {
     AnalyseDocxReviewResponse,
     AppStatus,
@@ -54,6 +59,27 @@
   function handleAnalysisResult(result: AnalyseDocxReviewResponse | null) {
     analysisResult = result;
     selectedParagraphId = null;
+  }
+
+  function handleMarkResolved(paragraphId: string) {
+    if (!analysisResult) {
+      return;
+    }
+    analysisResult = markParagraphResolved(analysisResult, paragraphId);
+  }
+
+  function handleAddManualCitation(paragraphId: string, citationText: string) {
+    if (!analysisResult) {
+      return;
+    }
+    analysisResult = addManualCitation(analysisResult, paragraphId, citationText);
+  }
+
+  function handleVerifyCitation(paragraphId: string) {
+    if (!analysisResult) {
+      return;
+    }
+    analysisResult = verifyParagraphCitations(analysisResult, paragraphId);
   }
 
   function applyTheme(nextTheme: "light" | "dark") {
@@ -151,5 +177,10 @@
     {/if}
   </section>
 
-  <CitationActionsPanel {selectedParagraph} />
+  <CitationActionsPanel
+    {selectedParagraph}
+    onMarkResolved={handleMarkResolved}
+    onAddManualCitation={handleAddManualCitation}
+    onVerifyCitation={handleVerifyCitation}
+  />
 </main>
