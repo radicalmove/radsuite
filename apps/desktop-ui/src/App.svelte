@@ -4,7 +4,9 @@
   import CitationActionsPanel from "./components/CitationActionsPanel.svelte";
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
+  import RadciteReferencesWorkspace from "./components/RadciteReferencesWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
+  import { addCourseReference, listCourseReferences } from "./lib/referenceCommands";
   import {
     persistAddManualCitation,
     persistMarkParagraphResolved,
@@ -14,6 +16,7 @@
   import type {
     AnalyseDocxReviewResponse,
     AppStatus,
+    CourseReferenceSummary,
     ParagraphFilter,
     ProjectNavItem,
     ReviewParagraph,
@@ -50,6 +53,9 @@
   let savedReviews = $state<SavedRadciteReviewSummary[]>([]);
   let savedReviewsLoading = $state(false);
   let savedReviewsError = $state<string | null>(null);
+  let courseReferences = $state<CourseReferenceSummary[]>([]);
+  let courseReferencesLoading = $state(false);
+  let courseReferencesError = $state<string | null>(null);
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0],
@@ -92,6 +98,28 @@
       activeFilter = "all";
     } catch (reason: unknown) {
       savedReviewsError = `Could not open saved review: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function refreshCourseReferences() {
+    courseReferencesLoading = true;
+    courseReferencesError = null;
+    try {
+      courseReferences = await listCourseReferences();
+    } catch (reason: unknown) {
+      courseReferencesError = `Could not load course references: ${toErrorMessage(reason)}`;
+    } finally {
+      courseReferencesLoading = false;
+    }
+  }
+
+  async function handleAddCourseReference(apaCitation: string, notes: string | null) {
+    courseReferencesError = null;
+    try {
+      await addCourseReference({ apa_citation: apaCitation, notes });
+      await refreshCourseReferences();
+    } catch (reason: unknown) {
+      courseReferencesError = `Could not add course reference: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -161,6 +189,7 @@
         bridgeError = toErrorMessage(reason);
       });
     void refreshSavedReviews();
+    void refreshCourseReferences();
   });
 </script>
 
@@ -175,6 +204,9 @@
     onSelectArea={(area) => {
       activeArea = area;
       selectedParagraphId = null;
+      if (area === "references") {
+        void refreshCourseReferences();
+      }
     }}
   />
 
@@ -235,6 +267,18 @@
         }}
         onSelectParagraph={(paragraphId) => {
           selectedParagraphId = paragraphId;
+        }}
+      />
+    {:else if activeArea === "references"}
+      <RadciteReferencesWorkspace
+        references={courseReferences}
+        referencesLoading={courseReferencesLoading}
+        referencesError={courseReferencesError}
+        onAddReference={(apaCitation, notes) => {
+          void handleAddCourseReference(apaCitation, notes);
+        }}
+        onRefreshReferences={() => {
+          void refreshCourseReferences();
         }}
       />
     {:else}

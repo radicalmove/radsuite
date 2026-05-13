@@ -66,3 +66,19 @@ export type SavedRadciteReviewSummary = {
   citation_count: number;
   missing_citation_count: number;
 };
+
+export type CourseReferenceSummary = {
+  id: string;
+  project_id: string;
+  reference_type: "reference" | "reading";
+  apa_citation: string | null;
+  citation_text: string | null;
+  title: string | null;
+  authors: string[];
+  publication_year: string | null;
+  source: string | null;
+  doi: string | null;
+  url: string | null;
+  notes: string | null;
+  validation_status: "unknown" | "valid" | "needs_fix";
+};

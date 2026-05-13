@@ -16,6 +16,10 @@ const actionsPanel = readFileSync(
   resolve(root, "src/components/CitationActionsPanel.svelte"),
   "utf8",
 );
+const referencesWorkspace = readFileSync(
+  resolve(root, "src/components/RadciteReferencesWorkspace.svelte"),
+  "utf8",
+);
 
 const checks = [
   ["RADcite red token", "--radcite-red: #ce3e2e"],
@@ -47,6 +51,18 @@ if (!sidebar.includes("radciteLogo")) {
 for (const needle of ["Audio cleanup", "Voice generation", "RADcast", "RADTTS"]) {
   if (!sidebar.includes(needle)) {
     missing.push(`sidebar includes ${needle}`);
+  }
+}
+
+for (const needle of ["reference-add-form", "reference-list-panel", "Course References"]) {
+  if (!referencesWorkspace.includes(needle) && !css.includes(needle)) {
+    missing.push(`references workspace includes ${needle}`);
+  }
+}
+
+for (const needle of ["listCourseReferences", "addCourseReference"]) {
+  if (!app.includes(needle)) {
+    missing.push(`app includes ${needle}`);
   }
 }
 

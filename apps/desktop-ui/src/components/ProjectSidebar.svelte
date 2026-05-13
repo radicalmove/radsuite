@@ -14,7 +14,7 @@
 
   const radciteAreas: Array<{ id: ToolArea; label: string; disabled?: boolean }> = [
     { id: "documents", label: "Documents" },
-    { id: "references", label: "References", disabled: true },
+    { id: "references", label: "References" },
     { id: "readings", label: "Readings", disabled: true },
     { id: "exports", label: "Exports", disabled: true },
   ];
