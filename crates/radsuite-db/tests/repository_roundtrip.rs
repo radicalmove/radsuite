@@ -37,6 +37,14 @@ async fn project_can_be_inserted_and_listed_for_owner() {
     assert_eq!(rows.len(), 1);
     assert_eq!(rows[0].title, "Legal Method");
     assert_eq!(rows[0].role, ProjectRole::Owner);
+
+    let loaded = repo
+        .load_project(project.id)
+        .await
+        .expect("load project")
+        .expect("project exists");
+
+    assert_eq!(loaded, project);
 }
 
 #[tokio::test]
@@ -103,6 +111,95 @@ async fn radcite_document_can_be_inserted_and_loaded() {
     assert_eq!(loaded.document.id, document.id);
     assert_eq!(loaded.paragraphs, vec![cited, missing]);
     assert_eq!(loaded.citations, vec![citation]);
+}
+
+#[tokio::test]
+async fn radcite_review_actions_are_persisted() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let owner_id = UserId::new();
+    let project = Project::new("CRJU150", "Legal Method", owner_id);
+    project_repo
+        .insert_project(&project)
+        .await
+        .expect("insert project");
+
+    let document_repo = SqliteCitationDocumentRepository::new(pool);
+    let document = Document::new(project.id, "lesson-1.docx", DocumentFileType::Docx);
+    let cited = Paragraph::new(
+        document.id,
+        0,
+        "Research shows that worked examples reduce cognitive load (Smith, 2020).",
+    );
+    let mut missing = Paragraph::new(
+        document.id,
+        1,
+        "A 2021 survey reported that 64 percent of respondents changed their study habits.",
+    );
+    missing.needs_citation = true;
+    let citation = Citation::new(cited.id, "(Smith, 2020)", 58, 71);
+
+    document_repo
+        .insert_document_analysis(
+            &document,
+            &[cited.clone(), missing.clone()],
+            std::slice::from_ref(&citation),
+        )
+        .await
+        .expect("insert document analysis");
+
+    document_repo
+        .verify_paragraph_citations(cited.id)
+        .await
+        .expect("verify paragraph citations");
+    document_repo
+        .mark_paragraph_resolved(missing.id)
+        .await
+        .expect("mark paragraph resolved");
+    let manual_citation = document_repo
+        .insert_manual_citation(missing.id, "Jones (2024)")
+        .await
+        .expect("insert manual citation");
+
+    assert_eq!(manual_citation.paragraph_id, missing.id);
+    assert_eq!(manual_citation.citation_text, "Jones (2024)");
+    assert_eq!(manual_citation.position_start, None);
+    assert_eq!(manual_citation.position_end, None);
+    assert!(manual_citation.verified);
+
+    let summaries = document_repo
+        .list_documents_for_project(project.id)
+        .await
+        .expect("list documents");
+
+    assert_eq!(summaries[0].citation_count, 2);
+    assert_eq!(summaries[0].missing_citation_count, 0);
+
+    let loaded = document_repo
+        .load_document_analysis(document.id)
+        .await
+        .expect("load document")
+        .expect("document exists");
+
+    assert!(!loaded.paragraphs[1].needs_citation);
+    assert!(
+        loaded
+            .citations
+            .iter()
+            .any(|item| item.id == citation.id && item.verified)
+    );
+    assert!(
+        loaded
+            .citations
+            .iter()
+            .any(|item| item.id == manual_citation.id)
+    );
 }
 
 #[tokio::test]

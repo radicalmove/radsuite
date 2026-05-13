@@ -6,10 +6,10 @@
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
   import {
-    addManualCitation,
-    markParagraphResolved,
-    verifyParagraphCitations,
-  } from "./lib/reviewActions";
+    persistAddManualCitation,
+    persistMarkParagraphResolved,
+    persistVerifyParagraphCitations,
+  } from "./lib/reviewActionCommands";
   import type {
     AnalyseDocxReviewResponse,
     AppStatus,
@@ -44,6 +44,7 @@
   let activeFilter = $state<ParagraphFilter>("all");
   let selectedParagraphId = $state<string | null>(null);
   let theme = $state<"light" | "dark">("light");
+  let reviewActionError = $state<string | null>(null);
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0],
@@ -59,27 +60,46 @@
   function handleAnalysisResult(result: AnalyseDocxReviewResponse | null) {
     analysisResult = result;
     selectedParagraphId = null;
+    reviewActionError = null;
   }
 
-  function handleMarkResolved(paragraphId: string) {
+  async function handleMarkResolved(paragraphId: string) {
     if (!analysisResult) {
       return;
     }
-    analysisResult = markParagraphResolved(analysisResult, paragraphId);
+
+    reviewActionError = null;
+    try {
+      analysisResult = await persistMarkParagraphResolved(analysisResult, paragraphId);
+    } catch (reason: unknown) {
+      reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
+    }
   }
 
-  function handleAddManualCitation(paragraphId: string, citationText: string) {
+  async function handleAddManualCitation(paragraphId: string, citationText: string) {
     if (!analysisResult) {
       return;
     }
-    analysisResult = addManualCitation(analysisResult, paragraphId, citationText);
+
+    reviewActionError = null;
+    try {
+      analysisResult = await persistAddManualCitation(analysisResult, paragraphId, citationText);
+    } catch (reason: unknown) {
+      reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
+    }
   }
 
-  function handleVerifyCitation(paragraphId: string) {
+  async function handleVerifyCitation(paragraphId: string) {
     if (!analysisResult) {
       return;
     }
-    analysisResult = verifyParagraphCitations(analysisResult, paragraphId);
+
+    reviewActionError = null;
+    try {
+      analysisResult = await persistVerifyParagraphCitations(analysisResult, paragraphId);
+    } catch (reason: unknown) {
+      reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
+    }
   }
 
   function applyTheme(nextTheme: "light" | "dark") {
@@ -152,6 +172,9 @@
 
     {#if bridgeError}
       <div class="notice">Command bridge unavailable: {bridgeError}</div>
+    {/if}
+    {#if reviewActionError}
+      <div class="notice">{reviewActionError}</div>
     {/if}
 
     {#if activeArea === "documents"}
