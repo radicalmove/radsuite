@@ -17,6 +17,7 @@ pub trait ProjectRepository {
         user_id: UserId,
     ) -> Result<Vec<ApiProjectSummary>, DbError>;
     async fn load_project(&self, project_id: ProjectId) -> Result<Option<Project>, DbError>;
+    async fn load_project_by_code(&self, code: &str) -> Result<Option<Project>, DbError>;
 }
 
 #[derive(Debug, Clone)]
@@ -125,6 +126,23 @@ impl ProjectRepository for SqliteProjectRepository {
             "#,
         )
         .bind(project_id.0.to_string())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.as_ref().map(project_from_row).transpose()
+    }
+
+    async fn load_project_by_code(&self, code: &str) -> Result<Option<Project>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT id, owner_id, code, title, created_at, updated_at
+            FROM projects
+            WHERE code = ?1
+            ORDER BY created_at, id
+            LIMIT 1
+            "#,
+        )
+        .bind(code)
         .fetch_optional(&self.pool)
         .await?;
 
