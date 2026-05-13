@@ -12,3 +12,4 @@ tauri-build.workspace = true
 [dependencies]
 radsuite-desktop = { path = "../../../crates/radsuite-desktop" }
 tauri.workspace = true
+tauri-plugin-dialog.workspace = true

@@ -3,9 +3,36 @@
 
   type Props = {
     selectedParagraph: ReviewParagraph | null;
+    onMarkResolved: (paragraphId: string) => void;
+    onAddManualCitation: (paragraphId: string, citationText: string) => void;
+    onVerifyCitation: (paragraphId: string) => void;
   };
 
-  let { selectedParagraph }: Props = $props();
+  let {
+    selectedParagraph,
+    onMarkResolved,
+    onAddManualCitation,
+    onVerifyCitation,
+  }: Props = $props();
+
+  let manualCitationText = $state("");
+  let manualCitationDisabled = $derived(
+    !selectedParagraph || manualCitationText.trim().length === 0,
+  );
+  let verifyDisabled = $derived(
+    !selectedParagraph ||
+      selectedParagraph.citations.length === 0 ||
+      selectedParagraph.citations.every((citation) => citation.verified),
+  );
+
+  function submitManualCitation() {
+    if (!selectedParagraph || manualCitationDisabled) {
+      return;
+    }
+
+    onAddManualCitation(selectedParagraph.id, manualCitationText);
+    manualCitationText = "";
+  }
 </script>
 
 <aside class="actions-panel" aria-label="Citation actions">
@@ -35,7 +62,12 @@
         {#if selectedParagraph.citations.length}
           <div class="citation-badge-list">
             {#each selectedParagraph.citations as citation (citation.id)}
-              <span class="citation-badge">{citation.text}</span>
+              <span class="citation-badge" class:is-verified={citation.verified}>
+                {citation.text}
+                {#if citation.verified}
+                  <small>Verified</small>
+                {/if}
+              </span>
             {/each}
           </div>
         {:else}
@@ -54,10 +86,47 @@
 
       <div class="action-stack">
         <button class="secondary-button" type="button" disabled>Search sources</button>
-        <button class="secondary-button" type="button" disabled>Verify citation</button>
-        <button class="secondary-button" type="button" disabled>Mark as resolved</button>
-        <button class="secondary-button" type="button" disabled>Add citation manually</button>
+        <button
+          class="secondary-button"
+          type="button"
+          disabled={verifyDisabled}
+          onclick={() => onVerifyCitation(selectedParagraph.id)}
+        >
+          Verify citation
+        </button>
+        <button
+          class="secondary-button"
+          type="button"
+          disabled={!selectedParagraph.needs_citation}
+          onclick={() => onMarkResolved(selectedParagraph.id)}
+        >
+          Mark as resolved
+        </button>
       </div>
+
+      <form
+        class="review-action-form"
+        onsubmit={(event) => {
+          event.preventDefault();
+          submitManualCitation();
+        }}
+      >
+        <label class="field-label" for="manual-citation">Add citation manually</label>
+        <div class="manual-citation-row">
+          <input
+            id="manual-citation"
+            class="path-input"
+            type="text"
+            bind:value={manualCitationText}
+            placeholder="Smith (2024)"
+            autocomplete="off"
+          />
+          <button class="primary-button" type="submit" disabled={manualCitationDisabled}>
+            Add
+          </button>
+        </div>
+        <p class="action-note">These changes update the current review session only.</p>
+      </form>
     </section>
   {:else}
     <div class="actions-empty">

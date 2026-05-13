@@ -498,7 +498,7 @@ button:disabled {
 
 .path-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: var(--s-2);
 }
 
@@ -701,8 +701,20 @@ button:disabled {
 }
 
 .citation-badge {
+  gap: 6px;
   color: var(--success-deep);
   background: var(--success-tint);
+}
+
+.citation-badge.is-verified {
+  border: 1px solid rgba(99, 153, 34, 0.22);
+}
+
+.citation-badge small {
+  color: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .status-warning {
@@ -794,6 +806,26 @@ button:disabled {
   gap: var(--s-2);
 }
 
+.review-action-form {
+  display: grid;
+  gap: var(--s-2);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+}
+
+.manual-citation-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
+}
+
+.action-note {
+  margin: 0;
+  color: var(--fg-3);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns: 250px minmax(0, 1fr);
@@ -820,6 +852,7 @@ button:disabled {
   .workspace-topbar,
   .workspace-header,
   .path-row,
+  .manual-citation-row,
   .summary-strip {
     grid-template-columns: 1fr;
   }
