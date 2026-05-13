@@ -203,6 +203,77 @@ async fn radcite_review_actions_are_persisted() {
 }
 
 #[tokio::test]
+async fn saved_radcite_documents_can_be_listed_across_projects() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let owner_id = UserId::new();
+    let first_project = Project::new("CRJU150", "Legal Method", owner_id);
+    let second_project = Project::new("HLTH430", "Motivating Change", owner_id);
+    project_repo
+        .insert_project(&first_project)
+        .await
+        .expect("insert first project");
+    project_repo
+        .insert_project(&second_project)
+        .await
+        .expect("insert second project");
+
+    let document_repo = SqliteCitationDocumentRepository::new(pool);
+    let first_document = Document::new(first_project.id, "lesson-1.docx", DocumentFileType::Docx);
+    let second_document = Document::new(second_project.id, "lesson-2.docx", DocumentFileType::Docx);
+    let mut needs_citation = Paragraph::new(
+        first_document.id,
+        0,
+        "A 2021 survey reported that 64 percent of respondents changed their study habits.",
+    );
+    needs_citation.needs_citation = true;
+    let cited = Paragraph::new(
+        second_document.id,
+        0,
+        "Smith (2020) explains worked examples.",
+    );
+    let citation = Citation::new(cited.id, "Smith (2020)", 0, 12);
+
+    document_repo
+        .insert_document_analysis(&first_document, &[needs_citation], &[])
+        .await
+        .expect("insert first document analysis");
+    document_repo
+        .insert_document_analysis(&second_document, &[cited], &[citation])
+        .await
+        .expect("insert second document analysis");
+
+    let documents = document_repo
+        .list_saved_documents()
+        .await
+        .expect("list saved documents");
+
+    assert_eq!(documents.len(), 2);
+    assert!(documents.iter().any(|item| {
+        item.document_id == first_document.id
+            && item.project_id == first_project.id
+            && item.original_filename == "lesson-1.docx"
+            && item.paragraph_count == 1
+            && item.citation_count == 0
+            && item.missing_citation_count == 1
+    }));
+    assert!(documents.iter().any(|item| {
+        item.document_id == second_document.id
+            && item.project_id == second_project.id
+            && item.original_filename == "lesson-2.docx"
+            && item.paragraph_count == 1
+            && item.citation_count == 1
+            && item.missing_citation_count == 0
+    }));
+}
+
+#[tokio::test]
 async fn radcite_docx_ingestion_result_can_be_persisted() {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)

@@ -67,6 +67,16 @@ pub struct AnalyseDocxSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SavedRadciteReviewSummary {
+    pub document_id: DocumentId,
+    pub project_id: ProjectId,
+    pub original_filename: String,
+    pub paragraph_count: usize,
+    pub citation_count: usize,
+    pub missing_citation_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReviewParagraph {
     pub id: ParagraphId,
     pub order_index: i32,
@@ -98,6 +108,11 @@ pub struct AddManualCitationRequest {
     pub document_id: DocumentId,
     pub paragraph_id: ParagraphId,
     pub citation_text: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LoadSavedReviewRequest {
+    pub document_id: DocumentId,
 }
 
 #[derive(Debug, Error)]
@@ -158,6 +173,33 @@ pub async fn analyse_docx_for_review(
         summary,
         paragraphs,
     })
+}
+
+pub async fn list_saved_radcite_reviews(
+    state: &DesktopState,
+) -> Result<Vec<SavedRadciteReviewSummary>, ReviewActionError> {
+    let documents = SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .list_saved_documents()
+        .await?;
+
+    Ok(documents
+        .into_iter()
+        .map(|document| SavedRadciteReviewSummary {
+            document_id: document.document_id,
+            project_id: document.project_id,
+            original_filename: document.original_filename,
+            paragraph_count: document.paragraph_count as usize,
+            citation_count: document.citation_count as usize,
+            missing_citation_count: document.missing_citation_count as usize,
+        })
+        .collect())
+}
+
+pub async fn load_saved_radcite_review(
+    state: &DesktopState,
+    document_id: DocumentId,
+) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
+    load_review_response(state, document_id).await
 }
 
 pub async fn mark_paragraph_resolved_for_review(
