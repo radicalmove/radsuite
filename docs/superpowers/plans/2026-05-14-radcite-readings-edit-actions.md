@@ -57,12 +57,12 @@
 
 ## Task 3: Tauri And TypeScript Bridge
 
-- [ ] Add failing Vitest cases for `updateRadciteModule`, `archiveRadciteModule`, `updateModuleReading`, and `archiveModuleReading`.
-- [ ] Run `npm test -- --run src/lib/readingCommands.test.ts` and confirm helpers are missing.
-- [ ] Implement helpers in `apps/desktop-ui/src/lib/readingCommands.ts`.
-- [ ] Expose Tauri commands in `apps/desktop-ui/src-tauri/src/main.rs`.
-- [ ] Run focused Vitest and confirm it passes.
-- [ ] Commit bridge work.
+- [x] Add failing Vitest cases for `updateRadciteModule`, `archiveRadciteModule`, `updateModuleReading`, and `archiveModuleReading`.
+- [x] Run `npm test -- --run src/lib/readingCommands.test.ts` and confirm helpers are missing.
+- [x] Implement helpers in `apps/desktop-ui/src/lib/readingCommands.ts`.
+- [x] Expose Tauri commands in `apps/desktop-ui/src-tauri/src/main.rs`.
+- [x] Run focused Vitest and confirm it passes.
+- [x] Commit bridge work.
 
 ## Task 4: Readings Workspace UI
 

@@ -4,8 +4,12 @@ import type { CourseModuleSummary, ModuleReadingSummary } from "../types";
 import {
   addModuleReading,
   addRadciteModule,
+  archiveModuleReading,
+  archiveRadciteModule,
   listModuleReadings,
   listRadciteModules,
+  updateModuleReading,
+  updateRadciteModule,
 } from "./readingCommands";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -112,6 +116,86 @@ describe("reading commands", () => {
         notes: "Manual entry",
         reading_notes: "Skim before class",
         estimated_reading_time: "15 minutes",
+      },
+    });
+  });
+
+  test("updates a trimmed RADcite module", async () => {
+    vi.mocked(invoke).mockResolvedValue(moduleSummary);
+
+    await expect(
+      updateRadciteModule({
+        module_id: "module-1",
+        title: " Module 1 ",
+        code: " M1 ",
+        order_index: 2,
+        description: " Foundations ",
+      }),
+    ).resolves.toBe(moduleSummary);
+
+    expect(invoke).toHaveBeenCalledWith("update_radcite_module", {
+      request: {
+        module_id: "module-1",
+        title: "Module 1",
+        code: "M1",
+        order_index: 2,
+        description: "Foundations",
+      },
+    });
+  });
+
+  test("archives a RADcite module", async () => {
+    vi.mocked(invoke).mockResolvedValue(moduleSummary);
+
+    await expect(archiveRadciteModule("module-1")).resolves.toBe(moduleSummary);
+
+    expect(invoke).toHaveBeenCalledWith("archive_radcite_module", {
+      request: {
+        module_id: "module-1",
+      },
+    });
+  });
+
+  test("updates a trimmed module reading", async () => {
+    vi.mocked(invoke).mockResolvedValue(readingSummary);
+
+    await expect(
+      updateModuleReading({
+        reading_id: "reading-1",
+        reading_category: " optional ",
+        lesson_code: " 1.2 ",
+        apa_citation: " Smith, J. (2024). Optional reading. ",
+        citation_text: "",
+        url: " https://example.com/reading ",
+        notes: " Manual entry ",
+        reading_notes: " Skim before class ",
+        estimated_reading_time: " 15 minutes ",
+      }),
+    ).resolves.toBe(readingSummary);
+
+    expect(invoke).toHaveBeenCalledWith("update_module_reading", {
+      request: {
+        reading_id: "reading-1",
+        reading_category: "optional",
+        lesson_code: "1.2",
+        apa_citation: "Smith, J. (2024). Optional reading.",
+        citation_text: null,
+        url: "https://example.com/reading",
+        notes: "Manual entry",
+        reading_notes: "Skim before class",
+        estimated_reading_time: "15 minutes",
+      },
+    });
+  });
+
+  test("archives a module reading", async () => {
+    vi.mocked(invoke).mockResolvedValue(readingSummary);
+
+    await expect(archiveModuleReading("reading-1")).resolves.toBe(readingSummary);
+
+    expect(invoke).toHaveBeenCalledWith("archive_module_reading", {
+      request: {
+        reading_id: "reading-1",
       },
     });
   });

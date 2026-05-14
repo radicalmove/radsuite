@@ -1,10 +1,11 @@
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
-    AppStatus, CourseModuleSummary, CourseReferenceSummary, CourseReferencesExport, DesktopState,
-    ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
-    ListModuleReadingsRequest, LoadSavedReviewRequest, ModuleReadingSummary, ModuleReadingsExport,
-    SavedRadciteReviewSummary, UpdateParagraphReviewRequest,
+    AppStatus, ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, CourseModuleSummary,
+    CourseReferenceSummary, CourseReferencesExport, DesktopState, ExportCourseReferencesRequest,
+    ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListModuleReadingsRequest,
+    LoadSavedReviewRequest, ModuleReadingSummary, ModuleReadingsExport, SavedRadciteReviewSummary,
+    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -90,6 +91,26 @@ async fn add_radcite_module(
 }
 
 #[tauri::command]
+async fn update_radcite_module(
+    state: tauri::State<'_, DesktopState>,
+    request: UpdateRadciteModuleRequest,
+) -> Result<CourseModuleSummary, String> {
+    radsuite_desktop::update_radcite_module(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn archive_radcite_module(
+    state: tauri::State<'_, DesktopState>,
+    request: ArchiveRadciteModuleRequest,
+) -> Result<CourseModuleSummary, String> {
+    radsuite_desktop::archive_radcite_module(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn list_module_readings(
     state: tauri::State<'_, DesktopState>,
     request: ListModuleReadingsRequest,
@@ -105,6 +126,26 @@ async fn add_module_reading(
     request: AddModuleReadingRequest,
 ) -> Result<ModuleReadingSummary, String> {
     radsuite_desktop::add_module_reading(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn update_module_reading(
+    state: tauri::State<'_, DesktopState>,
+    request: UpdateModuleReadingRequest,
+) -> Result<ModuleReadingSummary, String> {
+    radsuite_desktop::update_module_reading(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn archive_module_reading(
+    state: tauri::State<'_, DesktopState>,
+    request: ArchiveModuleReadingRequest,
+) -> Result<ModuleReadingSummary, String> {
+    radsuite_desktop::archive_module_reading(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -186,8 +227,12 @@ fn main() {
             add_course_reference,
             list_radcite_modules,
             add_radcite_module,
+            update_radcite_module,
+            archive_radcite_module,
             list_module_readings,
             add_module_reading,
+            update_module_reading,
+            archive_module_reading,
             export_course_references,
             export_module_readings,
             mark_radcite_paragraph_resolved,
