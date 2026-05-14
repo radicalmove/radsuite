@@ -4,8 +4,7 @@ use radsuite_desktop::{
     AppStatus, CourseModuleSummary, CourseReferenceSummary, CourseReferencesExport, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
     ListModuleReadingsRequest, LoadSavedReviewRequest, ModuleReadingSummary, ModuleReadingsExport,
-    SavedRadciteReviewSummary,
-    UpdateParagraphReviewRequest,
+    SavedRadciteReviewSummary, UpdateParagraphReviewRequest,
 };
 
 #[tauri::command]

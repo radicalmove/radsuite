@@ -85,15 +85,15 @@
 
 ## Task 4: Full Verification And Publish
 
-- [ ] Run `cargo fmt --all`.
-- [ ] Run `cargo fmt --all --check`.
-- [ ] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
-- [ ] Run `cargo test --workspace --all-features`.
-- [ ] Run `npm run test:style`.
-- [ ] Run `npm test -- --run`.
-- [ ] Run `npm run build`.
-- [ ] Browser smoke-test the Exports route in Vite.
-- [ ] Commit any verification fixes.
+- [x] Run `cargo fmt --all`.
+- [x] Run `cargo fmt --all --check`.
+- [x] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
+- [x] Run `cargo test --workspace --all-features`.
+- [x] Run `npm run test:style`.
+- [x] Run `npm test -- --run`.
+- [x] Run `npm run build`.
+- [x] Browser smoke-test the Exports route in Vite.
+- [x] Commit any verification fixes.
 - [ ] Push the branch.
 - [ ] Open a PR, wait for CI, then merge if checks pass.
 
