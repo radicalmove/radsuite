@@ -35,8 +35,8 @@
 
 ## Task 1: Backend Export Contract
 
-- [ ] Add a failing desktop contract test named `module_readings_can_be_exported_as_html`.
-- [ ] The test should create a module, add one compulsory reading with a URL and metadata, add one optional reading, call `export_module_readings` with `for_ako_learn: false`, and assert:
+- [x] Add a failing desktop contract test named `module_readings_can_be_exported_as_html`.
+- [x] The test should create a module, add one compulsory reading with a URL and metadata, add one optional reading, call `export_module_readings` with `for_ako_learn: false`, and assert:
   - `reading_count == 2`
   - filename ends with `module-readings.html`
   - HTML includes `{GENERICO:type="references"}` and `{GENERICO:type="references_end"}`
@@ -44,14 +44,14 @@
   - HTML includes escaped text and lesson-code prefixes
   - HTML includes a new-tab link for the stored URL
   - metadata appears after a `references_end` marker
-- [ ] Add a failing desktop contract test named `module_readings_export_can_emit_ako_html`.
-- [ ] The test should call `export_module_readings` with `for_ako_learn: true` and assert Generico tokens are absent and the hanging indent style is present.
-- [ ] Add a failing desktop contract test named `module_readings_export_rejects_missing_module`.
-- [ ] Run `cargo test -p radsuite-desktop module_readings_export` and confirm the command/types are missing.
-- [ ] Implement the export types, error type, and command in `crates/radsuite-desktop/src/commands.rs`.
-- [ ] Add HTML helpers that escape stored text, group readings, append URL links, strip Generico for AKO, and apply hanging indent to reading paragraphs.
-- [ ] Run `cargo test -p radsuite-desktop module_readings_export` and confirm the tests pass.
-- [ ] Commit backend export work.
+- [x] Add a failing desktop contract test named `module_readings_export_can_emit_ako_html`.
+- [x] The test should call `export_module_readings` with `for_ako_learn: true` and assert Generico tokens are absent and the hanging indent style is present.
+- [x] Add a failing desktop contract test named `module_readings_export_rejects_missing_module`.
+- [x] Run `cargo test -p radsuite-desktop module_readings_export` and confirm the command/types are missing.
+- [x] Implement the export types, error type, and command in `crates/radsuite-desktop/src/commands.rs`.
+- [x] Add HTML helpers that escape stored text, group readings, append URL links, strip Generico for AKO, and apply hanging indent to reading paragraphs.
+- [x] Run `cargo test -p radsuite-desktop module_readings_export` and confirm the tests pass.
+- [x] Commit backend export work.
 
 ## Task 2: Tauri And TypeScript Command Contract
 
