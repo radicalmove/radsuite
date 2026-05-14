@@ -262,6 +262,153 @@ async fn module_readings_can_be_inserted_and_listed_for_module() {
 }
 
 #[tokio::test]
+async fn module_readings_can_be_updated_and_archived() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let owner_id = UserId::new();
+    let project = Project::new("CRJU150", "Legal Method", owner_id);
+    project_repo
+        .insert_project(&project)
+        .await
+        .expect("insert project");
+
+    let module_repo = SqliteCourseModuleRepository::new(pool.clone());
+    let mut module = CourseModule::new(project.id, "Module 1", Some(1));
+    module.code = Some("M1".to_string());
+    module_repo
+        .insert_course_module(&module)
+        .await
+        .expect("insert module");
+
+    module.title = "Module 1 updated".to_string();
+    module.code = Some("MOD1".to_string());
+    module.order_index = Some(10);
+    module.description = Some("Updated description".to_string());
+    module_repo
+        .update_course_module(&module)
+        .await
+        .expect("update module");
+
+    let loaded_module = module_repo
+        .load_course_module(module.id)
+        .await
+        .expect("load module")
+        .expect("module exists");
+
+    assert_eq!(loaded_module.title, "Module 1 updated");
+    assert_eq!(loaded_module.code.as_deref(), Some("MOD1"));
+    assert_eq!(loaded_module.order_index, Some(10));
+    assert_eq!(
+        loaded_module.description.as_deref(),
+        Some("Updated description")
+    );
+
+    let reference_repo = SqliteReferenceEntryRepository::new(pool);
+    let mut reading = ReferenceEntry::new(project.id, ReferenceEntryType::Reading);
+    reading.module_id = Some(module.id);
+    reading.reading_category = Some(ReadingCategory::Compulsory);
+    reading.apa_citation = Some("Smith, J. (2024). Module reading.".to_string());
+    reference_repo
+        .insert_reference_entry(&reading)
+        .await
+        .expect("insert reading");
+
+    let mut loaded_reading = reference_repo
+        .load_reference_entry(reading.id)
+        .await
+        .expect("load reading")
+        .expect("reading exists");
+    loaded_reading.reading_category = Some(ReadingCategory::Optional);
+    loaded_reading.lesson_code = Some("1.2".to_string());
+    loaded_reading.apa_citation = Some("Taylor, J. (2025). Updated reading.".to_string());
+    loaded_reading.url = Some("https://example.com/updated".to_string());
+    loaded_reading.reading_notes = Some("Read before class".to_string());
+    loaded_reading.estimated_reading_time = Some("20 minutes".to_string());
+    reference_repo
+        .update_reference_entry(&loaded_reading)
+        .await
+        .expect("update reading");
+
+    let readings = reference_repo
+        .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
+        .await
+        .expect("list readings");
+
+    assert_eq!(readings.len(), 1);
+    assert_eq!(
+        readings[0].apa_citation.as_deref(),
+        Some("Taylor, J. (2025). Updated reading.")
+    );
+    assert_eq!(
+        readings[0].reading_category,
+        Some(ReadingCategory::Optional)
+    );
+    assert_eq!(readings[0].lesson_code.as_deref(), Some("1.2"));
+    assert_eq!(
+        readings[0].url.as_deref(),
+        Some("https://example.com/updated")
+    );
+
+    reference_repo
+        .archive_reference_entry(reading.id)
+        .await
+        .expect("archive reading");
+    let readings = reference_repo
+        .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
+        .await
+        .expect("list readings after archive");
+    assert!(readings.is_empty());
+    assert!(
+        reference_repo
+            .load_reference_entry(reading.id)
+            .await
+            .expect("load archived reading")
+            .is_none()
+    );
+
+    let mut child_reading = ReferenceEntry::new(project.id, ReferenceEntryType::Reading);
+    child_reading.module_id = Some(module.id);
+    child_reading.apa_citation = Some("Jones, A. (2024). Child reading.".to_string());
+    reference_repo
+        .insert_reference_entry(&child_reading)
+        .await
+        .expect("insert child reading");
+
+    module_repo
+        .archive_course_module(module.id)
+        .await
+        .expect("archive module");
+
+    assert!(
+        module_repo
+            .load_course_module(module.id)
+            .await
+            .expect("load archived module")
+            .is_none()
+    );
+    assert!(
+        module_repo
+            .list_course_modules_for_project(project.id)
+            .await
+            .expect("list modules after archive")
+            .is_empty()
+    );
+    assert!(
+        reference_repo
+            .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
+            .await
+            .expect("list child readings after module archive")
+            .is_empty()
+    );
+}
+
+#[tokio::test]
 async fn paragraph_citation_can_be_linked_to_reference_entry() {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)

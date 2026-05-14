@@ -4,19 +4,22 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use radsuite_core::ModuleId;
+use radsuite_core::{ModuleId, ReferenceEntryId};
 use radsuite_db::migrate;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
-    AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState,
+    AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths,
+    ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
     ListModuleReadingsRequest, ModuleReadingError, ModuleReadingExportError, RadciteModuleError,
-    UpdateParagraphReviewRequest, add_course_reference, add_manual_citation_for_review,
-    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
+    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
+    add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
+    analyse_docx_for_review, analyse_docx_path, archive_module_reading, archive_radcite_module,
     export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_modules, list_saved_radcite_reviews, load_saved_radcite_review,
-    mark_paragraph_resolved_for_review, verify_paragraph_citations_for_review,
+    mark_paragraph_resolved_for_review, update_module_reading, update_radcite_module,
+    verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -480,6 +483,323 @@ async fn module_readings_commands_validate_input() {
     assert!(matches!(
         missing_module,
         ModuleReadingError::MissingModule(_)
+    ));
+}
+
+#[tokio::test]
+async fn module_readings_commands_update_and_archive_modules_and_readings() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Module 1".to_string(),
+            code: Some("M1".to_string()),
+            order_index: Some(1),
+            description: Some("Foundations".to_string()),
+        },
+    )
+    .await
+    .expect("add module");
+
+    let updated_module = update_radcite_module(
+        &state,
+        UpdateRadciteModuleRequest {
+            module_id: module.id,
+            title: " Module 1 updated ".to_string(),
+            code: Some(" MOD1 ".to_string()),
+            order_index: Some(3),
+            description: Some(" Updated description ".to_string()),
+        },
+    )
+    .await
+    .expect("update module");
+
+    assert_eq!(updated_module.id, module.id);
+    assert_eq!(updated_module.title, "Module 1 updated");
+    assert_eq!(updated_module.code.as_deref(), Some("MOD1"));
+    assert_eq!(updated_module.order_index, Some(3));
+    assert_eq!(
+        updated_module.description.as_deref(),
+        Some("Updated description")
+    );
+    assert_eq!(
+        list_radcite_modules(&state).await.expect("list modules"),
+        vec![updated_module.clone()]
+    );
+
+    let reading = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: Some("1.1".to_string()),
+            apa_citation: Some("Smith, J. (2024). Module reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add reading");
+
+    let updated_reading = update_module_reading(
+        &state,
+        UpdateModuleReadingRequest {
+            reading_id: reading.id,
+            reading_category: " optional ".to_string(),
+            lesson_code: Some(" 1.2 ".to_string()),
+            apa_citation: Some(" Taylor, J. (2025). Updated reading. ".to_string()),
+            citation_text: None,
+            url: Some(" https://example.com/updated ".to_string()),
+            notes: Some(" Staff note ".to_string()),
+            reading_notes: Some(" Student note ".to_string()),
+            estimated_reading_time: Some(" 20 minutes ".to_string()),
+        },
+    )
+    .await
+    .expect("update reading");
+
+    assert_eq!(updated_reading.id, reading.id);
+    assert_eq!(updated_reading.module_id, module.id);
+    assert_eq!(updated_reading.reading_category, "optional");
+    assert_eq!(updated_reading.lesson_code.as_deref(), Some("1.2"));
+    assert_eq!(
+        updated_reading.apa_citation.as_deref(),
+        Some("Taylor, J. (2025). Updated reading.")
+    );
+    assert_eq!(
+        updated_reading.url.as_deref(),
+        Some("https://example.com/updated")
+    );
+    assert_eq!(updated_reading.notes.as_deref(), Some("Staff note"));
+    assert_eq!(
+        updated_reading.reading_notes.as_deref(),
+        Some("Student note")
+    );
+    assert_eq!(
+        updated_reading.estimated_reading_time.as_deref(),
+        Some("20 minutes")
+    );
+
+    archive_module_reading(
+        &state,
+        ArchiveModuleReadingRequest {
+            reading_id: reading.id,
+        },
+    )
+    .await
+    .expect("archive reading");
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list readings after archive");
+    assert!(readings.is_empty());
+
+    let child_reading = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Jones, A. (2024). Child reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add child reading");
+
+    archive_radcite_module(
+        &state,
+        ArchiveRadciteModuleRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("archive module");
+
+    assert!(
+        list_radcite_modules(&state)
+            .await
+            .expect("list modules")
+            .is_empty()
+    );
+    let missing_module = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: child_reading.module_id,
+        },
+    )
+    .await
+    .expect_err("module should be archived");
+    assert!(matches!(
+        missing_module,
+        ModuleReadingError::MissingModule(module_id) if module_id == module.id
+    ));
+}
+
+#[tokio::test]
+async fn module_readings_update_commands_validate_input() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let missing_module_id = ModuleId::new();
+    let empty_title = update_radcite_module(
+        &state,
+        UpdateRadciteModuleRequest {
+            module_id: missing_module_id,
+            title: " ".to_string(),
+            code: None,
+            order_index: None,
+            description: None,
+        },
+    )
+    .await
+    .expect_err("reject empty title");
+    assert!(matches!(empty_title, RadciteModuleError::EmptyTitle));
+
+    let missing_module = update_radcite_module(
+        &state,
+        UpdateRadciteModuleRequest {
+            module_id: missing_module_id,
+            title: "Missing".to_string(),
+            code: None,
+            order_index: None,
+            description: None,
+        },
+    )
+    .await
+    .expect_err("reject missing module");
+    assert!(matches!(
+        missing_module,
+        RadciteModuleError::MissingModule(module_id) if module_id == missing_module_id
+    ));
+
+    let missing_archive = archive_radcite_module(
+        &state,
+        ArchiveRadciteModuleRequest {
+            module_id: missing_module_id,
+        },
+    )
+    .await
+    .expect_err("reject missing module archive");
+    assert!(matches!(
+        missing_archive,
+        RadciteModuleError::MissingModule(module_id) if module_id == missing_module_id
+    ));
+
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    let reading = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Smith, J. (2024). Reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add reading");
+
+    let empty_reading = update_module_reading(
+        &state,
+        UpdateModuleReadingRequest {
+            reading_id: reading.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: None,
+            apa_citation: Some(" ".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect_err("reject empty reading text");
+    assert!(matches!(
+        empty_reading,
+        ModuleReadingError::EmptyReadingText
+    ));
+
+    let invalid_category = update_module_reading(
+        &state,
+        UpdateModuleReadingRequest {
+            reading_id: reading.id,
+            reading_category: "recommended".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Smith, J. (2024). Reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect_err("reject invalid category");
+    assert!(matches!(
+        invalid_category,
+        ModuleReadingError::InvalidCategory(value) if value == "recommended"
+    ));
+
+    let missing_reading_id = ReferenceEntryId::new();
+    let missing_reading = update_module_reading(
+        &state,
+        UpdateModuleReadingRequest {
+            reading_id: missing_reading_id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Smith, J. (2024). Reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect_err("reject missing reading");
+    assert!(matches!(
+        missing_reading,
+        ModuleReadingError::MissingReading(reading_id) if reading_id == missing_reading_id
+    ));
+
+    let missing_archive = archive_module_reading(
+        &state,
+        ArchiveModuleReadingRequest {
+            reading_id: missing_reading_id,
+        },
+    )
+    .await
+    .expect_err("reject missing reading archive");
+    assert!(matches!(
+        missing_archive,
+        ModuleReadingError::MissingReading(reading_id) if reading_id == missing_reading_id
     ));
 }
 

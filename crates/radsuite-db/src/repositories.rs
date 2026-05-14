@@ -164,6 +164,8 @@ fn parse_role(value: &str) -> Result<ProjectRole, DbError> {
 #[async_trait]
 pub trait CourseModuleRepository {
     async fn insert_course_module(&self, module: &CourseModule) -> Result<(), DbError>;
+    async fn update_course_module(&self, module: &CourseModule) -> Result<(), DbError>;
+    async fn archive_course_module(&self, module_id: ModuleId) -> Result<(), DbError>;
     async fn list_course_modules_for_project(
         &self,
         project_id: ProjectId,
@@ -208,6 +210,70 @@ impl CourseModuleRepository for SqliteCourseModuleRepository {
         .bind(module.updated_at.to_rfc3339())
         .execute(&self.pool)
         .await?;
+
+        Ok(())
+    }
+
+    async fn update_course_module(&self, module: &CourseModule) -> Result<(), DbError> {
+        let now = Utc::now().to_rfc3339();
+        sqlx::query(
+            r#"
+            UPDATE course_modules
+            SET code = ?2,
+                title = ?3,
+                order_index = ?4,
+                description = ?5,
+                updated_at = ?6
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(module.id.0.to_string())
+        .bind(module.code.as_deref())
+        .bind(&module.title)
+        .bind(module.order_index)
+        .bind(module.description.as_deref())
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn archive_course_module(&self, module_id: ModuleId) -> Result<(), DbError> {
+        let mut tx = self.pool.begin().await?;
+        let now = Utc::now().to_rfc3339();
+        let module_id = module_id.0.to_string();
+
+        sqlx::query(
+            r#"
+            UPDATE course_modules
+            SET archived_at = ?2,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(&module_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET archived_at = ?2,
+                updated_at = ?2
+            WHERE module_id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(&module_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
 
         Ok(())
     }
@@ -260,6 +326,15 @@ impl CourseModuleRepository for SqliteCourseModuleRepository {
 #[async_trait]
 pub trait ReferenceEntryRepository {
     async fn insert_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError>;
+    async fn load_reference_entry(
+        &self,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<Option<ReferenceEntry>, DbError>;
+    async fn update_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError>;
+    async fn archive_reference_entry(
+        &self,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<(), DbError>;
     async fn list_reference_entries_for_project(
         &self,
         project_id: ProjectId,
@@ -326,6 +401,113 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         .bind(entry.archived_at.map(|value| value.to_rfc3339()))
         .bind(entry.created_at.to_rfc3339())
         .bind(entry.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn load_reference_entry(
+        &self,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<Option<ReferenceEntry>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT
+                id, project_id, module_id, document_id, paragraph_id, reference_type,
+                display_order, lesson_code, reading_category, citation_text, apa_citation,
+                title, authors_json, publication_year, source, doi, url, notes, reading_notes,
+                estimated_reading_time, apa_validation_status, apa_validation_report, archived_at,
+                created_at, updated_at
+            FROM reference_entries
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(reference_entry_id.0.to_string())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.as_ref().map(reference_entry_from_row).transpose()
+    }
+
+    async fn update_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError> {
+        let authors_json = serde_json::to_string(&entry.authors)?;
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET module_id = ?2,
+                document_id = ?3,
+                paragraph_id = ?4,
+                reference_type = ?5,
+                display_order = ?6,
+                lesson_code = ?7,
+                reading_category = ?8,
+                citation_text = ?9,
+                apa_citation = ?10,
+                title = ?11,
+                authors_json = ?12,
+                publication_year = ?13,
+                source = ?14,
+                doi = ?15,
+                url = ?16,
+                notes = ?17,
+                reading_notes = ?18,
+                estimated_reading_time = ?19,
+                apa_validation_status = ?20,
+                apa_validation_report = ?21,
+                updated_at = ?22
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(entry.id.0.to_string())
+        .bind(entry.module_id.map(|id| id.0.to_string()))
+        .bind(entry.document_id.map(|id| id.0.to_string()))
+        .bind(entry.paragraph_id.map(|id| id.0.to_string()))
+        .bind(reference_entry_type_as_str(entry.reference_type))
+        .bind(entry.display_order)
+        .bind(entry.lesson_code.as_deref())
+        .bind(entry.reading_category.map(reading_category_as_str))
+        .bind(entry.citation_text.as_deref())
+        .bind(entry.apa_citation.as_deref())
+        .bind(entry.title.as_deref())
+        .bind(authors_json)
+        .bind(entry.publication_year.as_deref())
+        .bind(entry.source.as_deref())
+        .bind(entry.doi.as_deref())
+        .bind(entry.url.as_deref())
+        .bind(entry.notes.as_deref())
+        .bind(entry.reading_notes.as_deref())
+        .bind(entry.estimated_reading_time.as_deref())
+        .bind(apa_validation_status_as_str(entry.apa_validation_status))
+        .bind(entry.apa_validation_report.as_deref())
+        .bind(now)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn archive_reference_entry(
+        &self,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<(), DbError> {
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET archived_at = ?2,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(reference_entry_id.0.to_string())
+        .bind(now)
         .execute(&self.pool)
         .await?;
 

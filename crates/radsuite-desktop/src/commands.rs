@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use chrono::Utc;
 use radsuite_cite::{DocxIngestionError, DocxIngestionRequest, ingest_docx};
 use radsuite_core::{
     Citation, CitationId, CourseModule, Document, DocumentId, ModuleId, Paragraph, ParagraphId,
@@ -201,6 +202,20 @@ pub struct AddRadciteModuleRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateRadciteModuleRequest {
+    pub module_id: ModuleId,
+    pub title: String,
+    pub code: Option<String>,
+    pub order_index: Option<i32>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArchiveRadciteModuleRequest {
+    pub module_id: ModuleId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ListModuleReadingsRequest {
     pub module_id: ModuleId,
 }
@@ -216,6 +231,24 @@ pub struct AddModuleReadingRequest {
     pub notes: Option<String>,
     pub reading_notes: Option<String>,
     pub estimated_reading_time: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateModuleReadingRequest {
+    pub reading_id: ReferenceEntryId,
+    pub reading_category: String,
+    pub lesson_code: Option<String>,
+    pub apa_citation: Option<String>,
+    pub citation_text: Option<String>,
+    pub url: Option<String>,
+    pub notes: Option<String>,
+    pub reading_notes: Option<String>,
+    pub estimated_reading_time: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArchiveModuleReadingRequest {
+    pub reading_id: ReferenceEntryId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -282,6 +315,8 @@ pub enum CourseReferenceError {
 pub enum RadciteModuleError {
     #[error("enter a module title before adding it")]
     EmptyTitle,
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -294,6 +329,8 @@ pub enum ModuleReadingError {
     InvalidCategory(String),
     #[error("could not load RADcite module {0}")]
     MissingModule(ModuleId),
+    #[error("could not load module reading {0}")]
+    MissingReading(ReferenceEntryId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -452,6 +489,41 @@ pub async fn add_radcite_module(
     Ok(course_module_summary(module))
 }
 
+pub async fn update_radcite_module(
+    state: &DesktopState,
+    request: UpdateRadciteModuleRequest,
+) -> Result<CourseModuleSummary, RadciteModuleError> {
+    let title = request.title.trim();
+    if title.is_empty() {
+        return Err(RadciteModuleError::EmptyTitle);
+    }
+
+    let mut module = load_radcite_module_or_error(state, request.module_id).await?;
+    module.title = title.to_string();
+    module.code = trimmed_optional(request.code);
+    module.order_index = request.order_index;
+    module.description = trimmed_optional(request.description);
+    module.updated_at = Utc::now();
+
+    SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .update_course_module(&module)
+        .await?;
+
+    Ok(course_module_summary(module))
+}
+
+pub async fn archive_radcite_module(
+    state: &DesktopState,
+    request: ArchiveRadciteModuleRequest,
+) -> Result<CourseModuleSummary, RadciteModuleError> {
+    let module = load_radcite_module_or_error(state, request.module_id).await?;
+    SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .archive_course_module(module.id)
+        .await?;
+
+    Ok(course_module_summary(module))
+}
+
 pub async fn list_module_readings(
     state: &DesktopState,
     request: ListModuleReadingsRequest,
@@ -497,6 +569,52 @@ pub async fn add_module_reading(
         .await?;
 
     module_reading_summary(reading).ok_or(ModuleReadingError::MissingModule(module.id))
+}
+
+pub async fn update_module_reading(
+    state: &DesktopState,
+    request: UpdateModuleReadingRequest,
+) -> Result<ModuleReadingSummary, ModuleReadingError> {
+    let mut reading = load_module_reading_or_error(state, request.reading_id).await?;
+    let module_id = reading
+        .module_id
+        .ok_or(ModuleReadingError::MissingReading(reading.id))?;
+    load_course_module_or_error(state, module_id).await?;
+    let reading_category = parse_reading_category_request(&request.reading_category)?;
+    let apa_citation = trimmed_optional(request.apa_citation);
+    let citation_text = trimmed_optional(request.citation_text);
+
+    if apa_citation.is_none() && citation_text.is_none() {
+        return Err(ModuleReadingError::EmptyReadingText);
+    }
+
+    reading.reading_category = Some(reading_category);
+    reading.lesson_code = trimmed_optional(request.lesson_code);
+    reading.apa_citation = apa_citation;
+    reading.citation_text = citation_text;
+    reading.url = trimmed_optional(request.url);
+    reading.notes = trimmed_optional(request.notes);
+    reading.reading_notes = trimmed_optional(request.reading_notes);
+    reading.estimated_reading_time = trimmed_optional(request.estimated_reading_time);
+    reading.updated_at = Utc::now();
+
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .update_reference_entry(&reading)
+        .await?;
+
+    module_reading_summary(reading).ok_or(ModuleReadingError::MissingReading(request.reading_id))
+}
+
+pub async fn archive_module_reading(
+    state: &DesktopState,
+    request: ArchiveModuleReadingRequest,
+) -> Result<ModuleReadingSummary, ModuleReadingError> {
+    let reading = load_module_reading_or_error(state, request.reading_id).await?;
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .archive_reference_entry(reading.id)
+        .await?;
+
+    module_reading_summary(reading).ok_or(ModuleReadingError::MissingReading(request.reading_id))
 }
 
 pub async fn export_course_references(
@@ -798,6 +916,32 @@ async fn load_course_module_or_error(
         .load_course_module(module_id)
         .await?
         .ok_or(ModuleReadingError::MissingModule(module_id))
+}
+
+async fn load_radcite_module_or_error(
+    state: &DesktopState,
+    module_id: ModuleId,
+) -> Result<CourseModule, RadciteModuleError> {
+    SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .load_course_module(module_id)
+        .await?
+        .ok_or(RadciteModuleError::MissingModule(module_id))
+}
+
+async fn load_module_reading_or_error(
+    state: &DesktopState,
+    reading_id: ReferenceEntryId,
+) -> Result<ReferenceEntry, ModuleReadingError> {
+    let reading = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .load_reference_entry(reading_id)
+        .await?
+        .ok_or(ModuleReadingError::MissingReading(reading_id))?;
+
+    if reading.reference_type != ReferenceEntryType::Reading || reading.module_id.is_none() {
+        return Err(ModuleReadingError::MissingReading(reading_id));
+    }
+
+    Ok(reading)
 }
 
 fn trimmed_optional(value: Option<String>) -> Option<String> {
