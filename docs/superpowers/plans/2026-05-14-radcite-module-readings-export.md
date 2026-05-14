@@ -55,13 +55,13 @@
 
 ## Task 2: Tauri And TypeScript Command Contract
 
-- [ ] Add module-readings export request/response types to `apps/desktop-ui/src/types.ts`.
-- [ ] Add a failing Vitest case for `exportModuleReadings({ module_id, for_ako_learn })`.
-- [ ] Run `npm test -- --run src/lib/exportCommands.test.ts` and confirm the helper is missing.
-- [ ] Add `exportModuleReadings` in `apps/desktop-ui/src/lib/exportCommands.ts`.
-- [ ] Expose `export_module_readings` in `apps/desktop-ui/src-tauri/src/main.rs`.
-- [ ] Run the focused Vitest file and confirm it passes.
-- [ ] Commit bridge/helper work.
+- [x] Add module-readings export request/response types to `apps/desktop-ui/src/types.ts`.
+- [x] Add a failing Vitest case for `exportModuleReadings({ module_id, for_ako_learn })`.
+- [x] Run `npm test -- --run src/lib/exportCommands.test.ts` and confirm the helper is missing.
+- [x] Add `exportModuleReadings` in `apps/desktop-ui/src/lib/exportCommands.ts`.
+- [x] Expose `export_module_readings` in `apps/desktop-ui/src-tauri/src/main.rs`.
+- [x] Run the focused Vitest file and confirm it passes.
+- [x] Commit bridge/helper work.
 
 ## Task 3: Exports Workspace UI
 
