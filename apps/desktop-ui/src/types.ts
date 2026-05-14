@@ -102,6 +102,31 @@ export type CourseReferenceSummary = {
   validation_status: "unknown" | "valid" | "needs_fix";
 };
 
+export type CourseModuleSummary = {
+  id: string;
+  project_id: string;
+  code: string | null;
+  title: string;
+  order_index: number | null;
+  description: string | null;
+};
+
+export type ModuleReadingSummary = {
+  id: string;
+  project_id: string;
+  module_id: string;
+  reading_category: "compulsory" | "optional";
+  lesson_code: string | null;
+  apa_citation: string | null;
+  citation_text: string | null;
+  title: string | null;
+  url: string | null;
+  notes: string | null;
+  reading_notes: string | null;
+  estimated_reading_time: string | null;
+  validation_status: "unknown" | "valid" | "needs_fix";
+};
+
 export type CourseReferencesExportRequest = {
   for_ako_learn: boolean;
 };
