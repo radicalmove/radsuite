@@ -65,8 +65,8 @@
 
 ## Task 3: Exports Workspace UI
 
-- [ ] Extend `RadciteExportsWorkspace.svelte` props for modules, selected module id, module readings, module export state, and module export callbacks.
-- [ ] Add export mode controls with visible hooks:
+- [x] Extend `RadciteExportsWorkspace.svelte` props for modules, selected module id, module readings, module export state, and module export callbacks.
+- [x] Add export mode controls with visible hooks:
   - `Course references`
   - `Module readings`
   - `Module readings export`
@@ -74,14 +74,14 @@
   - `Generate HTML`
   - `Copy HTML`
   - `Download HTML`
-- [ ] Update preview counts so course exports show reference count and module-reading exports show reading count.
-- [ ] Wire `App.svelte` to refresh modules when Exports opens.
-- [ ] Add `handleExportModuleReadings` in `App.svelte`.
-- [ ] Preserve existing course-reference export behaviour.
-- [ ] Update `styles.css` for compact segmented controls and module export summary.
-- [ ] Extend `verify-style-contract.mjs` for the new UI and command hooks.
-- [ ] Run `npm run test:style`, `npm test -- --run`, and `npm run build`.
-- [ ] Commit UI work.
+- [x] Update preview counts so course exports show reference count and module-reading exports show reading count.
+- [x] Wire `App.svelte` to refresh modules when Exports opens.
+- [x] Add `handleExportModuleReadings` in `App.svelte`.
+- [x] Preserve existing course-reference export behaviour.
+- [x] Update `styles.css` for compact segmented controls and module export summary.
+- [x] Extend `verify-style-contract.mjs` for the new UI and command hooks.
+- [x] Run `npm run test:style`, `npm test -- --run`, and `npm run build`.
+- [x] Commit UI work.
 
 ## Task 4: Full Verification And Publish
 

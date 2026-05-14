@@ -51,6 +51,8 @@ const checks = [
   ["unlinked-citation summary emphasis", '[data-filter="unlinked-citation"].is-active'],
   ["review queue status styling", ".queue-status"],
   ["export panel styling", ".export-panel"],
+  ["export mode toggle styling", ".export-mode-toggle"],
+  ["module export controls styling", ".module-export-controls"],
   ["export preview styling", ".export-preview"],
   ["readings workspace styling", ".readings-workspace"],
   ["module selector styling", ".module-selector"],
@@ -87,6 +89,7 @@ for (const needle of [
   "RadciteExportsWorkspace",
   'activeArea === "exports"',
   "exportCourseReferences",
+  "exportModuleReadings",
 ]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
@@ -141,6 +144,10 @@ for (const needle of ["@tauri-apps/plugin-dialog", "choose-docx-button", "onChoo
 
 for (const needle of [
   "Course References Export",
+  "Course references",
+  "Module readings",
+  "Module readings export",
+  "Module selector",
   "AKO | LEARN",
   "Generate HTML",
   "Copy HTML",
@@ -164,7 +171,12 @@ for (const needle of [
   }
 }
 
-for (const needle of ["export_course_references", "ExportCourseReferencesRequest"]) {
+for (const needle of [
+  "export_course_references",
+  "ExportCourseReferencesRequest",
+  "export_module_readings",
+  "ExportModuleReadingsRequest",
+]) {
   if (!tauriMain.includes(needle)) {
     missing.push(`Tauri main includes ${needle}`);
   }
