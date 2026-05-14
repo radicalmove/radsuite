@@ -37,13 +37,13 @@
 
 ## Task 1: Repository Edit/Archive Contracts
 
-- [ ] Add failing repository tests for module update/archive and reading update/archive.
-- [ ] Run `cargo test -p radsuite-db module_readings_can_be_updated_and_archived` and confirm repository methods are missing.
-- [ ] Implement `update_course_module`, `archive_course_module`, `load_reference_entry`, `update_reference_entry`, and `archive_reference_entry`.
-- [ ] Ensure archived modules are hidden from list/load and archive child module readings.
-- [ ] Ensure archived readings are hidden from module reading lists.
-- [ ] Run the focused repository tests and confirm they pass.
-- [ ] Commit repository work.
+- [x] Add failing repository tests for module update/archive and reading update/archive.
+- [x] Run `cargo test -p radsuite-db module_readings_can_be_updated_and_archived` and confirm repository methods are missing.
+- [x] Implement `update_course_module`, `archive_course_module`, `load_reference_entry`, `update_reference_entry`, and `archive_reference_entry`.
+- [x] Ensure archived modules are hidden from list/load and archive child module readings.
+- [x] Ensure archived readings are hidden from module reading lists.
+- [x] Run the focused repository tests and confirm they pass.
+- [x] Commit repository work.
 
 ## Task 2: Desktop Command Contracts
 
