@@ -66,15 +66,15 @@
 
 ## Task 4: Readings Workspace UI
 
-- [ ] Extend `RadciteReadingsWorkspace.svelte` props for update/archive callbacks.
-- [ ] Add module edit/remove actions and module form add/update modes.
-- [ ] Add reading edit/remove actions and reading form add/update modes.
-- [ ] Add confirmation before archive calls.
-- [ ] Wire new handlers in `App.svelte`, clearing export state when readings/modules change.
-- [ ] Add/adjust compact action styles.
-- [ ] Update `verify-style-contract.mjs`.
-- [ ] Run `npm run test:style`, `npm test -- --run`, and `npm run build`.
-- [ ] Commit UI work.
+- [x] Extend `RadciteReadingsWorkspace.svelte` props for update/archive callbacks.
+- [x] Add module edit/remove actions and module form add/update modes.
+- [x] Add reading edit/remove actions and reading form add/update modes.
+- [x] Add confirmation before archive calls.
+- [x] Wire new handlers in `App.svelte`, clearing export state when readings/modules change.
+- [x] Add/adjust compact action styles.
+- [x] Update `verify-style-contract.mjs`.
+- [x] Run `npm run test:style`, `npm test -- --run`, and `npm run build`.
+- [x] Commit UI work.
 
 ## Task 5: Full Verification And Publish
 

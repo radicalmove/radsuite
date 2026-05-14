@@ -57,6 +57,9 @@ const checks = [
   ["readings workspace styling", ".readings-workspace"],
   ["module selector styling", ".module-selector"],
   ["reading list panel styling", ".reading-list-panel"],
+  ["module card action styling", ".module-card-actions"],
+  ["reading row action styling", ".reading-row-actions"],
+  ["danger button styling", ".danger-button"],
 ];
 
 const missing = checks
@@ -101,6 +104,10 @@ for (const needle of [
   'activeArea === "readings"',
   "listRadciteModules",
   "listModuleReadings",
+  "updateRadciteModule",
+  "archiveRadciteModule",
+  "updateModuleReading",
+  "archiveModuleReading",
 ]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
@@ -165,6 +172,13 @@ for (const needle of [
   "Optional",
   "module-selector",
   "reading-list-panel",
+  "Edit module",
+  "Remove module",
+  "Update module",
+  "Cancel edit",
+  "Edit reading",
+  "Remove reading",
+  "Update reading",
 ]) {
   if (!readingsWorkspace.includes(needle)) {
     missing.push(`readings workspace includes ${needle}`);
@@ -176,6 +190,14 @@ for (const needle of [
   "ExportCourseReferencesRequest",
   "export_module_readings",
   "ExportModuleReadingsRequest",
+  "update_radcite_module",
+  "UpdateRadciteModuleRequest",
+  "archive_radcite_module",
+  "ArchiveRadciteModuleRequest",
+  "update_module_reading",
+  "UpdateModuleReadingRequest",
+  "archive_module_reading",
+  "ArchiveModuleReadingRequest",
 ]) {
   if (!tauriMain.includes(needle)) {
     missing.push(`Tauri main includes ${needle}`);

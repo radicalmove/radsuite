@@ -12,8 +12,12 @@
   import {
     addModuleReading,
     addRadciteModule,
+    archiveModuleReading,
+    archiveRadciteModule,
     listModuleReadings,
     listRadciteModules,
+    updateModuleReading,
+    updateRadciteModule,
   } from "./lib/readingCommands";
   import { addCourseReference, listCourseReferences } from "./lib/referenceCommands";
   import {
@@ -203,6 +207,29 @@
     }
   }
 
+  async function handleUpdateRadciteModule(input: Parameters<typeof updateRadciteModule>[0]) {
+    radciteModulesError = null;
+    try {
+      const updated = await updateRadciteModule(input);
+      moduleReadingsExport = null;
+      await refreshRadciteModules(updated.id);
+    } catch (reason: unknown) {
+      radciteModulesError = `Could not update module: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleArchiveRadciteModule(moduleId: string) {
+    radciteModulesError = null;
+    moduleReadingsError = null;
+    try {
+      const archived = await archiveRadciteModule(moduleId);
+      moduleReadingsExport = null;
+      await refreshRadciteModules(selectedModuleId === archived.id ? null : selectedModuleId);
+    } catch (reason: unknown) {
+      radciteModulesError = `Could not remove module: ${toErrorMessage(reason)}`;
+    }
+  }
+
   async function handleAddModuleReading(input: Parameters<typeof addModuleReading>[0]) {
     moduleReadingsError = null;
     try {
@@ -211,6 +238,28 @@
       await refreshModuleReadings(added.module_id);
     } catch (reason: unknown) {
       moduleReadingsError = `Could not add reading: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleUpdateModuleReading(input: Parameters<typeof updateModuleReading>[0]) {
+    moduleReadingsError = null;
+    try {
+      const updated = await updateModuleReading(input);
+      moduleReadingsExport = null;
+      await refreshModuleReadings(updated.module_id);
+    } catch (reason: unknown) {
+      moduleReadingsError = `Could not update reading: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleArchiveModuleReading(readingId: string) {
+    moduleReadingsError = null;
+    try {
+      const archived = await archiveModuleReading(readingId);
+      moduleReadingsExport = null;
+      await refreshModuleReadings(archived.module_id);
+    } catch (reason: unknown) {
+      moduleReadingsError = `Could not remove reading: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -449,8 +498,20 @@
         onAddModule={(input) => {
           void handleAddRadciteModule(input);
         }}
+        onUpdateModule={(input) => {
+          void handleUpdateRadciteModule(input);
+        }}
+        onArchiveModule={(moduleId) => {
+          void handleArchiveRadciteModule(moduleId);
+        }}
         onAddReading={(input) => {
           void handleAddModuleReading(input);
+        }}
+        onUpdateReading={(input) => {
+          void handleUpdateModuleReading(input);
+        }}
+        onArchiveReading={(readingId) => {
+          void handleArchiveModuleReading(readingId);
         }}
       />
     {:else if activeArea === "exports"}

@@ -1,6 +1,11 @@
 <script lang="ts">
   import type { CourseModuleSummary, ModuleReadingSummary } from "../types";
-  import type { AddModuleReadingInput, AddRadciteModuleInput } from "../lib/readingCommands";
+  import type {
+    AddModuleReadingInput,
+    AddRadciteModuleInput,
+    UpdateModuleReadingInput,
+    UpdateRadciteModuleInput,
+  } from "../lib/readingCommands";
 
   type Props = {
     modules: CourseModuleSummary[];
@@ -13,7 +18,11 @@
     onRefreshModules: () => void | Promise<void>;
     onSelectModule: (moduleId: string) => void | Promise<void>;
     onAddModule: (input: AddRadciteModuleInput) => void | Promise<void>;
+    onUpdateModule: (input: UpdateRadciteModuleInput) => void | Promise<void>;
+    onArchiveModule: (moduleId: string) => void | Promise<void>;
     onAddReading: (input: AddModuleReadingInput) => void | Promise<void>;
+    onUpdateReading: (input: UpdateModuleReadingInput) => void | Promise<void>;
+    onArchiveReading: (readingId: string) => void | Promise<void>;
   };
 
   let {
@@ -27,13 +36,19 @@
     onRefreshModules,
     onSelectModule,
     onAddModule,
+    onUpdateModule,
+    onArchiveModule,
     onAddReading,
+    onUpdateReading,
+    onArchiveReading,
   }: Props = $props();
 
+  let editingModuleId = $state<string | null>(null);
   let moduleTitle = $state("");
   let moduleCode = $state("");
   let moduleOrder = $state("");
   let moduleDescription = $state("");
+  let editingReadingId = $state<string | null>(null);
   let readingCategory = $state<"compulsory" | "optional">("compulsory");
   let lessonCode = $state("");
   let apaCitation = $state("");
@@ -46,14 +61,16 @@
   let selectedModule = $derived(
     modules.find((module) => module.id === selectedModuleId) ?? modules[0] ?? null,
   );
+  let editingModule = $derived(modules.find((module) => module.id === editingModuleId) ?? null);
+  let editingReading = $derived(readings.find((reading) => reading.id === editingReadingId) ?? null);
   let compulsoryReadings = $derived(
     readings.filter((reading) => reading.reading_category === "compulsory"),
   );
   let optionalReadings = $derived(
     readings.filter((reading) => reading.reading_category === "optional"),
   );
-  let addModuleDisabled = $derived(modulesLoading || moduleTitle.trim().length === 0);
-  let addReadingDisabled = $derived(
+  let moduleSubmitDisabled = $derived(modulesLoading || moduleTitle.trim().length === 0);
+  let readingSubmitDisabled = $derived(
     readingsLoading ||
       !selectedModule ||
       (apaCitation.trim().length === 0 && citationText.trim().length === 0),
@@ -70,6 +87,33 @@
     return reading.apa_citation ?? reading.citation_text ?? reading.title ?? "Untitled reading";
   }
 
+  function resetModuleForm() {
+    editingModuleId = null;
+    moduleTitle = "";
+    moduleCode = "";
+    moduleOrder = "";
+    moduleDescription = "";
+  }
+
+  function beginEditModule(module: CourseModuleSummary) {
+    editingModuleId = module.id;
+    moduleTitle = module.title;
+    moduleCode = module.code ?? "";
+    moduleOrder = module.order_index?.toString() ?? "";
+    moduleDescription = module.description ?? "";
+  }
+
+  async function archiveModule(module: CourseModuleSummary) {
+    if (!window.confirm(`Remove ${moduleLabel(module)} from active module lists?`)) {
+      return;
+    }
+
+    await onArchiveModule(module.id);
+    if (editingModuleId === module.id) {
+      resetModuleForm();
+    }
+  }
+
   async function submitModule() {
     const title = moduleTitle.trim();
     if (!title) {
@@ -77,26 +121,66 @@
     }
 
     const orderValue = moduleOrder.trim();
-    await onAddModule({
+    const input = {
       title,
       code: moduleCode.trim() || null,
       order_index: orderValue ? Number(orderValue) : null,
       description: moduleDescription.trim() || null,
-    });
+    };
 
-    moduleTitle = "";
-    moduleCode = "";
-    moduleOrder = "";
-    moduleDescription = "";
+    if (editingModuleId) {
+      await onUpdateModule({
+        ...input,
+        module_id: editingModuleId,
+      });
+    } else {
+      await onAddModule(input);
+    }
+
+    resetModuleForm();
   }
 
-  async function submitReading() {
-    if (!selectedModule || addReadingDisabled) {
+  function resetReadingForm() {
+    editingReadingId = null;
+    readingCategory = "compulsory";
+    lessonCode = "";
+    apaCitation = "";
+    citationText = "";
+    readingUrl = "";
+    notes = "";
+    readingNotes = "";
+    estimatedReadingTime = "";
+  }
+
+  function beginEditReading(reading: ModuleReadingSummary) {
+    editingReadingId = reading.id;
+    readingCategory = reading.reading_category;
+    lessonCode = reading.lesson_code ?? "";
+    apaCitation = reading.apa_citation ?? "";
+    citationText = reading.citation_text ?? "";
+    readingUrl = reading.url ?? "";
+    notes = reading.notes ?? "";
+    readingNotes = reading.reading_notes ?? "";
+    estimatedReadingTime = reading.estimated_reading_time ?? "";
+  }
+
+  async function archiveReading(reading: ModuleReadingSummary) {
+    if (!window.confirm("Remove this reading from active reading lists?")) {
       return;
     }
 
-    await onAddReading({
-      module_id: selectedModule.id,
+    await onArchiveReading(reading.id);
+    if (editingReadingId === reading.id) {
+      resetReadingForm();
+    }
+  }
+
+  async function submitReading() {
+    if (!selectedModule || readingSubmitDisabled) {
+      return;
+    }
+
+    const input = {
       reading_category: readingCategory,
       lesson_code: lessonCode.trim() || null,
       apa_citation: apaCitation.trim() || null,
@@ -105,15 +189,21 @@
       notes: notes.trim() || null,
       reading_notes: readingNotes.trim() || null,
       estimated_reading_time: estimatedReadingTime.trim() || null,
-    });
+    };
 
-    lessonCode = "";
-    apaCitation = "";
-    citationText = "";
-    readingUrl = "";
-    notes = "";
-    readingNotes = "";
-    estimatedReadingTime = "";
+    if (editingReadingId) {
+      await onUpdateReading({
+        ...input,
+        reading_id: editingReadingId,
+      });
+    } else {
+      await onAddReading({
+        ...input,
+        module_id: selectedModule.id,
+      });
+    }
+
+    resetReadingForm();
   }
 </script>
 
@@ -156,15 +246,33 @@
     {:else if modules.length}
       <div class="module-button-list">
         {#each modules as module (module.id)}
-          <button
-            class="module-select-button"
-            class:is-active={module.id === selectedModuleId}
-            type="button"
-            onclick={() => void onSelectModule(module.id)}
-          >
-            <strong>{module.title}</strong>
-            <span>{module.code ?? `Order ${module.order_index ?? "-"}`}</span>
-          </button>
+          <article class="module-card" class:is-active={module.id === selectedModuleId}>
+            <button
+              class="module-select-button"
+              class:is-active={module.id === selectedModuleId}
+              type="button"
+              onclick={() => void onSelectModule(module.id)}
+            >
+              <strong>{module.title}</strong>
+              <span>{module.code ?? `Order ${module.order_index ?? "-"}`}</span>
+            </button>
+            <div class="module-card-actions" aria-label={`${moduleLabel(module)} actions`}>
+              <button
+                class="secondary-button compact-button"
+                type="button"
+                onclick={() => beginEditModule(module)}
+              >
+                Edit module
+              </button>
+              <button
+                class="secondary-button compact-button danger-button"
+                type="button"
+                onclick={() => void archiveModule(module)}
+              >
+                Remove module
+              </button>
+            </div>
+          </article>
         {/each}
       </div>
     {:else}
@@ -179,6 +287,17 @@
       void submitModule();
     }}
   >
+    <div class="form-section-heading">
+      <div>
+        <p class="eyebrow">{editingModuleId ? "Edit module" : "Add module"}</p>
+        <strong>{editingModule ? moduleLabel(editingModule) : "Course module"}</strong>
+      </div>
+      {#if editingModuleId}
+        <button class="secondary-button compact-button" type="button" onclick={resetModuleForm}>
+          Cancel edit
+        </button>
+      {/if}
+    </div>
     <div class="form-grid form-grid-module">
       <label>
         <span class="field-label">Module title</span>
@@ -198,7 +317,9 @@
       <input class="path-input" type="text" bind:value={moduleDescription} />
     </label>
     <div class="reference-form-actions">
-      <button class="primary-button" type="submit" disabled={addModuleDisabled}>Add module</button>
+      <button class="primary-button" type="submit" disabled={moduleSubmitDisabled}>
+        {editingModuleId ? "Update module" : "Add module"}
+      </button>
     </div>
   </form>
 
@@ -211,16 +332,29 @@
   >
     <div class="reading-form-heading">
       <div>
-        <p class="eyebrow">Add reading</p>
-        <strong>{selectedModule ? moduleLabel(selectedModule) : "Select a module"}</strong>
+        <p class="eyebrow">{editingReadingId ? "Edit reading" : "Add reading"}</p>
+        <strong>
+          {editingReading
+            ? readingText(editingReading)
+            : selectedModule
+              ? moduleLabel(selectedModule)
+              : "Select a module"}
+        </strong>
       </div>
-      <label class="field-label compact-field">
-        Category
-        <select class="path-input compact-select" bind:value={readingCategory}>
-          <option value="compulsory">Compulsory</option>
-          <option value="optional">Optional</option>
-        </select>
-      </label>
+      <div class="reading-form-controls">
+        <label class="field-label compact-field">
+          Category
+          <select class="path-input compact-select" bind:value={readingCategory}>
+            <option value="compulsory">Compulsory</option>
+            <option value="optional">Optional</option>
+          </select>
+        </label>
+        {#if editingReadingId}
+          <button class="secondary-button compact-button" type="button" onclick={resetReadingForm}>
+            Cancel edit
+          </button>
+        {/if}
+      </div>
     </div>
 
     <div class="form-grid form-grid-reading">
@@ -266,8 +400,8 @@
     </div>
 
     <div class="reference-form-actions">
-      <button class="primary-button" type="submit" disabled={addReadingDisabled}>
-        Add reading
+      <button class="primary-button" type="submit" disabled={readingSubmitDisabled}>
+        {editingReadingId ? "Update reading" : "Add reading"}
       </button>
     </div>
   </form>
@@ -294,11 +428,29 @@
           {#if compulsoryReadings.length}
             {#each compulsoryReadings as reading (reading.id)}
               <article class="reading-row">
-                <div class="reading-row-main">
-                  {#if reading.lesson_code}
-                    <span class="reading-lesson">{reading.lesson_code}</span>
-                  {/if}
-                  <p>{readingText(reading)}</p>
+                <div class="reading-row-header">
+                  <div class="reading-row-main">
+                    {#if reading.lesson_code}
+                      <span class="reading-lesson">{reading.lesson_code}</span>
+                    {/if}
+                    <p>{readingText(reading)}</p>
+                  </div>
+                  <div class="reading-row-actions" aria-label="Reading actions">
+                    <button
+                      class="secondary-button compact-button"
+                      type="button"
+                      onclick={() => beginEditReading(reading)}
+                    >
+                      Edit reading
+                    </button>
+                    <button
+                      class="secondary-button compact-button danger-button"
+                      type="button"
+                      onclick={() => void archiveReading(reading)}
+                    >
+                      Remove reading
+                    </button>
+                  </div>
                 </div>
                 <div class="reference-meta">
                   <span>{reading.validation_status.replace("_", " ")}</span>
@@ -321,11 +473,29 @@
           {#if optionalReadings.length}
             {#each optionalReadings as reading (reading.id)}
               <article class="reading-row">
-                <div class="reading-row-main">
-                  {#if reading.lesson_code}
-                    <span class="reading-lesson">{reading.lesson_code}</span>
-                  {/if}
-                  <p>{readingText(reading)}</p>
+                <div class="reading-row-header">
+                  <div class="reading-row-main">
+                    {#if reading.lesson_code}
+                      <span class="reading-lesson">{reading.lesson_code}</span>
+                    {/if}
+                    <p>{readingText(reading)}</p>
+                  </div>
+                  <div class="reading-row-actions" aria-label="Reading actions">
+                    <button
+                      class="secondary-button compact-button"
+                      type="button"
+                      onclick={() => beginEditReading(reading)}
+                    >
+                      Edit reading
+                    </button>
+                    <button
+                      class="secondary-button compact-button danger-button"
+                      type="button"
+                      onclick={() => void archiveReading(reading)}
+                    >
+                      Remove reading
+                    </button>
+                  </div>
                 </div>
                 <div class="reference-meta">
                   <span>{reading.validation_status.replace("_", " ")}</span>
