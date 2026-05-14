@@ -24,6 +24,10 @@ const exportsWorkspace = readFileSync(
   resolve(root, "src/components/RadciteExportsWorkspace.svelte"),
   "utf8",
 );
+const readingsWorkspace = readFileSync(
+  resolve(root, "src/components/RadciteReadingsWorkspace.svelte"),
+  "utf8",
+);
 
 const checks = [
   ["RADcite red token", "--radcite-red: #ce3e2e"],
@@ -48,6 +52,9 @@ const checks = [
   ["review queue status styling", ".queue-status"],
   ["export panel styling", ".export-panel"],
   ["export preview styling", ".export-preview"],
+  ["readings workspace styling", ".readings-workspace"],
+  ["module selector styling", ".module-selector"],
+  ["reading list panel styling", ".reading-list-panel"],
 ];
 
 const missing = checks
@@ -84,6 +91,21 @@ for (const needle of [
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
   }
+}
+
+for (const needle of [
+  "RadciteReadingsWorkspace",
+  'activeArea === "readings"',
+  "listRadciteModules",
+  "listModuleReadings",
+]) {
+  if (!app.includes(needle)) {
+    missing.push(`app includes ${needle}`);
+  }
+}
+
+if (sidebar.includes('{ id: "readings", label: "Readings", disabled: true }')) {
+  missing.push("sidebar enables Readings");
 }
 
 for (const needle of ["theme-toggle", "radciteTheme", "moonIcon", "data-theme={theme}"]) {
@@ -127,6 +149,18 @@ for (const needle of [
 ]) {
   if (!exportsWorkspace.includes(needle)) {
     missing.push(`exports workspace includes ${needle}`);
+  }
+}
+
+for (const needle of [
+  "Module readings",
+  "Compulsory",
+  "Optional",
+  "module-selector",
+  "reading-list-panel",
+]) {
+  if (!readingsWorkspace.includes(needle)) {
+    missing.push(`readings workspace includes ${needle}`);
   }
 }
 
