@@ -895,6 +895,37 @@ button:disabled {
   box-shadow: var(--shadow-sm);
 }
 
+.export-mode-toggle {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  width: fit-content;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+
+.export-mode-toggle button {
+  min-height: 36px;
+  padding: 0 var(--s-3);
+  border: 0;
+  border-right: 1px solid var(--line);
+  color: var(--fg-2);
+  background: transparent;
+  font-size: 0.8rem;
+  font-weight: 650;
+}
+
+.export-mode-toggle button:last-child {
+  border-right: 0;
+}
+
+.export-mode-toggle button:hover,
+.export-mode-toggle button.is-active {
+  color: var(--radcite-red-deep);
+  background: var(--danger-tint);
+}
+
 .export-summary {
   display: grid;
   gap: 3px;
@@ -908,6 +939,24 @@ button:disabled {
 .export-summary span {
   color: var(--fg-3);
   font-size: 0.84rem;
+}
+
+.module-export-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 360px) minmax(0, 1fr);
+  align-items: end;
+  gap: var(--s-3);
+}
+
+.module-export-controls label,
+.module-export-current {
+  display: grid;
+  gap: 6px;
+}
+
+.module-export-current strong {
+  color: var(--fg-1);
+  font-size: 0.9rem;
 }
 
 .checkbox-line {
@@ -1366,8 +1415,13 @@ button:disabled {
   .path-row,
   .manual-citation-row,
   .citation-link-row,
+  .module-export-controls,
   .summary-strip {
     grid-template-columns: 1fr;
+  }
+
+  .export-mode-toggle {
+    width: 100%;
   }
 
   .workspace-topbar,

@@ -224,11 +224,26 @@ pub struct ExportCourseReferencesRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExportModuleReadingsRequest {
+    pub module_id: ModuleId,
+    pub for_ako_learn: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CourseReferencesExport {
     pub filename: String,
     pub content_type: String,
     pub html: String,
     pub reference_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleReadingsExport {
+    pub filename: String,
+    pub content_type: String,
+    pub html: String,
+    pub module_id: ModuleId,
+    pub reading_count: usize,
 }
 
 #[derive(Debug, Error)]
@@ -285,6 +300,14 @@ pub enum ModuleReadingError {
 
 #[derive(Debug, Error)]
 pub enum CourseReferenceExportError {
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum ModuleReadingExportError {
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -493,6 +516,40 @@ pub async fn export_course_references(
         content_type: "text/html; charset=utf-8".to_string(),
         html,
         reference_count,
+    })
+}
+
+pub async fn export_module_readings(
+    state: &DesktopState,
+    request: ExportModuleReadingsRequest,
+) -> Result<ModuleReadingsExport, ModuleReadingExportError> {
+    let module = SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .load_course_module(request.module_id)
+        .await?
+        .ok_or(ModuleReadingExportError::MissingModule(request.module_id))?;
+    let project = SqliteProjectRepository::new(state.database_pool.clone())
+        .load_project(module.project_id)
+        .await?;
+    let readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
+        .await?;
+    let reading_count = readings.len();
+    let html = format_module_readings_html(&readings, request.for_ako_learn);
+    let project_label = project
+        .as_ref()
+        .and_then(|project| project.code.as_deref())
+        .unwrap_or("radcite");
+    let module_label = module.code.as_deref().unwrap_or(&module.title);
+
+    Ok(ModuleReadingsExport {
+        filename: format!(
+            "{}-module-readings.html",
+            filename_slug(&format!("{project_label}-{module_label}"))
+        ),
+        content_type: "text/html; charset=utf-8".to_string(),
+        html,
+        module_id: module.id,
+        reading_count,
     })
 }
 
@@ -783,6 +840,149 @@ fn format_course_references_html(references: &[ReferenceEntry], for_ako_learn: b
     lines.join("\n")
 }
 
+fn format_module_readings_html(readings: &[ReferenceEntry], for_ako_learn: bool) -> String {
+    let html = format_module_readings_html_with_generico(readings);
+    if for_ako_learn {
+        apply_ako_module_readings_hanging_indent(&strip_generico_tokens(&html))
+    } else {
+        html
+    }
+}
+
+fn format_module_readings_html_with_generico(readings: &[ReferenceEntry]) -> String {
+    if readings.is_empty() {
+        return concat!(
+            r#"<p><span style="font-size: 0.9375rem;">"#,
+            "No readings were detected for this module.",
+            "</span></p>"
+        )
+        .to_string();
+    }
+
+    let compulsory_readings = readings
+        .iter()
+        .filter(|reading| reading_category_label(reading.reading_category) == "compulsory")
+        .collect::<Vec<_>>();
+    let optional_readings = readings
+        .iter()
+        .filter(|reading| reading_category_label(reading.reading_category) == "optional")
+        .collect::<Vec<_>>();
+    let mut parts = vec![
+        "<p>These are the readings located in the module content, provided here for your convenience/change text.</p>".to_string(),
+        r#"<p>{GENERICO:type="references"}</p>"#.to_string(),
+    ];
+    let mut generico_open = true;
+
+    if !compulsory_readings.is_empty() {
+        parts.push("<h4>Compulsory readings</h4>".to_string());
+        for (index, reading) in compulsory_readings.iter().enumerate() {
+            let has_more_entries =
+                index < compulsory_readings.len() - 1 || !optional_readings.is_empty();
+            render_module_reading_entry(&mut parts, reading, has_more_entries, &mut generico_open);
+        }
+    }
+
+    if !optional_readings.is_empty() {
+        parts.push(
+            concat!(
+                r#"<p><span style="font-size: 18px; font-weight: 700;">"#,
+                "Optional readings",
+                "</span></p>"
+            )
+            .to_string(),
+        );
+        for (index, reading) in optional_readings.iter().enumerate() {
+            let has_more_entries = index < optional_readings.len() - 1;
+            render_module_reading_entry(&mut parts, reading, has_more_entries, &mut generico_open);
+        }
+    }
+
+    if generico_open {
+        parts.push(r#"<p>{GENERICO:type="references_end"}</p>"#.to_string());
+    }
+
+    parts.join("\n")
+}
+
+fn render_module_reading_entry(
+    parts: &mut Vec<String>,
+    reading: &ReferenceEntry,
+    has_more_entries: bool,
+    generico_open: &mut bool,
+) {
+    let lesson_html = trimmed_str(reading.lesson_code.as_deref())
+        .map(|lesson_code| format!("<strong>{}&nbsp;</strong>", escape_html(lesson_code)))
+        .unwrap_or_default();
+
+    parts.push(format!(
+        r#"<p><span style="font-size: 0.9375rem;">{}{}</span></p>"#,
+        lesson_html,
+        reading_export_html(reading)
+    ));
+
+    let estimated_time_text = trimmed_str(reading.estimated_reading_time.as_deref());
+    let notes_text = trimmed_str(reading.reading_notes.as_deref());
+    if estimated_time_text.is_none() && notes_text.is_none() {
+        return;
+    }
+
+    if *generico_open {
+        parts.push(r#"<p>{GENERICO:type="references_end"}</p>"#.to_string());
+        *generico_open = false;
+    }
+
+    if let Some(estimated_time_text) = estimated_time_text {
+        parts.push(format!(
+            r#"<p style="margin-left: 64px;"><strong>Estimated reading time: </strong>{}</p>"#,
+            escape_html(estimated_time_text)
+        ));
+    }
+
+    if let Some(notes_text) = notes_text {
+        parts.push(format!(
+            r#"<p style="margin-left: 64px; margin-bottom: 18px;">{}</p>"#,
+            escape_html(notes_text)
+        ));
+    }
+
+    if has_more_entries && !*generico_open {
+        parts.push(r#"<p>{GENERICO:type="references"}</p>"#.to_string());
+        *generico_open = true;
+    }
+}
+
+fn reading_export_html(reading: &ReferenceEntry) -> String {
+    let source_text = reference_export_text(reading);
+    let mut html = escape_html(&source_text);
+
+    if let Some(url) = trimmed_str(reading.url.as_deref()) {
+        let escaped_url = escape_html(url);
+        let url_link = format!(
+            r#"<a href="{escaped_url}" target="_blank" rel="noopener noreferrer">{escaped_url}</a>"#
+        );
+        if source_text.contains(url) {
+            html = html.replacen(&escaped_url, &url_link, 1);
+        } else {
+            html = format!("{html} {url_link}");
+        }
+    }
+
+    html
+}
+
+fn strip_generico_tokens(export_html: &str) -> String {
+    export_html
+        .replace(r#"<p>{GENERICO:type="references"}</p>"#, "")
+        .replace(r#"<p>{GENERICO:type="references_end"}</p>"#, "")
+}
+
+fn apply_ako_module_readings_hanging_indent(export_html: &str) -> String {
+    export_html.replace(
+        r#"<p><span style="font-size: 0.9375rem;">"#,
+        r#"<p style="margin-left: 64px; text-indent: -64px;"><span style="font-size: 0.9375rem;">"#,
+    )
+}
+
 fn reference_export_text(reference: &ReferenceEntry) -> String {
     reference
         .apa_citation
@@ -792,6 +992,10 @@ fn reference_export_text(reference: &ReferenceEntry) -> String {
         .unwrap_or("Reference pending.")
         .trim()
         .to_string()
+}
+
+fn trimmed_str(value: Option<&str>) -> Option<&str> {
+    value.map(str::trim).filter(|value| !value.is_empty())
 }
 
 fn escape_html(value: &str) -> String {

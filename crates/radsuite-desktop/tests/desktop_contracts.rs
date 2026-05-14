@@ -9,10 +9,11 @@ use radsuite_db::migrate;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState,
-    ExportCourseReferencesRequest, LinkCitationReferenceRequest, ListModuleReadingsRequest,
-    ModuleReadingError, RadciteModuleError, UpdateParagraphReviewRequest, add_course_reference,
-    add_manual_citation_for_review, add_module_reading, add_radcite_module,
-    analyse_docx_for_review, analyse_docx_path, export_course_references, get_app_status,
+    ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
+    ListModuleReadingsRequest, ModuleReadingError, ModuleReadingExportError, RadciteModuleError,
+    UpdateParagraphReviewRequest, add_course_reference, add_manual_citation_for_review,
+    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
+    export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_modules, list_saved_radcite_reviews, load_saved_radcite_review,
     mark_paragraph_resolved_for_review, verify_paragraph_citations_for_review,
@@ -725,6 +726,172 @@ async fn course_reference_export_can_omit_generico_tags() {
     assert_eq!(export.reference_count, 1);
     assert!(!export.html.contains("GENERICO"));
     assert!(export.html.contains("Smith, J. (2020)."));
+}
+
+#[tokio::test]
+async fn module_readings_can_be_exported_as_html() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Engaging people in conversations about change".to_string(),
+            code: Some("Module 1".to_string()),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: Some("1.2".to_string()),
+            apa_citation: Some(
+                "Gregory, A. (2022). Strategic public relations leadership & planning.".to_string(),
+            ),
+            citation_text: None,
+            url: Some("https://doi.org/10.4324/9781003185253".to_string()),
+            notes: None,
+            reading_notes: Some("Read Chapter 10 for macro/micro planning.".to_string()),
+            estimated_reading_time: Some("50 minutes".to_string()),
+        },
+    )
+    .await
+    .expect("add compulsory reading");
+    add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "optional".to_string(),
+            lesson_code: Some("1.3".to_string()),
+            apa_citation: Some(
+                "Taylor, J. (2023). Optional ethics <primer>. Teaching Press.".to_string(),
+            ),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add optional reading");
+
+    let export = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: module.id,
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export module readings");
+
+    assert_eq!(export.module_id, module.id);
+    assert_eq!(export.reading_count, 2);
+    assert_eq!(export.content_type, "text/html; charset=utf-8");
+    assert!(export.filename.ends_with("module-readings.html"));
+    assert!(export.html.contains(r#"{GENERICO:type="references"}"#));
+    assert!(export.html.contains(r#"{GENERICO:type="references_end"}"#));
+    assert!(export.html.contains("<h4>Compulsory readings</h4>"));
+    assert!(export.html.contains("Optional readings"));
+    assert!(export.html.contains("<strong>1.2&nbsp;</strong>"));
+    assert!(export.html.contains("leadership &amp; planning."));
+    assert!(export.html.contains("Optional ethics &lt;primer&gt;."));
+    assert!(export.html.contains(
+        r#"<a href="https://doi.org/10.4324/9781003185253" target="_blank" rel="noopener noreferrer">https://doi.org/10.4324/9781003185253</a>"#
+    ));
+    assert!(
+        export
+            .html
+            .contains("<strong>Estimated reading time: </strong>50 minutes")
+    );
+    assert!(
+        export
+            .html
+            .contains("Read Chapter 10 for macro/micro planning.")
+    );
+    assert!(
+        export.html.find(r#"{GENERICO:type="references_end"}"#)
+            < export.html.find("Estimated reading time:")
+    );
+}
+
+#[tokio::test]
+async fn module_readings_export_can_emit_ako_html() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Motivating change behaviour".to_string(),
+            code: Some("Module 2".to_string()),
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: Some("2.1".to_string()),
+            apa_citation: Some(
+                "Miller, W. R., & Rollnick, S. (2023). Motivational interviewing.".to_string(),
+            ),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add reading");
+
+    let export = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: module.id,
+            for_ako_learn: true,
+        },
+    )
+    .await
+    .expect("export module readings");
+
+    assert_eq!(export.reading_count, 1);
+    assert!(!export.html.contains("GENERICO"));
+    assert!(export.html.contains(
+        r#"<p style="margin-left: 64px; text-indent: -64px;"><span style="font-size: 0.9375rem;">"#
+    ));
+    assert!(export.html.contains("Miller, W. R."));
+}
+
+#[tokio::test]
+async fn module_readings_export_rejects_missing_module() {
+    let state = desktop_state_with_migrated_pool().await;
+    let missing_module_id = ModuleId::new();
+
+    let error = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: missing_module_id,
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect_err("reject missing module");
+
+    assert!(matches!(
+        error,
+        ModuleReadingExportError::MissingModule(module_id) if module_id == missing_module_id
+    ));
 }
 
 #[tokio::test]

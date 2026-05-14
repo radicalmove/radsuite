@@ -8,7 +8,7 @@
   import RadciteReferencesWorkspace from "./components/RadciteReferencesWorkspace.svelte";
   import RadciteReadingsWorkspace from "./components/RadciteReadingsWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
-  import { exportCourseReferences } from "./lib/exportCommands";
+  import { exportCourseReferences, exportModuleReadings } from "./lib/exportCommands";
   import {
     addModuleReading,
     addRadciteModule,
@@ -29,6 +29,7 @@
     CourseModuleSummary,
     CourseReferenceSummary,
     CourseReferencesExport,
+    ModuleReadingsExport,
     ModuleReadingSummary,
     ParagraphFilter,
     ProjectNavItem,
@@ -79,6 +80,9 @@
   let referencesExport = $state<CourseReferencesExport | null>(null);
   let referencesExportLoading = $state(false);
   let referencesExportError = $state<string | null>(null);
+  let moduleReadingsExport = $state<ModuleReadingsExport | null>(null);
+  let moduleReadingsExportLoading = $state(false);
+  let moduleReadingsExportError = $state<string | null>(null);
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0],
@@ -140,6 +144,7 @@
     radciteModulesLoading = true;
     radciteModulesError = null;
     try {
+      const previousSelectedModuleId = selectedModuleId;
       const nextModules = await listRadciteModules();
       radciteModules = nextModules;
       const nextSelected =
@@ -147,10 +152,14 @@
           ? preferredModuleId
           : nextModules[0]?.id) ?? null;
       selectedModuleId = nextSelected;
+      if (nextSelected !== previousSelectedModuleId) {
+        moduleReadingsExport = null;
+      }
       if (nextSelected) {
         await refreshModuleReadings(nextSelected);
       } else {
         moduleReadings = [];
+        moduleReadingsExport = null;
       }
     } catch (reason: unknown) {
       radciteModulesError = `Could not load modules: ${toErrorMessage(reason)}`;
@@ -178,6 +187,8 @@
 
   async function handleSelectModule(moduleId: string) {
     selectedModuleId = moduleId;
+    moduleReadingsExport = null;
+    moduleReadingsExportError = null;
     await refreshModuleReadings(moduleId);
   }
 
@@ -185,6 +196,7 @@
     radciteModulesError = null;
     try {
       const added = await addRadciteModule(input);
+      moduleReadingsExport = null;
       await refreshRadciteModules(added.id);
     } catch (reason: unknown) {
       radciteModulesError = `Could not add module: ${toErrorMessage(reason)}`;
@@ -195,6 +207,7 @@
     moduleReadingsError = null;
     try {
       const added = await addModuleReading(input);
+      moduleReadingsExport = null;
       await refreshModuleReadings(added.module_id);
     } catch (reason: unknown) {
       moduleReadingsError = `Could not add reading: ${toErrorMessage(reason)}`;
@@ -221,6 +234,21 @@
       referencesExportError = `Could not export course references: ${toErrorMessage(reason)}`;
     } finally {
       referencesExportLoading = false;
+    }
+  }
+
+  async function handleExportModuleReadings(moduleId: string, forAkoLearn: boolean) {
+    moduleReadingsExportLoading = true;
+    moduleReadingsExportError = null;
+    try {
+      moduleReadingsExport = await exportModuleReadings({
+        module_id: moduleId,
+        for_ako_learn: forAkoLearn,
+      });
+    } catch (reason: unknown) {
+      moduleReadingsExportError = `Could not export module readings: ${toErrorMessage(reason)}`;
+    } finally {
+      moduleReadingsExportLoading = false;
     }
   }
 
@@ -326,7 +354,7 @@
       if (area === "references" || area === "exports") {
         void refreshCourseReferences();
       }
-      if (area === "readings") {
+      if (area === "readings" || area === "exports") {
         void refreshRadciteModules();
       }
     }}
@@ -428,15 +456,32 @@
     {:else if activeArea === "exports"}
       <RadciteExportsWorkspace
         references={courseReferences}
+        modules={radciteModules}
+        {selectedModuleId}
+        moduleReadings={moduleReadings}
         referencesLoading={courseReferencesLoading}
-        exportResult={referencesExport}
-        exportLoading={referencesExportLoading}
-        exportError={referencesExportError}
+        modulesLoading={radciteModulesLoading}
+        readingsLoading={moduleReadingsLoading}
+        referenceExportResult={referencesExport}
+        referenceExportLoading={referencesExportLoading}
+        referenceExportError={referencesExportError}
+        moduleExportResult={moduleReadingsExport}
+        moduleExportLoading={moduleReadingsExportLoading}
+        moduleExportError={moduleReadingsExportError}
         onExportReferences={(forAkoLearn) => {
           void handleExportCourseReferences(forAkoLearn);
         }}
+        onExportModuleReadings={(moduleId, forAkoLearn) => {
+          void handleExportModuleReadings(moduleId, forAkoLearn);
+        }}
         onRefreshReferences={() => {
           void refreshCourseReferences();
+        }}
+        onRefreshModules={() => {
+          void refreshRadciteModules();
+        }}
+        onSelectModule={(moduleId) => {
+          void handleSelectModule(moduleId);
         }}
       />
     {:else}

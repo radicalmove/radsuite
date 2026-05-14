@@ -131,9 +131,22 @@ export type CourseReferencesExportRequest = {
   for_ako_learn: boolean;
 };
 
+export type ModuleReadingsExportRequest = {
+  module_id: string;
+  for_ako_learn: boolean;
+};
+
 export type CourseReferencesExport = {
   filename: string;
   content_type: string;
   html: string;
   reference_count: number;
+};
+
+export type ModuleReadingsExport = {
+  filename: string;
+  content_type: string;
+  html: string;
+  module_id: string;
+  reading_count: number;
 };
