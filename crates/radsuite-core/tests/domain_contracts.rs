@@ -1,6 +1,7 @@
 use radsuite_core::{
-    ApaValidationStatus, ApiProjectSummary, Citation, Document, DocumentFileType, DocumentVariant,
-    Paragraph, Project, ProjectId, ProjectRole, ReferenceEntry, ReferenceEntryType, UserId,
+    ApaValidationStatus, ApiProjectSummary, Citation, CourseModule, Document, DocumentFileType,
+    DocumentVariant, Paragraph, Project, ProjectId, ProjectRole, ReadingCategory, ReferenceEntry,
+    ReferenceEntryType, UserId,
 };
 
 #[test]
@@ -54,4 +55,39 @@ fn radcite_document_contracts_are_serializable() {
     assert_eq!(decoded.id, document.id);
     assert_eq!(decoded.project_id, project_id);
     assert_eq!(decoded.doc_variant, DocumentVariant::Content);
+}
+
+#[test]
+fn course_modules_and_reading_metadata_are_serializable() {
+    let project_id = ProjectId::new();
+    let module = CourseModule::new(project_id, "Module 1", Some(1));
+
+    assert_eq!(module.project_id, project_id);
+    assert_eq!(module.title, "Module 1");
+    assert_eq!(module.order_index, Some(1));
+
+    let mut reading = ReferenceEntry::new(project_id, ReferenceEntryType::Reading);
+    reading.module_id = Some(module.id);
+    reading.reading_category = Some(ReadingCategory::Optional);
+    reading.lesson_code = Some("2.3".to_string());
+    reading.reading_notes = Some("Read before workshop".to_string());
+    reading.estimated_reading_time = Some("20 minutes".to_string());
+
+    let encoded = serde_json::to_string(&reading).expect("serialize reading");
+    assert!(encoded.contains("optional"));
+    assert!(encoded.contains("2.3"));
+
+    let decoded: ReferenceEntry = serde_json::from_str(&encoded).expect("deserialize reading");
+
+    assert_eq!(decoded.module_id, Some(module.id));
+    assert_eq!(decoded.reading_category, Some(ReadingCategory::Optional));
+    assert_eq!(decoded.lesson_code.as_deref(), Some("2.3"));
+    assert_eq!(
+        decoded.reading_notes.as_deref(),
+        Some("Read before workshop")
+    );
+    assert_eq!(
+        decoded.estimated_reading_time.as_deref(),
+        Some("20 minutes")
+    );
 }

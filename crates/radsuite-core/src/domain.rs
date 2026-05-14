@@ -1,7 +1,9 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::{AssetId, CitationId, DocumentId, ParagraphId, ProjectId, ReferenceEntryId, UserId};
+use crate::{
+    AssetId, CitationId, DocumentId, ModuleId, ParagraphId, ProjectId, ReferenceEntryId, UserId,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Project {
@@ -22,6 +24,36 @@ impl Project {
             owner_id,
             code: (!code.trim().is_empty()).then_some(code),
             title: title.into(),
+            created_at: now,
+            updated_at: now,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CourseModule {
+    pub id: ModuleId,
+    pub project_id: ProjectId,
+    pub code: Option<String>,
+    pub title: String,
+    pub order_index: Option<i32>,
+    pub description: Option<String>,
+    pub archived_at: Option<DateTime<Utc>>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+}
+
+impl CourseModule {
+    pub fn new(project_id: ProjectId, title: impl Into<String>, order_index: Option<i32>) -> Self {
+        let now = Utc::now();
+        Self {
+            id: ModuleId::new(),
+            project_id,
+            code: None,
+            title: title.into(),
+            order_index,
+            description: None,
+            archived_at: None,
             created_at: now,
             updated_at: now,
         }
@@ -161,6 +193,13 @@ pub enum ReferenceEntryType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum ReadingCategory {
+    Compulsory,
+    Optional,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum ApaValidationStatus {
     Unknown,
     Valid,
@@ -171,10 +210,13 @@ pub enum ApaValidationStatus {
 pub struct ReferenceEntry {
     pub id: ReferenceEntryId,
     pub project_id: ProjectId,
+    pub module_id: Option<ModuleId>,
     pub document_id: Option<DocumentId>,
     pub paragraph_id: Option<ParagraphId>,
     pub reference_type: ReferenceEntryType,
     pub display_order: Option<i32>,
+    pub lesson_code: Option<String>,
+    pub reading_category: Option<ReadingCategory>,
     pub citation_text: Option<String>,
     pub apa_citation: Option<String>,
     pub title: Option<String>,
@@ -184,6 +226,8 @@ pub struct ReferenceEntry {
     pub doi: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
+    pub reading_notes: Option<String>,
+    pub estimated_reading_time: Option<String>,
     pub apa_validation_status: ApaValidationStatus,
     pub apa_validation_report: Option<String>,
     pub archived_at: Option<DateTime<Utc>>,
@@ -197,10 +241,13 @@ impl ReferenceEntry {
         Self {
             id: ReferenceEntryId::new(),
             project_id,
+            module_id: None,
             document_id: None,
             paragraph_id: None,
             reference_type,
             display_order: None,
+            lesson_code: None,
+            reading_category: None,
             citation_text: None,
             apa_citation: None,
             title: None,
@@ -210,6 +257,8 @@ impl ReferenceEntry {
             doi: None,
             url: None,
             notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
             apa_validation_status: ApaValidationStatus::Unknown,
             apa_validation_report: None,
             archived_at: None,

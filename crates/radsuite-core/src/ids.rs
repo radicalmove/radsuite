@@ -38,6 +38,7 @@ macro_rules! id_type {
 
 id_type!(UserId);
 id_type!(ProjectId);
+id_type!(ModuleId);
 id_type!(AssetId);
 id_type!(DocumentId);
 id_type!(ParagraphId);

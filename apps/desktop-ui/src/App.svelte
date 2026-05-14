@@ -6,8 +6,15 @@
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
   import RadciteExportsWorkspace from "./components/RadciteExportsWorkspace.svelte";
   import RadciteReferencesWorkspace from "./components/RadciteReferencesWorkspace.svelte";
+  import RadciteReadingsWorkspace from "./components/RadciteReadingsWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
   import { exportCourseReferences } from "./lib/exportCommands";
+  import {
+    addModuleReading,
+    addRadciteModule,
+    listModuleReadings,
+    listRadciteModules,
+  } from "./lib/readingCommands";
   import { addCourseReference, listCourseReferences } from "./lib/referenceCommands";
   import {
     persistAddManualCitation,
@@ -19,8 +26,10 @@
   import type {
     AnalyseDocxReviewResponse,
     AppStatus,
+    CourseModuleSummary,
     CourseReferenceSummary,
     CourseReferencesExport,
+    ModuleReadingSummary,
     ParagraphFilter,
     ProjectNavItem,
     ReviewParagraph,
@@ -60,6 +69,13 @@
   let courseReferences = $state<CourseReferenceSummary[]>([]);
   let courseReferencesLoading = $state(false);
   let courseReferencesError = $state<string | null>(null);
+  let radciteModules = $state<CourseModuleSummary[]>([]);
+  let radciteModulesLoading = $state(false);
+  let radciteModulesError = $state<string | null>(null);
+  let selectedModuleId = $state<string | null>(null);
+  let moduleReadings = $state<ModuleReadingSummary[]>([]);
+  let moduleReadingsLoading = $state(false);
+  let moduleReadingsError = $state<string | null>(null);
   let referencesExport = $state<CourseReferencesExport | null>(null);
   let referencesExportLoading = $state(false);
   let referencesExportError = $state<string | null>(null);
@@ -117,6 +133,71 @@
       courseReferencesError = `Could not load course references: ${toErrorMessage(reason)}`;
     } finally {
       courseReferencesLoading = false;
+    }
+  }
+
+  async function refreshRadciteModules(preferredModuleId: string | null = selectedModuleId) {
+    radciteModulesLoading = true;
+    radciteModulesError = null;
+    try {
+      const nextModules = await listRadciteModules();
+      radciteModules = nextModules;
+      const nextSelected =
+        (preferredModuleId && nextModules.some((module) => module.id === preferredModuleId)
+          ? preferredModuleId
+          : nextModules[0]?.id) ?? null;
+      selectedModuleId = nextSelected;
+      if (nextSelected) {
+        await refreshModuleReadings(nextSelected);
+      } else {
+        moduleReadings = [];
+      }
+    } catch (reason: unknown) {
+      radciteModulesError = `Could not load modules: ${toErrorMessage(reason)}`;
+    } finally {
+      radciteModulesLoading = false;
+    }
+  }
+
+  async function refreshModuleReadings(moduleId: string | null = selectedModuleId) {
+    if (!moduleId) {
+      moduleReadings = [];
+      return;
+    }
+
+    moduleReadingsLoading = true;
+    moduleReadingsError = null;
+    try {
+      moduleReadings = await listModuleReadings(moduleId);
+    } catch (reason: unknown) {
+      moduleReadingsError = `Could not load module readings: ${toErrorMessage(reason)}`;
+    } finally {
+      moduleReadingsLoading = false;
+    }
+  }
+
+  async function handleSelectModule(moduleId: string) {
+    selectedModuleId = moduleId;
+    await refreshModuleReadings(moduleId);
+  }
+
+  async function handleAddRadciteModule(input: Parameters<typeof addRadciteModule>[0]) {
+    radciteModulesError = null;
+    try {
+      const added = await addRadciteModule(input);
+      await refreshRadciteModules(added.id);
+    } catch (reason: unknown) {
+      radciteModulesError = `Could not add module: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleAddModuleReading(input: Parameters<typeof addModuleReading>[0]) {
+    moduleReadingsError = null;
+    try {
+      const added = await addModuleReading(input);
+      await refreshModuleReadings(added.module_id);
+    } catch (reason: unknown) {
+      moduleReadingsError = `Could not add reading: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -245,6 +326,9 @@
       if (area === "references" || area === "exports") {
         void refreshCourseReferences();
       }
+      if (area === "readings") {
+        void refreshRadciteModules();
+      }
     }}
   />
 
@@ -317,6 +401,28 @@
         }}
         onRefreshReferences={() => {
           void refreshCourseReferences();
+        }}
+      />
+    {:else if activeArea === "readings"}
+      <RadciteReadingsWorkspace
+        modules={radciteModules}
+        {selectedModuleId}
+        readings={moduleReadings}
+        modulesLoading={radciteModulesLoading}
+        readingsLoading={moduleReadingsLoading}
+        modulesError={radciteModulesError}
+        readingsError={moduleReadingsError}
+        onRefreshModules={() => {
+          void refreshRadciteModules();
+        }}
+        onSelectModule={(moduleId) => {
+          void handleSelectModule(moduleId);
+        }}
+        onAddModule={(input) => {
+          void handleAddRadciteModule(input);
+        }}
+        onAddReading={(input) => {
+          void handleAddModuleReading(input);
         }}
       />
     {:else if activeArea === "exports"}
