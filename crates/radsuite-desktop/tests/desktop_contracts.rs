@@ -4,15 +4,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use radsuite_core::ModuleId;
 use radsuite_db::migrate;
 use radsuite_desktop::{
-    AddCourseReferenceRequest, AddManualCitationRequest, AnalyseDocxError, AnalyseDocxRequest,
-    AppPaths, DesktopState, ExportCourseReferencesRequest, LinkCitationReferenceRequest,
-    UpdateParagraphReviewRequest, add_course_reference, add_manual_citation_for_review,
+    AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
+    AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths, DesktopState,
+    ExportCourseReferencesRequest, LinkCitationReferenceRequest, ListModuleReadingsRequest,
+    ModuleReadingError, RadciteModuleError, UpdateParagraphReviewRequest, add_course_reference,
+    add_manual_citation_for_review, add_module_reading, add_radcite_module,
     analyse_docx_for_review, analyse_docx_path, export_course_references, get_app_status,
-    link_citation_to_reference_for_review, list_course_references, list_saved_radcite_reviews,
-    load_saved_radcite_review, mark_paragraph_resolved_for_review,
-    verify_paragraph_citations_for_review,
+    link_citation_to_reference_for_review, list_course_references, list_module_readings,
+    list_radcite_modules, list_saved_radcite_reviews, load_saved_radcite_review,
+    mark_paragraph_resolved_for_review, verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -294,6 +297,189 @@ async fn local_course_references_are_added_to_the_radcite_project() {
 
     assert_eq!(references.len(), 1);
     assert_eq!(references[0], added);
+}
+
+#[tokio::test]
+async fn module_readings_commands_add_and_list_local_modules_and_readings() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let first_module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: " Module 1 ".to_string(),
+            code: Some(" M1 ".to_string()),
+            order_index: Some(1),
+            description: Some(" Foundations ".to_string()),
+        },
+    )
+    .await
+    .expect("add first module");
+    let second_module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Module 2".to_string(),
+            code: None,
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("add second module");
+
+    let modules = list_radcite_modules(&state).await.expect("list modules");
+
+    assert_eq!(modules, vec![first_module.clone(), second_module.clone()]);
+    assert_eq!(first_module.title, "Module 1");
+    assert_eq!(first_module.code.as_deref(), Some("M1"));
+    assert_eq!(first_module.description.as_deref(), Some("Foundations"));
+
+    let reading = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: first_module.id,
+            reading_category: " optional ".to_string(),
+            lesson_code: Some(" 1.2 ".to_string()),
+            apa_citation: Some(" Smith, J. (2024). Optional reading. ".to_string()),
+            citation_text: None,
+            url: Some(" https://example.com/reading ".to_string()),
+            notes: Some(" Manual entry ".to_string()),
+            reading_notes: Some(" Skim before class ".to_string()),
+            estimated_reading_time: Some(" 15 minutes ".to_string()),
+        },
+    )
+    .await
+    .expect("add reading");
+    add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: second_module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Jones, A. (2024). Other module reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add other module reading");
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: first_module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert_eq!(readings, vec![reading.clone()]);
+    assert_eq!(reading.module_id, first_module.id);
+    assert_eq!(reading.project_id, first_module.project_id);
+    assert_eq!(reading.reading_category, "optional");
+    assert_eq!(reading.lesson_code.as_deref(), Some("1.2"));
+    assert_eq!(
+        reading.apa_citation.as_deref(),
+        Some("Smith, J. (2024). Optional reading.")
+    );
+    assert_eq!(reading.url.as_deref(), Some("https://example.com/reading"));
+    assert_eq!(reading.notes.as_deref(), Some("Manual entry"));
+    assert_eq!(reading.reading_notes.as_deref(), Some("Skim before class"));
+    assert_eq!(
+        reading.estimated_reading_time.as_deref(),
+        Some("15 minutes")
+    );
+}
+
+#[tokio::test]
+async fn module_readings_commands_validate_input() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let empty_title = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "  ".to_string(),
+            code: None,
+            order_index: None,
+            description: None,
+        },
+    )
+    .await
+    .expect_err("reject empty module title");
+
+    assert!(matches!(empty_title, RadciteModuleError::EmptyTitle));
+
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    let empty_reading = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: None,
+            apa_citation: Some(" ".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect_err("reject empty reading text");
+
+    assert!(matches!(
+        empty_reading,
+        ModuleReadingError::EmptyReadingText
+    ));
+
+    let invalid_category = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "recommended".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Smith, J. (2024). Reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect_err("reject invalid category");
+
+    assert!(matches!(
+        invalid_category,
+        ModuleReadingError::InvalidCategory(value) if value == "recommended"
+    ));
+
+    let missing_module = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: ModuleId::new(),
+        },
+    )
+    .await
+    .expect_err("reject missing module");
+
+    assert!(matches!(
+        missing_module,
+        ModuleReadingError::MissingModule(_)
+    ));
 }
 
 #[tokio::test]

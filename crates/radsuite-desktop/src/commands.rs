@@ -2,12 +2,14 @@ use std::path::PathBuf;
 
 use radsuite_cite::{DocxIngestionError, DocxIngestionRequest, ingest_docx};
 use radsuite_core::{
-    Citation, CitationId, Document, DocumentId, Paragraph, ParagraphId, Project, ProjectId,
-    ReferenceEntry, ReferenceEntryId, ReferenceEntryType, UserId,
+    Citation, CitationId, CourseModule, Document, DocumentId, ModuleId, Paragraph, ParagraphId,
+    Project, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId, ReferenceEntryType,
+    UserId,
 };
 use radsuite_db::{
-    CitationDocumentRepository, DbError, ProjectRepository, ReferenceEntryRepository,
-    SqliteCitationDocumentRepository, SqliteProjectRepository, SqliteReferenceEntryRepository,
+    CitationDocumentRepository, CourseModuleRepository, DbError, ProjectRepository,
+    ReferenceEntryRepository, SqliteCitationDocumentRepository, SqliteCourseModuleRepository,
+    SqliteProjectRepository, SqliteReferenceEntryRepository,
 };
 use radsuite_engines::EngineStatus;
 use regex::Regex;
@@ -102,6 +104,33 @@ pub struct CourseReferenceSummary {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CourseModuleSummary {
+    pub id: ModuleId,
+    pub project_id: ProjectId,
+    pub code: Option<String>,
+    pub title: String,
+    pub order_index: Option<i32>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleReadingSummary {
+    pub id: ReferenceEntryId,
+    pub project_id: ProjectId,
+    pub module_id: ModuleId,
+    pub reading_category: String,
+    pub lesson_code: Option<String>,
+    pub apa_citation: Option<String>,
+    pub citation_text: Option<String>,
+    pub title: Option<String>,
+    pub url: Option<String>,
+    pub notes: Option<String>,
+    pub reading_notes: Option<String>,
+    pub estimated_reading_time: Option<String>,
+    pub validation_status: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReviewParagraph {
     pub id: ParagraphId,
     pub order_index: i32,
@@ -164,6 +193,32 @@ pub struct AddCourseReferenceRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AddRadciteModuleRequest {
+    pub title: String,
+    pub code: Option<String>,
+    pub order_index: Option<i32>,
+    pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListModuleReadingsRequest {
+    pub module_id: ModuleId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AddModuleReadingRequest {
+    pub module_id: ModuleId,
+    pub reading_category: String,
+    pub lesson_code: Option<String>,
+    pub apa_citation: Option<String>,
+    pub citation_text: Option<String>,
+    pub url: Option<String>,
+    pub notes: Option<String>,
+    pub reading_notes: Option<String>,
+    pub estimated_reading_time: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportCourseReferencesRequest {
     pub for_ako_learn: bool,
 }
@@ -204,6 +259,26 @@ pub enum ReviewActionError {
 pub enum CourseReferenceError {
     #[error("enter reference text before adding a course reference")]
     EmptyReferenceText,
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum RadciteModuleError {
+    #[error("enter a module title before adding it")]
+    EmptyTitle,
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum ModuleReadingError {
+    #[error("enter reading text before adding a module reading")]
+    EmptyReadingText,
+    #[error("choose compulsory or optional for the reading category")]
+    InvalidCategory(String),
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -320,6 +395,85 @@ pub async fn add_course_reference(
         .await?;
 
     Ok(course_reference_summary(reference))
+}
+
+pub async fn list_radcite_modules(
+    state: &DesktopState,
+) -> Result<Vec<CourseModuleSummary>, RadciteModuleError> {
+    let project = load_or_create_local_radcite_project(state).await?;
+    let modules = SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .list_course_modules_for_project(project.id)
+        .await?;
+
+    Ok(modules.into_iter().map(course_module_summary).collect())
+}
+
+pub async fn add_radcite_module(
+    state: &DesktopState,
+    request: AddRadciteModuleRequest,
+) -> Result<CourseModuleSummary, RadciteModuleError> {
+    let title = request.title.trim();
+    if title.is_empty() {
+        return Err(RadciteModuleError::EmptyTitle);
+    }
+
+    let project = load_or_create_local_radcite_project(state).await?;
+    let mut module = CourseModule::new(project.id, title, request.order_index);
+    module.code = trimmed_optional(request.code);
+    module.description = trimmed_optional(request.description);
+
+    SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .insert_course_module(&module)
+        .await?;
+
+    Ok(course_module_summary(module))
+}
+
+pub async fn list_module_readings(
+    state: &DesktopState,
+    request: ListModuleReadingsRequest,
+) -> Result<Vec<ModuleReadingSummary>, ModuleReadingError> {
+    load_course_module_or_error(state, request.module_id).await?;
+
+    let readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .list_reference_entries_for_module(request.module_id, ReferenceEntryType::Reading)
+        .await?;
+
+    Ok(readings
+        .into_iter()
+        .filter_map(module_reading_summary)
+        .collect())
+}
+
+pub async fn add_module_reading(
+    state: &DesktopState,
+    request: AddModuleReadingRequest,
+) -> Result<ModuleReadingSummary, ModuleReadingError> {
+    let module = load_course_module_or_error(state, request.module_id).await?;
+    let reading_category = parse_reading_category_request(&request.reading_category)?;
+    let apa_citation = trimmed_optional(request.apa_citation);
+    let citation_text = trimmed_optional(request.citation_text);
+
+    if apa_citation.is_none() && citation_text.is_none() {
+        return Err(ModuleReadingError::EmptyReadingText);
+    }
+
+    let mut reading = ReferenceEntry::new(module.project_id, ReferenceEntryType::Reading);
+    reading.module_id = Some(module.id);
+    reading.reading_category = Some(reading_category);
+    reading.lesson_code = trimmed_optional(request.lesson_code);
+    reading.apa_citation = apa_citation;
+    reading.citation_text = citation_text;
+    reading.url = trimmed_optional(request.url);
+    reading.notes = trimmed_optional(request.notes);
+    reading.reading_notes = trimmed_optional(request.reading_notes);
+    reading.estimated_reading_time = trimmed_optional(request.estimated_reading_time);
+
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .insert_reference_entry(&reading)
+        .await?;
+
+    module_reading_summary(reading).ok_or(ModuleReadingError::MissingModule(module.id))
 }
 
 pub async fn export_course_references(
@@ -528,11 +682,73 @@ fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary
     }
 }
 
+fn course_module_summary(module: CourseModule) -> CourseModuleSummary {
+    CourseModuleSummary {
+        id: module.id,
+        project_id: module.project_id,
+        code: module.code,
+        title: module.title,
+        order_index: module.order_index,
+        description: module.description,
+    }
+}
+
+fn module_reading_summary(reading: ReferenceEntry) -> Option<ModuleReadingSummary> {
+    Some(ModuleReadingSummary {
+        id: reading.id,
+        project_id: reading.project_id,
+        module_id: reading.module_id?,
+        reading_category: reading_category_label(reading.reading_category).to_string(),
+        lesson_code: reading.lesson_code,
+        apa_citation: reading.apa_citation,
+        citation_text: reading.citation_text,
+        title: reading.title,
+        url: reading.url,
+        notes: reading.notes,
+        reading_notes: reading.reading_notes,
+        estimated_reading_time: reading.estimated_reading_time,
+        validation_status: validation_status_label(reading.apa_validation_status).to_string(),
+    })
+}
+
 fn reference_type_label(reference_type: ReferenceEntryType) -> &'static str {
     match reference_type {
         ReferenceEntryType::Reference => "reference",
         ReferenceEntryType::Reading => "reading",
     }
+}
+
+fn reading_category_label(reading_category: Option<ReadingCategory>) -> &'static str {
+    match reading_category {
+        Some(ReadingCategory::Compulsory) | None => "compulsory",
+        Some(ReadingCategory::Optional) => "optional",
+    }
+}
+
+fn parse_reading_category_request(value: &str) -> Result<ReadingCategory, ModuleReadingError> {
+    match value.trim() {
+        "compulsory" => Ok(ReadingCategory::Compulsory),
+        "optional" => Ok(ReadingCategory::Optional),
+        other => Err(ModuleReadingError::InvalidCategory(other.to_string())),
+    }
+}
+
+async fn load_course_module_or_error(
+    state: &DesktopState,
+    module_id: ModuleId,
+) -> Result<CourseModule, ModuleReadingError> {
+    SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .load_course_module(module_id)
+        .await?
+        .ok_or(ModuleReadingError::MissingModule(module_id))
+}
+
+fn trimmed_optional(value: Option<String>) -> Option<String> {
+    value
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
 }
 
 fn validation_status_label(status: radsuite_core::ApaValidationStatus) -> &'static str {
