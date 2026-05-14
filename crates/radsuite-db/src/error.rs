@@ -26,6 +26,9 @@ pub enum DbError {
     #[error("unknown reference entry type: {0}")]
     UnknownReferenceEntryType(String),
 
+    #[error("unknown reading category: {0}")]
+    UnknownReadingCategory(String),
+
     #[error("unknown APA validation status: {0}")]
     UnknownApaValidationStatus(String),
 }

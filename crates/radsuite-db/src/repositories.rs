@@ -1,9 +1,10 @@
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use radsuite_core::{
-    ApaValidationStatus, ApiProjectSummary, AssetId, Citation, CitationId, Document,
-    DocumentFileType, DocumentId, DocumentVariant, Paragraph, ParagraphId, Project, ProjectId,
-    ProjectRole, ReferenceEntry, ReferenceEntryId, ReferenceEntryType, UserId,
+    ApaValidationStatus, ApiProjectSummary, AssetId, Citation, CitationId, CourseModule, Document,
+    DocumentFileType, DocumentId, DocumentVariant, ModuleId, Paragraph, ParagraphId, Project,
+    ProjectId, ProjectRole, ReadingCategory, ReferenceEntry, ReferenceEntryId, ReferenceEntryType,
+    UserId,
 };
 use sqlx::{Row, SqlitePool};
 use uuid::Uuid;
@@ -161,11 +162,112 @@ fn parse_role(value: &str) -> Result<ProjectRole, DbError> {
 }
 
 #[async_trait]
+pub trait CourseModuleRepository {
+    async fn insert_course_module(&self, module: &CourseModule) -> Result<(), DbError>;
+    async fn list_course_modules_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<CourseModule>, DbError>;
+    async fn load_course_module(
+        &self,
+        module_id: ModuleId,
+    ) -> Result<Option<CourseModule>, DbError>;
+}
+
+#[derive(Debug, Clone)]
+pub struct SqliteCourseModuleRepository {
+    pool: SqlitePool,
+}
+
+impl SqliteCourseModuleRepository {
+    pub fn new(pool: SqlitePool) -> Self {
+        Self { pool }
+    }
+}
+
+#[async_trait]
+impl CourseModuleRepository for SqliteCourseModuleRepository {
+    async fn insert_course_module(&self, module: &CourseModule) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            INSERT INTO course_modules
+                (id, project_id, code, title, order_index, description, archived_at, created_at,
+                 updated_at)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            "#,
+        )
+        .bind(module.id.0.to_string())
+        .bind(module.project_id.0.to_string())
+        .bind(module.code.as_deref())
+        .bind(&module.title)
+        .bind(module.order_index)
+        .bind(module.description.as_deref())
+        .bind(module.archived_at.map(|value| value.to_rfc3339()))
+        .bind(module.created_at.to_rfc3339())
+        .bind(module.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn list_course_modules_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<CourseModule>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, project_id, code, title, order_index, description, archived_at, created_at,
+                   updated_at
+            FROM course_modules
+            WHERE project_id = ?1
+              AND archived_at IS NULL
+            ORDER BY
+                COALESCE(order_index, 2147483647),
+                title COLLATE NOCASE,
+                id
+            "#,
+        )
+        .bind(project_id.0.to_string())
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.iter().map(course_module_from_row).collect()
+    }
+
+    async fn load_course_module(
+        &self,
+        module_id: ModuleId,
+    ) -> Result<Option<CourseModule>, DbError> {
+        let row = sqlx::query(
+            r#"
+            SELECT id, project_id, code, title, order_index, description, archived_at, created_at,
+                   updated_at
+            FROM course_modules
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(module_id.0.to_string())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        row.as_ref().map(course_module_from_row).transpose()
+    }
+}
+
+#[async_trait]
 pub trait ReferenceEntryRepository {
     async fn insert_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError>;
     async fn list_reference_entries_for_project(
         &self,
         project_id: ProjectId,
+        reference_type: ReferenceEntryType,
+    ) -> Result<Vec<ReferenceEntry>, DbError>;
+    async fn list_reference_entries_for_module(
+        &self,
+        module_id: ModuleId,
         reference_type: ReferenceEntryType,
     ) -> Result<Vec<ReferenceEntry>, DbError>;
 }
@@ -189,21 +291,25 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         sqlx::query(
             r#"
             INSERT INTO reference_entries
-                (id, project_id, document_id, paragraph_id, reference_type, display_order,
-                 citation_text, apa_citation, title, authors_json, publication_year, source,
-                 doi, url, notes, apa_validation_status, apa_validation_report, archived_at,
-                 created_at, updated_at)
+                (id, project_id, module_id, document_id, paragraph_id, reference_type,
+                 display_order, lesson_code, reading_category, citation_text, apa_citation,
+                 title, authors_json, publication_year, source, doi, url, notes, reading_notes,
+                 estimated_reading_time, apa_validation_status, apa_validation_report,
+                 archived_at, created_at, updated_at)
             VALUES
                 (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17,
-                 ?18, ?19, ?20)
+                 ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25)
             "#,
         )
         .bind(entry.id.0.to_string())
         .bind(entry.project_id.0.to_string())
+        .bind(entry.module_id.map(|id| id.0.to_string()))
         .bind(entry.document_id.map(|id| id.0.to_string()))
         .bind(entry.paragraph_id.map(|id| id.0.to_string()))
         .bind(reference_entry_type_as_str(entry.reference_type))
         .bind(entry.display_order)
+        .bind(entry.lesson_code.as_deref())
+        .bind(entry.reading_category.map(reading_category_as_str))
         .bind(entry.citation_text.as_deref())
         .bind(entry.apa_citation.as_deref())
         .bind(entry.title.as_deref())
@@ -213,6 +319,8 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         .bind(entry.doi.as_deref())
         .bind(entry.url.as_deref())
         .bind(entry.notes.as_deref())
+        .bind(entry.reading_notes.as_deref())
+        .bind(entry.estimated_reading_time.as_deref())
         .bind(apa_validation_status_as_str(entry.apa_validation_status))
         .bind(entry.apa_validation_report.as_deref())
         .bind(entry.archived_at.map(|value| value.to_rfc3339()))
@@ -232,9 +340,10 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         let rows = sqlx::query(
             r#"
             SELECT
-                id, project_id, document_id, paragraph_id, reference_type, display_order,
-                citation_text, apa_citation, title, authors_json, publication_year, source,
-                doi, url, notes, apa_validation_status, apa_validation_report, archived_at,
+                id, project_id, module_id, document_id, paragraph_id, reference_type,
+                display_order, lesson_code, reading_category, citation_text, apa_citation,
+                title, authors_json, publication_year, source, doi, url, notes, reading_notes,
+                estimated_reading_time, apa_validation_status, apa_validation_report, archived_at,
                 created_at, updated_at
             FROM reference_entries
             WHERE project_id = ?1
@@ -247,6 +356,43 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
             "#,
         )
         .bind(project_id.0.to_string())
+        .bind(reference_entry_type_as_str(reference_type))
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.iter().map(reference_entry_from_row).collect()
+    }
+
+    async fn list_reference_entries_for_module(
+        &self,
+        module_id: ModuleId,
+        reference_type: ReferenceEntryType,
+    ) -> Result<Vec<ReferenceEntry>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id, project_id, module_id, document_id, paragraph_id, reference_type,
+                display_order, lesson_code, reading_category, citation_text, apa_citation,
+                title, authors_json, publication_year, source, doi, url, notes, reading_notes,
+                estimated_reading_time, apa_validation_status, apa_validation_report, archived_at,
+                created_at, updated_at
+            FROM reference_entries
+            WHERE module_id = ?1
+              AND reference_type = ?2
+              AND archived_at IS NULL
+            ORDER BY
+                CASE reading_category
+                    WHEN 'compulsory' THEN 0
+                    WHEN 'optional' THEN 1
+                    ELSE 2
+                END,
+                COALESCE(lesson_code, ''),
+                COALESCE(display_order, 2147483647),
+                COALESCE(apa_citation, citation_text, title, '') COLLATE NOCASE,
+                id
+            "#,
+        )
+        .bind(module_id.0.to_string())
         .bind(reference_entry_type_as_str(reference_type))
         .fetch_all(&self.pool)
         .await?;
@@ -697,6 +843,25 @@ fn project_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Project, DbError> {
     })
 }
 
+fn course_module_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<CourseModule, DbError> {
+    let id: String = row.try_get("id")?;
+    let project_id: String = row.try_get("project_id")?;
+    let created_at: String = row.try_get("created_at")?;
+    let updated_at: String = row.try_get("updated_at")?;
+
+    Ok(CourseModule {
+        id: ModuleId(Uuid::parse_str(&id)?),
+        project_id: ProjectId(Uuid::parse_str(&project_id)?),
+        code: row.try_get("code")?,
+        title: row.try_get("title")?,
+        order_index: row.try_get("order_index")?,
+        description: row.try_get("description")?,
+        archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
+        created_at: parse_datetime(&created_at)?,
+        updated_at: parse_datetime(&updated_at)?,
+    })
+}
+
 fn reference_entry_type_as_str(value: ReferenceEntryType) -> &'static str {
     match value {
         ReferenceEntryType::Reference => "reference",
@@ -709,6 +874,21 @@ fn parse_reference_entry_type(value: &str) -> Result<ReferenceEntryType, DbError
         "reference" => Ok(ReferenceEntryType::Reference),
         "reading" => Ok(ReferenceEntryType::Reading),
         other => Err(DbError::UnknownReferenceEntryType(other.to_string())),
+    }
+}
+
+fn reading_category_as_str(value: ReadingCategory) -> &'static str {
+    match value {
+        ReadingCategory::Compulsory => "compulsory",
+        ReadingCategory::Optional => "optional",
+    }
+}
+
+fn parse_reading_category(value: &str) -> Result<ReadingCategory, DbError> {
+    match value {
+        "compulsory" => Ok(ReadingCategory::Compulsory),
+        "optional" => Ok(ReadingCategory::Optional),
+        other => Err(DbError::UnknownReadingCategory(other.to_string())),
     }
 }
 
@@ -732,9 +912,11 @@ fn parse_apa_validation_status(value: &str) -> Result<ApaValidationStatus, DbErr
 fn reference_entry_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<ReferenceEntry, DbError> {
     let id: String = row.try_get("id")?;
     let project_id: String = row.try_get("project_id")?;
+    let module_id: Option<String> = row.try_get("module_id")?;
     let document_id: Option<String> = row.try_get("document_id")?;
     let paragraph_id: Option<String> = row.try_get("paragraph_id")?;
     let reference_type: String = row.try_get("reference_type")?;
+    let reading_category: Option<String> = row.try_get("reading_category")?;
     let authors_json: String = row.try_get("authors_json")?;
     let apa_validation_status: String = row.try_get("apa_validation_status")?;
     let created_at: String = row.try_get("created_at")?;
@@ -743,6 +925,11 @@ fn reference_entry_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<ReferenceEn
     Ok(ReferenceEntry {
         id: ReferenceEntryId(Uuid::parse_str(&id)?),
         project_id: ProjectId(Uuid::parse_str(&project_id)?),
+        module_id: module_id
+            .as_deref()
+            .map(Uuid::parse_str)
+            .transpose()?
+            .map(ModuleId),
         document_id: document_id
             .as_deref()
             .map(Uuid::parse_str)
@@ -755,6 +942,11 @@ fn reference_entry_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<ReferenceEn
             .map(ParagraphId),
         reference_type: parse_reference_entry_type(&reference_type)?,
         display_order: row.try_get("display_order")?,
+        lesson_code: row.try_get("lesson_code")?,
+        reading_category: reading_category
+            .as_deref()
+            .map(parse_reading_category)
+            .transpose()?,
         citation_text: row.try_get("citation_text")?,
         apa_citation: row.try_get("apa_citation")?,
         title: row.try_get("title")?,
@@ -764,6 +956,8 @@ fn reference_entry_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<ReferenceEn
         doi: row.try_get("doi")?,
         url: row.try_get("url")?,
         notes: row.try_get("notes")?,
+        reading_notes: row.try_get("reading_notes")?,
+        estimated_reading_time: row.try_get("estimated_reading_time")?,
         apa_validation_status: parse_apa_validation_status(&apa_validation_status)?,
         apa_validation_report: row.try_get("apa_validation_report")?,
         archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,

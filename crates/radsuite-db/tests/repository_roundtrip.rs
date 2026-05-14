@@ -6,13 +6,13 @@ use std::{
 
 use radsuite_cite::{DocxIngestionRequest, ingest_docx};
 use radsuite_core::{
-    ApaValidationStatus, Citation, Document, DocumentFileType, Paragraph, Project, ProjectRole,
-    ReferenceEntry, ReferenceEntryType, UserId,
+    ApaValidationStatus, Citation, CourseModule, Document, DocumentFileType, Paragraph, Project,
+    ProjectRole, ReadingCategory, ReferenceEntry, ReferenceEntryType, UserId,
 };
 use radsuite_db::{
-    CitationDocumentRepository, ProjectRepository, ReferenceEntryRepository,
-    SqliteCitationDocumentRepository, SqliteProjectRepository, SqliteReferenceEntryRepository,
-    migrate,
+    CitationDocumentRepository, CourseModuleRepository, ProjectRepository,
+    ReferenceEntryRepository, SqliteCitationDocumentRepository, SqliteCourseModuleRepository,
+    SqliteProjectRepository, SqliteReferenceEntryRepository, migrate,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -187,6 +187,78 @@ async fn reference_entries_can_be_inserted_and_listed_for_project() {
         references[0].apa_validation_status,
         ApaValidationStatus::Unknown
     );
+}
+
+#[tokio::test]
+async fn module_readings_can_be_inserted_and_listed_for_module() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let owner_id = UserId::new();
+    let project = Project::new("CRJU150", "Legal Method", owner_id);
+    project_repo
+        .insert_project(&project)
+        .await
+        .expect("insert project");
+
+    let module_repo = SqliteCourseModuleRepository::new(pool.clone());
+    let mut first_module = CourseModule::new(project.id, "Module 1", Some(1));
+    first_module.code = Some("M1".to_string());
+    first_module.description = Some("Introductory material".to_string());
+    let second_module = CourseModule::new(project.id, "Module 2", Some(2));
+
+    module_repo
+        .insert_course_module(&first_module)
+        .await
+        .expect("insert first module");
+    module_repo
+        .insert_course_module(&second_module)
+        .await
+        .expect("insert second module");
+
+    let modules = module_repo
+        .list_course_modules_for_project(project.id)
+        .await
+        .expect("list modules");
+
+    assert_eq!(modules, vec![first_module.clone(), second_module.clone()]);
+
+    let reference_repo = SqliteReferenceEntryRepository::new(pool);
+    let mut reading = ReferenceEntry::new(project.id, ReferenceEntryType::Reading);
+    reading.module_id = Some(first_module.id);
+    reading.reading_category = Some(ReadingCategory::Optional);
+    reading.lesson_code = Some("1.2".to_string());
+    reading.apa_citation =
+        Some("Smith, J. (2024). Optional module reading. Learning Journal.".to_string());
+    reading.url = Some("https://example.com/reading".to_string());
+    reading.reading_notes = Some("Skim before class".to_string());
+    reading.estimated_reading_time = Some("15 minutes".to_string());
+    reading.display_order = Some(1);
+
+    let mut other_module_reading = ReferenceEntry::new(project.id, ReferenceEntryType::Reading);
+    other_module_reading.module_id = Some(second_module.id);
+    other_module_reading.apa_citation = Some("Other, A. (2024). Another reading.".to_string());
+
+    reference_repo
+        .insert_reference_entry(&reading)
+        .await
+        .expect("insert reading");
+    reference_repo
+        .insert_reference_entry(&other_module_reading)
+        .await
+        .expect("insert other reading");
+
+    let readings = reference_repo
+        .list_reference_entries_for_module(first_module.id, ReferenceEntryType::Reading)
+        .await
+        .expect("list readings");
+
+    assert_eq!(readings, vec![reading]);
 }
 
 #[tokio::test]
