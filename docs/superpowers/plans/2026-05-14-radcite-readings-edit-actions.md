@@ -47,13 +47,13 @@
 
 ## Task 2: Desktop Command Contracts
 
-- [ ] Add failing desktop tests for updating/archiving a module and updating/archiving a reading.
-- [ ] Add failing validation coverage for empty module title, missing module, missing reading, invalid category, and empty reading text.
-- [ ] Run `cargo test -p radsuite-desktop module_readings_update` and confirm command/types are missing.
-- [ ] Implement desktop request types and command functions.
-- [ ] Reuse existing validation helpers where possible.
-- [ ] Run focused desktop tests and confirm they pass.
-- [ ] Commit desktop command work.
+- [x] Add failing desktop tests for updating/archiving a module and updating/archiving a reading.
+- [x] Add failing validation coverage for empty module title, missing module, missing reading, invalid category, and empty reading text.
+- [x] Run `cargo test -p radsuite-desktop module_readings_update` and confirm command/types are missing.
+- [x] Implement desktop request types and command functions.
+- [x] Reuse existing validation helpers where possible.
+- [x] Run focused desktop tests and confirm they pass.
+- [x] Commit desktop command work.
 
 ## Task 3: Tauri And TypeScript Bridge
 

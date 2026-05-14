@@ -3101,6 +3101,7 @@ dependencies = [
 name = "radsuite-desktop"
 version = "0.1.0"
 dependencies = [
+ "chrono",
  "directories",
  "radsuite-cite",
  "radsuite-core",
