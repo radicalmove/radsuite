@@ -8,6 +8,8 @@ import {
   archiveRadciteModule,
   listModuleReadings,
   listRadciteModules,
+  previewModuleReadingsImport,
+  saveModuleReadingsImport,
   updateModuleReading,
   updateRadciteModule,
 } from "./readingCommands";
@@ -196,6 +198,75 @@ describe("reading commands", () => {
     expect(invoke).toHaveBeenCalledWith("archive_module_reading", {
       request: {
         reading_id: "reading-1",
+      },
+    });
+  });
+
+  test("previews a trimmed module readings import", async () => {
+    const candidates = [
+      {
+        module_order: 1,
+        module_title: "Module 1",
+        reading_category: "compulsory",
+        lesson_code: "1.2",
+        apa_citation: "Smith, J. (2024). Worked examples.",
+        citation_text: "1.2 Smith, J. (2024). Worked examples.",
+        url: "https://example.com/worked",
+      },
+    ];
+    vi.mocked(invoke).mockResolvedValue(candidates);
+
+    await expect(
+      previewModuleReadingsImport({
+        path: " /tmp/readings.docx ",
+        original_filename: " Readings.docx ",
+      }),
+    ).resolves.toBe(candidates);
+
+    expect(invoke).toHaveBeenCalledWith("preview_module_readings_import", {
+      request: {
+        path: "/tmp/readings.docx",
+        original_filename: "Readings.docx",
+      },
+    });
+  });
+
+  test("saves trimmed selected module readings import candidates", async () => {
+    vi.mocked(invoke).mockResolvedValue([readingSummary]);
+
+    await expect(
+      saveModuleReadingsImport({
+        candidates: [
+          {
+            module_id: "module-1",
+            reading_category: " optional ",
+            lesson_code: " 1.2 ",
+            apa_citation: " Smith, J. (2024). Worked examples. ",
+            citation_text: "",
+            url: " https://example.com/worked ",
+            notes: " Imported from DOCX ",
+            reading_notes: " Read before class ",
+            estimated_reading_time: " 20 minutes ",
+          },
+        ],
+      }),
+    ).resolves.toEqual([readingSummary]);
+
+    expect(invoke).toHaveBeenCalledWith("save_module_readings_import", {
+      request: {
+        candidates: [
+          {
+            module_id: "module-1",
+            reading_category: "optional",
+            lesson_code: "1.2",
+            apa_citation: "Smith, J. (2024). Worked examples.",
+            citation_text: null,
+            url: "https://example.com/worked",
+            notes: "Imported from DOCX",
+            reading_notes: "Read before class",
+            estimated_reading_time: "20 minutes",
+          },
+        ],
       },
     });
   });

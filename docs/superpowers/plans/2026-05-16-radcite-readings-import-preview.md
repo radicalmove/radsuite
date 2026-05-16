@@ -77,15 +77,15 @@
 
 ## Task 3: Tauri And TypeScript Bridge
 
-- [ ] Add failing Vitest cases for:
+- [x] Add failing Vitest cases for:
   - `previewModuleReadingsImport({ path, original_filename })`
   - `saveModuleReadingsImport({ candidates })`
-- [ ] Run `npm test -- --run src/lib/readingCommands.test.ts` and confirm helpers are missing.
-- [ ] Add TypeScript types in `apps/desktop-ui/src/types.ts` for `ModuleReadingImportCandidate`.
-- [ ] Add helper functions in `apps/desktop-ui/src/lib/readingCommands.ts`, trimming editable fields and preserving `module_id`.
-- [ ] Expose Tauri wrappers in `apps/desktop-ui/src-tauri/src/main.rs`.
-- [ ] Run focused Vitest and confirm it passes.
-- [ ] Commit bridge work.
+- [x] Run `npm test -- --run src/lib/readingCommands.test.ts` and confirm helpers are missing.
+- [x] Add TypeScript types in `apps/desktop-ui/src/types.ts` for `ModuleReadingImportCandidate`.
+- [x] Add helper functions in `apps/desktop-ui/src/lib/readingCommands.ts`, trimming editable fields and preserving `module_id`.
+- [x] Expose Tauri wrappers in `apps/desktop-ui/src-tauri/src/main.rs`.
+- [x] Run focused Vitest and confirm it passes.
+- [x] Commit bridge work.
 
 ## Task 4: Readings Workspace Import UI
 
