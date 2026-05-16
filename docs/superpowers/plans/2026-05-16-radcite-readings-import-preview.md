@@ -113,20 +113,21 @@
 
 ## Task 5: Full Verification And Publish
 
-- [ ] Run `cargo fmt --all`.
-- [ ] Run `cargo fmt --all --check`.
-- [ ] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
-- [ ] Run `cargo test --workspace --all-features`.
-- [ ] Run `npm run test:style`.
-- [ ] Run `npm test -- --run`.
-- [ ] Run `npm run build`.
-- [ ] Browser/Tauri smoke-test:
+- [x] Run `cargo fmt --all`.
+- [x] Run `cargo fmt --all --check`.
+- [x] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
+- [x] Run `cargo test --workspace --all-features`.
+- [x] Run `npm run test:style`.
+- [x] Run `npm test -- --run`.
+- [x] Run `npm run build`.
+- [x] Browser/Tauri smoke-test:
   - open Readings
   - create/select a module
   - preview a DOCX with reading candidates
   - save one selected candidate
   - confirm it appears in module readings and export count updates
-- [ ] Commit verification fixes if needed.
+- Smoke note: Browser-only UI smoke verified the Readings import panel renders. Tauri smoke used a temporary profile, opened Readings, loaded a temp module, previewed `/tmp/radsuite-smoke/readings-import-smoke.docx`, saved the selected candidates, confirmed `2 readings saved to the Local DB.` in the UI, and confirmed two `reference_type='reading'` rows in SQLite.
+- [x] Commit verification fixes if needed.
 - [ ] Push branch.
 - [ ] Open PR, wait for CI, merge if checks pass.
 
