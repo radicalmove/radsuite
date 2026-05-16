@@ -4,8 +4,10 @@ use radsuite_desktop::{
     AppStatus, ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, CourseModuleSummary,
     CourseReferenceSummary, CourseReferencesExport, DesktopState, ExportCourseReferencesRequest,
     ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListModuleReadingsRequest,
-    LoadSavedReviewRequest, ModuleReadingSummary, ModuleReadingsExport, SavedRadciteReviewSummary,
-    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
+    LoadSavedReviewRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
+    ModuleReadingsExport, PreviewModuleReadingsImportRequest, SaveModuleReadingsImportRequest,
+    SavedRadciteReviewSummary, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -151,6 +153,26 @@ async fn archive_module_reading(
 }
 
 #[tauri::command]
+async fn preview_module_readings_import(
+    state: tauri::State<'_, DesktopState>,
+    request: PreviewModuleReadingsImportRequest,
+) -> Result<Vec<ModuleReadingImportCandidateSummary>, String> {
+    radsuite_desktop::preview_module_readings_import(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn save_module_readings_import(
+    state: tauri::State<'_, DesktopState>,
+    request: SaveModuleReadingsImportRequest,
+) -> Result<Vec<ModuleReadingSummary>, String> {
+    radsuite_desktop::save_module_readings_import(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn export_course_references(
     state: tauri::State<'_, DesktopState>,
     request: ExportCourseReferencesRequest,
@@ -233,6 +255,8 @@ fn main() {
             add_module_reading,
             update_module_reading,
             archive_module_reading,
+            preview_module_readings_import,
+            save_module_readings_import,
             export_course_references,
             export_module_readings,
             mark_radcite_paragraph_resolved,

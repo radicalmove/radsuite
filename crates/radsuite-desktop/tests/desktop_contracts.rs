@@ -11,14 +11,17 @@ use radsuite_desktop::{
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths,
     ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
-    ListModuleReadingsRequest, ModuleReadingError, ModuleReadingExportError, RadciteModuleError,
-    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
-    add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
+    ListModuleReadingsRequest, ModuleReadingError, ModuleReadingExportError,
+    ModuleReadingImportError, PreviewModuleReadingsImportRequest, RadciteModuleError,
+    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest, UpdateModuleReadingRequest,
+    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest, add_course_reference,
+    add_manual_citation_for_review, add_module_reading, add_radcite_module,
     analyse_docx_for_review, analyse_docx_path, archive_module_reading, archive_radcite_module,
     export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_modules, list_saved_radcite_reviews, load_saved_radcite_review,
-    mark_paragraph_resolved_for_review, update_module_reading, update_radcite_module,
+    mark_paragraph_resolved_for_review, preview_module_readings_import,
+    save_module_readings_import, update_module_reading, update_radcite_module,
     verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
@@ -483,6 +486,160 @@ async fn module_readings_commands_validate_input() {
     assert!(matches!(
         missing_module,
         ModuleReadingError::MissingModule(_)
+    ));
+}
+
+#[tokio::test]
+async fn module_readings_import_preview_extracts_candidates_without_persisting() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    let path = write_readings_import_docx("desktop-readings-import-preview.docx");
+
+    let candidates = preview_module_readings_import(
+        &state,
+        PreviewModuleReadingsImportRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("module-readings.docx".to_string()),
+        },
+    )
+    .await
+    .expect("preview readings import");
+
+    assert_eq!(candidates.len(), 2);
+    assert_eq!(candidates[0].module_order, Some(1));
+    assert_eq!(candidates[0].module_title.as_deref(), Some("Module 1"));
+    assert_eq!(candidates[0].reading_category, "compulsory");
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("1.2"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "Smith, J. (2024). Worked examples. https://example.com/worked"
+    );
+    assert_eq!(
+        candidates[0].citation_text.as_deref(),
+        Some("1.2 Smith, J. (2024). Worked examples. https://example.com/worked")
+    );
+    assert_eq!(
+        candidates[0].url.as_deref(),
+        Some("https://example.com/worked")
+    );
+    assert_eq!(candidates[1].reading_category, "optional");
+    assert_eq!(
+        candidates[1].apa_citation,
+        "Taylor, R. (2023). Optional primer."
+    );
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert!(readings.is_empty());
+}
+
+#[tokio::test]
+async fn module_readings_import_save_persists_selected_candidates() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    let saved = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: " optional ".to_string(),
+                lesson_code: Some(" 1.2 ".to_string()),
+                apa_citation: Some(" Smith, J. (2024). Worked examples. ".to_string()),
+                citation_text: None,
+                url: Some(" https://example.com/worked ".to_string()),
+                notes: Some(" Imported from DOCX ".to_string()),
+                reading_notes: Some(" Read before class ".to_string()),
+                estimated_reading_time: Some(" 20 minutes ".to_string()),
+            }],
+        },
+    )
+    .await
+    .expect("save readings import");
+
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].module_id, module.id);
+    assert_eq!(saved[0].project_id, module.project_id);
+    assert_eq!(saved[0].reading_category, "optional");
+    assert_eq!(saved[0].lesson_code.as_deref(), Some("1.2"));
+    assert_eq!(
+        saved[0].apa_citation.as_deref(),
+        Some("Smith, J. (2024). Worked examples.")
+    );
+    assert_eq!(saved[0].url.as_deref(), Some("https://example.com/worked"));
+    assert_eq!(saved[0].notes.as_deref(), Some("Imported from DOCX"));
+    assert_eq!(saved[0].reading_notes.as_deref(), Some("Read before class"));
+    assert_eq!(
+        saved[0].estimated_reading_time.as_deref(),
+        Some("20 minutes")
+    );
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert_eq!(readings, saved);
+}
+
+#[tokio::test]
+async fn module_readings_import_save_validates_missing_module() {
+    let state = desktop_state_with_migrated_pool().await;
+    let missing_module_id = ModuleId::new();
+
+    let error = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: missing_module_id,
+                reading_category: "compulsory".to_string(),
+                lesson_code: None,
+                apa_citation: Some("Smith, J. (2024). Worked examples.".to_string()),
+                citation_text: None,
+                url: None,
+                notes: None,
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect_err("reject missing module");
+
+    assert!(matches!(
+        error,
+        ModuleReadingImportError::MissingModule(module_id) if module_id == missing_module_id
     ));
 }
 
@@ -1242,6 +1399,14 @@ async fn desktop_state_with_migrated_pool() -> DesktopState {
 }
 
 fn write_minimal_docx(filename: &str) -> PathBuf {
+    write_docx_with_document_xml(filename, document_xml())
+}
+
+fn write_readings_import_docx(filename: &str) -> PathBuf {
+    write_docx_with_document_xml(filename, readings_import_document_xml())
+}
+
+fn write_docx_with_document_xml(filename: &str, document_xml: &str) -> PathBuf {
     let path = std::env::temp_dir().join(format!("radsuite-{filename}"));
     let file = File::create(&path).expect("create docx fixture");
     let mut zip = ZipWriter::new(file);
@@ -1259,7 +1424,7 @@ fn write_minimal_docx(filename: &str) -> PathBuf {
     .expect("write content types");
 
     start_file(&mut zip, "word/document.xml", options);
-    zip.write_all(document_xml().as_bytes())
+    zip.write_all(document_xml.as_bytes())
         .expect("write document XML");
 
     zip.finish().expect("finish docx");
@@ -1280,6 +1445,32 @@ fn document_xml() -> &'static str {
     </w:p>
     <w:p>
       <w:r><w:t>A 2021 survey reported that 64 percent of respondents changed their study habits.</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>"#
+}
+
+fn readings_import_document_xml() -> &'static str {
+    r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Module 1</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>Compulsory readings</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>1.2 Smith, J. (2024). Worked examples. https://example.com/worked</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>Optional readings</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>Taylor, R. (2023). Optional primer.</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>This ordinary teaching note should not be imported.</w:t></w:r>
     </w:p>
   </w:body>
 </w:document>"#

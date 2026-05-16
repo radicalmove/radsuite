@@ -127,6 +127,16 @@ export type ModuleReadingSummary = {
   validation_status: "unknown" | "valid" | "needs_fix";
 };
 
+export type ModuleReadingImportCandidate = {
+  module_order: number | null;
+  module_title: string | null;
+  reading_category: "compulsory" | "optional";
+  lesson_code: string | null;
+  apa_citation: string;
+  citation_text: string | null;
+  url: string | null;
+};
+
 export type CourseReferencesExportRequest = {
   for_ako_learn: boolean;
 };

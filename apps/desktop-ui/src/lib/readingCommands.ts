@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { CourseModuleSummary, ModuleReadingSummary } from "../types";
+import type {
+  CourseModuleSummary,
+  ModuleReadingImportCandidate,
+  ModuleReadingSummary,
+} from "../types";
 
 export type AddRadciteModuleInput = {
   title: string;
@@ -26,6 +30,15 @@ export type AddModuleReadingInput = {
 
 export type UpdateModuleReadingInput = Omit<AddModuleReadingInput, "module_id"> & {
   reading_id: string;
+};
+
+export type PreviewModuleReadingsImportInput = {
+  path: string;
+  original_filename?: string | null;
+};
+
+export type SaveModuleReadingsImportInput = {
+  candidates: AddModuleReadingInput[];
 };
 
 function trimmedOrNull(value: string | null | undefined): string | null {
@@ -104,6 +117,38 @@ export function archiveModuleReading(readingId: string): Promise<ModuleReadingSu
     },
   });
 }
+
+export function previewModuleReadingsImport(
+  input: PreviewModuleReadingsImportInput,
+): Promise<ModuleReadingImportCandidate[]> {
+  return invoke<ModuleReadingImportCandidate[]>("preview_module_readings_import", {
+    request: {
+      path: input.path.trim(),
+      original_filename: trimmedOrNull(input.original_filename),
+    },
+  });
+}
+
+export function saveModuleReadingsImport(
+  input: SaveModuleReadingsImportInput,
+): Promise<ModuleReadingSummary[]> {
+  return invoke<ModuleReadingSummary[]>("save_module_readings_import", {
+    request: {
+      candidates: input.candidates.map((candidate) => ({
+        module_id: candidate.module_id,
+        reading_category: candidate.reading_category.trim(),
+        lesson_code: trimmedOrNull(candidate.lesson_code),
+        apa_citation: trimmedOrNull(candidate.apa_citation),
+        citation_text: trimmedOrNull(candidate.citation_text),
+        url: trimmedOrNull(candidate.url),
+        notes: trimmedOrNull(candidate.notes),
+        reading_notes: trimmedOrNull(candidate.reading_notes),
+        estimated_reading_time: trimmedOrNull(candidate.estimated_reading_time),
+      })),
+    },
+  });
+}
+
 export function addModuleReading(
   input: AddModuleReadingInput,
 ): Promise<ModuleReadingSummary> {

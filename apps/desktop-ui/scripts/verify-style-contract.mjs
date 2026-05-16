@@ -108,6 +108,8 @@ for (const needle of [
   "archiveRadciteModule",
   "updateModuleReading",
   "archiveModuleReading",
+  "previewModuleReadingsImport",
+  "saveModuleReadingsImport",
 ]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
@@ -172,6 +174,10 @@ for (const needle of [
   "Optional",
   "module-selector",
   "reading-list-panel",
+  "reading-import-panel",
+  "reading-import-candidate",
+  "Preview readings",
+  "Save selected readings",
   "Edit module",
   "Remove module",
   "Update module",
@@ -198,6 +204,10 @@ for (const needle of [
   "UpdateModuleReadingRequest",
   "archive_module_reading",
   "ArchiveModuleReadingRequest",
+  "preview_module_readings_import",
+  "PreviewModuleReadingsImportRequest",
+  "save_module_readings_import",
+  "SaveModuleReadingsImportRequest",
 ]) {
   if (!tauriMain.includes(needle)) {
     missing.push(`Tauri main includes ${needle}`);

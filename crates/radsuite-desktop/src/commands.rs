@@ -1,7 +1,10 @@
 use std::path::PathBuf;
 
 use chrono::Utc;
-use radsuite_cite::{DocxIngestionError, DocxIngestionRequest, ingest_docx};
+use radsuite_cite::{
+    DocxIngestionError, DocxIngestionRequest, DocxReadingExtractionRequest, ReadingImportCandidate,
+    extract_docx_reading_candidates, ingest_docx,
+};
 use radsuite_core::{
     Citation, CitationId, CourseModule, Document, DocumentId, ModuleId, Paragraph, ParagraphId,
     Project, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId, ReferenceEntryType,
@@ -252,6 +255,41 @@ pub struct ArchiveModuleReadingRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PreviewModuleReadingsImportRequest {
+    pub path: String,
+    pub original_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleReadingImportCandidateSummary {
+    pub module_order: Option<i32>,
+    pub module_title: Option<String>,
+    pub reading_category: String,
+    pub lesson_code: Option<String>,
+    pub apa_citation: String,
+    pub citation_text: Option<String>,
+    pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SaveModuleReadingsImportRequest {
+    pub candidates: Vec<SaveModuleReadingsImportCandidate>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SaveModuleReadingsImportCandidate {
+    pub module_id: ModuleId,
+    pub reading_category: String,
+    pub lesson_code: Option<String>,
+    pub apa_citation: Option<String>,
+    pub citation_text: Option<String>,
+    pub url: Option<String>,
+    pub notes: Option<String>,
+    pub reading_notes: Option<String>,
+    pub estimated_reading_time: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportCourseReferencesRequest {
     pub for_ako_learn: bool,
 }
@@ -331,6 +369,22 @@ pub enum ModuleReadingError {
     MissingModule(ModuleId),
     #[error("could not load module reading {0}")]
     MissingReading(ReferenceEntryId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum ModuleReadingImportError {
+    #[error("choose a DOCX file before previewing module readings")]
+    EmptyPath,
+    #[error(transparent)]
+    Docx(#[from] DocxIngestionError),
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
+    #[error("choose compulsory or optional for the reading category")]
+    InvalidCategory(String),
+    #[error("enter reading text before importing a module reading")]
+    EmptyReadingText,
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -617,6 +671,79 @@ pub async fn archive_module_reading(
     module_reading_summary(reading).ok_or(ModuleReadingError::MissingReading(request.reading_id))
 }
 
+pub async fn preview_module_readings_import(
+    _state: &DesktopState,
+    request: PreviewModuleReadingsImportRequest,
+) -> Result<Vec<ModuleReadingImportCandidateSummary>, ModuleReadingImportError> {
+    let path = request.path.trim();
+    if path.is_empty() {
+        return Err(ModuleReadingImportError::EmptyPath);
+    }
+
+    let path = PathBuf::from(path);
+    let original_filename = request
+        .original_filename
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            path.file_name()
+                .and_then(|filename| filename.to_str())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "module-readings.docx".to_string());
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename,
+    })?;
+
+    Ok(candidates
+        .into_iter()
+        .map(module_reading_import_candidate_summary)
+        .collect())
+}
+
+pub async fn save_module_readings_import(
+    state: &DesktopState,
+    request: SaveModuleReadingsImportRequest,
+) -> Result<Vec<ModuleReadingSummary>, ModuleReadingImportError> {
+    let mut saved_readings = Vec::new();
+    let reference_repo = SqliteReferenceEntryRepository::new(state.database_pool.clone());
+
+    for candidate in request.candidates {
+        let module = load_course_module_for_import_or_error(state, candidate.module_id).await?;
+        let reading_category = parse_reading_category_import_request(&candidate.reading_category)?;
+        let apa_citation = trimmed_optional(candidate.apa_citation);
+        let citation_text = trimmed_optional(candidate.citation_text);
+
+        if apa_citation.is_none() && citation_text.is_none() {
+            return Err(ModuleReadingImportError::EmptyReadingText);
+        }
+
+        let mut reading = ReferenceEntry::new(module.project_id, ReferenceEntryType::Reading);
+        reading.module_id = Some(module.id);
+        reading.reading_category = Some(reading_category);
+        reading.lesson_code = trimmed_optional(candidate.lesson_code);
+        reading.apa_citation = apa_citation;
+        reading.citation_text = citation_text;
+        reading.url = trimmed_optional(candidate.url);
+        reading.notes = trimmed_optional(candidate.notes);
+        reading.reading_notes = trimmed_optional(candidate.reading_notes);
+        reading.estimated_reading_time = trimmed_optional(candidate.estimated_reading_time);
+
+        reference_repo.insert_reference_entry(&reading).await?;
+
+        saved_readings.push(
+            module_reading_summary(reading)
+                .ok_or(ModuleReadingImportError::MissingModule(module.id))?,
+        );
+    }
+
+    Ok(saved_readings)
+}
+
 pub async fn export_course_references(
     state: &DesktopState,
     request: ExportCourseReferencesRequest,
@@ -886,6 +1013,20 @@ fn module_reading_summary(reading: ReferenceEntry) -> Option<ModuleReadingSummar
     })
 }
 
+fn module_reading_import_candidate_summary(
+    candidate: ReadingImportCandidate,
+) -> ModuleReadingImportCandidateSummary {
+    ModuleReadingImportCandidateSummary {
+        module_order: candidate.module_order,
+        module_title: candidate.module_title,
+        reading_category: reading_category_label(Some(candidate.reading_category)).to_string(),
+        lesson_code: candidate.lesson_code,
+        apa_citation: candidate.apa_citation,
+        citation_text: candidate.citation_text,
+        url: candidate.url,
+    }
+}
+
 fn reference_type_label(reference_type: ReferenceEntryType) -> &'static str {
     match reference_type {
         ReferenceEntryType::Reference => "reference",
@@ -908,6 +1049,16 @@ fn parse_reading_category_request(value: &str) -> Result<ReadingCategory, Module
     }
 }
 
+fn parse_reading_category_import_request(
+    value: &str,
+) -> Result<ReadingCategory, ModuleReadingImportError> {
+    match value.trim() {
+        "compulsory" => Ok(ReadingCategory::Compulsory),
+        "optional" => Ok(ReadingCategory::Optional),
+        other => Err(ModuleReadingImportError::InvalidCategory(other.to_string())),
+    }
+}
+
 async fn load_course_module_or_error(
     state: &DesktopState,
     module_id: ModuleId,
@@ -916,6 +1067,16 @@ async fn load_course_module_or_error(
         .load_course_module(module_id)
         .await?
         .ok_or(ModuleReadingError::MissingModule(module_id))
+}
+
+async fn load_course_module_for_import_or_error(
+    state: &DesktopState,
+    module_id: ModuleId,
+) -> Result<CourseModule, ModuleReadingImportError> {
+    SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .load_course_module(module_id)
+        .await?
+        .ok_or(ModuleReadingImportError::MissingModule(module_id))
 }
 
 async fn load_radcite_module_or_error(

@@ -16,6 +16,8 @@
     archiveRadciteModule,
     listModuleReadings,
     listRadciteModules,
+    previewModuleReadingsImport,
+    saveModuleReadingsImport,
     updateModuleReading,
     updateRadciteModule,
   } from "./lib/readingCommands";
@@ -260,6 +262,28 @@
       await refreshModuleReadings(archived.module_id);
     } catch (reason: unknown) {
       moduleReadingsError = `Could not remove reading: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handlePreviewModuleReadingsImport(
+    input: Parameters<typeof previewModuleReadingsImport>[0],
+  ) {
+    moduleReadingsError = null;
+    return previewModuleReadingsImport(input);
+  }
+
+  async function handleSaveModuleReadingsImport(
+    input: Parameters<typeof saveModuleReadingsImport>[0],
+  ) {
+    moduleReadingsError = null;
+    try {
+      const saved = await saveModuleReadingsImport(input);
+      moduleReadingsExport = null;
+      await refreshModuleReadings(selectedModuleId ?? saved[0]?.module_id ?? null);
+      return saved;
+    } catch (reason: unknown) {
+      moduleReadingsError = `Could not save imported readings: ${toErrorMessage(reason)}`;
+      throw reason;
     }
   }
 
@@ -513,6 +537,8 @@
         onArchiveReading={(readingId) => {
           void handleArchiveModuleReading(readingId);
         }}
+        onPreviewReadingsImport={handlePreviewModuleReadingsImport}
+        onSaveReadingsImport={handleSaveModuleReadingsImport}
       />
     {:else if activeArea === "exports"}
       <RadciteExportsWorkspace

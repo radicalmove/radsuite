@@ -668,6 +668,7 @@ button:disabled {
 .module-selector,
 .module-add-form,
 .reading-add-form,
+.reading-import-panel,
 .reading-list-panel {
   display: grid;
   gap: var(--s-3);
@@ -833,7 +834,9 @@ button:disabled {
 
 .form-grid label,
 .module-add-form label,
-.reading-add-form label {
+.reading-add-form label,
+.reading-import-panel label,
+.reading-import-candidate label {
   display: grid;
   gap: 6px;
 }
@@ -879,6 +882,39 @@ button:disabled {
 
 .compact-textarea {
   min-height: 82px;
+}
+
+.reading-import-form {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.reading-import-list {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.reading-import-candidate {
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--line-soft);
+  border-left: 4px solid var(--radcite-red);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+
+.import-candidate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.import-status {
+  color: var(--success-deep);
+  font-size: 0.84rem;
+  font-weight: 650;
 }
 
 .reading-groups {

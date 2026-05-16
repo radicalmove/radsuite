@@ -4,8 +4,11 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use radsuite_cite::{DocxIngestionError, DocxIngestionRequest, ingest_docx};
-use radsuite_core::ProjectId;
+use radsuite_cite::{
+    DocxIngestionError, DocxIngestionRequest, DocxReadingExtractionRequest,
+    extract_docx_reading_candidates, ingest_docx,
+};
+use radsuite_core::{ProjectId, ReadingCategory};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 #[test]
@@ -110,6 +113,75 @@ fn docx_ingestion_decodes_xml_entities() {
         "Smith & Jones (2020) describe A < B."
     );
     assert_eq!(analysed.citations[0].citation_text, "Smith & Jones (2020)");
+}
+
+#[test]
+fn docx_reading_import_extracts_compulsory_and_optional_candidates() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-candidates.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Compulsory readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>1.2 Smith, J. (2024). Worked examples in practice. https://example.com/worked</w:t></w:r></w:p>
+    <w:p><w:r><w:t>This paragraph explains the weekly activity and is not a reference.</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Optional readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Taylor, R. (2023). Optional primer. Teaching Press.</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-1-readings.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 2);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("1.2"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "Smith, J. (2024). Worked examples in practice. https://example.com/worked"
+    );
+    assert_eq!(
+        candidates[0].url.as_deref(),
+        Some("https://example.com/worked")
+    );
+
+    assert_eq!(candidates[1].reading_category, ReadingCategory::Optional);
+    assert_eq!(candidates[1].lesson_code, None);
+    assert_eq!(
+        candidates[1].apa_citation,
+        "Taylor, R. (2023). Optional primer. Teaching Press."
+    );
+    assert_eq!(candidates[1].url, None);
+}
+
+#[test]
+fn docx_reading_import_extracts_composite_module_lesson_markers() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-composite-lesson.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Module 2 lesson 3 Smith, J. (2024). Composite lesson markers.</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-2-lesson-3.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("2.3"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "Smith, J. (2024). Composite lesson markers."
+    );
 }
 
 fn write_minimal_docx(filename: &str) -> PathBuf {

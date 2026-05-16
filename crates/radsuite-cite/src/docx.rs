@@ -6,7 +6,8 @@ use std::{
 };
 
 use quick_xml::{Reader, events::Event};
-use radsuite_core::{Citation, Document, DocumentFileType, Paragraph, ProjectId};
+use radsuite_core::{Citation, Document, DocumentFileType, Paragraph, ProjectId, ReadingCategory};
+use regex::Regex;
 use thiserror::Error;
 use zip::{ZipArchive, result::ZipError};
 
@@ -26,6 +27,23 @@ pub struct AnalysedDocument {
     pub citations: Vec<Citation>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DocxReadingExtractionRequest {
+    pub path: PathBuf,
+    pub original_filename: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReadingImportCandidate {
+    pub module_order: Option<i32>,
+    pub module_title: Option<String>,
+    pub reading_category: ReadingCategory,
+    pub lesson_code: Option<String>,
+    pub apa_citation: String,
+    pub citation_text: Option<String>,
+    pub url: Option<String>,
+}
+
 #[derive(Debug, Error)]
 pub enum DocxIngestionError {
     #[error("expected a .docx file: {path}")]
@@ -41,20 +59,7 @@ pub enum DocxIngestionError {
 }
 
 pub fn ingest_docx(request: DocxIngestionRequest) -> Result<AnalysedDocument, DocxIngestionError> {
-    if !has_docx_extension(&request.path) {
-        return Err(DocxIngestionError::UnsupportedExtension { path: request.path });
-    }
-
-    let mut archive = ZipArchive::new(File::open(&request.path)?)?;
-    let document_xml = read_required_zip_file(&mut archive, "word/document.xml")?;
-    let relationships_xml = read_optional_zip_file(&mut archive, "word/_rels/document.xml.rels")?;
-    let relationships = relationships_xml
-        .as_deref()
-        .map(parse_relationships)
-        .transpose()?
-        .unwrap_or_default();
-    let extracted_paragraphs = extract_paragraphs(&document_xml, &relationships)?;
-
+    let extracted_paragraphs = extract_docx_plain_paragraphs(&request.path)?;
     let document = Document::new(
         request.project_id,
         request.original_filename,
@@ -87,6 +92,225 @@ pub fn ingest_docx(request: DocxIngestionRequest) -> Result<AnalysedDocument, Do
         paragraphs,
         citations,
     })
+}
+
+pub fn extract_docx_reading_candidates(
+    request: DocxReadingExtractionRequest,
+) -> Result<Vec<ReadingImportCandidate>, DocxIngestionError> {
+    let extracted_paragraphs = extract_docx_plain_paragraphs(&request.path)?;
+    Ok(extract_reading_candidates_from_paragraphs(
+        extracted_paragraphs
+            .into_iter()
+            .map(|paragraph| paragraph.text),
+    ))
+}
+
+fn extract_docx_plain_paragraphs(
+    path: &Path,
+) -> Result<Vec<ExtractedParagraph>, DocxIngestionError> {
+    if !has_docx_extension(path) {
+        return Err(DocxIngestionError::UnsupportedExtension {
+            path: path.to_path_buf(),
+        });
+    }
+
+    let mut archive = ZipArchive::new(File::open(path)?)?;
+    let document_xml = read_required_zip_file(&mut archive, "word/document.xml")?;
+    let relationships_xml = read_optional_zip_file(&mut archive, "word/_rels/document.xml.rels")?;
+    let relationships = relationships_xml
+        .as_deref()
+        .map(parse_relationships)
+        .transpose()?
+        .unwrap_or_default();
+
+    Ok(extract_paragraphs(&document_xml, &relationships)?)
+}
+
+fn extract_reading_candidates_from_paragraphs(
+    paragraphs: impl IntoIterator<Item = String>,
+) -> Vec<ReadingImportCandidate> {
+    let mut current_category = ReadingCategory::Compulsory;
+    let mut current_module_order = None;
+    let mut current_module_title = None;
+    let mut seen = Vec::new();
+    let mut candidates = Vec::new();
+
+    for paragraph in paragraphs {
+        let plain = normalize_plain_text(&paragraph);
+        if plain.is_empty() {
+            continue;
+        }
+
+        if let Some(category) = detect_reading_category(&plain) {
+            current_category = category;
+            continue;
+        }
+
+        let (lesson_code, body) = split_lesson_prefix(&plain);
+        let reference_text = body.unwrap_or(&plain);
+
+        if body.is_none()
+            && let Some((order, title)) = detect_module_heading(&plain)
+        {
+            current_module_order = Some(order);
+            current_module_title = Some(title);
+            continue;
+        }
+
+        if !looks_like_reference(reference_text) {
+            continue;
+        }
+
+        let apa_citation = clean_reference_plain_text(reference_text);
+        if apa_citation.is_empty() {
+            continue;
+        }
+
+        let dedupe_key = (
+            reading_category_label(current_category).to_string(),
+            lesson_code.clone().unwrap_or_default(),
+            current_module_order.unwrap_or_default(),
+            apa_citation.clone(),
+        );
+        if seen.contains(&dedupe_key) {
+            continue;
+        }
+        seen.push(dedupe_key);
+
+        candidates.push(ReadingImportCandidate {
+            module_order: current_module_order,
+            module_title: current_module_title.clone(),
+            reading_category: current_category,
+            lesson_code,
+            apa_citation,
+            citation_text: (body.is_some()).then_some(plain.clone()),
+            url: extract_first_url(&plain),
+        });
+    }
+
+    candidates
+}
+
+fn normalize_plain_text(text: &str) -> String {
+    normalize_whitespace(text)
+        .trim_matches(|character: char| character == '•' || character == '*' || character == '-')
+        .trim()
+        .to_string()
+}
+
+fn detect_reading_category(text: &str) -> Option<ReadingCategory> {
+    let lowered = text.to_lowercase();
+    if lowered.contains("compulsory reading") || lowered.contains("required reading") {
+        return Some(ReadingCategory::Compulsory);
+    }
+    if lowered.contains("optional reading") || lowered.contains("recommended reading") {
+        return Some(ReadingCategory::Optional);
+    }
+    None
+}
+
+fn detect_module_heading(text: &str) -> Option<(i32, String)> {
+    let heading = Regex::new(r"(?i)^\s*(module|week)\s+(\d{1,2})(?:[\s:–—-]+(.+))?\s*$")
+        .expect("module heading regex");
+    let captures = heading.captures(text)?;
+    let order = captures.get(2)?.as_str().parse().ok()?;
+    Some((order, text.to_string()))
+}
+
+fn looks_like_reference(text: &str) -> bool {
+    let normalized = text
+        .trim_start_matches(|character: char| {
+            character.is_ascii_digit()
+                || character == '.'
+                || character == '-'
+                || character == '–'
+                || character == '—'
+                || character.is_whitespace()
+        })
+        .trim_start_matches(['•', '*', '-', '–', '—', ' ']);
+
+    if detect_reading_category(text).is_some() || detect_reading_category(normalized).is_some() {
+        return false;
+    }
+    if normalized.len() < 20 {
+        return false;
+    }
+
+    let year =
+        Regex::new(r"\((?:19|20)\d{2}[a-z]?\)|\b(?:19|20)\d{2}[a-z]?\b").expect("year regex");
+    if !year.is_match(normalized) {
+        return false;
+    }
+
+    let author_with_initial =
+        Regex::new(r"^[A-Z][A-Za-z'’`.\- ]{1,80},\s*[A-Z]").expect("author regex");
+    let author_with_year =
+        Regex::new(r"^[A-Z][A-Za-z&'’`\- ]{1,80}\s*\(\s*\d{4}\s*\)").expect("author-year regex");
+
+    author_with_initial.is_match(normalized) || author_with_year.is_match(normalized)
+}
+
+fn split_lesson_prefix(text: &str) -> (Option<String>, Option<&str>) {
+    let composite = Regex::new(
+        r"(?i)^\s*module\s+(\d+)\s+(?:topic|lesson)\s+(\d+)(?:\s+lesson\s+(\d+))?[\s\-–—:]+(.+)$",
+    )
+    .expect("composite lesson prefix regex");
+    if let Some(captures) = composite.captures(text) {
+        let mut lesson = vec![
+            captures
+                .get(1)
+                .map(|part| part.as_str())
+                .unwrap_or_default(),
+            captures
+                .get(2)
+                .map(|part| part.as_str())
+                .unwrap_or_default(),
+        ];
+        if let Some(third) = captures.get(3) {
+            lesson.push(third.as_str());
+        }
+        return (
+            Some(lesson.join(".")),
+            captures.get(4).map(|body| body.as_str().trim()),
+        );
+    }
+
+    let prefix =
+        Regex::new(r"^\s*(\d+(?:\.\d+){1,3})[\s\-–—:]+(.+)$").expect("lesson prefix regex");
+    if let Some(captures) = prefix.captures(text) {
+        return (
+            captures.get(1).map(|lesson| lesson.as_str().to_string()),
+            captures.get(2).map(|body| body.as_str().trim()),
+        );
+    }
+
+    (None, None)
+}
+
+fn clean_reference_plain_text(text: &str) -> String {
+    let cleaned = text.trim_start_matches(['•', '*', '-', '–', '—', ' ']);
+    Regex::new(r"(?i)(?:Lesson\s+\d|Reflection activity|Practice activity).*")
+        .expect("trailing activity regex")
+        .replace(cleaned, "")
+        .trim()
+        .to_string()
+}
+
+fn extract_first_url(text: &str) -> Option<String> {
+    let url = Regex::new(r#"https?://[^\s<>"\)\]]+"#).expect("url regex");
+    url.find(text).map(|matched| {
+        matched
+            .as_str()
+            .trim_end_matches(['.', ',', ')', ';'])
+            .to_string()
+    })
+}
+
+fn reading_category_label(reading_category: ReadingCategory) -> &'static str {
+    match reading_category {
+        ReadingCategory::Compulsory => "compulsory",
+        ReadingCategory::Optional => "optional",
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
