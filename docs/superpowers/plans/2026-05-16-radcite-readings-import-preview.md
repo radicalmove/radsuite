@@ -39,22 +39,22 @@
 
 ## Task 1: Extract Reading Candidates From DOCX
 
-- [ ] Add a failing test `docx_reading_import_extracts_compulsory_and_optional_candidates` in `crates/radsuite-cite/tests/docx_ingestion.rs`.
-- [ ] Fixture should include paragraphs:
+- [x] Add a failing test `docx_reading_import_extracts_compulsory_and_optional_candidates` in `crates/radsuite-cite/tests/docx_ingestion.rs`.
+- [x] Fixture should include paragraphs:
   - `Compulsory readings`
   - `1.2 Smith, J. (2024). Worked examples. https://example.com/worked`
   - `Optional readings`
   - `Taylor, R. (2023). Optional primer.`
   - a non-reference paragraph that should be ignored.
-- [ ] Run `cargo test -p radsuite-cite docx_reading_import_extracts_compulsory_and_optional_candidates` and confirm it fails because the extractor API is missing.
-- [ ] Add public structs in `crates/radsuite-cite/src/docx.rs`:
+- [x] Run `cargo test -p radsuite-cite docx_reading_import_extracts_compulsory_and_optional_candidates` and confirm it fails because the extractor API is missing.
+- [x] Add public structs in `crates/radsuite-cite/src/docx.rs`:
   - `DocxReadingExtractionRequest`
   - `ReadingImportCandidate`
-- [ ] Add `extract_docx_reading_candidates(request)` that reuses existing DOCX paragraph extraction.
-- [ ] Implement category, lesson-prefix, URL, APA-like reference, and de-duplication heuristics.
-- [ ] Run the focused test and confirm it passes.
-- [ ] Add and pass a second focused test for module/week heading hints if needed by implementation.
-- [ ] Commit extractor work.
+- [x] Add `extract_docx_reading_candidates(request)` that reuses existing DOCX paragraph extraction.
+- [x] Implement category, lesson-prefix, URL, APA-like reference, and de-duplication heuristics.
+- [x] Run the focused test and confirm it passes.
+- [x] Add and pass a second focused test for module/week heading hints if needed by implementation.
+- [x] Commit extractor work.
 
 ## Task 2: Desktop Preview And Save Commands
 
