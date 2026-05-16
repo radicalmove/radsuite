@@ -58,22 +58,22 @@
 
 ## Task 2: Desktop Preview And Save Commands
 
-- [ ] Add failing desktop tests:
+- [x] Add failing desktop tests:
   - `module_readings_import_preview_extracts_candidates_without_persisting`
   - `module_readings_import_save_persists_selected_candidates`
   - `module_readings_import_save_validates_missing_module`
-- [ ] Run `cargo test -p radsuite-desktop module_readings_import` and confirm command/types are missing.
-- [ ] In `crates/radsuite-desktop/src/commands.rs`, add serializable types:
+- [x] Run `cargo test -p radsuite-desktop module_readings_import` and confirm command/types are missing.
+- [x] In `crates/radsuite-desktop/src/commands.rs`, add serializable types:
   - `PreviewModuleReadingsImportRequest`
   - `ModuleReadingImportCandidateSummary`
   - `SaveModuleReadingsImportRequest`
   - `SaveModuleReadingsImportCandidate`
-- [ ] Add `ModuleReadingImportError` variants for empty path, DOCX errors, missing module, empty reading text, and invalid category.
-- [ ] Implement `preview_module_readings_import` with no database writes.
-- [ ] Implement `save_module_readings_import` by validating each selected candidate and inserting `ReferenceEntryType::Reading` rows through the existing repository.
-- [ ] Return `Vec<ModuleReadingSummary>` from save.
-- [ ] Run focused desktop tests and confirm they pass.
-- [ ] Commit desktop command work.
+- [x] Add `ModuleReadingImportError` variants for empty path, DOCX errors, missing module, empty reading text, and invalid category.
+- [x] Implement `preview_module_readings_import` with no database writes.
+- [x] Implement `save_module_readings_import` by validating each selected candidate and inserting `ReferenceEntryType::Reading` rows through the existing repository.
+- [x] Return `Vec<ModuleReadingSummary>` from save.
+- [x] Run focused desktop tests and confirm they pass.
+- [x] Commit desktop command work.
 
 ## Task 3: Tauri And TypeScript Bridge
 
