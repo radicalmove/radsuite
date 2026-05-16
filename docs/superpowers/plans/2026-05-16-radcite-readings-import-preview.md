@@ -89,27 +89,27 @@
 
 ## Task 4: Readings Workspace Import UI
 
-- [ ] Update `apps/desktop-ui/scripts/verify-style-contract.mjs` first to require:
+- [x] Update `apps/desktop-ui/scripts/verify-style-contract.mjs` first to require:
   - `Preview readings`
   - `Save selected readings`
   - `reading-import-panel`
   - `reading-import-candidate`
   - `previewModuleReadingsImport`
   - `saveModuleReadingsImport`
-- [ ] Run `npm run test:style` and confirm it fails.
-- [ ] Extend `RadciteReadingsWorkspace.svelte` props for preview/save callbacks.
-- [ ] Add import state:
+- [x] Run `npm run test:style` and confirm it fails.
+- [x] Extend `RadciteReadingsWorkspace.svelte` props for preview/save callbacks.
+- [x] Add import state:
   - path
   - loading/error
   - editable candidate array
   - selected checkboxes
-- [ ] Add DOCX `Choose DOCX` support using the existing dialog plugin pattern from `RadciteDocumentsWorkspace.svelte`.
-- [ ] Render each candidate with checkbox, module selector, category selector, lesson code input, APA textarea, and URL input.
-- [ ] Add `Save selected readings` action, disabled when no candidates are selected or modules are unavailable.
-- [ ] Wire handlers in `App.svelte`; on save, clear module readings export and refresh selected module readings.
-- [ ] Add compact CSS without card nesting.
-- [ ] Run `npm run test:style`, `npm test -- --run`, and `npm run build`.
-- [ ] Commit UI work.
+- [x] Add DOCX `Choose DOCX` support using the existing dialog plugin pattern from `RadciteDocumentsWorkspace.svelte`.
+- [x] Render each candidate with checkbox, module selector, category selector, lesson code input, APA textarea, and URL input.
+- [x] Add `Save selected readings` action, disabled when no candidates are selected or modules are unavailable.
+- [x] Wire handlers in `App.svelte`; on save, clear module readings export and refresh selected module readings.
+- [x] Add compact CSS without card nesting.
+- [x] Run `npm run test:style`, `npm test -- --run`, and `npm run build`.
+- [x] Commit UI work.
 
 ## Task 5: Full Verification And Publish
 
