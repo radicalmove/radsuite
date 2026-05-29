@@ -8,6 +8,7 @@ import {
   archiveRadciteModule,
   listModuleReadings,
   listRadciteModules,
+  previewModuleReadingsCsvImport,
   previewModuleReadingsImport,
   saveModuleReadingsImport,
   updateModuleReading,
@@ -51,9 +52,13 @@ describe("reading commands", () => {
   test("lists RADcite modules from the Local DB", async () => {
     vi.mocked(invoke).mockResolvedValue([moduleSummary]);
 
-    await expect(listRadciteModules()).resolves.toEqual([moduleSummary]);
+    await expect(listRadciteModules("project-1")).resolves.toEqual([moduleSummary]);
 
-    expect(invoke).toHaveBeenCalledWith("list_radcite_modules");
+    expect(invoke).toHaveBeenCalledWith("list_radcite_modules", {
+      request: {
+        project_id: "project-1",
+      },
+    });
   });
 
   test("adds a trimmed RADcite module", async () => {
@@ -61,6 +66,7 @@ describe("reading commands", () => {
 
     await expect(
       addRadciteModule({
+        project_id: " project-1 ",
         title: " Module 1 ",
         code: " M1 ",
         order_index: 1,
@@ -70,6 +76,7 @@ describe("reading commands", () => {
 
     expect(invoke).toHaveBeenCalledWith("add_radcite_module", {
       request: {
+        project_id: "project-1",
         title: "Module 1",
         code: "M1",
         order_index: 1,
@@ -227,6 +234,35 @@ describe("reading commands", () => {
       request: {
         path: "/tmp/readings.docx",
         original_filename: "Readings.docx",
+      },
+    });
+  });
+
+  test("previews a trimmed module readings CSV import", async () => {
+    const candidates = [
+      {
+        module_order: 2,
+        module_title: "Week 2 - Positivism",
+        reading_category: "compulsory",
+        lesson_code: "02",
+        apa_citation: '"Biosocial Theories of Crime" in Miller, M. (2015).',
+        citation_text: null,
+        url: null,
+      },
+    ];
+    vi.mocked(invoke).mockResolvedValue(candidates);
+
+    await expect(
+      previewModuleReadingsCsvImport({
+        path: " /tmp/course_readings.csv ",
+        original_filename: " course_readings.csv ",
+      }),
+    ).resolves.toBe(candidates);
+
+    expect(invoke).toHaveBeenCalledWith("preview_module_readings_csv_import", {
+      request: {
+        path: "/tmp/course_readings.csv",
+        original_filename: "course_readings.csv",
       },
     });
   });

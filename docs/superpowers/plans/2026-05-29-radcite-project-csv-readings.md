@@ -86,16 +86,16 @@
 
 ## Task 3: CSV Preview Desktop/Tauri Bridge
 
-- [ ] Add failing desktop test for `preview_module_readings_csv_import` and saving candidates into a selected module.
-- [ ] Add failing Vitest tests for project helper payloads and CSV preview payloads.
-- [ ] Expose `preview_module_readings_csv_import` in desktop and Tauri.
-- [ ] Add/update TypeScript helpers:
+- [x] Add failing desktop test for `preview_module_readings_csv_import` and saving candidates into a selected module.
+- [x] Add failing Vitest tests for project helper payloads and CSV preview payloads.
+- [x] Expose `preview_module_readings_csv_import` in desktop and Tauri.
+- [x] Add/update TypeScript helpers:
   - `listRadciteProjects`
   - `createRadciteProject`
   - `previewModuleReadingsCsvImport`
   - project-aware reading/reference/export calls.
-- [ ] Run focused Rust and Vitest tests and confirm pass.
-- [ ] Commit bridge work.
+- [x] Run focused Rust and Vitest tests and confirm pass.
+- [x] Commit bridge work.
 
 ## Task 4: Svelte Project Context And CSV Import UI
 

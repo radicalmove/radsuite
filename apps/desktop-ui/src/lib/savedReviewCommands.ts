@@ -1,8 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { AnalyseDocxReviewResponse, SavedRadciteReviewSummary } from "../types";
 
-export function listSavedRadciteReviews(): Promise<SavedRadciteReviewSummary[]> {
-  return invoke<SavedRadciteReviewSummary[]>("list_saved_radcite_reviews");
+function trimmedOrNull(value: string | null | undefined): string | null {
+  return value?.trim() || null;
+}
+
+export function listSavedRadciteReviews(
+  projectId?: string | null,
+): Promise<SavedRadciteReviewSummary[]> {
+  return invoke<SavedRadciteReviewSummary[]>("list_saved_radcite_reviews", {
+    request: {
+      project_id: trimmedOrNull(projectId),
+    },
+  });
 }
 
 export function loadSavedRadciteReview(

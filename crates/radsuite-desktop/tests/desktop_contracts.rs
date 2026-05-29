@@ -13,15 +13,17 @@ use radsuite_desktop::{
     DesktopState, ExportCourseReferencesRequest, ExportModuleReadingsRequest,
     LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
     ListRadciteModulesRequest, ListSavedReviewsRequest, ModuleReadingError,
-    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsImportRequest,
-    RadciteModuleError, SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
-    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
-    add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
-    analyse_docx_for_review, analyse_docx_path, archive_module_reading, archive_radcite_module,
-    create_radcite_project, export_course_references, export_module_readings, get_app_status,
+    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
+    PreviewModuleReadingsImportRequest, RadciteModuleError, SaveModuleReadingsImportCandidate,
+    SaveModuleReadingsImportRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteModuleRequest, add_course_reference, add_manual_citation_for_review,
+    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
+    archive_module_reading, archive_radcite_module, create_radcite_project,
+    export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
-    load_saved_radcite_review, mark_paragraph_resolved_for_review, preview_module_readings_import,
+    load_saved_radcite_review, mark_paragraph_resolved_for_review,
+    preview_module_readings_csv_import, preview_module_readings_import,
     save_module_readings_import, update_module_reading, update_radcite_module,
     verify_paragraph_citations_for_review,
 };
@@ -798,6 +800,98 @@ async fn module_readings_import_preview_extracts_candidates_without_persisting()
     .expect("list module readings");
 
     assert!(readings.is_empty());
+}
+
+#[tokio::test]
+async fn module_readings_csv_import_preview_extracts_candidates_for_selected_module_save() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("CRJU201".to_string()),
+            title: "Criminological Theory".to_string(),
+        },
+    )
+    .await
+    .expect("create project");
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: Some(project.id),
+            title: "Week 2 - Positivism".to_string(),
+            code: Some("W02".to_string()),
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    let path = write_readings_import_csv("desktop-readings-import-preview.csv");
+
+    let candidates = preview_module_readings_csv_import(
+        &state,
+        PreviewModuleReadingsCsvImportRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("course_readings.csv".to_string()),
+        },
+    )
+    .await
+    .expect("preview csv readings import");
+
+    assert_eq!(candidates.len(), 2);
+    assert_eq!(candidates[0].module_order, Some(2));
+    assert_eq!(
+        candidates[0].module_title.as_deref(),
+        Some("Week 2 - Positivism")
+    );
+    assert_eq!(candidates[0].reading_category, "compulsory");
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("02"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "\"Biosocial Theories of Crime\" in Miller, M., Schreck, C. & Tewksbury, R. (2015). Criminological Theory: A Brief Introduction (4th ed.). Pearson."
+    );
+    assert_eq!(candidates[0].citation_text, None);
+
+    let saved = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: candidates[0].reading_category.clone(),
+                lesson_code: candidates[0].lesson_code.clone(),
+                apa_citation: Some(candidates[0].apa_citation.clone()),
+                citation_text: candidates[0].citation_text.clone(),
+                url: candidates[0].url.clone(),
+                notes: Some("Imported from CSV".to_string()),
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect("save csv reading import");
+
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].project_id, project.id);
+    assert_eq!(saved[0].module_id, module.id);
+    assert_eq!(saved[0].lesson_code.as_deref(), Some("02"));
+    assert_eq!(
+        saved[0].apa_citation.as_deref(),
+        Some(
+            "\"Biosocial Theories of Crime\" in Miller, M., Schreck, C. & Tewksbury, R. (2015). Criminological Theory: A Brief Introduction (4th ed.). Pearson."
+        )
+    );
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings after csv import");
+
+    assert_eq!(readings, saved);
 }
 
 #[tokio::test]
@@ -1675,6 +1769,20 @@ fn write_minimal_docx(filename: &str) -> PathBuf {
 
 fn write_readings_import_docx(filename: &str) -> PathBuf {
     write_docx_with_document_xml(filename, readings_import_document_xml())
+}
+
+fn write_readings_import_csv(filename: &str) -> PathBuf {
+    let path = std::env::temp_dir().join(format!("radsuite-{filename}"));
+    std::fs::write(
+        &path,
+        concat!(
+            "section_seq,section_title,week,citation,talis_article_id\n",
+            "5,Week 2 - Positivism,02,\"\"\"Biosocial Theories of Crime\"\" in Miller, M., Schreck, C. & Tewksbury, R. (2015). Criminological Theory: A Brief Introduction (4th ed.). Pearson.\",26922\n",
+            "8,Week 5 - The Rise of Critical Criminology,05,\"\"\"Marxist, Postmodern and Green Criminology\"\" in Bernard, T.J., Snipes, J.B., Gerould, A.L., & Vold, G.B. (2019). Vold's Theoretical Criminology. (8th ed.). Oxford University Press. Pages 293-301\",25805\n",
+        ),
+    )
+    .expect("write csv fixture");
+    path
 }
 
 fn write_docx_with_document_xml(filename: &str, document_xml: &str) -> PathBuf {

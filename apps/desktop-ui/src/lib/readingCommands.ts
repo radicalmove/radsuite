@@ -6,6 +6,7 @@ import type {
 } from "../types";
 
 export type AddRadciteModuleInput = {
+  project_id?: string | null;
   title: string;
   code?: string | null;
   order_index?: number | null;
@@ -45,8 +46,14 @@ function trimmedOrNull(value: string | null | undefined): string | null {
   return value?.trim() || null;
 }
 
-export function listRadciteModules(): Promise<CourseModuleSummary[]> {
-  return invoke<CourseModuleSummary[]>("list_radcite_modules");
+export function listRadciteModules(
+  projectId?: string | null,
+): Promise<CourseModuleSummary[]> {
+  return invoke<CourseModuleSummary[]>("list_radcite_modules", {
+    request: {
+      project_id: trimmedOrNull(projectId),
+    },
+  });
 }
 
 export function addRadciteModule(
@@ -54,6 +61,7 @@ export function addRadciteModule(
 ): Promise<CourseModuleSummary> {
   return invoke<CourseModuleSummary>("add_radcite_module", {
     request: {
+      project_id: trimmedOrNull(input.project_id),
       title: input.title.trim(),
       code: trimmedOrNull(input.code),
       order_index: input.order_index ?? null,
@@ -122,6 +130,17 @@ export function previewModuleReadingsImport(
   input: PreviewModuleReadingsImportInput,
 ): Promise<ModuleReadingImportCandidate[]> {
   return invoke<ModuleReadingImportCandidate[]>("preview_module_readings_import", {
+    request: {
+      path: input.path.trim(),
+      original_filename: trimmedOrNull(input.original_filename),
+    },
+  });
+}
+
+export function previewModuleReadingsCsvImport(
+  input: PreviewModuleReadingsImportInput,
+): Promise<ModuleReadingImportCandidate[]> {
+  return invoke<ModuleReadingImportCandidate[]>("preview_module_readings_csv_import", {
     request: {
       path: input.path.trim(),
       original_filename: trimmedOrNull(input.original_filename),

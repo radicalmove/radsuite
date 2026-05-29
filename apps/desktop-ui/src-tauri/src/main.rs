@@ -6,9 +6,10 @@ use radsuite_desktop::{
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
     ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteModulesRequest,
     ListSavedReviewsRequest, LoadSavedReviewRequest, ModuleReadingImportCandidateSummary,
-    ModuleReadingSummary, ModuleReadingsExport, PreviewModuleReadingsImportRequest,
-    RadciteProjectSummary, SaveModuleReadingsImportRequest, SavedRadciteReviewSummary,
-    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
+    ModuleReadingSummary, ModuleReadingsExport, PreviewModuleReadingsCsvImportRequest,
+    PreviewModuleReadingsImportRequest, RadciteProjectSummary, SaveModuleReadingsImportRequest,
+    SavedRadciteReviewSummary, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -186,6 +187,16 @@ async fn preview_module_readings_import(
 }
 
 #[tauri::command]
+async fn preview_module_readings_csv_import(
+    state: tauri::State<'_, DesktopState>,
+    request: PreviewModuleReadingsCsvImportRequest,
+) -> Result<Vec<ModuleReadingImportCandidateSummary>, String> {
+    radsuite_desktop::preview_module_readings_csv_import(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn save_module_readings_import(
     state: tauri::State<'_, DesktopState>,
     request: SaveModuleReadingsImportRequest,
@@ -281,6 +292,7 @@ fn main() {
             update_module_reading,
             archive_module_reading,
             preview_module_readings_import,
+            preview_module_readings_csv_import,
             save_module_readings_import,
             export_course_references,
             export_module_readings,

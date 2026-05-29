@@ -2,7 +2,8 @@ use std::path::PathBuf;
 
 use chrono::Utc;
 use radsuite_cite::{
-    DocxIngestionError, DocxIngestionRequest, DocxReadingExtractionRequest, ReadingImportCandidate,
+    CsvReadingExtractionRequest, CsvReadingImportError, DocxIngestionError, DocxIngestionRequest,
+    DocxReadingExtractionRequest, ReadingImportCandidate, extract_csv_reading_candidates,
     extract_docx_reading_candidates, ingest_docx,
 };
 use radsuite_core::{
@@ -298,6 +299,12 @@ pub struct PreviewModuleReadingsImportRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PreviewModuleReadingsCsvImportRequest {
+    pub path: String,
+    pub original_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModuleReadingImportCandidateSummary {
     pub module_order: Option<i32>,
     pub module_title: Option<String>,
@@ -428,10 +435,12 @@ pub enum ModuleReadingError {
 
 #[derive(Debug, Error)]
 pub enum ModuleReadingImportError {
-    #[error("choose a DOCX file before previewing module readings")]
+    #[error("choose a DOCX or CSV file before previewing module readings")]
     EmptyPath,
     #[error(transparent)]
     Docx(#[from] DocxIngestionError),
+    #[error(transparent)]
+    Csv(#[from] CsvReadingImportError),
     #[error("could not load RADcite module {0}")]
     MissingModule(ModuleId),
     #[error("choose compulsory or optional for the reading category")]
@@ -853,6 +862,40 @@ pub async fn preview_module_readings_import(
         .unwrap_or_else(|| "module-readings.docx".to_string());
 
     let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename,
+    })?;
+
+    Ok(candidates
+        .into_iter()
+        .map(module_reading_import_candidate_summary)
+        .collect())
+}
+
+pub async fn preview_module_readings_csv_import(
+    _state: &DesktopState,
+    request: PreviewModuleReadingsCsvImportRequest,
+) -> Result<Vec<ModuleReadingImportCandidateSummary>, ModuleReadingImportError> {
+    let path = request.path.trim();
+    if path.is_empty() {
+        return Err(ModuleReadingImportError::EmptyPath);
+    }
+
+    let path = PathBuf::from(path);
+    let original_filename = request
+        .original_filename
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            path.file_name()
+                .and_then(|filename| filename.to_str())
+                .map(str::to_string)
+        })
+        .unwrap_or_else(|| "module-readings.csv".to_string());
+
+    let candidates = extract_csv_reading_candidates(CsvReadingExtractionRequest {
         path,
         original_filename,
     })?;
