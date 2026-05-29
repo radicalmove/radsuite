@@ -2,12 +2,13 @@ use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
     AppStatus, ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, CourseModuleSummary,
-    CourseReferenceSummary, CourseReferencesExport, DesktopState, ExportCourseReferencesRequest,
-    ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListModuleReadingsRequest,
-    LoadSavedReviewRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
-    ModuleReadingsExport, PreviewModuleReadingsImportRequest, SaveModuleReadingsImportRequest,
-    SavedRadciteReviewSummary, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteModuleRequest,
+    CourseReferenceSummary, CourseReferencesExport, CreateRadciteProjectRequest, DesktopState,
+    ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
+    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteModulesRequest,
+    ListSavedReviewsRequest, LoadSavedReviewRequest, ModuleReadingImportCandidateSummary,
+    ModuleReadingSummary, ModuleReadingsExport, PreviewModuleReadingsImportRequest,
+    RadciteProjectSummary, SaveModuleReadingsImportRequest, SavedRadciteReviewSummary,
+    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -36,10 +37,30 @@ async fn analyse_docx_for_review(
 }
 
 #[tauri::command]
+async fn list_radcite_projects(
+    state: tauri::State<'_, DesktopState>,
+) -> Result<Vec<RadciteProjectSummary>, String> {
+    radsuite_desktop::list_radcite_projects(&state)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn create_radcite_project(
+    state: tauri::State<'_, DesktopState>,
+    request: CreateRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, String> {
+    radsuite_desktop::create_radcite_project(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn list_saved_radcite_reviews(
     state: tauri::State<'_, DesktopState>,
+    request: Option<ListSavedReviewsRequest>,
 ) -> Result<Vec<SavedRadciteReviewSummary>, String> {
-    radsuite_desktop::list_saved_radcite_reviews(&state)
+    radsuite_desktop::list_saved_radcite_reviews(&state, request.unwrap_or_default())
         .await
         .map_err(|error| error.to_string())
 }
@@ -57,8 +78,9 @@ async fn load_saved_radcite_review(
 #[tauri::command]
 async fn list_course_references(
     state: tauri::State<'_, DesktopState>,
+    request: Option<ListCourseReferencesRequest>,
 ) -> Result<Vec<CourseReferenceSummary>, String> {
-    radsuite_desktop::list_course_references(&state)
+    radsuite_desktop::list_course_references(&state, request.unwrap_or_default())
         .await
         .map_err(|error| error.to_string())
 }
@@ -76,8 +98,9 @@ async fn add_course_reference(
 #[tauri::command]
 async fn list_radcite_modules(
     state: tauri::State<'_, DesktopState>,
+    request: Option<ListRadciteModulesRequest>,
 ) -> Result<Vec<CourseModuleSummary>, String> {
-    radsuite_desktop::list_radcite_modules(&state)
+    radsuite_desktop::list_radcite_modules(&state, request.unwrap_or_default())
         .await
         .map_err(|error| error.to_string())
 }
@@ -243,6 +266,8 @@ fn main() {
             get_app_status,
             analyse_docx_path,
             analyse_docx_for_review,
+            list_radcite_projects,
+            create_radcite_project,
             list_saved_radcite_reviews,
             load_saved_radcite_review,
             list_course_references,

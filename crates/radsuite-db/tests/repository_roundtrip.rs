@@ -80,6 +80,31 @@ async fn project_can_be_loaded_by_code() {
 }
 
 #[tokio::test]
+async fn local_projects_can_be_listed_across_owners() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let repo = SqliteProjectRepository::new(pool);
+    let first_project = Project::new("CRJU201", "Criminological Theory", UserId::new());
+    let second_project = Project::new("COMS432", "Strategic Communication", UserId::new());
+
+    repo.insert_project(&second_project)
+        .await
+        .expect("insert second project");
+    repo.insert_project(&first_project)
+        .await
+        .expect("insert first project");
+
+    let projects = repo.list_projects().await.expect("list local projects");
+
+    assert_eq!(projects, vec![second_project, first_project]);
+}
+
+#[tokio::test]
 async fn radcite_document_can_be_inserted_and_loaded() {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)

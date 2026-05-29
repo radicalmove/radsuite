@@ -69,20 +69,20 @@
 
 ## Task 2: Local Project Commands And Project-Scoped Backend
 
-- [ ] Add failing desktop/db tests for local project listing, creating projects, project-scoped DOCX analysis, reference/module isolation, and project-code export filenames.
-- [ ] Run focused tests and confirm expected failures.
-- [ ] Add repository support for listing all local projects.
-- [ ] Add desktop request/summary types:
+- [x] Add failing desktop/db tests for local project listing, creating projects, project-scoped DOCX analysis, reference/module isolation, and project-code export filenames.
+- [x] Run focused tests and confirm expected failures.
+- [x] Add repository support for listing all local projects.
+- [x] Add desktop request/summary types:
   - `RadciteProjectSummary`
   - `CreateRadciteProjectRequest`
   - `ListSavedReviewsRequest`
   - `ListCourseReferencesRequest`
   - `ListRadciteModulesRequest`
-- [ ] Add optional `project_id` to existing project-owned requests.
-- [ ] Add helpers to load supplied project or fallback CRJU150 project.
-- [ ] Update relevant commands to use explicit project context.
-- [ ] Run focused desktop/db tests and confirm pass.
-- [ ] Commit project-scoped backend work.
+- [x] Add optional `project_id` to existing project-owned requests.
+- [x] Add helpers to load supplied project or fallback CRJU150 project.
+- [x] Update relevant commands to use explicit project context.
+- [x] Run focused desktop/db tests and confirm pass.
+- [x] Commit project-scoped backend work.
 
 ## Task 3: CSV Preview Desktop/Tauri Bridge
 

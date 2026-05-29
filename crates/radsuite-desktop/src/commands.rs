@@ -43,7 +43,22 @@ pub fn get_app_status(state: &DesktopState) -> AppStatus {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RadciteProjectSummary {
+    pub id: ProjectId,
+    pub code: Option<String>,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CreateRadciteProjectRequest {
+    pub code: Option<String>,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AnalyseDocxRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
     pub path: String,
     pub original_filename: Option<String>,
 }
@@ -90,6 +105,18 @@ pub struct SavedRadciteReviewSummary {
     pub missing_citation_count: usize,
 }
 
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListSavedReviewsRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListCourseReferencesRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CourseReferenceSummary {
     pub id: ReferenceEntryId,
@@ -115,6 +142,12 @@ pub struct CourseModuleSummary {
     pub title: String,
     pub order_index: Option<i32>,
     pub description: Option<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListRadciteModulesRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -192,12 +225,16 @@ pub struct LoadSavedReviewRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AddCourseReferenceRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
     pub apa_citation: String,
     pub notes: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AddRadciteModuleRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
     pub title: String,
     pub code: Option<String>,
     pub order_index: Option<i32>,
@@ -291,6 +328,8 @@ pub struct SaveModuleReadingsImportCandidate {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportCourseReferencesRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
     pub for_ako_learn: bool,
 }
 
@@ -323,8 +362,18 @@ pub enum AnalyseDocxError {
     EmptyPath,
     #[error("could not determine the DOCX filename")]
     MissingFilename,
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
     #[error(transparent)]
     Ingestion(#[from] DocxIngestionError),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum RadciteProjectError {
+    #[error("enter a project title before creating it")]
+    EmptyTitle,
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -345,6 +394,8 @@ pub enum ReviewActionError {
 pub enum CourseReferenceError {
     #[error("enter reference text before adding a course reference")]
     EmptyReferenceText,
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -353,6 +404,8 @@ pub enum CourseReferenceError {
 pub enum RadciteModuleError {
     #[error("enter a module title before adding it")]
     EmptyTitle,
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
     #[error("could not load RADcite module {0}")]
     MissingModule(ModuleId),
     #[error(transparent)]
@@ -391,6 +444,8 @@ pub enum ModuleReadingImportError {
 
 #[derive(Debug, Error)]
 pub enum CourseReferenceExportError {
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -401,6 +456,105 @@ pub enum ModuleReadingExportError {
     MissingModule(ModuleId),
     #[error(transparent)]
     Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+enum RadciteProjectLookupError {
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+impl From<RadciteProjectLookupError> for AnalyseDocxError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
+impl From<RadciteProjectLookupError> for ReviewActionError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
+impl From<RadciteProjectLookupError> for CourseReferenceError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
+impl From<RadciteProjectLookupError> for RadciteModuleError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
+impl From<RadciteProjectLookupError> for CourseReferenceExportError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
+pub async fn list_radcite_projects(
+    state: &DesktopState,
+) -> Result<Vec<RadciteProjectSummary>, RadciteProjectError> {
+    load_or_create_local_radcite_project(state).await?;
+
+    let projects = SqliteProjectRepository::new(state.database_pool.clone())
+        .list_projects()
+        .await?;
+
+    Ok(projects.into_iter().map(radcite_project_summary).collect())
+}
+
+pub async fn create_radcite_project(
+    state: &DesktopState,
+    request: CreateRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, RadciteProjectError> {
+    let title = request.title.trim();
+    if title.is_empty() {
+        return Err(RadciteProjectError::EmptyTitle);
+    }
+
+    let code = request
+        .code
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or_default();
+    let project = Project::new(code, title, UserId::new());
+
+    SqliteProjectRepository::new(state.database_pool.clone())
+        .insert_project(&project)
+        .await?;
+
+    Ok(radcite_project_summary(project))
 }
 
 pub async fn analyse_docx_path(
@@ -446,9 +600,11 @@ pub async fn analyse_docx_for_review(
 
 pub async fn list_saved_radcite_reviews(
     state: &DesktopState,
+    request: ListSavedReviewsRequest,
 ) -> Result<Vec<SavedRadciteReviewSummary>, ReviewActionError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let documents = SqliteCitationDocumentRepository::new(state.database_pool.clone())
-        .list_saved_documents()
+        .list_documents_for_project(project.id)
         .await?;
 
     Ok(documents
@@ -473,8 +629,9 @@ pub async fn load_saved_radcite_review(
 
 pub async fn list_course_references(
     state: &DesktopState,
+    request: ListCourseReferencesRequest,
 ) -> Result<Vec<CourseReferenceSummary>, CourseReferenceError> {
-    let project = load_or_create_local_radcite_project(state).await?;
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let references = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
         .await?;
@@ -494,7 +651,7 @@ pub async fn add_course_reference(
         return Err(CourseReferenceError::EmptyReferenceText);
     }
 
-    let project = load_or_create_local_radcite_project(state).await?;
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let mut reference = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
     reference.apa_citation = Some(apa_citation.to_string());
     reference.notes = request
@@ -513,8 +670,9 @@ pub async fn add_course_reference(
 
 pub async fn list_radcite_modules(
     state: &DesktopState,
+    request: ListRadciteModulesRequest,
 ) -> Result<Vec<CourseModuleSummary>, RadciteModuleError> {
-    let project = load_or_create_local_radcite_project(state).await?;
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let modules = SqliteCourseModuleRepository::new(state.database_pool.clone())
         .list_course_modules_for_project(project.id)
         .await?;
@@ -531,7 +689,7 @@ pub async fn add_radcite_module(
         return Err(RadciteModuleError::EmptyTitle);
     }
 
-    let project = load_or_create_local_radcite_project(state).await?;
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let mut module = CourseModule::new(project.id, title, request.order_index);
     module.code = trimmed_optional(request.code);
     module.description = trimmed_optional(request.description);
@@ -748,7 +906,7 @@ pub async fn export_course_references(
     state: &DesktopState,
     request: ExportCourseReferencesRequest,
 ) -> Result<CourseReferencesExport, CourseReferenceExportError> {
-    let project = load_or_create_local_radcite_project(state).await?;
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let references = load_course_reference_entries(state, project.id).await?;
     let reference_count = references.len();
     let html = format_course_references_html(&references, request.for_ako_learn);
@@ -878,7 +1036,7 @@ async fn analyse_docx(
         })
         .ok_or(AnalyseDocxError::MissingFilename)?;
 
-    let project = load_or_create_local_radcite_project(state).await?;
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
 
     let analysed = ingest_docx(DocxIngestionRequest {
         project_id: project.id,
@@ -957,6 +1115,20 @@ async fn load_or_create_local_radcite_project(state: &DesktopState) -> Result<Pr
     Ok(project)
 }
 
+async fn load_requested_or_local_radcite_project(
+    state: &DesktopState,
+    project_id: Option<ProjectId>,
+) -> Result<Project, RadciteProjectLookupError> {
+    let Some(project_id) = project_id else {
+        return Ok(load_or_create_local_radcite_project(state).await?);
+    };
+
+    SqliteProjectRepository::new(state.database_pool.clone())
+        .load_project(project_id)
+        .await?
+        .ok_or(RadciteProjectLookupError::MissingProject(project_id))
+}
+
 async fn load_course_reference_entries(
     state: &DesktopState,
     project_id: ProjectId,
@@ -964,6 +1136,14 @@ async fn load_course_reference_entries(
     SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_project(project_id, ReferenceEntryType::Reference)
         .await
+}
+
+fn radcite_project_summary(project: Project) -> RadciteProjectSummary {
+    RadciteProjectSummary {
+        id: project.id,
+        code: project.code,
+        title: project.title,
+    }
 }
 
 fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary {
