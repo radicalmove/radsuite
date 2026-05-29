@@ -111,20 +111,20 @@
 
 ## Task 5: Functional Smoke And Publish
 
-- [ ] Run `cargo fmt --all`.
-- [ ] Run `cargo fmt --all --check`.
-- [ ] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
-- [ ] Run `cargo test --workspace --all-features`.
-- [ ] Run `npm run test:style`.
-- [ ] Run `npm test -- --run`.
-- [ ] Run `npm run build`.
-- [ ] Run a temporary functional smoke with:
+- [x] Run `cargo fmt --all`.
+- [x] Run `cargo fmt --all --check`.
+- [x] Run `cargo clippy --workspace --all-targets --all-features -- -D warnings`.
+- [x] Run `cargo test --workspace --all-features`.
+- [x] Run `npm run test:style`.
+- [x] Run `npm test -- --run`.
+- [x] Run `npm run build`.
+- [x] Run a temporary functional smoke with:
   - create/select CRJU201 project;
   - analyse a real CRJU201/COMS432 DOCX;
   - preview `/Users/rcd58/course-output-system/Courses/CRJU201/Extracted/Inventories/course_readings.csv`;
   - save selected readings;
   - confirm exports use `crju201-*` filenames.
-- [ ] Commit verification docs/fixes if needed.
+- [x] Commit verification docs/fixes if needed.
 - [ ] Push branch and open PR.
 - [ ] Wait for CI and merge if checks pass.
 
