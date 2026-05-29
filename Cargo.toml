@@ -24,6 +24,7 @@ async-trait = "0.1"
 axum = "0.8"
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
+csv = "1"
 directories = "6"
 password-hash = "0.5"
 rand_core = { version = "0.6", features = ["getrandom"] }

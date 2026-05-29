@@ -59,13 +59,13 @@
 
 ## Task 1: CSV Reading Candidate Extractor
 
-- [ ] Add failing `radsuite-cite` tests for real-shaped `course_readings.csv` input.
-- [ ] Run `cargo test -p radsuite-cite readings_csv` and confirm missing API failure.
-- [ ] Add workspace `csv` dependency and `radsuite-cite` dependency.
-- [ ] Implement `CsvReadingExtractionRequest`, `CsvReadingImportError`, and `extract_csv_reading_candidates`.
-- [ ] Map `citation`, `week`, `section_title`, `section_seq`, and optional `reading_category` headers into `ReadingImportCandidate`.
-- [ ] Run focused tests and confirm pass.
-- [ ] Commit extractor work.
+- [x] Add failing `radsuite-cite` tests for real-shaped `course_readings.csv` input.
+- [x] Run `cargo test -p radsuite-cite readings_csv` and confirm missing API failure.
+- [x] Add workspace `csv` dependency and `radsuite-cite` dependency.
+- [x] Implement `CsvReadingExtractionRequest`, `CsvReadingImportError`, and `extract_csv_reading_candidates`.
+- [x] Map `citation`, `week`, `section_title`, `section_seq`, and optional `reading_category` headers into `ReadingImportCandidate`.
+- [x] Run focused tests and confirm pass.
+- [x] Commit extractor work.
 
 ## Task 2: Local Project Commands And Project-Scoped Backend
 
