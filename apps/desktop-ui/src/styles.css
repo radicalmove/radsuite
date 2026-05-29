@@ -121,8 +121,8 @@ button:disabled {
 }
 
 .project-sidebar {
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   padding: var(--s-5) var(--s-4);
   border-right: 1px solid var(--line-on-dark);
@@ -227,12 +227,73 @@ button:disabled {
   background: rgba(255, 255, 255, 0.06);
 }
 
+.project-create-form {
+  display: grid;
+  gap: var(--s-2);
+  margin-bottom: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--line-on-dark);
+  border-radius: var(--r-md);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.project-create-form label {
+  display: grid;
+  gap: 5px;
+  color: var(--fg-on-dark-dim);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.project-create-form input {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  border: 1px solid var(--line-on-dark);
+  border-radius: var(--r-sm);
+  color: var(--fg-on-dark);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.project-create-form input:focus {
+  border-color: rgba(206, 62, 46, 0.72);
+  outline: none;
+}
+
+.sidebar-create-button {
+  min-height: 34px;
+  border: 1px solid var(--radcite-red);
+  border-radius: var(--r-sm);
+  color: var(--radcite-white);
+  background: var(--radcite-red);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.sidebar-create-button:disabled {
+  border-color: var(--line-on-dark);
+  color: var(--fg-on-dark-dim);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.sidebar-notice {
+  margin-bottom: var(--s-2);
+  padding: var(--s-2);
+  border-left: 3px solid var(--radcite-red);
+  color: var(--fg-on-dark-2);
+  background: rgba(206, 62, 46, 0.14);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
 .project-list {
   display: grid;
   align-content: start;
   gap: var(--s-2);
+  min-height: 0;
   overflow: auto;
   padding-right: 2px;
+  flex: 1;
 }
 
 .project-card {
@@ -818,6 +879,7 @@ button:disabled {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: var(--s-4);
 }
 
@@ -887,6 +949,31 @@ button:disabled {
 .reading-import-form {
   display: grid;
   gap: var(--s-3);
+}
+
+.import-source-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-panel-alt);
+}
+
+.import-source-toggle button {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: var(--r-xs);
+  color: var(--fg-3);
+  background: transparent;
+  font-size: 0.72rem;
+  font-weight: 650;
+}
+
+.import-source-toggle button.is-active {
+  color: var(--radcite-white);
+  background: var(--radcite-red);
 }
 
 .reading-import-list {

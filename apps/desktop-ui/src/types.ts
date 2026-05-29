@@ -19,6 +19,12 @@ export type ProjectNavItem = {
   structureMode: "modules" | "weeks";
 };
 
+export type RadciteProjectSummary = {
+  id: string;
+  code: string | null;
+  title: string;
+};
+
 export type ToolArea = "documents" | "references" | "readings" | "exports" | "radcast" | "radtts";
 
 export type ParagraphFilter =
@@ -138,6 +144,7 @@ export type ModuleReadingImportCandidate = {
 };
 
 export type CourseReferencesExportRequest = {
+  project_id?: string | null;
   for_ako_learn: boolean;
 };
 

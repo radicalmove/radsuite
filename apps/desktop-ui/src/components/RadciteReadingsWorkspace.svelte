@@ -48,6 +48,9 @@
     onPreviewReadingsImport: (
       input: PreviewModuleReadingsImportInput,
     ) => ModuleReadingImportCandidate[] | Promise<ModuleReadingImportCandidate[]>;
+    onPreviewReadingsCsvImport: (
+      input: PreviewModuleReadingsImportInput,
+    ) => ModuleReadingImportCandidate[] | Promise<ModuleReadingImportCandidate[]>;
     onSaveReadingsImport: (
       input: SaveModuleReadingsImportInput,
     ) => ModuleReadingSummary[] | Promise<ModuleReadingSummary[]>;
@@ -70,10 +73,12 @@
     onUpdateReading,
     onArchiveReading,
     onPreviewReadingsImport,
+    onPreviewReadingsCsvImport,
     onSaveReadingsImport,
   }: Props = $props();
 
   let importCandidateCounter = 0;
+  let importSource = $state<"docx" | "csv">("docx");
   let importPath = $state("");
   let importCandidates = $state<EditableImportCandidate[]>([]);
   let importLoading = $state(false);
@@ -177,7 +182,23 @@
     return module ? moduleLabel(module) : "Select module";
   }
 
-  async function chooseReadingsDocx() {
+  function importSourceLabel(): string {
+    return importSource === "csv" ? "CSV" : "DOCX";
+  }
+
+  function setImportSource(source: "docx" | "csv") {
+    if (source === importSource) {
+      return;
+    }
+
+    importSource = source;
+    importPath = "";
+    importCandidates = [];
+    importError = null;
+    importStatus = null;
+  }
+
+  async function chooseReadingsFile() {
     importError = null;
     importStatus = null;
 
@@ -186,10 +207,15 @@
         multiple: false,
         directory: false,
         filters: [
-          {
-            name: "Word documents",
-            extensions: ["docx"],
-          },
+          importSource === "csv"
+            ? {
+                name: "CSV inventories",
+                extensions: ["csv"],
+              }
+            : {
+                name: "Word documents",
+                extensions: ["docx"],
+              },
         ],
       });
 
@@ -199,14 +225,14 @@
         importPath = selected[0];
       }
     } catch (reason: unknown) {
-      importError = `Could not open the DOCX picker: ${toErrorMessage(reason)}`;
+      importError = `Could not open the ${importSourceLabel()} picker: ${toErrorMessage(reason)}`;
     }
   }
 
   async function previewReadingsImport() {
     const path = importPath.trim();
     if (!path) {
-      importError = "Choose a DOCX file before previewing readings.";
+      importError = `Choose a ${importSourceLabel()} file before previewing readings.`;
       return;
     }
 
@@ -215,14 +241,15 @@
     importStatus = null;
 
     try {
-      const candidates = await onPreviewReadingsImport({
+      const preview = importSource === "csv" ? onPreviewReadingsCsvImport : onPreviewReadingsImport;
+      const candidates = await preview({
         path,
         original_filename: null,
       });
       importCandidates = candidates.map(editableImportCandidate);
       importStatus = candidates.length
         ? `${candidates.length} reading candidates ready to review.`
-        : "No reading candidates were detected in this DOCX.";
+        : `No reading candidates were detected in this ${importSourceLabel()}.`;
     } catch (reason: unknown) {
       importError = `Could not preview readings: ${toErrorMessage(reason)}`;
     } finally {
@@ -420,30 +447,52 @@
     >
       <div class="form-section-heading">
         <div>
-          <p class="eyebrow">DOCX import</p>
+          <p class="eyebrow">{importSourceLabel()} import</p>
           <strong>Preview readings before saving</strong>
+        </div>
+        <div class="import-source-toggle" aria-label="Reading import source">
+          <button
+            type="button"
+            class:is-active={importSource === "docx"}
+            aria-pressed={importSource === "docx"}
+            onclick={() => setImportSource("docx")}
+          >
+            DOCX
+          </button>
+          <button
+            type="button"
+            class:is-active={importSource === "csv"}
+            aria-pressed={importSource === "csv"}
+            onclick={() => setImportSource("csv")}
+          >
+            CSV
+          </button>
         </div>
         {#if importCandidates.length}
           <span class="module-current">{selectedImportCount} selected</span>
         {/if}
       </div>
       <label>
-        <span class="field-label">Readings DOCX</span>
+        <span class="field-label">Readings {importSourceLabel()}</span>
         <div class="path-row">
           <input
             class="path-input"
             type="text"
             bind:value={importPath}
-            placeholder="/Users/name/Documents/module-readings.docx"
+            placeholder={
+              importSource === "csv"
+                ? "/Users/name/Documents/course_readings.csv"
+                : "/Users/name/Documents/module-readings.docx"
+            }
             autocomplete="off"
           />
           <button
             class="secondary-button choose-docx-button"
             type="button"
             disabled={importLoading || importSaving}
-            onclick={() => void chooseReadingsDocx()}
+            onclick={() => void chooseReadingsFile()}
           >
-            Choose DOCX
+            {importSource === "csv" ? "Choose CSV" : "Choose DOCX"}
           </button>
           <button
             class="primary-button"

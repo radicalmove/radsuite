@@ -31,9 +31,13 @@ describe("reference commands", () => {
   test("lists course references from the Local DB", async () => {
     vi.mocked(invoke).mockResolvedValue([reference]);
 
-    await expect(listCourseReferences()).resolves.toEqual([reference]);
+    await expect(listCourseReferences("project-1")).resolves.toEqual([reference]);
 
-    expect(invoke).toHaveBeenCalledWith("list_course_references");
+    expect(invoke).toHaveBeenCalledWith("list_course_references", {
+      request: {
+        project_id: "project-1",
+      },
+    });
   });
 
   test("adds a trimmed course reference", async () => {
@@ -41,6 +45,7 @@ describe("reference commands", () => {
 
     await expect(
       addCourseReference({
+        project_id: " project-1 ",
         apa_citation: "  Smith, J. (2020). Worked examples in practice. Learning Press.  ",
         notes: " Core course reference ",
       }),
@@ -48,6 +53,7 @@ describe("reference commands", () => {
 
     expect(invoke).toHaveBeenCalledWith("add_course_reference", {
       request: {
+        project_id: "project-1",
         apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press.",
         notes: "Core course reference",
       },

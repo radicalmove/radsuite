@@ -4,23 +4,26 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use radsuite_core::{ModuleId, ReferenceEntryId};
+use radsuite_core::{ModuleId, ProjectId, ReferenceEntryId};
 use radsuite_db::migrate;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths,
-    ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, DesktopState,
-    ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
-    ListModuleReadingsRequest, ModuleReadingError, ModuleReadingExportError,
-    ModuleReadingImportError, PreviewModuleReadingsImportRequest, RadciteModuleError,
-    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest, add_course_reference,
-    add_manual_citation_for_review, add_module_reading, add_radcite_module,
-    analyse_docx_for_review, analyse_docx_path, archive_module_reading, archive_radcite_module,
+    ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, CreateRadciteProjectRequest,
+    DesktopState, ExportCourseReferencesRequest, ExportModuleReadingsRequest,
+    LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
+    ListRadciteModulesRequest, ListSavedReviewsRequest, ModuleReadingError,
+    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
+    PreviewModuleReadingsImportRequest, RadciteModuleError, SaveModuleReadingsImportCandidate,
+    SaveModuleReadingsImportRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteModuleRequest, add_course_reference, add_manual_citation_for_review,
+    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
+    archive_module_reading, archive_radcite_module, create_radcite_project,
     export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
-    list_radcite_modules, list_saved_radcite_reviews, load_saved_radcite_review,
-    mark_paragraph_resolved_for_review, preview_module_readings_import,
+    list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
+    load_saved_radcite_review, mark_paragraph_resolved_for_review,
+    preview_module_readings_csv_import, preview_module_readings_import,
     save_module_readings_import, update_module_reading, update_radcite_module,
     verify_paragraph_citations_for_review,
 };
@@ -48,6 +51,240 @@ async fn app_status_exposes_database_sync_and_engine_state() {
 }
 
 #[tokio::test]
+async fn local_radcite_projects_can_be_listed_and_created() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let initial_projects = list_radcite_projects(&state)
+        .await
+        .expect("list initial projects");
+
+    assert_eq!(initial_projects.len(), 1);
+    assert_eq!(initial_projects[0].code.as_deref(), Some("CRJU150"));
+    assert_eq!(initial_projects[0].title, "RADcite Functional Testing");
+
+    let created = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some(" CRJU201 ".to_string()),
+            title: " Criminological Theory ".to_string(),
+        },
+    )
+    .await
+    .expect("create project");
+
+    assert_eq!(created.code.as_deref(), Some("CRJU201"));
+    assert_eq!(created.title, "Criminological Theory");
+
+    let projects = list_radcite_projects(&state)
+        .await
+        .expect("list projects after create");
+
+    assert_eq!(projects.len(), 2);
+    assert!(projects.iter().any(|project| project.id == created.id));
+}
+
+#[tokio::test]
+async fn radcite_commands_respect_selected_project_context() {
+    let state = desktop_state_with_migrated_pool().await;
+    let crju201 = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("CRJU201".to_string()),
+            title: "Criminological Theory".to_string(),
+        },
+    )
+    .await
+    .expect("create CRJU201 project");
+    let coms432 = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("COMS432".to_string()),
+            title: "Strategic Communication".to_string(),
+        },
+    )
+    .await
+    .expect("create COMS432 project");
+    let crju_path = write_minimal_docx("desktop-crju201-project.docx");
+    let coms_path = write_minimal_docx("desktop-coms432-project.docx");
+
+    let crju_doc = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: Some(crju201.id),
+            path: crju_path.to_string_lossy().into_owned(),
+            original_filename: Some("crju201.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse CRJU201 docx");
+    let coms_doc = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: Some(coms432.id),
+            path: coms_path.to_string_lossy().into_owned(),
+            original_filename: Some("coms432.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse COMS432 docx");
+
+    assert_eq!(crju_doc.project_id, crju201.id);
+    assert_eq!(crju_doc.project_title, "Criminological Theory");
+    assert_eq!(coms_doc.project_id, coms432.id);
+    assert_eq!(coms_doc.project_title, "Strategic Communication");
+
+    let crju_reviews = list_saved_radcite_reviews(
+        &state,
+        ListSavedReviewsRequest {
+            project_id: Some(crju201.id),
+        },
+    )
+    .await
+    .expect("list CRJU201 saved reviews");
+    let coms_reviews = list_saved_radcite_reviews(
+        &state,
+        ListSavedReviewsRequest {
+            project_id: Some(coms432.id),
+        },
+    )
+    .await
+    .expect("list COMS432 saved reviews");
+
+    assert_eq!(crju_reviews.len(), 1);
+    assert_eq!(crju_reviews[0].document_id, crju_doc.document_id);
+    assert_eq!(coms_reviews.len(), 1);
+    assert_eq!(coms_reviews[0].document_id, coms_doc.document_id);
+
+    let crju_reference = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: Some(crju201.id),
+            apa_citation: "Smith, J. (2024). CRJU reference.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add CRJU reference");
+    let coms_reference = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: Some(coms432.id),
+            apa_citation: "Taylor, R. (2024). COMS reference.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add COMS reference");
+
+    assert_eq!(
+        list_course_references(
+            &state,
+            ListCourseReferencesRequest {
+                project_id: Some(crju201.id),
+            },
+        )
+        .await
+        .expect("list CRJU references"),
+        vec![crju_reference]
+    );
+    assert_eq!(
+        list_course_references(
+            &state,
+            ListCourseReferencesRequest {
+                project_id: Some(coms432.id),
+            },
+        )
+        .await
+        .expect("list COMS references"),
+        vec![coms_reference]
+    );
+
+    let crju_module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: Some(crju201.id),
+            title: "CRJU Module".to_string(),
+            code: Some("M1".to_string()),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add CRJU module");
+    let coms_module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: Some(coms432.id),
+            title: "COMS Module".to_string(),
+            code: Some("M1".to_string()),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add COMS module");
+
+    assert_eq!(
+        list_radcite_modules(
+            &state,
+            ListRadciteModulesRequest {
+                project_id: Some(crju201.id),
+            },
+        )
+        .await
+        .expect("list CRJU modules"),
+        vec![crju_module]
+    );
+    assert_eq!(
+        list_radcite_modules(
+            &state,
+            ListRadciteModulesRequest {
+                project_id: Some(coms432.id),
+            },
+        )
+        .await
+        .expect("list COMS modules"),
+        vec![coms_module]
+    );
+
+    let crju_export = export_course_references(
+        &state,
+        ExportCourseReferencesRequest {
+            project_id: Some(crju201.id),
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export CRJU references");
+
+    assert_eq!(crju_export.filename, "crju201-course-references.html");
+    assert_eq!(crju_export.reference_count, 1);
+}
+
+#[tokio::test]
+async fn selected_project_commands_reject_missing_projects() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-missing-project.docx");
+    let missing_project_id = ProjectId::new();
+
+    let error = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: Some(missing_project_id),
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("missing-project.docx".to_string()),
+        },
+    )
+    .await
+    .expect_err("reject missing project");
+
+    assert!(matches!(
+        error,
+        AnalyseDocxError::MissingProject(project_id) if project_id == missing_project_id
+    ));
+}
+
+#[tokio::test]
 async fn analyse_docx_path_persists_document_and_returns_summary() {
     let state = desktop_state_with_migrated_pool().await;
     let path = write_minimal_docx("desktop-command-analysis.docx");
@@ -55,6 +292,7 @@ async fn analyse_docx_path_persists_document_and_returns_summary() {
     let response = analyse_docx_path(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("lesson-3.docx".to_string()),
         },
@@ -77,6 +315,7 @@ async fn analyse_docx_for_review_returns_ordered_paragraphs_and_citations() {
     let response = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-source.docx".to_string()),
         },
@@ -106,6 +345,7 @@ async fn radcite_review_actions_persist_and_return_refreshed_review() {
     let response = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-actions.docx".to_string()),
         },
@@ -179,6 +419,7 @@ async fn saved_radcite_review_can_be_listed_and_loaded() {
     let response = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("saved-review.docx".to_string()),
         },
@@ -198,7 +439,7 @@ async fn saved_radcite_review_can_be_listed_and_loaded() {
     .await
     .expect("add manual citation");
 
-    let saved_reviews = list_saved_radcite_reviews(&state)
+    let saved_reviews = list_saved_radcite_reviews(&state, ListSavedReviewsRequest::default())
         .await
         .expect("list saved reviews");
 
@@ -231,6 +472,7 @@ async fn analysed_docx_reviews_reuse_the_local_radcite_project() {
     let first = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: first_path.to_string_lossy().into_owned(),
             original_filename: Some("first-local-project.docx".to_string()),
         },
@@ -241,6 +483,7 @@ async fn analysed_docx_reviews_reuse_the_local_radcite_project() {
     let second = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: second_path.to_string_lossy().into_owned(),
             original_filename: Some("second-local-project.docx".to_string()),
         },
@@ -252,7 +495,7 @@ async fn analysed_docx_reviews_reuse_the_local_radcite_project() {
     assert_eq!(first.project_title, "RADcite Functional Testing");
     assert_eq!(second.project_title, "RADcite Functional Testing");
 
-    let saved_reviews = list_saved_radcite_reviews(&state)
+    let saved_reviews = list_saved_radcite_reviews(&state, ListSavedReviewsRequest::default())
         .await
         .expect("list saved reviews");
 
@@ -272,6 +515,7 @@ async fn local_course_references_are_added_to_the_radcite_project() {
     let analysis = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("reference-project.docx".to_string()),
         },
@@ -282,6 +526,7 @@ async fn local_course_references_are_added_to_the_radcite_project() {
     let added = add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
                 .to_string(),
             notes: Some("Core course reference".to_string()),
@@ -298,7 +543,7 @@ async fn local_course_references_are_added_to_the_radcite_project() {
     assert_eq!(added.notes.as_deref(), Some("Core course reference"));
     assert_eq!(added.reference_type, "reference");
 
-    let references = list_course_references(&state)
+    let references = list_course_references(&state, ListCourseReferencesRequest::default())
         .await
         .expect("list course references");
 
@@ -313,6 +558,7 @@ async fn module_readings_commands_add_and_list_local_modules_and_readings() {
     let first_module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: " Module 1 ".to_string(),
             code: Some(" M1 ".to_string()),
             order_index: Some(1),
@@ -324,6 +570,7 @@ async fn module_readings_commands_add_and_list_local_modules_and_readings() {
     let second_module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Module 2".to_string(),
             code: None,
             order_index: Some(2),
@@ -333,7 +580,9 @@ async fn module_readings_commands_add_and_list_local_modules_and_readings() {
     .await
     .expect("add second module");
 
-    let modules = list_radcite_modules(&state).await.expect("list modules");
+    let modules = list_radcite_modules(&state, ListRadciteModulesRequest::default())
+        .await
+        .expect("list modules");
 
     assert_eq!(modules, vec![first_module.clone(), second_module.clone()]);
     assert_eq!(first_module.title, "Module 1");
@@ -407,6 +656,7 @@ async fn module_readings_commands_validate_input() {
     let empty_title = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "  ".to_string(),
             code: None,
             order_index: None,
@@ -421,6 +671,7 @@ async fn module_readings_commands_validate_input() {
     let module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Module 1".to_string(),
             code: None,
             order_index: Some(1),
@@ -495,6 +746,7 @@ async fn module_readings_import_preview_extracts_candidates_without_persisting()
     let module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Module 1".to_string(),
             code: None,
             order_index: Some(1),
@@ -551,11 +803,104 @@ async fn module_readings_import_preview_extracts_candidates_without_persisting()
 }
 
 #[tokio::test]
+async fn module_readings_csv_import_preview_extracts_candidates_for_selected_module_save() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("CRJU201".to_string()),
+            title: "Criminological Theory".to_string(),
+        },
+    )
+    .await
+    .expect("create project");
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: Some(project.id),
+            title: "Week 2 - Positivism".to_string(),
+            code: Some("W02".to_string()),
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    let path = write_readings_import_csv("desktop-readings-import-preview.csv");
+
+    let candidates = preview_module_readings_csv_import(
+        &state,
+        PreviewModuleReadingsCsvImportRequest {
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("course_readings.csv".to_string()),
+        },
+    )
+    .await
+    .expect("preview csv readings import");
+
+    assert_eq!(candidates.len(), 2);
+    assert_eq!(candidates[0].module_order, Some(2));
+    assert_eq!(
+        candidates[0].module_title.as_deref(),
+        Some("Week 2 - Positivism")
+    );
+    assert_eq!(candidates[0].reading_category, "compulsory");
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("02"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "\"Biosocial Theories of Crime\" in Miller, M., Schreck, C. & Tewksbury, R. (2015). Criminological Theory: A Brief Introduction (4th ed.). Pearson."
+    );
+    assert_eq!(candidates[0].citation_text, None);
+
+    let saved = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: candidates[0].reading_category.clone(),
+                lesson_code: candidates[0].lesson_code.clone(),
+                apa_citation: Some(candidates[0].apa_citation.clone()),
+                citation_text: candidates[0].citation_text.clone(),
+                url: candidates[0].url.clone(),
+                notes: Some("Imported from CSV".to_string()),
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect("save csv reading import");
+
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].project_id, project.id);
+    assert_eq!(saved[0].module_id, module.id);
+    assert_eq!(saved[0].lesson_code.as_deref(), Some("02"));
+    assert_eq!(
+        saved[0].apa_citation.as_deref(),
+        Some(
+            "\"Biosocial Theories of Crime\" in Miller, M., Schreck, C. & Tewksbury, R. (2015). Criminological Theory: A Brief Introduction (4th ed.). Pearson."
+        )
+    );
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings after csv import");
+
+    assert_eq!(readings, saved);
+}
+
+#[tokio::test]
 async fn module_readings_import_save_persists_selected_candidates() {
     let state = desktop_state_with_migrated_pool().await;
     let module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Module 1".to_string(),
             code: None,
             order_index: Some(1),
@@ -650,6 +995,7 @@ async fn module_readings_commands_update_and_archive_modules_and_readings() {
     let module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Module 1".to_string(),
             code: Some("M1".to_string()),
             order_index: Some(1),
@@ -681,7 +1027,9 @@ async fn module_readings_commands_update_and_archive_modules_and_readings() {
         Some("Updated description")
     );
     assert_eq!(
-        list_radcite_modules(&state).await.expect("list modules"),
+        list_radcite_modules(&state, ListRadciteModulesRequest::default())
+            .await
+            .expect("list modules"),
         vec![updated_module.clone()]
     );
 
@@ -786,7 +1134,7 @@ async fn module_readings_commands_update_and_archive_modules_and_readings() {
     .expect("archive module");
 
     assert!(
-        list_radcite_modules(&state)
+        list_radcite_modules(&state, ListRadciteModulesRequest::default())
             .await
             .expect("list modules")
             .is_empty()
@@ -857,6 +1205,7 @@ async fn module_readings_update_commands_validate_input() {
     let module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Module 1".to_string(),
             code: None,
             order_index: Some(1),
@@ -968,6 +1317,7 @@ async fn paragraph_citations_can_be_linked_to_course_references() {
     let analysis = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("linked-reference.docx".to_string()),
         },
@@ -979,6 +1329,7 @@ async fn paragraph_citations_can_be_linked_to_course_references() {
     let reference = add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
                 .to_string(),
             notes: None,
@@ -1022,6 +1373,7 @@ async fn reference_suggestions_include_strong_course_reference_matches() {
     let reference = add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
                 .to_string(),
             notes: None,
@@ -1033,6 +1385,7 @@ async fn reference_suggestions_include_strong_course_reference_matches() {
     let analysis = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("reference-suggestions.docx".to_string()),
         },
@@ -1060,6 +1413,7 @@ async fn review_queue_summary_tracks_linked_suggested_and_unlinked_citations() {
     let reference = add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
                 .to_string(),
             notes: None,
@@ -1071,6 +1425,7 @@ async fn review_queue_summary_tracks_linked_suggested_and_unlinked_citations() {
     let analysis = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-queue.docx".to_string()),
         },
@@ -1109,6 +1464,7 @@ async fn reference_suggestions_are_empty_when_course_references_do_not_match() {
     add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Jones, A. (2024). Assessment rubrics in practice. Teaching Press."
                 .to_string(),
             notes: None,
@@ -1120,6 +1476,7 @@ async fn reference_suggestions_are_empty_when_course_references_do_not_match() {
     let analysis = analyse_docx_for_review(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("reference-suggestions-empty.docx".to_string()),
         },
@@ -1141,6 +1498,7 @@ async fn course_references_can_be_exported_as_html() {
     add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Smith, J. (2020). Worked examples & practice. Learning Press."
                 .to_string(),
             notes: None,
@@ -1151,6 +1509,7 @@ async fn course_references_can_be_exported_as_html() {
     add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Jones, A. (2024). Assessment rubrics <revised>. Teaching Press."
                 .to_string(),
             notes: None,
@@ -1162,6 +1521,7 @@ async fn course_references_can_be_exported_as_html() {
     let export = export_course_references(
         &state,
         ExportCourseReferencesRequest {
+            project_id: None,
             for_ako_learn: false,
         },
     )
@@ -1183,6 +1543,7 @@ async fn course_reference_export_can_omit_generico_tags() {
     add_course_reference(
         &state,
         AddCourseReferenceRequest {
+            project_id: None,
             apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
                 .to_string(),
             notes: None,
@@ -1194,6 +1555,7 @@ async fn course_reference_export_can_omit_generico_tags() {
     let export = export_course_references(
         &state,
         ExportCourseReferencesRequest {
+            project_id: None,
             for_ako_learn: true,
         },
     )
@@ -1212,6 +1574,7 @@ async fn module_readings_can_be_exported_as_html() {
     let module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Engaging people in conversations about change".to_string(),
             code: Some("Module 1".to_string()),
             order_index: Some(1),
@@ -1305,6 +1668,7 @@ async fn module_readings_export_can_emit_ako_html() {
     let module = add_radcite_module(
         &state,
         AddRadciteModuleRequest {
+            project_id: None,
             title: "Motivating change behaviour".to_string(),
             code: Some("Module 2".to_string()),
             order_index: Some(2),
@@ -1378,6 +1742,7 @@ async fn analyse_docx_path_rejects_empty_path() {
     let error = analyse_docx_path(
         &state,
         AnalyseDocxRequest {
+            project_id: None,
             path: "  ".to_string(),
             original_filename: None,
         },
@@ -1404,6 +1769,20 @@ fn write_minimal_docx(filename: &str) -> PathBuf {
 
 fn write_readings_import_docx(filename: &str) -> PathBuf {
     write_docx_with_document_xml(filename, readings_import_document_xml())
+}
+
+fn write_readings_import_csv(filename: &str) -> PathBuf {
+    let path = std::env::temp_dir().join(format!("radsuite-{filename}"));
+    std::fs::write(
+        &path,
+        concat!(
+            "section_seq,section_title,week,citation,talis_article_id\n",
+            "5,Week 2 - Positivism,02,\"\"\"Biosocial Theories of Crime\"\" in Miller, M., Schreck, C. & Tewksbury, R. (2015). Criminological Theory: A Brief Introduction (4th ed.). Pearson.\",26922\n",
+            "8,Week 5 - The Rise of Critical Criminology,05,\"\"\"Marxist, Postmodern and Green Criminology\"\" in Bernard, T.J., Snipes, J.B., Gerould, A.L., & Vold, G.B. (2019). Vold's Theoretical Criminology. (8th ed.). Oxford University Press. Pages 293-301\",25805\n",
+        ),
+    )
+    .expect("write csv fixture");
+    path
 }
 
 fn write_docx_with_document_xml(filename: &str, document_xml: &str) -> PathBuf {

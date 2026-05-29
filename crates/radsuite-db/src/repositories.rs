@@ -14,6 +14,7 @@ use crate::DbError;
 #[async_trait]
 pub trait ProjectRepository {
     async fn insert_project(&self, project: &Project) -> Result<(), DbError>;
+    async fn list_projects(&self) -> Result<Vec<Project>, DbError>;
     async fn list_projects_for_user(
         &self,
         user_id: UserId,
@@ -86,6 +87,23 @@ impl ProjectRepository for SqliteProjectRepository {
         .await?;
 
         Ok(())
+    }
+
+    async fn list_projects(&self) -> Result<Vec<Project>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, owner_id, code, title, created_at, updated_at
+            FROM projects
+            ORDER BY
+                COALESCE(code, '') COLLATE NOCASE,
+                title COLLATE NOCASE,
+                id
+            "#,
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.iter().map(project_from_row).collect()
     }
 
     async fn list_projects_for_user(

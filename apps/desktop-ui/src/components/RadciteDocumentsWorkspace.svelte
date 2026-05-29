@@ -15,6 +15,7 @@
   } from "../types";
 
   type Props = {
+    selectedProjectId: string | null;
     activeFilter: ParagraphFilter;
     analysisResult: AnalyseDocxReviewResponse | null;
     savedReviews: SavedRadciteReviewSummary[];
@@ -30,6 +31,7 @@
   };
 
   let {
+    selectedProjectId,
     activeFilter,
     analysisResult,
     savedReviews,
@@ -105,6 +107,7 @@
     try {
       const result = await invoke<AnalyseDocxReviewResponse>("analyse_docx_for_review", {
         request: {
+          project_id: selectedProjectId,
           path,
           original_filename: null,
         },

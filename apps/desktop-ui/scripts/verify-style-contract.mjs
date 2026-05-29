@@ -59,6 +59,8 @@ const checks = [
   ["reading list panel styling", ".reading-list-panel"],
   ["module card action styling", ".module-card-actions"],
   ["reading row action styling", ".reading-row-actions"],
+  ["project create form styling", ".project-create-form"],
+  ["import source selector styling", ".import-source-toggle"],
   ["danger button styling", ".danger-button"],
 ];
 
@@ -100,6 +102,10 @@ for (const needle of [
 }
 
 for (const needle of [
+  "listRadciteProjects",
+  "createRadciteProject",
+  "selectedProjectId",
+  "handleCreateProject",
   "RadciteReadingsWorkspace",
   'activeArea === "readings"',
   "listRadciteModules",
@@ -109,6 +115,7 @@ for (const needle of [
   "updateModuleReading",
   "archiveModuleReading",
   "previewModuleReadingsImport",
+  "previewModuleReadingsCsvImport",
   "saveModuleReadingsImport",
 ]) {
   if (!app.includes(needle)) {
@@ -176,6 +183,10 @@ for (const needle of [
   "reading-list-panel",
   "reading-import-panel",
   "reading-import-candidate",
+  "import-source-toggle",
+  "DOCX",
+  "CSV",
+  "Choose CSV",
   "Preview readings",
   "Save selected readings",
   "Edit module",
@@ -196,6 +207,9 @@ for (const needle of [
   "ExportCourseReferencesRequest",
   "export_module_readings",
   "ExportModuleReadingsRequest",
+  "list_radcite_projects",
+  "CreateRadciteProjectRequest",
+  "create_radcite_project",
   "update_radcite_module",
   "UpdateRadciteModuleRequest",
   "archive_radcite_module",
@@ -206,6 +220,8 @@ for (const needle of [
   "ArchiveModuleReadingRequest",
   "preview_module_readings_import",
   "PreviewModuleReadingsImportRequest",
+  "preview_module_readings_csv_import",
+  "PreviewModuleReadingsCsvImportRequest",
   "save_module_readings_import",
   "SaveModuleReadingsImportRequest",
 ]) {

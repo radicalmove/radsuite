@@ -41,9 +41,13 @@ describe("saved review commands", () => {
   test("lists saved RADcite reviews from the Local DB", async () => {
     vi.mocked(invoke).mockResolvedValue([savedReview]);
 
-    await expect(listSavedRadciteReviews()).resolves.toEqual([savedReview]);
+    await expect(listSavedRadciteReviews("project-1")).resolves.toEqual([savedReview]);
 
-    expect(invoke).toHaveBeenCalledWith("list_saved_radcite_reviews");
+    expect(invoke).toHaveBeenCalledWith("list_saved_radcite_reviews", {
+      request: {
+        project_id: "project-1",
+      },
+    });
   });
 
   test("loads a saved RADcite review by document id", async () => {

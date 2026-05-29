@@ -30,10 +30,13 @@ describe("export commands", () => {
   test("exports course references with the AKO Learn flag", async () => {
     vi.mocked(invoke).mockResolvedValue(exportResult);
 
-    await expect(exportCourseReferences({ for_ako_learn: true })).resolves.toBe(exportResult);
+    await expect(
+      exportCourseReferences({ project_id: "project-1", for_ako_learn: true }),
+    ).resolves.toBe(exportResult);
 
     expect(invoke).toHaveBeenCalledWith("export_course_references", {
       request: {
+        project_id: "project-1",
         for_ako_learn: true,
       },
     });
