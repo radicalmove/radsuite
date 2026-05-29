@@ -9,6 +9,7 @@
   import RadciteReadingsWorkspace from "./components/RadciteReadingsWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
   import { exportCourseReferences, exportModuleReadings } from "./lib/exportCommands";
+  import { createRadciteProject, listRadciteProjects } from "./lib/projectCommands";
   import {
     addModuleReading,
     addRadciteModule,
@@ -16,6 +17,7 @@
     archiveRadciteModule,
     listModuleReadings,
     listRadciteModules,
+    previewModuleReadingsCsvImport,
     previewModuleReadingsImport,
     saveModuleReadingsImport,
     updateModuleReading,
@@ -52,18 +54,19 @@
   };
   const themeStorageKey = "radciteTheme";
 
-  const projects: ProjectNavItem[] = [
-    {
-      id: "radcite-demo",
-      code: "CRJU150",
-      title: "RADcite Functional Testing",
-      structureMode: "modules",
-    },
-  ];
+  const fallbackProject: ProjectNavItem = {
+    id: "radcite-fallback",
+    code: "CRJU150",
+    title: "RADcite Functional Testing",
+    structureMode: "modules",
+  };
 
   let status = $state<AppStatus>(fallbackStatus);
   let bridgeError = $state<string | null>(null);
-  let selectedProjectId = $state(projects[0].id);
+  let projects = $state<ProjectNavItem[]>([fallbackProject]);
+  let projectsLoading = $state(false);
+  let projectsError = $state<string | null>(null);
+  let selectedProjectId = $state(fallbackProject.id);
   let activeArea = $state<ToolArea>("documents");
   let analysisResult = $state<AnalyseDocxReviewResponse | null>(null);
   let activeFilter = $state<ParagraphFilter>("all");
@@ -91,7 +94,7 @@
   let moduleReadingsExportError = $state<string | null>(null);
 
   let selectedProject = $derived(
-    projects.find((project) => project.id === selectedProjectId) ?? projects[0],
+    projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? fallbackProject,
   );
   let selectedParagraph = $derived<ReviewParagraph | null>(
     analysisResult?.paragraphs.find((paragraph) => paragraph.id === selectedParagraphId) ?? null,
@@ -110,11 +113,92 @@
     }
   }
 
+  function selectedProjectCommandId(): string | null {
+    return selectedProjectId === fallbackProject.id ? null : selectedProjectId;
+  }
+
+  function projectNavItem(project: { id: string; code: string | null; title: string }): ProjectNavItem {
+    return {
+      id: project.id,
+      code: project.code ?? "RADcite",
+      title: project.title,
+      structureMode: "modules",
+    };
+  }
+
+  function resetProjectScopedState() {
+    analysisResult = null;
+    activeFilter = "all";
+    selectedParagraphId = null;
+    reviewActionError = null;
+    savedReviews = [];
+    savedReviewsError = null;
+    courseReferences = [];
+    courseReferencesError = null;
+    radciteModules = [];
+    radciteModulesError = null;
+    selectedModuleId = null;
+    moduleReadings = [];
+    moduleReadingsError = null;
+    referencesExport = null;
+    referencesExportError = null;
+    moduleReadingsExport = null;
+    moduleReadingsExportError = null;
+  }
+
+  async function refreshProjects(preferredProjectId: string | null = selectedProjectId) {
+    projectsLoading = true;
+    projectsError = null;
+    try {
+      const loadedProjects = await listRadciteProjects();
+      const nextProjects = loadedProjects.map(projectNavItem);
+      projects = nextProjects.length ? nextProjects : [fallbackProject];
+      selectedProjectId =
+        (preferredProjectId && nextProjects.some((project) => project.id === preferredProjectId)
+          ? preferredProjectId
+          : nextProjects[0]?.id) ?? fallbackProject.id;
+    } catch (reason: unknown) {
+      projectsError = `Could not load projects: ${toErrorMessage(reason)}`;
+      projects = [fallbackProject];
+      selectedProjectId = fallbackProject.id;
+    } finally {
+      projectsLoading = false;
+    }
+  }
+
+  async function handleCreateProject(input: Parameters<typeof createRadciteProject>[0]) {
+    projectsError = null;
+    try {
+      const created = await createRadciteProject(input);
+      await refreshProjects(created.id);
+      resetProjectScopedState();
+      await refreshSavedReviews();
+      await refreshCourseReferences();
+    } catch (reason: unknown) {
+      projectsError = `Could not create project: ${toErrorMessage(reason)}`;
+      throw reason;
+    }
+  }
+
+  async function handleSelectProject(projectId: string) {
+    if (projectId === selectedProjectId) {
+      return;
+    }
+
+    selectedProjectId = projectId;
+    resetProjectScopedState();
+    await refreshSavedReviews();
+    await refreshCourseReferences();
+    if (activeArea === "readings" || activeArea === "exports") {
+      await refreshRadciteModules(null);
+    }
+  }
+
   async function refreshSavedReviews() {
     savedReviewsLoading = true;
     savedReviewsError = null;
     try {
-      savedReviews = await listSavedRadciteReviews();
+      savedReviews = await listSavedRadciteReviews(selectedProjectCommandId());
     } catch (reason: unknown) {
       savedReviewsError = `Could not load saved reviews: ${toErrorMessage(reason)}`;
     } finally {
@@ -138,7 +222,7 @@
     courseReferencesLoading = true;
     courseReferencesError = null;
     try {
-      courseReferences = await listCourseReferences();
+      courseReferences = await listCourseReferences(selectedProjectCommandId());
     } catch (reason: unknown) {
       courseReferencesError = `Could not load course references: ${toErrorMessage(reason)}`;
     } finally {
@@ -151,7 +235,7 @@
     radciteModulesError = null;
     try {
       const previousSelectedModuleId = selectedModuleId;
-      const nextModules = await listRadciteModules();
+      const nextModules = await listRadciteModules(selectedProjectCommandId());
       radciteModules = nextModules;
       const nextSelected =
         (preferredModuleId && nextModules.some((module) => module.id === preferredModuleId)
@@ -201,7 +285,10 @@
   async function handleAddRadciteModule(input: Parameters<typeof addRadciteModule>[0]) {
     radciteModulesError = null;
     try {
-      const added = await addRadciteModule(input);
+      const added = await addRadciteModule({
+        ...input,
+        project_id: selectedProjectCommandId(),
+      });
       moduleReadingsExport = null;
       await refreshRadciteModules(added.id);
     } catch (reason: unknown) {
@@ -272,6 +359,13 @@
     return previewModuleReadingsImport(input);
   }
 
+  async function handlePreviewModuleReadingsCsvImport(
+    input: Parameters<typeof previewModuleReadingsCsvImport>[0],
+  ) {
+    moduleReadingsError = null;
+    return previewModuleReadingsCsvImport(input);
+  }
+
   async function handleSaveModuleReadingsImport(
     input: Parameters<typeof saveModuleReadingsImport>[0],
   ) {
@@ -290,7 +384,11 @@
   async function handleAddCourseReference(apaCitation: string, notes: string | null) {
     courseReferencesError = null;
     try {
-      await addCourseReference({ apa_citation: apaCitation, notes });
+      await addCourseReference({
+        project_id: selectedProjectCommandId(),
+        apa_citation: apaCitation,
+        notes,
+      });
       referencesExport = null;
       await refreshCourseReferences();
     } catch (reason: unknown) {
@@ -302,7 +400,10 @@
     referencesExportLoading = true;
     referencesExportError = null;
     try {
-      referencesExport = await exportCourseReferences({ for_ako_learn: forAkoLearn });
+      referencesExport = await exportCourseReferences({
+        project_id: selectedProjectCommandId(),
+        for_ako_learn: forAkoLearn,
+      });
     } catch (reason: unknown) {
       referencesExportError = `Could not export course references: ${toErrorMessage(reason)}`;
     } finally {
@@ -408,8 +509,10 @@
       .catch((reason: unknown) => {
         bridgeError = toErrorMessage(reason);
       });
-    void refreshSavedReviews();
-    void refreshCourseReferences();
+    void refreshProjects().then(() => {
+      void refreshSavedReviews();
+      void refreshCourseReferences();
+    });
   });
 </script>
 
@@ -418,8 +521,13 @@
     {projects}
     {selectedProjectId}
     {activeArea}
+    {projectsLoading}
+    {projectsError}
     onSelectProject={(projectId) => {
-      selectedProjectId = projectId;
+      void handleSelectProject(projectId);
+    }}
+    onCreateProject={(input) => {
+      void handleCreateProject(input);
     }}
     onSelectArea={(area) => {
       activeArea = area;
@@ -470,6 +578,7 @@
 
     {#if activeArea === "documents"}
       <RadciteDocumentsWorkspace
+        selectedProjectId={selectedProjectCommandId()}
         {activeFilter}
         {analysisResult}
         {savedReviews}
@@ -538,6 +647,7 @@
           void handleArchiveModuleReading(readingId);
         }}
         onPreviewReadingsImport={handlePreviewModuleReadingsImport}
+        onPreviewReadingsCsvImport={handlePreviewModuleReadingsCsvImport}
         onSaveReadingsImport={handleSaveModuleReadingsImport}
       />
     {:else if activeArea === "exports"}

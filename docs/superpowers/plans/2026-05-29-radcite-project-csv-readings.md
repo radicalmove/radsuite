@@ -99,15 +99,15 @@
 
 ## Task 4: Svelte Project Context And CSV Import UI
 
-- [ ] Update style contract first to require project command hooks and CSV import text/hooks.
-- [ ] Run `npm run test:style` and confirm failure.
-- [ ] Make `ProjectSidebar.svelte` render loaded projects and compact create-project controls.
-- [ ] Make `App.svelte` load/create/select projects and clear project-specific state on project switch.
-- [ ] Pass selected `project_id` to document analysis, saved review listing, reference/module list/add/export commands.
-- [ ] Add DOCX/CSV source selector to `RadciteReadingsWorkspace.svelte` and call the right preview callback.
-- [ ] Add restrained CSS for the project form and import source selector.
-- [ ] Run `npm run test:style`, focused Vitest, and `npm run build`.
-- [ ] Commit UI work.
+- [x] Update style contract first to require project command hooks and CSV import text/hooks.
+- [x] Run `npm run test:style` and confirm failure.
+- [x] Make `ProjectSidebar.svelte` render loaded projects and compact create-project controls.
+- [x] Make `App.svelte` load/create/select projects and clear project-specific state on project switch.
+- [x] Pass selected `project_id` to document analysis, saved review listing, reference/module list/add/export commands.
+- [x] Add DOCX/CSV source selector to `RadciteReadingsWorkspace.svelte` and call the right preview callback.
+- [x] Add restrained CSS for the project form and import source selector.
+- [x] Run `npm run test:style`, focused Vitest, and `npm run build`.
+- [x] Commit UI work.
 
 ## Task 5: Functional Smoke And Publish
 
