@@ -14,6 +14,11 @@
     UpdateRadciteModuleInput,
   } from "../lib/readingCommands";
   import { readingCategoryLabel } from "../lib/readingCategoryLabels";
+  import {
+    applyAutoModuleToCandidates,
+    inferModuleDraftForImport,
+    moduleMatchesImportDraft,
+  } from "../lib/readingImportWorkflow";
 
   type EditableImportCandidate = Omit<
     ModuleReadingImportCandidate,
@@ -33,6 +38,7 @@
   type Props = {
     modules: CourseModuleSummary[];
     docxPath: string;
+    autoPreviewDocxPath: string;
     selectedModuleId: string | null;
     readings: ModuleReadingSummary[];
     modulesLoading: boolean;
@@ -41,7 +47,9 @@
     readingsError: string | null;
     onRefreshModules: () => void | Promise<void>;
     onSelectModule: (moduleId: string) => void | Promise<void>;
-    onAddModule: (input: AddRadciteModuleInput) => void | Promise<void>;
+    onAddModule: (
+      input: AddRadciteModuleInput,
+    ) => CourseModuleSummary | Promise<CourseModuleSummary>;
     onUpdateModule: (input: UpdateRadciteModuleInput) => void | Promise<void>;
     onArchiveModule: (moduleId: string) => void | Promise<void>;
     onAddReading: (input: AddModuleReadingInput) => void | Promise<void>;
@@ -62,6 +70,7 @@
   let {
     modules,
     docxPath,
+    autoPreviewDocxPath,
     selectedModuleId,
     readings,
     modulesLoading,
@@ -90,6 +99,7 @@
   let importSaving = $state(false);
   let importError = $state<string | null>(null);
   let importStatus = $state<string | null>(null);
+  let lastAutoPreviewDocxPath = $state("");
   let editingModuleId = $state<string | null>(null);
   let moduleTitle = $state("");
   let moduleCode = $state("");
@@ -126,12 +136,37 @@
     importCandidates.filter((candidate) => candidate.selected).length,
   );
   let activeImportPath = $derived(importSource === "docx" ? docxPath : importPath);
+  let inferredImportModuleDraft = $derived(
+    inferModuleDraftForImport(importCandidates, activeImportPath),
+  );
+  let inferredExistingModule = $derived(
+    inferredImportModuleDraft
+      ? (modules.find((module) => moduleMatchesImportDraft(module, inferredImportModuleDraft)) ??
+          null)
+      : null,
+  );
+  let selectedImportNeedsModule = $derived(
+    importCandidates.some((candidate) => candidate.selected && !candidate.module_id),
+  );
   let importSaveDisabled = $derived(
     importSaving ||
-      modules.length === 0 ||
       selectedImportCount === 0 ||
-      importCandidates.some((candidate) => candidate.selected && !candidate.module_id),
+      (selectedImportNeedsModule && !inferredExistingModule && !inferredImportModuleDraft),
   );
+
+  $effect(() => {
+    const path = autoPreviewDocxPath.trim();
+    if (
+      path &&
+      importSource === "docx" &&
+      path !== lastAutoPreviewDocxPath &&
+      !importLoading &&
+      !importSaving
+    ) {
+      lastAutoPreviewDocxPath = path;
+      void previewReadingsImport(true);
+    }
+  });
 
   function moduleLabel(module: CourseModuleSummary): string {
     if (module.code) {
@@ -185,7 +220,13 @@
 
   function candidateModuleLabel(candidate: EditableImportCandidate): string {
     const module = modules.find((item) => item.id === candidate.module_id);
-    return module ? moduleLabel(module) : "Select module";
+    if (module) {
+      return moduleLabel(module);
+    }
+    if (candidate.selected && !candidate.module_id && inferredImportModuleDraft) {
+      return `Will create ${inferredImportModuleDraft.title}`;
+    }
+    return "Select module";
   }
 
   function importSourceLabel(): string {
@@ -254,7 +295,7 @@
     }
   }
 
-  async function previewReadingsImport() {
+  async function previewReadingsImport(isAutomatic = false) {
     const path = activeImportPath.trim();
     if (!path) {
       importError = `Choose a ${importSourceLabel()} file before previewing readings.`;
@@ -273,7 +314,9 @@
       });
       importCandidates = candidates.map(editableImportCandidate);
       importStatus = candidates.length
-        ? `${candidates.length} reading candidates ready to review.`
+        ? isAutomatic
+          ? `${candidates.length} reading candidates found from the analysed DOCX.`
+          : `${candidates.length} reading candidates ready to review.`
         : `No reading candidates were detected in this ${importSourceLabel()}.`;
     } catch (reason: unknown) {
       importError = `Could not preview readings: ${toErrorMessage(reason)}`;
@@ -293,21 +336,28 @@
     importError = null;
     importStatus = null;
 
-    const input: SaveModuleReadingsImportInput = {
-      candidates: selectedCandidates.map((candidate) => ({
-        module_id: candidate.module_id,
-        reading_category: candidate.reading_category,
-        lesson_code: candidate.lesson_code,
-        apa_citation: candidate.apa_citation,
-        citation_text: candidate.citation_text,
-        url: candidate.url,
-        notes: candidate.notes,
-        reading_notes: candidate.reading_notes,
-        estimated_reading_time: candidate.estimated_reading_time,
-      })),
-    };
-
     try {
+      const moduleId = await moduleIdForSelectedImport(selectedCandidates);
+      if (!moduleId) {
+        importError = "Create or select a module before saving these readings.";
+        return;
+      }
+
+      const candidatesWithModule = applyAutoModuleToCandidates(selectedCandidates, moduleId);
+      const input: SaveModuleReadingsImportInput = {
+        candidates: candidatesWithModule.map((candidate) => ({
+          module_id: candidate.module_id,
+          reading_category: candidate.reading_category,
+          lesson_code: candidate.lesson_code,
+          apa_citation: candidate.apa_citation,
+          citation_text: candidate.citation_text,
+          url: candidate.url,
+          notes: candidate.notes,
+          reading_notes: candidate.reading_notes,
+          estimated_reading_time: candidate.estimated_reading_time,
+        })),
+      };
+
       const saved = await onSaveReadingsImport(input);
       const savedIds = new Set(selectedCandidates.map((candidate) => candidate.id));
       importCandidates = importCandidates.filter((candidate) => !savedIds.has(candidate.id));
@@ -317,6 +367,31 @@
     } finally {
       importSaving = false;
     }
+  }
+
+  async function moduleIdForSelectedImport(
+    selectedCandidates: EditableImportCandidate[],
+  ): Promise<string | null> {
+    const existingModuleIds = new Set(
+      selectedCandidates.map((candidate) => candidate.module_id).filter(Boolean),
+    );
+    if (existingModuleIds.size > 1) {
+      return null;
+    }
+    if (existingModuleIds.size === 1) {
+      return [...existingModuleIds][0] ?? null;
+    }
+
+    if (inferredExistingModule) {
+      return inferredExistingModule.id;
+    }
+
+    if (!inferredImportModuleDraft) {
+      return null;
+    }
+
+    const created = await onAddModule(inferredImportModuleDraft);
+    return created.id;
   }
 
   function resetModuleForm() {
@@ -473,7 +548,11 @@
       <div class="form-section-heading">
         <div>
           <p class="eyebrow">{importSourceLabel()} import</p>
-          <strong>Preview readings before saving</strong>
+          <strong>
+            {importCandidates.length && inferredImportModuleDraft
+              ? `Save readings to ${inferredImportModuleDraft.title}`
+              : "Preview readings before saving"}
+          </strong>
         </div>
         <div class="import-source-toggle" aria-label="Reading import source">
           <button
@@ -610,7 +689,11 @@
           disabled={importSaveDisabled}
           onclick={() => void saveSelectedReadingsImport()}
         >
-          {importSaving ? "Saving" : "Save selected readings"}
+          {importSaving
+            ? "Saving"
+            : selectedImportNeedsModule && inferredImportModuleDraft
+              ? `Save to ${inferredImportModuleDraft.title}`
+              : "Save selected readings"}
         </button>
       </div>
     {/if}

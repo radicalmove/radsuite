@@ -69,6 +69,7 @@
   let selectedProjectId = $state(fallbackProject.id);
   let activeArea = $state<ToolArea>("documents");
   let sharedDocxPath = $state("");
+  let analysedDocxPath = $state("");
   let analysisResult = $state<AnalyseDocxReviewResponse | null>(null);
   let activeFilter = $state<ParagraphFilter>("all");
   let selectedParagraphId = $state<string | null>(null);
@@ -110,6 +111,11 @@
     selectedParagraphId = null;
     reviewActionError = null;
     if (result) {
+      analysedDocxPath = sharedDocxPath.trim();
+    } else {
+      analysedDocxPath = "";
+    }
+    if (result) {
       void refreshSavedReviews();
     }
   }
@@ -129,6 +135,7 @@
 
   function resetProjectScopedState() {
     sharedDocxPath = "";
+    analysedDocxPath = "";
     analysisResult = null;
     activeFilter = "all";
     selectedParagraphId = null;
@@ -293,8 +300,10 @@
       });
       moduleReadingsExport = null;
       await refreshRadciteModules(added.id);
+      return added;
     } catch (reason: unknown) {
       radciteModulesError = `Could not add module: ${toErrorMessage(reason)}`;
+      throw reason;
     }
   }
 
@@ -623,6 +632,7 @@
       <RadciteReadingsWorkspace
         modules={radciteModules}
         docxPath={sharedDocxPath}
+        autoPreviewDocxPath={analysedDocxPath}
         {selectedModuleId}
         readings={moduleReadings}
         modulesLoading={radciteModulesLoading}
@@ -635,9 +645,7 @@
         onSelectModule={(moduleId) => {
           void handleSelectModule(moduleId);
         }}
-        onAddModule={(input) => {
-          void handleAddRadciteModule(input);
-        }}
+        onAddModule={handleAddRadciteModule}
         onUpdateModule={(input) => {
           void handleUpdateRadciteModule(input);
         }}
