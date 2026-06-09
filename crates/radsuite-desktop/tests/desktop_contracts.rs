@@ -1637,7 +1637,7 @@ async fn module_readings_can_be_exported_as_html() {
     assert!(export.filename.ends_with("module-readings.html"));
     assert!(export.html.contains(r#"{GENERICO:type="references"}"#));
     assert!(export.html.contains(r#"{GENERICO:type="references_end"}"#));
-    assert!(export.html.contains("<h4>Compulsory readings</h4>"));
+    assert!(export.html.contains("<h4>Required readings</h4>"));
     assert!(export.html.contains("Optional readings"));
     assert!(export.html.contains("<strong>1.2&nbsp;</strong>"));
     assert!(export.html.contains("leadership &amp; planning."));

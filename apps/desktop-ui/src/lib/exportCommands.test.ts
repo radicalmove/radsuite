@@ -17,7 +17,7 @@ const exportResult: CourseReferencesExport = {
 const moduleExportResult: ModuleReadingsExport = {
   filename: "crju150-module-1-module-readings.html",
   content_type: "text/html; charset=utf-8",
-  html: "<h4>Compulsory readings</h4>",
+  html: "<h4>Required readings</h4>",
   module_id: "module-1",
   reading_count: 2,
 };

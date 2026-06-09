@@ -68,6 +68,7 @@
   let projectsError = $state<string | null>(null);
   let selectedProjectId = $state(fallbackProject.id);
   let activeArea = $state<ToolArea>("documents");
+  let sharedDocxPath = $state("");
   let analysisResult = $state<AnalyseDocxReviewResponse | null>(null);
   let activeFilter = $state<ParagraphFilter>("all");
   let selectedParagraphId = $state<string | null>(null);
@@ -127,6 +128,7 @@
   }
 
   function resetProjectScopedState() {
+    sharedDocxPath = "";
     analysisResult = null;
     activeFilter = "all";
     selectedParagraphId = null;
@@ -579,6 +581,7 @@
     {#if activeArea === "documents"}
       <RadciteDocumentsWorkspace
         selectedProjectId={selectedProjectCommandId()}
+        docxPath={sharedDocxPath}
         {activeFilter}
         {analysisResult}
         {savedReviews}
@@ -591,6 +594,9 @@
           selectedParagraphId = null;
         }}
         onAnalysisResult={handleAnalysisResult}
+        onDocxPathChange={(path) => {
+          sharedDocxPath = path;
+        }}
         onLoadSavedReview={(documentId) => {
           void handleLoadSavedReview(documentId);
         }}
@@ -616,6 +622,7 @@
     {:else if activeArea === "readings"}
       <RadciteReadingsWorkspace
         modules={radciteModules}
+        docxPath={sharedDocxPath}
         {selectedModuleId}
         readings={moduleReadings}
         modulesLoading={radciteModulesLoading}
@@ -649,6 +656,9 @@
         onPreviewReadingsImport={handlePreviewModuleReadingsImport}
         onPreviewReadingsCsvImport={handlePreviewModuleReadingsCsvImport}
         onSaveReadingsImport={handleSaveModuleReadingsImport}
+        onDocxPathChange={(path) => {
+          sharedDocxPath = path;
+        }}
       />
     {:else if activeArea === "exports"}
       <RadciteExportsWorkspace
