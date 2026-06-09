@@ -132,8 +132,9 @@ fn extract_reading_candidates_from_paragraphs(
     let mut current_category = ReadingCategory::Compulsory;
     let mut current_module_order = None;
     let mut current_module_title = None;
+    let mut ignoring_bibliography = false;
     let mut seen = Vec::new();
-    let mut candidates = Vec::new();
+    let mut candidates: Vec<ReadingImportCandidate> = Vec::new();
 
     for paragraph in paragraphs {
         let plain = normalize_plain_text(&paragraph);
@@ -143,6 +144,12 @@ fn extract_reading_candidates_from_paragraphs(
 
         if let Some(category) = detect_reading_category(&plain) {
             current_category = category;
+            ignoring_bibliography = false;
+            continue;
+        }
+
+        if is_bibliography_heading(&plain) {
+            ignoring_bibliography = true;
             continue;
         }
 
@@ -157,6 +164,10 @@ fn extract_reading_candidates_from_paragraphs(
             continue;
         }
 
+        if ignoring_bibliography {
+            continue;
+        }
+
         if !looks_like_reference(reference_text) {
             continue;
         }
@@ -166,18 +177,12 @@ fn extract_reading_candidates_from_paragraphs(
             continue;
         }
 
-        let dedupe_key = (
-            reading_category_label(current_category).to_string(),
-            lesson_code.clone().unwrap_or_default(),
-            current_module_order.unwrap_or_default(),
-            apa_citation.clone(),
+        let dedupe_key = reading_candidate_dedupe_key(
+            current_module_order,
+            current_module_title.as_deref(),
+            &apa_citation,
         );
-        if seen.contains(&dedupe_key) {
-            continue;
-        }
-        seen.push(dedupe_key);
-
-        candidates.push(ReadingImportCandidate {
+        let candidate = ReadingImportCandidate {
             module_order: current_module_order,
             module_title: current_module_title.clone(),
             reading_category: current_category,
@@ -185,7 +190,19 @@ fn extract_reading_candidates_from_paragraphs(
             apa_citation,
             citation_text: (body.is_some()).then_some(plain.clone()),
             url: extract_first_url(&plain),
-        });
+        };
+
+        if let Some(index) = seen.iter().position(|key| key == &dedupe_key) {
+            if should_prefer_reading_candidate(
+                candidate.reading_category,
+                candidates[index].reading_category,
+            ) {
+                candidates[index] = candidate;
+            }
+            continue;
+        }
+        seen.push(dedupe_key);
+        candidates.push(candidate);
     }
 
     candidates
@@ -207,6 +224,14 @@ fn detect_reading_category(text: &str) -> Option<ReadingCategory> {
         return Some(ReadingCategory::Optional);
     }
     None
+}
+
+fn is_bibliography_heading(text: &str) -> bool {
+    let normalized = text.trim().trim_end_matches(':').to_lowercase();
+    matches!(
+        normalized.as_str(),
+        "references" | "reference list" | "bibliography"
+    )
 }
 
 fn detect_module_heading(text: &str) -> Option<(i32, String)> {
@@ -236,9 +261,10 @@ fn looks_like_reference(text: &str) -> bool {
         return false;
     }
 
-    let year =
-        Regex::new(r"\((?:19|20)\d{2}[a-z]?\)|\b(?:19|20)\d{2}[a-z]?\b").expect("year regex");
-    if !year.is_match(normalized) {
+    let date_marker =
+        Regex::new(r"(?i)\((?:(?:19|20)\d{2}[a-z]?|n\.d\.?)\)|\b(?:19|20)\d{2}[a-z]?\b")
+            .expect("date marker regex");
+    if !date_marker.is_match(normalized) {
         return false;
     }
 
@@ -248,6 +274,27 @@ fn looks_like_reference(text: &str) -> bool {
         Regex::new(r"^[A-Z][A-Za-z&'’`\- ]{1,80}\s*\(\s*\d{4}\s*\)").expect("author-year regex");
 
     author_with_initial.is_match(normalized) || author_with_year.is_match(normalized)
+}
+
+fn reading_candidate_dedupe_key(
+    module_order: Option<i32>,
+    module_title: Option<&str>,
+    apa_citation: &str,
+) -> (Option<i32>, String, String) {
+    (
+        module_order,
+        module_title
+            .map(|title| title.trim().to_lowercase())
+            .unwrap_or_default(),
+        normalize_whitespace(apa_citation).to_lowercase(),
+    )
+}
+
+fn should_prefer_reading_candidate(incoming: ReadingCategory, existing: ReadingCategory) -> bool {
+    matches!(
+        (incoming, existing),
+        (ReadingCategory::Compulsory, ReadingCategory::Optional)
+    )
 }
 
 fn split_lesson_prefix(text: &str) -> (Option<String>, Option<&str>) {
@@ -304,13 +351,6 @@ fn extract_first_url(text: &str) -> Option<String> {
             .trim_end_matches(['.', ',', ')', ';'])
             .to_string()
     })
-}
-
-fn reading_category_label(reading_category: ReadingCategory) -> &'static str {
-    match reading_category {
-        ReadingCategory::Compulsory => "compulsory",
-        ReadingCategory::Optional => "optional",
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

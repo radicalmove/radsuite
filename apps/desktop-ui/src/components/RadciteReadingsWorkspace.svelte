@@ -13,6 +13,7 @@
     UpdateModuleReadingInput,
     UpdateRadciteModuleInput,
   } from "../lib/readingCommands";
+  import { readingCategoryLabel } from "../lib/readingCategoryLabels";
 
   type EditableImportCandidate = Omit<
     ModuleReadingImportCandidate,
@@ -31,6 +32,7 @@
 
   type Props = {
     modules: CourseModuleSummary[];
+    docxPath: string;
     selectedModuleId: string | null;
     readings: ModuleReadingSummary[];
     modulesLoading: boolean;
@@ -54,10 +56,12 @@
     onSaveReadingsImport: (
       input: SaveModuleReadingsImportInput,
     ) => ModuleReadingSummary[] | Promise<ModuleReadingSummary[]>;
+    onDocxPathChange: (path: string) => void;
   };
 
   let {
     modules,
+    docxPath,
     selectedModuleId,
     readings,
     modulesLoading,
@@ -75,6 +79,7 @@
     onPreviewReadingsImport,
     onPreviewReadingsCsvImport,
     onSaveReadingsImport,
+    onDocxPathChange,
   }: Props = $props();
 
   let importCandidateCounter = 0;
@@ -120,6 +125,7 @@
   let selectedImportCount = $derived(
     importCandidates.filter((candidate) => candidate.selected).length,
   );
+  let activeImportPath = $derived(importSource === "docx" ? docxPath : importPath);
   let importSaveDisabled = $derived(
     importSaving ||
       modules.length === 0 ||
@@ -192,10 +198,21 @@
     }
 
     importSource = source;
-    importPath = "";
+    if (source === "csv") {
+      importPath = "";
+    }
     importCandidates = [];
     importError = null;
     importStatus = null;
+  }
+
+  function handleImportPathInput(event: Event) {
+    const value = (event.currentTarget as HTMLInputElement).value;
+    if (importSource === "docx") {
+      onDocxPathChange(value);
+    } else {
+      importPath = value;
+    }
   }
 
   async function chooseReadingsFile() {
@@ -220,9 +237,17 @@
       });
 
       if (typeof selected === "string") {
-        importPath = selected;
+        if (importSource === "docx") {
+          onDocxPathChange(selected);
+        } else {
+          importPath = selected;
+        }
       } else if (Array.isArray(selected) && typeof selected[0] === "string") {
-        importPath = selected[0];
+        if (importSource === "docx") {
+          onDocxPathChange(selected[0]);
+        } else {
+          importPath = selected[0];
+        }
       }
     } catch (reason: unknown) {
       importError = `Could not open the ${importSourceLabel()} picker: ${toErrorMessage(reason)}`;
@@ -230,7 +255,7 @@
   }
 
   async function previewReadingsImport() {
-    const path = importPath.trim();
+    const path = activeImportPath.trim();
     if (!path) {
       importError = `Choose a ${importSourceLabel()} file before previewing readings.`;
       return;
@@ -478,7 +503,8 @@
           <input
             class="path-input"
             type="text"
-            bind:value={importPath}
+            value={activeImportPath}
+            oninput={handleImportPathInput}
             placeholder={
               importSource === "csv"
                 ? "/Users/name/Documents/course_readings.csv"
@@ -497,7 +523,7 @@
           <button
             class="primary-button"
             type="submit"
-            disabled={importLoading || importSaving || importPath.trim().length === 0}
+            disabled={importLoading || importSaving || activeImportPath.trim().length === 0}
           >
             {importLoading ? "Previewing" : "Preview readings"}
           </button>
@@ -536,8 +562,8 @@
               <label>
                 <span class="field-label">Category</span>
                 <select class="path-input" bind:value={candidate.reading_category}>
-                  <option value="compulsory">Compulsory</option>
-                  <option value="optional">Optional</option>
+                  <option value="compulsory">{readingCategoryLabel("compulsory")}</option>
+                  <option value="optional">{readingCategoryLabel("optional")}</option>
                 </select>
               </label>
               <label>
@@ -705,8 +731,8 @@
         <label class="field-label compact-field">
           Category
           <select class="path-input compact-select" bind:value={readingCategory}>
-            <option value="compulsory">Compulsory</option>
-            <option value="optional">Optional</option>
+            <option value="compulsory">{readingCategoryLabel("compulsory")}</option>
+            <option value="optional">{readingCategoryLabel("optional")}</option>
           </select>
         </label>
         {#if editingReadingId}
@@ -783,8 +809,8 @@
       <div class="references-empty">Loading readings</div>
     {:else if readings.length}
       <div class="reading-groups">
-        <section class="reading-group" aria-label="Compulsory readings">
-          <h3>Compulsory</h3>
+        <section class="reading-group" aria-label="Required readings">
+          <h3>Required</h3>
           {#if compulsoryReadings.length}
             {#each compulsoryReadings as reading (reading.id)}
               <article class="reading-row">
@@ -824,7 +850,7 @@
               </article>
             {/each}
           {:else}
-            <div class="references-empty">No compulsory readings yet.</div>
+            <div class="references-empty">No required readings yet.</div>
           {/if}
         </section>
 

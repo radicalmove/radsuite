@@ -177,7 +177,7 @@ for (const needle of [
 
 for (const needle of [
   "Module readings",
-  "Compulsory",
+  "Required",
   "Optional",
   "module-selector",
   "reading-list-panel",

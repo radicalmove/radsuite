@@ -1402,7 +1402,7 @@ fn format_module_readings_html_with_generico(readings: &[ReferenceEntry]) -> Str
     let mut generico_open = true;
 
     if !compulsory_readings.is_empty() {
-        parts.push("<h4>Compulsory readings</h4>".to_string());
+        parts.push("<h4>Required readings</h4>".to_string());
         for (index, reading) in compulsory_readings.iter().enumerate() {
             let has_more_entries =
                 index < compulsory_readings.len() - 1 || !optional_readings.is_empty();

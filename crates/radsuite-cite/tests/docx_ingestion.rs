@@ -159,6 +159,93 @@ fn docx_reading_import_extracts_compulsory_and_optional_candidates() {
 }
 
 #[test]
+fn docx_reading_import_extracts_no_date_apa_candidates() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-no-date-candidates.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Optional readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Dietrich, G. (n.d.). Spin Sucks. https://spinsucks.com</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-6-readings.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Optional);
+    assert_eq!(
+        candidates[0].apa_citation,
+        "Dietrich, G. (n.d.). Spin Sucks. https://spinsucks.com"
+    );
+    assert_eq!(candidates[0].url.as_deref(), Some("https://spinsucks.com"));
+}
+
+#[test]
+fn docx_reading_import_ignores_bibliography_before_reading_sections() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-ignore-bibliography.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>References</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Rice, C., &amp; Innes, M. (2025). Counter-terrorism campaigns and public trust. https://doi.org/10.1080/rice</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Required reading:</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Goldberg, M. H., &amp; Gustafson, A. (2023). Strategic communication campaigns. https://doi.org/10.1080/goldberg</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Optional readings:</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Dietrich, G. (n.d.). Spin Sucks. https://spinsucks.com</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Rice, C., &amp; Innes, M. (2025). Counter-terrorism campaigns and public trust. https://doi.org/10.1080/rice</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-6-readings.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 3);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
+    assert!(candidates[0].apa_citation.contains("Goldberg"));
+    assert_eq!(candidates[1].reading_category, ReadingCategory::Optional);
+    assert!(candidates[1].apa_citation.contains("Dietrich"));
+    assert_eq!(candidates[2].reading_category, ReadingCategory::Optional);
+    assert!(candidates[2].apa_citation.contains("Rice"));
+}
+
+#[test]
+fn docx_reading_import_prefers_required_when_duplicate_is_optional_first() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-required-precedence.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Optional readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Rice, C., &amp; Innes, M. (2025). Counter-terrorism campaigns and public trust. https://doi.org/10.1080/rice</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Required readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Rice, C., &amp; Innes, M. (2025). Counter-terrorism campaigns and public trust. https://doi.org/10.1080/rice</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-6-readings.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
+    assert!(candidates[0].apa_citation.contains("Rice"));
+}
+
+#[test]
 fn docx_reading_import_extracts_composite_module_lesson_markers() {
     let path = write_docx_with_document_xml(
         "docx-reading-import-composite-lesson.docx",

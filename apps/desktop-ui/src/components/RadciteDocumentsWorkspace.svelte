@@ -16,6 +16,7 @@
 
   type Props = {
     selectedProjectId: string | null;
+    docxPath: string;
     activeFilter: ParagraphFilter;
     analysisResult: AnalyseDocxReviewResponse | null;
     savedReviews: SavedRadciteReviewSummary[];
@@ -25,6 +26,7 @@
     selectedDocumentId: string | null;
     onFilterChange: (filter: ParagraphFilter) => void;
     onAnalysisResult: (result: AnalyseDocxReviewResponse | null) => void;
+    onDocxPathChange: (path: string) => void;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
     onRefreshSavedReviews: () => void | Promise<void>;
     onSelectParagraph: (paragraphId: string | null) => void;
@@ -32,6 +34,7 @@
 
   let {
     selectedProjectId,
+    docxPath,
     activeFilter,
     analysisResult,
     savedReviews,
@@ -41,12 +44,12 @@
     selectedDocumentId,
     onFilterChange,
     onAnalysisResult,
+    onDocxPathChange,
     onLoadSavedReview,
     onRefreshSavedReviews,
     onSelectParagraph,
   }: Props = $props();
 
-  let docxPath = $state("");
   let analysisLoading = $state(false);
   let analysisError = $state<string | null>(null);
   let analysisDisabled = $derived(analysisLoading || docxPath.trim().length === 0);
@@ -67,6 +70,10 @@
     return `${review.paragraph_count} paragraphs · ${review.citation_count} citations · ${review.missing_citation_count} flagged`;
   }
 
+  function handleDocxPathInput(event: Event) {
+    onDocxPathChange((event.currentTarget as HTMLInputElement).value);
+  }
+
   async function onChooseDocx() {
     analysisError = null;
 
@@ -83,9 +90,9 @@
       });
 
       if (typeof selected === "string") {
-        docxPath = selected;
+        onDocxPathChange(selected);
       } else if (Array.isArray(selected) && typeof selected[0] === "string") {
-        docxPath = selected[0];
+        onDocxPathChange(selected[0]);
       }
     } catch (reason: unknown) {
       analysisError = `Could not open the DOCX picker: ${toErrorMessage(reason)}`;
@@ -149,7 +156,8 @@
         id="docx-path"
         class="path-input"
         type="text"
-        bind:value={docxPath}
+        value={docxPath}
+        oninput={handleDocxPathInput}
         placeholder="/Users/name/Documents/source.docx"
         autocomplete="off"
       />
