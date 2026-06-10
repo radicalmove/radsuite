@@ -1842,6 +1842,47 @@ async fn module_readings_export_can_emit_ako_html() {
 }
 
 #[tokio::test]
+async fn module_readings_export_filename_uses_project_title_when_code_is_missing() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: None,
+            title: "Strategic Communication".to_string(),
+        },
+    )
+    .await
+    .expect("create project without code");
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: Some(project.id),
+            title: "Module 6".to_string(),
+            code: None,
+            order_index: Some(6),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    let export = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: module.id,
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export module readings");
+
+    assert_eq!(
+        export.filename,
+        "strategic-communication-module-6-module-readings.html"
+    );
+}
+
+#[tokio::test]
 async fn module_readings_export_rejects_missing_module() {
     let state = desktop_state_with_migrated_pool().await;
     let missing_module_id = ModuleId::new();

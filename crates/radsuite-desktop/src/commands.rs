@@ -1023,7 +1023,7 @@ pub async fn export_module_readings(
     let html = format_module_readings_html(&readings, request.for_ako_learn);
     let project_label = project
         .as_ref()
-        .and_then(|project| project.code.as_deref())
+        .map(|project| project.code.as_deref().unwrap_or(&project.title))
         .unwrap_or("radcite");
     let module_label = module.code.as_deref().unwrap_or(&module.title);
 
