@@ -959,6 +959,74 @@ async fn module_readings_import_save_persists_selected_candidates() {
 }
 
 #[tokio::test]
+async fn module_readings_import_save_reuses_existing_duplicate_candidates() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    let first_saved = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: "compulsory".to_string(),
+                lesson_code: Some("1.2".to_string()),
+                apa_citation: Some("Smith, J. (2024). Worked examples.".to_string()),
+                citation_text: None,
+                url: Some("https://example.com/worked".to_string()),
+                notes: Some("Imported from DOCX".to_string()),
+                reading_notes: Some("Read before class".to_string()),
+                estimated_reading_time: Some("20 minutes".to_string()),
+            }],
+        },
+    )
+    .await
+    .expect("save first readings import");
+
+    let saved_again = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: " compulsory ".to_string(),
+                lesson_code: Some(" 9.9 ".to_string()),
+                apa_citation: Some("  smith, j. (2024).   worked examples. ".to_string()),
+                citation_text: None,
+                url: Some("https://example.com/duplicate".to_string()),
+                notes: Some("Imported again".to_string()),
+                reading_notes: Some("Duplicate note".to_string()),
+                estimated_reading_time: Some("30 minutes".to_string()),
+            }],
+        },
+    )
+    .await
+    .expect("save duplicate readings import");
+
+    assert_eq!(saved_again, first_saved);
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert_eq!(readings, first_saved);
+}
+
+#[tokio::test]
 async fn module_readings_import_save_validates_missing_module() {
     let state = desktop_state_with_migrated_pool().await;
     let missing_module_id = ModuleId::new();
