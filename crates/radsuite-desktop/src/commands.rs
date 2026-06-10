@@ -923,6 +923,22 @@ pub async fn save_module_readings_import(
             return Err(ModuleReadingImportError::EmptyReadingText);
         }
 
+        if let Some(existing_reading) = find_existing_module_reading_for_import(
+            &reference_repo,
+            module.id,
+            reading_category,
+            apa_citation.as_deref(),
+            citation_text.as_deref(),
+        )
+        .await?
+        {
+            saved_readings.push(
+                module_reading_summary(existing_reading)
+                    .ok_or(ModuleReadingImportError::MissingModule(module.id))?,
+            );
+            continue;
+        }
+
         let mut reading = ReferenceEntry::new(module.project_id, ReferenceEntryType::Reading);
         reading.module_id = Some(module.id);
         reading.reading_category = Some(reading_category);
@@ -943,6 +959,30 @@ pub async fn save_module_readings_import(
     }
 
     Ok(saved_readings)
+}
+
+async fn find_existing_module_reading_for_import(
+    reference_repo: &SqliteReferenceEntryRepository,
+    module_id: ModuleId,
+    reading_category: ReadingCategory,
+    apa_citation: Option<&str>,
+    citation_text: Option<&str>,
+) -> Result<Option<ReferenceEntry>, ModuleReadingImportError> {
+    let Some(import_key) =
+        module_reading_import_identity(reading_category, apa_citation, citation_text)
+    else {
+        return Ok(None);
+    };
+
+    let existing_readings = reference_repo
+        .list_reference_entries_for_module(module_id, ReferenceEntryType::Reading)
+        .await?;
+
+    Ok(existing_readings.into_iter().find(|reading| {
+        module_reading_entry_identity(reading)
+            .as_ref()
+            .is_some_and(|existing_key| existing_key == &import_key)
+    }))
 }
 
 pub async fn export_course_references(
@@ -1262,6 +1302,33 @@ fn reading_category_label(reading_category: Option<ReadingCategory>) -> &'static
         Some(ReadingCategory::Compulsory) | None => "compulsory",
         Some(ReadingCategory::Optional) => "optional",
     }
+}
+
+fn module_reading_import_identity(
+    reading_category: ReadingCategory,
+    apa_citation: Option<&str>,
+    citation_text: Option<&str>,
+) -> Option<(ReadingCategory, String)> {
+    let reading_text = apa_citation.or(citation_text)?;
+    Some((reading_category, normalised_reading_identity(reading_text)))
+}
+
+fn module_reading_entry_identity(reading: &ReferenceEntry) -> Option<(ReadingCategory, String)> {
+    module_reading_import_identity(
+        reading
+            .reading_category
+            .unwrap_or(ReadingCategory::Compulsory),
+        reading.apa_citation.as_deref(),
+        reading.citation_text.as_deref(),
+    )
+}
+
+fn normalised_reading_identity(value: &str) -> String {
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
 }
 
 fn parse_reading_category_request(value: &str) -> Result<ReadingCategory, ModuleReadingError> {
