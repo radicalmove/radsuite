@@ -147,18 +147,18 @@ button:disabled {
 .brand-mark {
   display: inline-grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  border: 1px solid rgba(206, 62, 46, 0.28);
-  border-radius: var(--r-md);
-  background: rgba(255, 255, 255, 0.06);
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
   flex-shrink: 0;
 }
 
 .brand-mark img {
   display: block;
-  width: 28px;
-  height: 28px;
+  width: 46px;
+  height: 46px;
 }
 
 .sidebar-header h1,
