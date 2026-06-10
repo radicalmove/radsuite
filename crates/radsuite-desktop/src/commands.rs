@@ -1333,7 +1333,7 @@ fn normalised_reading_identity(value: &str) -> String {
 
 fn parse_reading_category_request(value: &str) -> Result<ReadingCategory, ModuleReadingError> {
     match value.trim() {
-        "compulsory" => Ok(ReadingCategory::Compulsory),
+        "compulsory" | "required" => Ok(ReadingCategory::Compulsory),
         "optional" => Ok(ReadingCategory::Optional),
         other => Err(ModuleReadingError::InvalidCategory(other.to_string())),
     }
@@ -1343,7 +1343,7 @@ fn parse_reading_category_import_request(
     value: &str,
 ) -> Result<ReadingCategory, ModuleReadingImportError> {
     match value.trim() {
-        "compulsory" => Ok(ReadingCategory::Compulsory),
+        "compulsory" | "required" => Ok(ReadingCategory::Compulsory),
         "optional" => Ok(ReadingCategory::Optional),
         other => Err(ModuleReadingImportError::InvalidCategory(other.to_string())),
     }

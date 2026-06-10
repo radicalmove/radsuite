@@ -647,6 +647,25 @@ async fn module_readings_commands_add_and_list_local_modules_and_readings() {
         reading.estimated_reading_time.as_deref(),
         Some("15 minutes")
     );
+
+    let required_reading = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: first_module.id,
+            reading_category: " required ".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Taylor, J. (2024). Required reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add required alias reading");
+
+    assert_eq!(required_reading.reading_category, "compulsory");
 }
 
 #[tokio::test]
@@ -724,6 +743,27 @@ async fn module_readings_commands_validate_input() {
         invalid_category,
         ModuleReadingError::InvalidCategory(value) if value == "recommended"
     ));
+
+    let imported_required = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: " required ".to_string(),
+                lesson_code: None,
+                apa_citation: Some("Taylor, J. (2024). Imported required reading.".to_string()),
+                citation_text: None,
+                url: None,
+                notes: None,
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect("import required alias reading");
+
+    assert_eq!(imported_required[0].reading_category, "compulsory");
 
     let missing_module = list_module_readings(
         &state,
@@ -1340,6 +1380,25 @@ async fn module_readings_update_commands_validate_input() {
         invalid_category,
         ModuleReadingError::InvalidCategory(value) if value == "recommended"
     ));
+
+    let updated_required = update_module_reading(
+        &state,
+        UpdateModuleReadingRequest {
+            reading_id: reading.id,
+            reading_category: " required ".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Taylor, J. (2024). Updated required reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("update required alias reading");
+
+    assert_eq!(updated_required.reading_category, "compulsory");
 
     let missing_reading_id = ReferenceEntryId::new();
     let missing_reading = update_module_reading(
