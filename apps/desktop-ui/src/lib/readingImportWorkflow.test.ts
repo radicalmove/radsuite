@@ -2,6 +2,7 @@ import { describe, expect, test } from "vitest";
 import type { CourseModuleSummary, ModuleReadingImportCandidate } from "../types";
 import {
   applyAutoModuleToCandidates,
+  defaultModuleIdForImportCandidate,
   inferModuleDraftForImport,
   moduleMatchesImportDraft,
 } from "./readingImportWorkflow";
@@ -94,5 +95,55 @@ describe("reading import workflow", () => {
         "module-6",
       ).map((item) => item.module_id),
     ).toEqual(["module-6", "existing-module", ""]);
+  });
+
+  test("uses an existing module matching the import draft before the selected module", () => {
+    const selectedModule = {
+      ...module,
+      id: "module-1",
+      title: "Module 1",
+      order_index: 1,
+    };
+    const importDraft = inferModuleDraftForImport(
+      [candidate],
+      "/Users/name/Desktop/COMS432 Module 6.docx",
+    );
+
+    expect(
+      defaultModuleIdForImportCandidate(
+        candidate,
+        [selectedModule, module],
+        selectedModule.id,
+        importDraft,
+      ),
+    ).toBe("module-6");
+  });
+
+  test("leaves candidates unassigned when the import draft needs a new module", () => {
+    const selectedModule = {
+      ...module,
+      id: "module-1",
+      title: "Module 1",
+      order_index: 1,
+    };
+    const importDraft = inferModuleDraftForImport(
+      [candidate],
+      "/Users/name/Desktop/COMS432 Module 6.docx",
+    );
+
+    expect(
+      defaultModuleIdForImportCandidate(
+        candidate,
+        [selectedModule],
+        selectedModule.id,
+        importDraft,
+      ),
+    ).toBe("");
+  });
+
+  test("falls back to the selected module when the import has no module signal", () => {
+    expect(
+      defaultModuleIdForImportCandidate(candidate, [module], module.id, null),
+    ).toBe("module-6");
   });
 });

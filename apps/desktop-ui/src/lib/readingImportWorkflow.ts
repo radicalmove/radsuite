@@ -33,6 +33,42 @@ export function moduleMatchesImportDraft(
   return normalizedLabel(module.title) === normalizedLabel(draft.title);
 }
 
+export function defaultModuleIdForImportCandidate(
+  candidate: ModuleReadingImportCandidate,
+  modules: CourseModuleSummary[],
+  selectedModuleId: string | null,
+  importDraft: ImportModuleDraft | null,
+): string {
+  const byOrder = modules.find(
+    (module) => module.order_index !== null && module.order_index === candidate.module_order,
+  );
+  if (byOrder) {
+    return byOrder.id;
+  }
+
+  const moduleTitle = candidate.module_title?.trim().toLowerCase();
+  const byTitle = moduleTitle
+    ? modules.find((module) => module.title.trim().toLowerCase() === moduleTitle)
+    : null;
+  if (byTitle) {
+    return byTitle.id;
+  }
+
+  if (candidate.module_order !== null || candidate.module_title?.trim()) {
+    return "";
+  }
+
+  if (importDraft) {
+    return modules.find((module) => moduleMatchesImportDraft(module, importDraft))?.id ?? "";
+  }
+
+  if (selectedModuleId && modules.some((module) => module.id === selectedModuleId)) {
+    return selectedModuleId;
+  }
+
+  return modules[0]?.id ?? "";
+}
+
 export function applyAutoModuleToCandidates<T extends CandidateWithModuleSelection>(
   candidates: T[],
   moduleId: string,
