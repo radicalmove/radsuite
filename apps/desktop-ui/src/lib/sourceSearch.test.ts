@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 import type { ReviewParagraph } from "../types";
-import { buildCrossrefSearchUrl, suggestedSourceSearchQuery } from "./sourceSearch";
+import {
+  buildCrossrefSearchUrl,
+  buildCrossrefWorksApiUrl,
+  searchCrossrefWorks,
+  suggestedSourceSearchQuery,
+} from "./sourceSearch";
 
 function paragraph(overrides: Partial<ReviewParagraph>): ReviewParagraph {
   return {
@@ -91,6 +96,76 @@ describe("source search", () => {
     expect(buildCrossrefSearchUrl(" Jones & Patel, 2021 ")).toBe(
       "https://search.crossref.org/?q=Jones+%26+Patel%2C+2021",
     );
+  });
+
+  test("builds a Crossref works API URL", () => {
+    expect(buildCrossrefWorksApiUrl(" Jones & Patel, 2021 ", 3)).toBe(
+      "https://api.crossref.org/works?query.bibliographic=Jones+%26+Patel%2C+2021&rows=3&select=DOI%2Ctitle%2Cauthor%2Cissued%2Cpublished-print%2Cpublished-online%2Ccontainer-title%2CURL",
+    );
+  });
+
+  test("searches Crossref works and formats compact results", async () => {
+    const fetcher = async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message: {
+            items: [
+              {
+                DOI: "10.1000/example",
+                title: ["Worked examples in practice"],
+                author: [
+                  { given: "Jane", family: "Smith" },
+                  { given: "Priya", family: "Jones" },
+                ],
+                issued: { "date-parts": [[2024, 3, 1]] },
+                "container-title": ["Teaching Journal"],
+                URL: "https://doi.org/10.1000/example",
+              },
+            ],
+          },
+        }),
+      }) as Response;
+
+    await expect(searchCrossrefWorks("Smith 2024 worked examples", fetcher)).resolves.toEqual([
+      {
+        title: "Worked examples in practice",
+        authors: "Smith, J.; Jones, P.",
+        year: "2024",
+        source: "Teaching Journal",
+        doi: "10.1000/example",
+        url: "https://doi.org/10.1000/example",
+      },
+    ]);
+  });
+
+  test("throws a useful error when Crossref search fails", async () => {
+    const fetcher = async () =>
+      ({
+        ok: false,
+        status: 503,
+        json: async () => ({}),
+      }) as Response;
+
+    await expect(searchCrossrefWorks("Smith 2024", fetcher)).rejects.toThrow(
+      "Crossref search failed with status 503",
+    );
+  });
+
+  test("drops Crossref works that have neither title nor DOI", async () => {
+    const fetcher = async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          message: {
+            items: [{ author: [{ family: "Smith" }] }],
+          },
+        }),
+      }) as Response;
+
+    await expect(searchCrossrefWorks("Smith", fetcher)).resolves.toEqual([]);
   });
 
   test("returns null when there is nothing meaningful to search", () => {
