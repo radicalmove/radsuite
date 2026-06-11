@@ -263,6 +263,7 @@ for (const needle of [
   "Crossref results",
   "Open DOI",
   "Add reference",
+  "Add & link",
   "Mark citations reviewed",
   "Not required",
   "Reviewed",
