@@ -1579,7 +1579,7 @@ button:disabled {
 
 .source-search-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: var(--s-2);
 }
 
@@ -1588,6 +1588,64 @@ button:disabled {
   align-items: center;
   justify-content: center;
   text-decoration: none;
+}
+
+.source-search-notice {
+  margin-top: 0;
+}
+
+.source-search-status {
+  color: var(--fg-3);
+  font-size: 0.78rem;
+}
+
+.source-result-list {
+  display: grid;
+  gap: var(--s-2);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--line);
+}
+
+.source-result-list h3 {
+  margin: 0;
+  color: var(--fg-1);
+  font-size: 0.84rem;
+  font-weight: 650;
+}
+
+.source-result-card {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+
+.source-result-main {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.source-result-main strong,
+.source-result-main span,
+.source-result-main small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.source-result-main strong {
+  color: var(--fg-1);
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.source-result-main span,
+.source-result-main small {
+  color: var(--fg-3);
+  font-size: 0.72rem;
 }
 
 .review-action-form {

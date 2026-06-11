@@ -1,5 +1,10 @@
 <script lang="ts">
-  import { buildCrossrefSearchUrl, suggestedSourceSearchQuery } from "../lib/sourceSearch";
+  import {
+    buildCrossrefSearchUrl,
+    searchCrossrefWorks,
+    suggestedSourceSearchQuery,
+    type CrossrefSourceResult,
+  } from "../lib/sourceSearch";
   import type {
     CourseReferenceSummary,
     ReviewCitationReferenceSuggestion,
@@ -36,6 +41,10 @@
   let sourceSearchOpen = $state(false);
   let sourceSearchQuery = $state("");
   let sourceSearchParagraphId = $state<string | null>(null);
+  let sourceSearchResultsQuery = $state("");
+  let sourceSearchResults = $state<CrossrefSourceResult[]>([]);
+  let sourceSearchLoading = $state(false);
+  let sourceSearchError = $state<string | null>(null);
   let manualCitationDisabled = $derived(
     !selectedParagraph || manualCitationText.trim().length === 0,
   );
@@ -70,6 +79,7 @@
   let sourceSearchUrl = $derived(
     sourceSearchQuery.trim() ? buildCrossrefSearchUrl(sourceSearchQuery) : null,
   );
+  let sourceSearchDisabled = $derived(sourceSearchLoading || sourceSearchQuery.trim().length === 0);
 
   $effect(() => {
     if (!selectedParagraph?.citations.some((citation) => citation.id === selectedCitationId)) {
@@ -86,6 +96,9 @@
       sourceSearchParagraphId = paragraphId;
       sourceSearchOpen = false;
       sourceSearchQuery = sourceSearchSuggestion?.query ?? "";
+      sourceSearchResultsQuery = "";
+      sourceSearchResults = [];
+      sourceSearchError = null;
       return;
     }
 
@@ -123,7 +136,31 @@
     if (!sourceSearchQuery.trim()) {
       sourceSearchQuery = sourceSearchSuggestion.query;
     }
-    sourceSearchOpen = !sourceSearchOpen;
+    const nextOpen = !sourceSearchOpen;
+    sourceSearchOpen = nextOpen;
+    if (nextOpen && sourceSearchResultsQuery !== sourceSearchQuery.trim()) {
+      void runSourceSearch();
+    }
+  }
+
+  async function runSourceSearch() {
+    const query = sourceSearchQuery.trim();
+    if (!query) {
+      return;
+    }
+
+    sourceSearchLoading = true;
+    sourceSearchError = null;
+    sourceSearchResults = [];
+
+    try {
+      sourceSearchResults = await searchCrossrefWorks(query);
+      sourceSearchResultsQuery = query;
+    } catch (reason: unknown) {
+      sourceSearchError = reason instanceof Error ? reason.message : String(reason);
+    } finally {
+      sourceSearchLoading = false;
+    }
   }
 
   function referenceLabel(reference: CourseReferenceSummary): string {
@@ -135,6 +172,10 @@
   function linkedReferenceLabel(referenceEntryId: string): string {
     const linkedReference = courseReferences.find((reference) => reference.id === referenceEntryId);
     return linkedReference ? referenceLabel(linkedReference) : "Linked reference";
+  }
+
+  function sourceResultMeta(result: CrossrefSourceResult): string {
+    return [result.authors, result.year, result.source].filter(Boolean).join(" · ");
   }
 </script>
 
@@ -259,6 +300,14 @@
               type="text"
               bind:value={sourceSearchQuery}
             />
+            <button
+              class="primary-button compact-button"
+              type="button"
+              disabled={sourceSearchDisabled}
+              onclick={() => void runSourceSearch()}
+            >
+              {sourceSearchLoading ? "Searching" : "Find matches"}
+            </button>
             {#if sourceSearchUrl}
               <a
                 class="secondary-button source-search-link"
@@ -270,6 +319,39 @@
               </a>
             {/if}
           </div>
+          {#if sourceSearchError}
+            <div class="notice source-search-notice">{sourceSearchError}</div>
+          {/if}
+          {#if sourceSearchLoading}
+            <div class="source-search-status">Searching Crossref</div>
+          {:else if sourceSearchResults.length}
+            <div class="source-result-list" aria-label="Crossref results">
+              <h3>Crossref results</h3>
+              {#each sourceSearchResults as result (`${result.doi ?? result.url ?? result.title}`)}
+                <article class="source-result-card">
+                  <div class="source-result-main">
+                    <strong>{result.title}</strong>
+                    <span>{sourceResultMeta(result)}</span>
+                    {#if result.doi}
+                      <small>{result.doi}</small>
+                    {/if}
+                  </div>
+                  {#if result.url}
+                    <a
+                      class="secondary-button compact-button source-search-link"
+                      href={result.url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Open DOI
+                    </a>
+                  {/if}
+                </article>
+              {/each}
+            </div>
+          {:else if sourceSearchResultsQuery}
+            <div class="source-search-status">No Crossref results found.</div>
+          {/if}
         </div>
       {/if}
 
