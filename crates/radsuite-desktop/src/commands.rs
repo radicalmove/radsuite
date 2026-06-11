@@ -7,9 +7,9 @@ use radsuite_cite::{
     extract_docx_reading_candidates, ingest_docx,
 };
 use radsuite_core::{
-    Citation, CitationId, CourseModule, Document, DocumentId, ModuleId, Paragraph, ParagraphId,
-    Project, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId, ReferenceEntryType,
-    UserId,
+    ApaValidationStatus, Citation, CitationId, CourseModule, Document, DocumentId, ModuleId,
+    Paragraph, ParagraphId, Project, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId,
+    ReferenceEntryType, UserId,
 };
 use radsuite_db::{
     CitationDocumentRepository, CourseModuleRepository, DbError, ProjectRepository,
@@ -690,6 +690,7 @@ pub async fn add_course_reference(
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(str::to_string);
+    apply_basic_apa_validation(&mut reference);
 
     reference_repo.insert_reference_entry(&reference).await?;
 
@@ -708,6 +709,7 @@ pub async fn update_course_reference(
     let mut reference = load_course_reference_or_error(state, request.reference_id).await?;
     reference.apa_citation = Some(apa_citation.to_string());
     reference.notes = trimmed_optional(request.notes);
+    apply_basic_apa_validation(&mut reference);
     reference.updated_at = Utc::now();
 
     SqliteReferenceEntryRepository::new(state.database_pool.clone())
@@ -1600,11 +1602,66 @@ fn trimmed_optional(value: Option<String>) -> Option<String> {
         .map(str::to_string)
 }
 
-fn validation_status_label(status: radsuite_core::ApaValidationStatus) -> &'static str {
+fn apply_basic_apa_validation(reference: &mut ReferenceEntry) {
+    let issues = basic_apa_validation_issues(
+        reference
+            .apa_citation
+            .as_deref()
+            .or(reference.citation_text.as_deref()),
+    );
+    reference.apa_validation_status = if issues.is_empty() {
+        ApaValidationStatus::Valid
+    } else {
+        ApaValidationStatus::NeedsFix
+    };
+    reference.apa_validation_report = (!issues.is_empty()).then(|| issues.join("; "));
+}
+
+fn basic_apa_validation_issues(text: Option<&str>) -> Vec<&'static str> {
+    let Some(text) = text.map(str::trim).filter(|value| !value.is_empty()) else {
+        return vec!["missing_apa"];
+    };
+
+    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let mut issues = Vec::new();
+
+    let lowered = normalized.to_lowercase();
+    if lowered.starts_with("adapted from ")
+        || lowered.starts_with("from ")
+        || lowered.contains("adapted from")
+    {
+        issues.push("narrative_prefix");
+    }
+
+    let year_marker =
+        Regex::new(r"(?i)\((?:(?:19|20)\d{2}[a-z]?|n\.d\.?)\)").expect("APA year marker regex");
+    if !year_marker.is_match(&normalized) {
+        issues.push("missing_year");
+    }
+
+    let author_format = Regex::new(r"[A-Za-z'’`\-]+,\s*[A-Z]").expect("APA author format regex");
+    if !author_format.is_match(&normalized) {
+        issues.push("author_format");
+    }
+
+    let year_punctuation = Regex::new(r"\)\.\s+").expect("APA year punctuation regex");
+    if !year_punctuation.is_match(&normalized) {
+        issues.push("year_punctuation");
+    }
+
+    let title_segment = Regex::new(r"\)\.\s+\S.{2,}").expect("APA title segment regex");
+    if !title_segment.is_match(&normalized) {
+        issues.push("title_missing");
+    }
+
+    issues
+}
+
+fn validation_status_label(status: ApaValidationStatus) -> &'static str {
     match status {
-        radsuite_core::ApaValidationStatus::Unknown => "unknown",
-        radsuite_core::ApaValidationStatus::Valid => "valid",
-        radsuite_core::ApaValidationStatus::NeedsFix => "needs_fix",
+        ApaValidationStatus::Unknown => "unknown",
+        ApaValidationStatus::Valid => "valid",
+        ApaValidationStatus::NeedsFix => "needs_fix",
     }
 }
 

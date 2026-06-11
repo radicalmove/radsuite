@@ -634,6 +634,51 @@ async fn course_references_can_be_updated_and_archived() {
 }
 
 #[tokio::test]
+async fn course_references_get_apa_validation_status() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let valid = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2024). Example reference. Journal of Testing, 12(3), 1-10."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add valid reference");
+
+    assert_eq!(valid.validation_status, "valid");
+
+    let needs_fix = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith (2024)".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add incomplete reference");
+
+    assert_eq!(needs_fix.validation_status, "needs_fix");
+
+    let fixed = update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: needs_fix.id,
+            apa_citation: "Smith, J. (2024). Fixed reference. Journal of Testing.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("fix incomplete reference");
+
+    assert_eq!(fixed.validation_status, "valid");
+}
+
+#[tokio::test]
 async fn course_reference_update_commands_validate_input() {
     let state = desktop_state_with_migrated_pool().await;
     let missing_reference_id = ReferenceEntryId::new();
