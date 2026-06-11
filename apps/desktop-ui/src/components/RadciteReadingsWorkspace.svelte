@@ -16,8 +16,10 @@
   import { readingCategoryLabel } from "../lib/readingCategoryLabels";
   import {
     applyAutoModuleToCandidates,
+    defaultModuleIdForImportCandidate,
     inferModuleDraftForImport,
     moduleMatchesImportDraft,
+    type ImportModuleDraft,
   } from "../lib/readingImportWorkflow";
 
   type EditableImportCandidate = Omit<
@@ -188,27 +190,20 @@
     return `reading-import-${importCandidateCounter}`;
   }
 
-  function defaultModuleId(candidate: ModuleReadingImportCandidate): string {
-    const byOrder = modules.find(
-      (module) => module.order_index !== null && module.order_index === candidate.module_order,
-    );
-    if (byOrder) {
-      return byOrder.id;
-    }
-
-    const moduleTitle = candidate.module_title?.trim().toLowerCase();
-    const byTitle = moduleTitle
-      ? modules.find((module) => module.title.trim().toLowerCase() === moduleTitle)
-      : null;
-    return byTitle?.id ?? selectedModule?.id ?? modules[0]?.id ?? "";
-  }
-
-  function editableImportCandidate(candidate: ModuleReadingImportCandidate): EditableImportCandidate {
+  function editableImportCandidate(
+    candidate: ModuleReadingImportCandidate,
+    importDraft: ImportModuleDraft | null,
+  ): EditableImportCandidate {
     return {
       ...candidate,
       id: nextImportCandidateId(),
       selected: true,
-      module_id: defaultModuleId(candidate),
+      module_id: defaultModuleIdForImportCandidate(
+        candidate,
+        modules,
+        selectedModuleId,
+        importDraft,
+      ),
       lesson_code: candidate.lesson_code ?? "",
       citation_text: candidate.citation_text ?? "",
       url: candidate.url ?? "",
@@ -312,7 +307,10 @@
         path,
         original_filename: null,
       });
-      importCandidates = candidates.map(editableImportCandidate);
+      const importDraft = inferModuleDraftForImport(candidates, path);
+      importCandidates = candidates.map((candidate) =>
+        editableImportCandidate(candidate, importDraft),
+      );
       importStatus = candidates.length
         ? isAutomatic
           ? `${candidates.length} reading candidates found from the analysed DOCX.`
