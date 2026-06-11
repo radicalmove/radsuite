@@ -22,6 +22,10 @@
     courseReferences: CourseReferenceSummary[];
     onMarkResolved: (paragraphId: string) => void | Promise<void>;
     onAddManualCitation: (paragraphId: string, citationText: string) => void | Promise<void>;
+    onAddCourseReference: (
+      apaCitation: string,
+      notes: string | null,
+    ) => CourseReferenceSummary | null | void | Promise<CourseReferenceSummary | null | void>;
     onVerifyCitation: (paragraphId: string) => void | Promise<void>;
     onLinkCitation: (citationId: string, referenceEntryId: string) => void | Promise<void>;
   };
@@ -31,6 +35,7 @@
     courseReferences,
     onMarkResolved,
     onAddManualCitation,
+    onAddCourseReference,
     onVerifyCitation,
     onLinkCitation,
   }: Props = $props();
@@ -45,6 +50,8 @@
   let sourceSearchResults = $state<CrossrefSourceResult[]>([]);
   let sourceSearchLoading = $state(false);
   let sourceSearchError = $state<string | null>(null);
+  let sourceReferenceSavingKey = $state<string | null>(null);
+  let sourceReferenceStatus = $state<string | null>(null);
   let manualCitationDisabled = $derived(
     !selectedParagraph || manualCitationText.trim().length === 0,
   );
@@ -99,6 +106,8 @@
       sourceSearchResultsQuery = "";
       sourceSearchResults = [];
       sourceSearchError = null;
+      sourceReferenceSavingKey = null;
+      sourceReferenceStatus = null;
       return;
     }
 
@@ -151,6 +160,7 @@
 
     sourceSearchLoading = true;
     sourceSearchError = null;
+    sourceReferenceStatus = null;
     sourceSearchResults = [];
 
     try {
@@ -160,6 +170,28 @@
       sourceSearchError = reason instanceof Error ? reason.message : String(reason);
     } finally {
       sourceSearchLoading = false;
+    }
+  }
+
+  async function addSourceReference(result: CrossrefSourceResult) {
+    const key = sourceResultKey(result);
+    sourceReferenceSavingKey = key;
+    sourceReferenceStatus = null;
+
+    try {
+      const saved = await onAddCourseReference(
+        result.apaCitation,
+        result.doi
+          ? `Imported from Crossref search. DOI: ${result.doi}`
+          : "Imported from Crossref search.",
+      );
+      sourceReferenceStatus = saved
+        ? "Reference saved to Course References."
+        : "Could not save reference.";
+    } catch (reason: unknown) {
+      sourceReferenceStatus = reason instanceof Error ? reason.message : String(reason);
+    } finally {
+      sourceReferenceSavingKey = null;
     }
   }
 
@@ -176,6 +208,10 @@
 
   function sourceResultMeta(result: CrossrefSourceResult): string {
     return [result.authors, result.year, result.source].filter(Boolean).join(" · ");
+  }
+
+  function sourceResultKey(result: CrossrefSourceResult): string {
+    return result.doi ?? result.url ?? result.title;
   }
 </script>
 
@@ -322,12 +358,15 @@
           {#if sourceSearchError}
             <div class="notice source-search-notice">{sourceSearchError}</div>
           {/if}
+          {#if sourceReferenceStatus}
+            <div class="source-search-status">{sourceReferenceStatus}</div>
+          {/if}
           {#if sourceSearchLoading}
             <div class="source-search-status">Searching Crossref</div>
           {:else if sourceSearchResults.length}
             <div class="source-result-list" aria-label="Crossref results">
               <h3>Crossref results</h3>
-              {#each sourceSearchResults as result (`${result.doi ?? result.url ?? result.title}`)}
+              {#each sourceSearchResults as result (sourceResultKey(result))}
                 <article class="source-result-card">
                   <div class="source-result-main">
                     <strong>{result.title}</strong>
@@ -336,16 +375,28 @@
                       <small>{result.doi}</small>
                     {/if}
                   </div>
-                  {#if result.url}
-                    <a
-                      class="secondary-button compact-button source-search-link"
-                      href={result.url}
-                      target="_blank"
-                      rel="noreferrer"
+                  <div class="source-result-actions">
+                    <button
+                      class="primary-button compact-button"
+                      type="button"
+                      disabled={sourceReferenceSavingKey !== null}
+                      onclick={() => void addSourceReference(result)}
                     >
-                      Open DOI
-                    </a>
-                  {/if}
+                      {sourceReferenceSavingKey === sourceResultKey(result)
+                        ? "Adding"
+                        : "Add reference"}
+                    </button>
+                    {#if result.url}
+                      <a
+                        class="secondary-button compact-button source-search-link"
+                        href={result.url}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open DOI
+                      </a>
+                    {/if}
+                  </div>
                 </article>
               {/each}
             </div>
