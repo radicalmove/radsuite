@@ -242,7 +242,7 @@
           disabled={!selectedParagraph.needs_citation}
           onclick={() => void onMarkResolved(selectedParagraph.id)}
         >
-          Mark as resolved
+          Not required
         </button>
       </div>
 
