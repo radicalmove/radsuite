@@ -116,6 +116,33 @@ fn docx_ingestion_decodes_xml_entities() {
 }
 
 #[test]
+fn docx_ingestion_merges_standalone_url_with_previous_reference() {
+    let path = write_docx_with_document_xml(
+        "docx-ingestion-merge-standalone-url.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Smith, J. (2024). Worked examples in practice.</w:t></w:r></w:p>
+    <w:p><w:r><w:t>https://example.com/worked</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let analysed = ingest_docx(DocxIngestionRequest {
+        project_id: ProjectId::new(),
+        path,
+        original_filename: "url-next-line.docx".to_string(),
+    })
+    .expect("ingest docx");
+
+    assert_eq!(analysed.paragraphs.len(), 1);
+    assert_eq!(
+        analysed.paragraphs[0].text,
+        "Smith, J. (2024). Worked examples in practice. https://example.com/worked"
+    );
+}
+
+#[test]
 fn docx_reading_import_extracts_compulsory_and_optional_candidates() {
     let path = write_docx_with_document_xml(
         "docx-reading-import-candidates.docx",
