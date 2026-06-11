@@ -7,6 +7,12 @@ export type AddCourseReferenceInput = {
   notes?: string | null;
 };
 
+export type UpdateCourseReferenceInput = {
+  reference_id: string;
+  apa_citation: string;
+  notes?: string | null;
+};
+
 function trimmedOrNull(value: string | null | undefined): string | null {
   return value?.trim() || null;
 }
@@ -29,6 +35,28 @@ export function addCourseReference(
       project_id: trimmedOrNull(input.project_id),
       apa_citation: input.apa_citation.trim(),
       notes: trimmedOrNull(input.notes),
+    },
+  });
+}
+
+export function updateCourseReference(
+  input: UpdateCourseReferenceInput,
+): Promise<CourseReferenceSummary> {
+  return invoke<CourseReferenceSummary>("update_course_reference", {
+    request: {
+      reference_id: input.reference_id,
+      apa_citation: input.apa_citation.trim(),
+      notes: trimmedOrNull(input.notes),
+    },
+  });
+}
+
+export function archiveCourseReference(
+  referenceId: string,
+): Promise<CourseReferenceSummary> {
+  return invoke<CourseReferenceSummary>("archive_course_reference", {
+    request: {
+      reference_id: referenceId,
     },
   });
 }

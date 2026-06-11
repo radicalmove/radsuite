@@ -9,23 +9,24 @@ use radsuite_db::migrate;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths,
-    ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, CreateRadciteProjectRequest,
-    DesktopState, ExportCourseReferencesRequest, ExportModuleReadingsRequest,
-    LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
-    ListRadciteModulesRequest, ListSavedReviewsRequest, ModuleReadingError,
-    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
-    PreviewModuleReadingsImportRequest, RadciteModuleError, SaveModuleReadingsImportCandidate,
-    SaveModuleReadingsImportRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest,
+    CourseReferenceError, CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
+    ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
+    ListModuleReadingsRequest, ListRadciteModulesRequest, ListSavedReviewsRequest,
+    ModuleReadingError, ModuleReadingExportError, ModuleReadingImportError,
+    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest, RadciteModuleError,
+    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
     UpdateRadciteModuleRequest, add_course_reference, add_manual_citation_for_review,
     add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
-    archive_module_reading, archive_radcite_module, create_radcite_project,
-    export_course_references, export_module_readings, get_app_status,
+    archive_course_reference, archive_module_reading, archive_radcite_module,
+    create_radcite_project, export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
     load_saved_radcite_review, mark_paragraph_resolved_for_review,
     preview_module_readings_csv_import, preview_module_readings_import,
-    save_module_readings_import, update_module_reading, update_radcite_module,
-    verify_paragraph_citations_for_review,
+    save_module_readings_import, update_course_reference, update_module_reading,
+    update_radcite_module, verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -570,6 +571,115 @@ async fn local_course_references_are_added_to_the_radcite_project() {
             .expect("list course references after duplicate");
 
     assert_eq!(references_after_duplicate, vec![added]);
+}
+
+#[tokio::test]
+async fn course_references_can_be_updated_and_archived() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let added = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: Some("Core course reference".to_string()),
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    let updated = update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: added.id,
+            apa_citation: " Taylor, J. (2025). Updated reference. ".to_string(),
+            notes: Some(" Updated note ".to_string()),
+        },
+    )
+    .await
+    .expect("update course reference");
+
+    assert_eq!(updated.id, added.id);
+    assert_eq!(updated.project_id, added.project_id);
+    assert_eq!(
+        updated.apa_citation.as_deref(),
+        Some("Taylor, J. (2025). Updated reference.")
+    );
+    assert_eq!(updated.notes.as_deref(), Some("Updated note"));
+    assert_eq!(updated.reference_type, "reference");
+
+    let references = list_course_references(&state, ListCourseReferencesRequest::default())
+        .await
+        .expect("list course references");
+
+    assert_eq!(references, vec![updated.clone()]);
+
+    let archived = archive_course_reference(
+        &state,
+        ArchiveCourseReferenceRequest {
+            reference_id: added.id,
+        },
+    )
+    .await
+    .expect("archive course reference");
+
+    assert_eq!(archived, updated);
+    assert!(
+        list_course_references(&state, ListCourseReferencesRequest::default())
+            .await
+            .expect("list course references after archive")
+            .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn course_reference_update_commands_validate_input() {
+    let state = desktop_state_with_migrated_pool().await;
+    let missing_reference_id = ReferenceEntryId::new();
+
+    let empty_reference = update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: missing_reference_id,
+            apa_citation: " ".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect_err("reject empty reference text");
+    assert!(matches!(
+        empty_reference,
+        CourseReferenceError::EmptyReferenceText
+    ));
+
+    let missing_reference = update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: missing_reference_id,
+            apa_citation: "Smith, J. (2024). Missing reference.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect_err("reject missing reference update");
+    assert!(matches!(
+        missing_reference,
+        CourseReferenceError::MissingReference(reference_id) if reference_id == missing_reference_id
+    ));
+
+    let missing_archive = archive_course_reference(
+        &state,
+        ArchiveCourseReferenceRequest {
+            reference_id: missing_reference_id,
+        },
+    )
+    .await
+    .expect_err("reject missing reference archive");
+    assert!(matches!(
+        missing_archive,
+        CourseReferenceError::MissingReference(reference_id) if reference_id == missing_reference_id
+    ));
 }
 
 #[tokio::test]

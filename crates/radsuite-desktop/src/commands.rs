@@ -233,6 +233,18 @@ pub struct AddCourseReferenceRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateCourseReferenceRequest {
+    pub reference_id: ReferenceEntryId,
+    pub apa_citation: String,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArchiveCourseReferenceRequest {
+    pub reference_id: ReferenceEntryId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AddRadciteModuleRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
@@ -401,6 +413,8 @@ pub enum ReviewActionError {
 pub enum CourseReferenceError {
     #[error("enter reference text before adding a course reference")]
     EmptyReferenceText,
+    #[error("could not load course reference {0}")]
+    MissingReference(ReferenceEntryId),
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
     #[error(transparent)]
@@ -678,6 +692,39 @@ pub async fn add_course_reference(
         .map(str::to_string);
 
     reference_repo.insert_reference_entry(&reference).await?;
+
+    Ok(course_reference_summary(reference))
+}
+
+pub async fn update_course_reference(
+    state: &DesktopState,
+    request: UpdateCourseReferenceRequest,
+) -> Result<CourseReferenceSummary, CourseReferenceError> {
+    let apa_citation = request.apa_citation.trim();
+    if apa_citation.is_empty() {
+        return Err(CourseReferenceError::EmptyReferenceText);
+    }
+
+    let mut reference = load_course_reference_or_error(state, request.reference_id).await?;
+    reference.apa_citation = Some(apa_citation.to_string());
+    reference.notes = trimmed_optional(request.notes);
+    reference.updated_at = Utc::now();
+
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .update_reference_entry(&reference)
+        .await?;
+
+    Ok(course_reference_summary(reference))
+}
+
+pub async fn archive_course_reference(
+    state: &DesktopState,
+    request: ArchiveCourseReferenceRequest,
+) -> Result<CourseReferenceSummary, CourseReferenceError> {
+    let reference = load_course_reference_or_error(state, request.reference_id).await?;
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .archive_reference_entry(reference.id)
+        .await?;
 
     Ok(course_reference_summary(reference))
 }
@@ -1244,6 +1291,22 @@ async fn load_course_reference_entries(
     SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_project(project_id, ReferenceEntryType::Reference)
         .await
+}
+
+async fn load_course_reference_or_error(
+    state: &DesktopState,
+    reference_id: ReferenceEntryId,
+) -> Result<ReferenceEntry, CourseReferenceError> {
+    let reference = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .load_reference_entry(reference_id)
+        .await?
+        .ok_or(CourseReferenceError::MissingReference(reference_id))?;
+
+    if reference.reference_type != ReferenceEntryType::Reference {
+        return Err(CourseReferenceError::MissingReference(reference_id));
+    }
+
+    Ok(reference)
 }
 
 fn radcite_project_summary(project: Project) -> RadciteProjectSummary {
