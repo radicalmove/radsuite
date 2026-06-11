@@ -12,6 +12,7 @@ export type CrossrefSourceResult = {
   source: string | null;
   doi: string | null;
   url: string | null;
+  apaCitation: string;
 };
 
 type CrossrefFetcher = (input: string) => Promise<Pick<Response, "ok" | "status" | "json">>;
@@ -197,16 +198,39 @@ function parseCrossrefWork(item: unknown): CrossrefSourceResult | null {
     return null;
   }
 
+  const authors = formatCrossrefAuthors(work.author);
+  const year = crossrefYear(work);
+  const source = firstPlainString(work["container-title"]);
   const url = plainString(work.URL) ?? (doi ? `https://doi.org/${doi}` : null);
 
   return {
     title: title ?? "Untitled source",
-    authors: formatCrossrefAuthors(work.author),
-    year: crossrefYear(work),
-    source: firstPlainString(work["container-title"]),
+    authors,
+    year,
+    source,
     doi,
     url,
+    apaCitation: crossrefCitationText({
+      title: title ?? "Untitled source",
+      authors,
+      year,
+      source,
+      url,
+    }),
   };
+}
+
+function crossrefCitationText(
+  result: Pick<CrossrefSourceResult, "title" | "authors" | "year" | "source" | "url">,
+): string {
+  return [
+    `${result.authors} (${result.year ?? "n.d."}).`,
+    `${result.title}.`,
+    result.source ? `${result.source}.` : null,
+    result.url,
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function formatCrossrefAuthors(value: unknown): string {

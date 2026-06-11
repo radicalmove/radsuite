@@ -6,7 +6,10 @@
     references: CourseReferenceSummary[];
     referencesLoading: boolean;
     referencesError: string | null;
-    onAddReference: (apaCitation: string, notes: string | null) => void | Promise<void>;
+    onAddReference: (
+      apaCitation: string,
+      notes: string | null,
+    ) => CourseReferenceSummary | null | void | Promise<CourseReferenceSummary | null | void>;
     onUpdateReference: (input: UpdateCourseReferenceInput) => void | Promise<void>;
     onArchiveReference: (referenceId: string) => void | Promise<void>;
     onRefreshReferences: () => void | Promise<void>;

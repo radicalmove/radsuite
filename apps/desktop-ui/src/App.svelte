@@ -408,15 +408,17 @@
   async function handleAddCourseReference(apaCitation: string, notes: string | null) {
     courseReferencesError = null;
     try {
-      await addCourseReference({
+      const added = await addCourseReference({
         project_id: selectedProjectCommandId(),
         apa_citation: apaCitation,
         notes,
       });
       referencesExport = null;
       await refreshCourseReferences();
+      return added;
     } catch (reason: unknown) {
       courseReferencesError = `Could not add course reference: ${toErrorMessage(reason)}`;
+      return null;
     }
   }
 
@@ -752,6 +754,7 @@
     {courseReferences}
     onMarkResolved={handleMarkResolved}
     onAddManualCitation={handleAddManualCitation}
+    onAddCourseReference={handleAddCourseReference}
     onVerifyCitation={handleVerifyCitation}
     onLinkCitation={handleLinkCitation}
   />

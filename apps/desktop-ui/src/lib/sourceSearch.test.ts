@@ -136,6 +136,8 @@ describe("source search", () => {
         source: "Teaching Journal",
         doi: "10.1000/example",
         url: "https://doi.org/10.1000/example",
+        apaCitation:
+          "Smith, J.; Jones, P. (2024). Worked examples in practice. Teaching Journal. https://doi.org/10.1000/example",
       },
     ]);
   });
