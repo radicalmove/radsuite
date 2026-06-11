@@ -552,6 +552,11 @@ button:disabled {
   font-size: 0.8rem;
 }
 
+.document-title-block .compact-button {
+  justify-self: end;
+  margin-top: var(--s-1);
+}
+
 .document-import {
   display: grid;
   gap: var(--s-2);
