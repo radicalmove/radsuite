@@ -187,6 +187,31 @@ fn docx_reading_import_extracts_no_date_apa_candidates() {
 }
 
 #[test]
+fn docx_reading_import_extracts_standalone_url_readings() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-url-only-candidates.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Required readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>https://setipsuds.com</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-6-readings.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
+    assert_eq!(candidates[0].apa_citation, "https://setipsuds.com");
+    assert_eq!(candidates[0].url.as_deref(), Some("https://setipsuds.com"));
+}
+
+#[test]
 fn docx_reading_import_ignores_bibliography_before_reading_sections() {
     let path = write_docx_with_document_xml(
         "docx-reading-import-ignore-bibliography.docx",

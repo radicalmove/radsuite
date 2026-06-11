@@ -133,6 +133,7 @@ fn extract_reading_candidates_from_paragraphs(
     let mut current_module_order = None;
     let mut current_module_title = None;
     let mut ignoring_bibliography = false;
+    let mut in_reading_section = false;
     let mut seen = Vec::new();
     let mut candidates: Vec<ReadingImportCandidate> = Vec::new();
 
@@ -145,11 +146,13 @@ fn extract_reading_candidates_from_paragraphs(
         if let Some(category) = detect_reading_category(&plain) {
             current_category = category;
             ignoring_bibliography = false;
+            in_reading_section = true;
             continue;
         }
 
         if is_bibliography_heading(&plain) {
             ignoring_bibliography = true;
+            in_reading_section = false;
             continue;
         }
 
@@ -168,7 +171,11 @@ fn extract_reading_candidates_from_paragraphs(
             continue;
         }
 
-        if !looks_like_reference(reference_text) {
+        let url = extract_first_url(reference_text).or_else(|| extract_first_url(&plain));
+        if !(looks_like_reference(reference_text)
+            || in_reading_section
+                && looks_like_standalone_url_reference(reference_text, url.as_deref()))
+        {
             continue;
         }
 
@@ -189,7 +196,7 @@ fn extract_reading_candidates_from_paragraphs(
             lesson_code,
             apa_citation,
             citation_text: (body.is_some()).then_some(plain.clone()),
-            url: extract_first_url(&plain),
+            url,
         };
 
         if let Some(index) = seen.iter().position(|key| key == &dedupe_key) {
@@ -274,6 +281,26 @@ fn looks_like_reference(text: &str) -> bool {
         Regex::new(r"^[A-Z][A-Za-z&'’`\- ]{1,80}\s*\(\s*\d{4}\s*\)").expect("author-year regex");
 
     author_with_initial.is_match(normalized) || author_with_year.is_match(normalized)
+}
+
+fn looks_like_standalone_url_reference(text: &str, url: Option<&str>) -> bool {
+    let Some(url) = url else {
+        return false;
+    };
+
+    let normalized = text
+        .trim_start_matches(|character: char| {
+            character == '•'
+                || character == '*'
+                || character == '-'
+                || character == '–'
+                || character == '—'
+                || character.is_whitespace()
+        })
+        .trim_end_matches(['.', ',', ')', ';'])
+        .trim();
+
+    normalized == url
 }
 
 fn reading_candidate_dedupe_key(
