@@ -535,7 +535,7 @@ fn extract_paragraphs(
                         if let Some(paragraph) =
                             active_paragraph.take().and_then(|builder| builder.finish())
                         {
-                            paragraphs.push(paragraph);
+                            push_extracted_paragraph(&mut paragraphs, paragraph);
                         }
                     } else if paragraph_depth == 0 {
                         append_text(table_builder.as_mut(), " ");
@@ -547,7 +547,7 @@ fn extract_paragraphs(
                         && let Some(paragraph) =
                             table_builder.take().and_then(|builder| builder.finish())
                     {
-                        paragraphs.push(paragraph);
+                        push_extracted_paragraph(&mut paragraphs, paragraph);
                     }
                 }
                 _ => {}
@@ -558,6 +558,24 @@ fn extract_paragraphs(
     }
 
     Ok(paragraphs)
+}
+
+fn push_extracted_paragraph(
+    paragraphs: &mut Vec<ExtractedParagraph>,
+    paragraph: ExtractedParagraph,
+) {
+    let url = extract_first_url(&paragraph.text);
+    if !paragraph.is_table
+        && looks_like_standalone_url_reference(&paragraph.text, url.as_deref())
+        && let Some(previous) = paragraphs.last_mut()
+        && !previous.is_table
+        && looks_like_reference(&previous.text)
+    {
+        previous.text = normalize_whitespace(&format!("{} {}", previous.text, paragraph.text));
+        return;
+    }
+
+    paragraphs.push(paragraph);
 }
 
 fn active_builder<'a>(
