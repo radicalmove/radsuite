@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{cmp::Ordering, path::PathBuf};
 
 use chrono::Utc;
 use radsuite_cite::{
@@ -823,9 +823,10 @@ pub async fn list_module_readings(
 ) -> Result<Vec<ModuleReadingSummary>, ModuleReadingError> {
     load_course_module_or_error(state, request.module_id).await?;
 
-    let readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+    let mut readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_module(request.module_id, ReferenceEntryType::Reading)
         .await?;
+    sort_module_reading_entries(&mut readings);
 
     Ok(readings
         .into_iter()
@@ -1088,9 +1089,10 @@ pub async fn export_module_readings(
     let project = SqliteProjectRepository::new(state.database_pool.clone())
         .load_project(module.project_id)
         .await?;
-    let readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+    let mut readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
         .await?;
+    sort_module_reading_entries(&mut readings);
     let reading_count = readings.len();
     let html = format_module_readings_html(&readings, request.for_ako_learn);
     let project_label = project
@@ -1362,6 +1364,109 @@ fn module_reading_summary(reading: ReferenceEntry) -> Option<ModuleReadingSummar
         estimated_reading_time: reading.estimated_reading_time,
         validation_status: validation_status_label(reading.apa_validation_status).to_string(),
     })
+}
+
+fn sort_module_reading_entries(readings: &mut [ReferenceEntry]) {
+    readings.sort_by(compare_module_readings);
+}
+
+fn compare_module_readings(left: &ReferenceEntry, right: &ReferenceEntry) -> Ordering {
+    reading_category_rank(left.reading_category)
+        .cmp(&reading_category_rank(right.reading_category))
+        .then_with(|| {
+            compare_lesson_codes(left.lesson_code.as_deref(), right.lesson_code.as_deref())
+        })
+        .then_with(|| {
+            left.display_order
+                .unwrap_or(i32::MAX)
+                .cmp(&right.display_order.unwrap_or(i32::MAX))
+        })
+        .then_with(|| module_reading_sort_text(left).cmp(&module_reading_sort_text(right)))
+        .then_with(|| left.id.0.to_string().cmp(&right.id.0.to_string()))
+}
+
+fn reading_category_rank(category: Option<ReadingCategory>) -> u8 {
+    match category {
+        Some(ReadingCategory::Compulsory) => 0,
+        Some(ReadingCategory::Optional) => 1,
+        None => 2,
+    }
+}
+
+fn compare_lesson_codes(left: Option<&str>, right: Option<&str>) -> Ordering {
+    lesson_code_sort_key(left).cmp(&lesson_code_sort_key(right))
+}
+
+fn lesson_code_sort_key(value: Option<&str>) -> (u8, Vec<LessonSortToken>, String) {
+    let normalized = value.unwrap_or_default().trim().to_lowercase();
+    if normalized.is_empty() {
+        return (1, Vec::new(), String::new());
+    }
+
+    (0, lesson_sort_tokens(&normalized), normalized)
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum LessonSortToken {
+    Number(u64),
+    Text(String),
+}
+
+fn lesson_sort_tokens(value: &str) -> Vec<LessonSortToken> {
+    let mut tokens = Vec::new();
+    let mut buffer = String::new();
+    let mut reading_number: Option<bool> = None;
+
+    for character in value.chars() {
+        if !character.is_alphanumeric() {
+            flush_lesson_sort_token(&mut tokens, &mut buffer, &mut reading_number);
+            continue;
+        }
+
+        let is_number = character.is_ascii_digit();
+        if reading_number.is_some_and(|current| current != is_number) {
+            flush_lesson_sort_token(&mut tokens, &mut buffer, &mut reading_number);
+        }
+
+        reading_number = Some(is_number);
+        buffer.push(character);
+    }
+
+    flush_lesson_sort_token(&mut tokens, &mut buffer, &mut reading_number);
+    tokens
+}
+
+fn flush_lesson_sort_token(
+    tokens: &mut Vec<LessonSortToken>,
+    buffer: &mut String,
+    reading_number: &mut Option<bool>,
+) {
+    if buffer.is_empty() {
+        *reading_number = None;
+        return;
+    }
+
+    if reading_number.unwrap_or(false) {
+        tokens.push(LessonSortToken::Number(buffer.parse().unwrap_or(u64::MAX)));
+    } else {
+        tokens.push(LessonSortToken::Text(std::mem::take(buffer)));
+        *reading_number = None;
+        return;
+    }
+
+    buffer.clear();
+    *reading_number = None;
+}
+
+fn module_reading_sort_text(reading: &ReferenceEntry) -> String {
+    normalised_reference_identity(
+        reading
+            .apa_citation
+            .as_deref()
+            .or(reading.citation_text.as_deref())
+            .or(reading.title.as_deref())
+            .unwrap_or_default(),
+    )
 }
 
 fn module_reading_import_candidate_summary(
