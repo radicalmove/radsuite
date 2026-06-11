@@ -14,19 +14,19 @@ use radsuite_desktop::{
     ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
     ListModuleReadingsRequest, ListRadciteModulesRequest, ListSavedReviewsRequest,
     ModuleReadingError, ModuleReadingExportError, ModuleReadingImportError,
-    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest, RadciteModuleError,
-    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
-    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteModuleRequest, add_course_reference, add_manual_citation_for_review,
-    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
-    archive_course_reference, archive_module_reading, archive_radcite_module,
-    create_radcite_project, export_course_references, export_module_readings, get_app_status,
-    link_citation_to_reference_for_review, list_course_references, list_module_readings,
-    list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
-    load_saved_radcite_review, mark_paragraph_resolved_for_review,
+    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
+    PreviewModuleReadingsPdfImportRequest, RadciteModuleError, SaveModuleReadingsImportCandidate,
+    SaveModuleReadingsImportRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
+    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest, add_course_reference,
+    add_manual_citation_for_review, add_module_reading, add_radcite_module,
+    analyse_docx_for_review, analyse_docx_path, archive_course_reference, archive_module_reading,
+    archive_radcite_module, create_radcite_project, export_course_references,
+    export_module_readings, get_app_status, link_citation_to_reference_for_review,
+    list_course_references, list_module_readings, list_radcite_modules, list_radcite_projects,
+    list_saved_radcite_reviews, load_saved_radcite_review, mark_paragraph_resolved_for_review,
     preview_module_readings_csv_import, preview_module_readings_import,
-    save_module_readings_import, update_course_reference, update_module_reading,
-    update_radcite_module, verify_paragraph_citations_for_review,
+    preview_module_readings_pdf_import, save_module_readings_import, update_course_reference,
+    update_module_reading, update_radcite_module, verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -1211,6 +1211,63 @@ async fn module_readings_csv_import_preview_extracts_candidates_for_selected_mod
 }
 
 #[tokio::test]
+async fn module_readings_pdf_import_preview_extracts_candidates_from_multiple_pdfs() {
+    let state = desktop_state_with_migrated_pool().await;
+    let first_path = write_readings_import_pdf(
+        "desktop-module-6-microlearning-1.pdf",
+        &[
+            "Required readings",
+            "Goldberg, M. H., & Gustafson, A. (2023). Strategic campaigns. International Journal of Strategic Communication, 17(1), 1-20.",
+        ],
+    );
+    let second_path = write_readings_import_pdf(
+        "desktop-module-6-microlearning-2.pdf",
+        &[
+            "Optional readings",
+            "Taylor, R. (2023). Optional primer. Teaching Press.",
+        ],
+    );
+
+    let candidates = preview_module_readings_pdf_import(
+        &state,
+        PreviewModuleReadingsPdfImportRequest {
+            paths: vec![
+                first_path.to_string_lossy().into_owned(),
+                second_path.to_string_lossy().into_owned(),
+            ],
+        },
+    )
+    .await
+    .expect("preview pdf readings import");
+
+    assert_eq!(candidates.len(), 2);
+    assert_eq!(candidates[0].module_order, Some(6));
+    assert_eq!(candidates[0].module_title.as_deref(), Some("module 6"));
+    assert_eq!(
+        candidates[0].lesson_code.as_deref(),
+        Some("microlearning 1")
+    );
+    assert_eq!(candidates[0].reading_category, "compulsory");
+    assert_eq!(candidates[1].reading_category, "optional");
+}
+
+#[tokio::test]
+async fn module_readings_pdf_import_rejects_empty_selection() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let error = preview_module_readings_pdf_import(
+        &state,
+        PreviewModuleReadingsPdfImportRequest {
+            paths: vec!["  ".to_string()],
+        },
+    )
+    .await
+    .expect_err("empty PDF selection");
+
+    assert!(matches!(error, ModuleReadingImportError::EmptyPath));
+}
+
+#[tokio::test]
 async fn module_readings_import_save_persists_selected_candidates() {
     let state = desktop_state_with_migrated_pool().await;
     let module = add_radcite_module(
@@ -2233,6 +2290,28 @@ fn write_readings_import_csv(filename: &str) -> PathBuf {
     )
     .expect("write csv fixture");
     path
+}
+
+fn write_readings_import_pdf(filename: &str, lines: &[&str]) -> PathBuf {
+    let path = std::env::temp_dir().join(format!("radsuite-{filename}"));
+    let text = lines
+        .iter()
+        .map(|line| format!("({}) Tj", escape_pdf_text(line)))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let pdf = format!(
+        "%PDF-1.4\n1 0 obj <<>> endobj\n2 0 obj << /Length {} >> stream\nBT\n{}\nET\nendstream\nendobj\ntrailer << /Root 1 0 R >>\n%%EOF\n",
+        text.len() + 6,
+        text
+    );
+    std::fs::write(&path, pdf).expect("write pdf fixture");
+    path
+}
+
+fn escape_pdf_text(text: &str) -> String {
+    text.replace('\\', "\\\\")
+        .replace('(', "\\(")
+        .replace(')', "\\)")
 }
 
 fn write_docx_with_document_xml(filename: &str, document_xml: &str) -> PathBuf {

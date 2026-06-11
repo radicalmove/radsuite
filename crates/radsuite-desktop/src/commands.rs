@@ -3,8 +3,9 @@ use std::{cmp::Ordering, path::PathBuf};
 use chrono::Utc;
 use radsuite_cite::{
     CsvReadingExtractionRequest, CsvReadingImportError, DocxIngestionError, DocxIngestionRequest,
-    DocxReadingExtractionRequest, ReadingImportCandidate, extract_csv_reading_candidates,
-    extract_docx_reading_candidates, ingest_docx,
+    DocxReadingExtractionRequest, PdfReadingExtractionError, PdfReadingExtractionRequest,
+    ReadingImportCandidate, extract_csv_reading_candidates, extract_docx_reading_candidates,
+    extract_pdf_reading_candidates, ingest_docx,
 };
 use radsuite_core::{
     ApaValidationStatus, Citation, CitationId, CourseModule, Document, DocumentId, ModuleId,
@@ -317,6 +318,11 @@ pub struct PreviewModuleReadingsCsvImportRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PreviewModuleReadingsPdfImportRequest {
+    pub paths: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModuleReadingImportCandidateSummary {
     pub module_order: Option<i32>,
     pub module_title: Option<String>,
@@ -449,12 +455,14 @@ pub enum ModuleReadingError {
 
 #[derive(Debug, Error)]
 pub enum ModuleReadingImportError {
-    #[error("choose a DOCX or CSV file before previewing module readings")]
+    #[error("choose a DOCX, CSV, or PDF file before previewing module readings")]
     EmptyPath,
     #[error(transparent)]
     Docx(#[from] DocxIngestionError),
     #[error(transparent)]
     Csv(#[from] CsvReadingImportError),
+    #[error(transparent)]
+    Pdf(#[from] PdfReadingExtractionError),
     #[error("could not load RADcite module {0}")]
     MissingModule(ModuleId),
     #[error("choose compulsory or optional for the reading category")]
@@ -974,6 +982,30 @@ pub async fn preview_module_readings_csv_import(
         path,
         original_filename,
     })?;
+
+    Ok(candidates
+        .into_iter()
+        .map(module_reading_import_candidate_summary)
+        .collect())
+}
+
+pub async fn preview_module_readings_pdf_import(
+    _state: &DesktopState,
+    request: PreviewModuleReadingsPdfImportRequest,
+) -> Result<Vec<ModuleReadingImportCandidateSummary>, ModuleReadingImportError> {
+    let paths = request
+        .paths
+        .into_iter()
+        .map(|path| path.trim().to_string())
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
+
+    if paths.is_empty() {
+        return Err(ModuleReadingImportError::EmptyPath);
+    }
+
+    let candidates = extract_pdf_reading_candidates(PdfReadingExtractionRequest { paths })?;
 
     Ok(candidates
         .into_iter()

@@ -38,6 +38,10 @@ export type PreviewModuleReadingsImportInput = {
   original_filename?: string | null;
 };
 
+export type PreviewModuleReadingsPdfImportInput = {
+  paths: string[];
+};
+
 export type SaveModuleReadingsImportInput = {
   candidates: AddModuleReadingInput[];
 };
@@ -144,6 +148,16 @@ export function previewModuleReadingsCsvImport(
     request: {
       path: input.path.trim(),
       original_filename: trimmedOrNull(input.original_filename),
+    },
+  });
+}
+
+export function previewModuleReadingsPdfImport(
+  input: PreviewModuleReadingsPdfImportInput,
+): Promise<ModuleReadingImportCandidate[]> {
+  return invoke<ModuleReadingImportCandidate[]>("preview_module_readings_pdf_import", {
+    request: {
+      paths: input.paths.map((path) => path.trim()).filter(Boolean),
     },
   });
 }

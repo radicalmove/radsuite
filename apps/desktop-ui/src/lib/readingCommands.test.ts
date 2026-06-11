@@ -10,6 +10,7 @@ import {
   listRadciteModules,
   previewModuleReadingsCsvImport,
   previewModuleReadingsImport,
+  previewModuleReadingsPdfImport,
   saveModuleReadingsImport,
   updateModuleReading,
   updateRadciteModule,
@@ -263,6 +264,33 @@ describe("reading commands", () => {
       request: {
         path: "/tmp/course_readings.csv",
         original_filename: "course_readings.csv",
+      },
+    });
+  });
+
+  test("previews trimmed module readings PDF imports", async () => {
+    const candidates = [
+      {
+        module_order: 6,
+        module_title: "Module 6",
+        reading_category: "compulsory",
+        lesson_code: "Microlearning 3",
+        apa_citation: "Goldberg, M. H., & Gustafson, A. (2023). Strategic campaigns.",
+        citation_text: null,
+        url: null,
+      },
+    ];
+    vi.mocked(invoke).mockResolvedValue(candidates);
+
+    await expect(
+      previewModuleReadingsPdfImport({
+        paths: [" /tmp/module-6-a.pdf ", "", " /tmp/module-6-b.pdf "],
+      }),
+    ).resolves.toBe(candidates);
+
+    expect(invoke).toHaveBeenCalledWith("preview_module_readings_pdf_import", {
+      request: {
+        paths: ["/tmp/module-6-a.pdf", "/tmp/module-6-b.pdf"],
       },
     });
   });
