@@ -225,12 +225,19 @@
     savedReviewsError = null;
     reviewActionError = null;
     selectedParagraphId = null;
+    analysedDocxPath = "";
     try {
       analysisResult = await loadSavedRadciteReview(documentId);
       activeFilter = "all";
     } catch (reason: unknown) {
       savedReviewsError = `Could not open saved review: ${toErrorMessage(reason)}`;
     }
+  }
+
+  async function handleOpenReadingsFromDocument() {
+    activeArea = "readings";
+    selectedParagraphId = null;
+    await refreshRadciteModules();
   }
 
   async function refreshCourseReferences() {
@@ -626,6 +633,7 @@
         {savedReviewsError}
         {selectedParagraphId}
         selectedDocumentId={analysisResult?.document_id ?? null}
+        readingsDocxPath={analysedDocxPath}
         onFilterChange={(filter) => {
           activeFilter = filter;
           selectedParagraphId = null;
@@ -633,6 +641,9 @@
         onAnalysisResult={handleAnalysisResult}
         onDocxPathChange={(path) => {
           sharedDocxPath = path;
+        }}
+        onOpenReadings={() => {
+          void handleOpenReadingsFromDocument();
         }}
         onLoadSavedReview={(documentId) => {
           void handleLoadSavedReview(documentId);

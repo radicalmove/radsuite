@@ -108,6 +108,7 @@ for (const needle of [
   "createRadciteProject",
   "selectedProjectId",
   "handleCreateProject",
+  "handleOpenReadingsFromDocument",
   "RadciteReadingsWorkspace",
   'activeArea === "readings"',
   "listRadciteModules",
@@ -154,7 +155,13 @@ for (const needle of [
   }
 }
 
-for (const needle of ["@tauri-apps/plugin-dialog", "choose-docx-button", "onChooseDocx"]) {
+for (const needle of [
+  "@tauri-apps/plugin-dialog",
+  "choose-docx-button",
+  "onChooseDocx",
+  "Review readings",
+  "onOpenReadings",
+]) {
   if (!workspace.includes(needle) && !packageJson.includes(needle)) {
     missing.push(`document workspace includes ${needle}`);
   }

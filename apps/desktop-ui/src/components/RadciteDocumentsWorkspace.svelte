@@ -24,9 +24,11 @@
     savedReviewsError: string | null;
     selectedParagraphId: string | null;
     selectedDocumentId: string | null;
+    readingsDocxPath: string;
     onFilterChange: (filter: ParagraphFilter) => void;
     onAnalysisResult: (result: AnalyseDocxReviewResponse | null) => void;
     onDocxPathChange: (path: string) => void;
+    onOpenReadings: () => void | Promise<void>;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
     onRefreshSavedReviews: () => void | Promise<void>;
     onSelectParagraph: (paragraphId: string | null) => void;
@@ -42,9 +44,11 @@
     savedReviewsError,
     selectedParagraphId,
     selectedDocumentId,
+    readingsDocxPath,
     onFilterChange,
     onAnalysisResult,
     onDocxPathChange,
+    onOpenReadings,
     onLoadSavedReview,
     onRefreshSavedReviews,
     onSelectParagraph,
@@ -53,6 +57,7 @@
   let analysisLoading = $state(false);
   let analysisError = $state<string | null>(null);
   let analysisDisabled = $derived(analysisLoading || docxPath.trim().length === 0);
+  let canOpenReadings = $derived(readingsDocxPath.trim().length > 0);
 
   let filteredParagraphs = $derived(
     analysisResult ? filterParagraphs(analysisResult.paragraphs, activeFilter) : [],
@@ -139,6 +144,15 @@
       <div class="document-title-block">
         <strong>{analysisResult.original_filename}</strong>
         <span>{analysisResult.project_title}</span>
+        {#if canOpenReadings}
+          <button
+            class="secondary-button compact-button"
+            type="button"
+            onclick={() => void onOpenReadings()}
+          >
+            Review readings
+          </button>
+        {/if}
       </div>
     {/if}
   </div>
