@@ -800,6 +800,106 @@ async fn module_readings_commands_add_and_list_local_modules_and_readings() {
 }
 
 #[tokio::test]
+async fn module_readings_are_listed_and_exported_in_natural_lesson_order() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 2".to_string(),
+            code: Some("M2".to_string()),
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: Some("2.10".to_string()),
+            apa_citation: Some("Taylor, R. (2024). Later lesson.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add later lesson reading");
+    add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: Some("2.3".to_string()),
+            apa_citation: Some("Smith, J. (2024). Earlier lesson.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add earlier lesson reading");
+    add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "compulsory".to_string(),
+            lesson_code: None,
+            apa_citation: Some("Jones, A. (2024). Whole module reading.".to_string()),
+            citation_text: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add whole module reading");
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert_eq!(
+        readings
+            .iter()
+            .map(|reading| reading.lesson_code.as_deref())
+            .collect::<Vec<_>>(),
+        vec![Some("2.3"), Some("2.10"), None]
+    );
+
+    let export = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: module.id,
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export module readings");
+
+    let earlier_index = export.html.find("<strong>2.3&nbsp;</strong>").unwrap();
+    let later_index = export.html.find("<strong>2.10&nbsp;</strong>").unwrap();
+    let whole_module_index = export.html.find("Whole module reading").unwrap();
+
+    assert!(earlier_index < later_index);
+    assert!(later_index < whole_module_index);
+}
+
+#[tokio::test]
 async fn module_readings_commands_validate_input() {
     let state = desktop_state_with_migrated_pool().await;
 
