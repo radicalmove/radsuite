@@ -87,6 +87,9 @@
     sourceSearchQuery.trim() ? buildCrossrefSearchUrl(sourceSearchQuery) : null,
   );
   let sourceSearchDisabled = $derived(sourceSearchLoading || sourceSearchQuery.trim().length === 0);
+  let sourceLinkCitationId = $derived(
+    selectedParagraph?.citations.find((citation) => !citation.reference_entry_id)?.id ?? null,
+  );
 
   $effect(() => {
     if (!selectedParagraph?.citations.some((citation) => citation.id === selectedCitationId)) {
@@ -186,8 +189,13 @@
           : "Imported from Crossref search.",
       );
       sourceReferenceStatus = saved
-        ? "Reference saved to Course References."
+        ? sourceLinkCitationId
+          ? "Reference saved and linked to the citation."
+          : "Reference saved to Course References."
         : "Could not save reference.";
+      if (saved && sourceLinkCitationId) {
+        await onLinkCitation(sourceLinkCitationId, saved.id);
+      }
     } catch (reason: unknown) {
       sourceReferenceStatus = reason instanceof Error ? reason.message : String(reason);
     } finally {
@@ -212,6 +220,10 @@
 
   function sourceResultKey(result: CrossrefSourceResult): string {
     return result.doi ?? result.url ?? result.title;
+  }
+
+  function sourceReferenceActionLabel(): string {
+    return sourceLinkCitationId ? "Add & link" : "Add reference";
   }
 </script>
 
@@ -384,7 +396,7 @@
                     >
                       {sourceReferenceSavingKey === sourceResultKey(result)
                         ? "Adding"
-                        : "Add reference"}
+                        : sourceReferenceActionLabel()}
                     </button>
                     {#if result.url}
                       <a
