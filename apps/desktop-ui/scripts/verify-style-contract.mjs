@@ -249,6 +249,7 @@ for (const needle of [
   "sourceSearchQuery",
   "Open Crossref",
   "Mark citations reviewed",
+  "Not required",
   "Reviewed",
 ]) {
   if (!actionsPanel.includes(needle)) {
