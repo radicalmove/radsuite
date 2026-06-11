@@ -549,6 +549,27 @@ async fn local_course_references_are_added_to_the_radcite_project() {
 
     assert_eq!(references.len(), 1);
     assert_eq!(references[0], added);
+
+    let added_again = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: " smith, j. (2020).   worked examples in practice. learning press. "
+                .to_string(),
+            notes: Some("Duplicate note should not overwrite".to_string()),
+        },
+    )
+    .await
+    .expect("reuse duplicate course reference");
+
+    assert_eq!(added_again, added);
+
+    let references_after_duplicate =
+        list_course_references(&state, ListCourseReferencesRequest::default())
+            .await
+            .expect("list course references after duplicate");
+
+    assert_eq!(references_after_duplicate, vec![added]);
 }
 
 #[tokio::test]
