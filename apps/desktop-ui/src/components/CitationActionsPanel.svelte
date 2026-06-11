@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { buildCrossrefSearchUrl, suggestedSourceSearchQuery } from "../lib/sourceSearch";
   import type {
     CourseReferenceSummary,
     ReviewCitationReferenceSuggestion,
@@ -32,6 +33,9 @@
   let manualCitationText = $state("");
   let selectedCitationId = $state("");
   let selectedReferenceId = $state("");
+  let sourceSearchOpen = $state(false);
+  let sourceSearchQuery = $state("");
+  let sourceSearchParagraphId = $state<string | null>(null);
   let manualCitationDisabled = $derived(
     !selectedParagraph || manualCitationText.trim().length === 0,
   );
@@ -60,6 +64,12 @@
       }));
     }) ?? [],
   );
+  let sourceSearchSuggestion = $derived(
+    selectedParagraph ? suggestedSourceSearchQuery(selectedParagraph) : null,
+  );
+  let sourceSearchUrl = $derived(
+    sourceSearchQuery.trim() ? buildCrossrefSearchUrl(sourceSearchQuery) : null,
+  );
 
   $effect(() => {
     if (!selectedParagraph?.citations.some((citation) => citation.id === selectedCitationId)) {
@@ -67,6 +77,24 @@
     }
     if (!courseReferences.some((reference) => reference.id === selectedReferenceId)) {
       selectedReferenceId = "";
+    }
+  });
+
+  $effect(() => {
+    const paragraphId = selectedParagraph?.id ?? null;
+    if (paragraphId !== sourceSearchParagraphId) {
+      sourceSearchParagraphId = paragraphId;
+      sourceSearchOpen = false;
+      sourceSearchQuery = sourceSearchSuggestion?.query ?? "";
+      return;
+    }
+
+    if (
+      !sourceSearchOpen &&
+      sourceSearchSuggestion &&
+      sourceSearchQuery !== sourceSearchSuggestion.query
+    ) {
+      sourceSearchQuery = sourceSearchSuggestion.query;
     }
   });
 
@@ -85,6 +113,17 @@
     }
 
     void onLinkCitation(selectedCitationId, selectedReferenceId);
+  }
+
+  function toggleSourceSearch() {
+    if (!sourceSearchSuggestion) {
+      return;
+    }
+
+    if (!sourceSearchQuery.trim()) {
+      sourceSearchQuery = sourceSearchSuggestion.query;
+    }
+    sourceSearchOpen = !sourceSearchOpen;
   }
 
   function referenceLabel(reference: CourseReferenceSummary): string {
@@ -180,7 +219,15 @@
       {/if}
 
       <div class="action-stack">
-        <button class="secondary-button" type="button" disabled>Search sources</button>
+        <button
+          class="secondary-button"
+          type="button"
+          disabled={!sourceSearchSuggestion}
+          aria-expanded={sourceSearchOpen}
+          onclick={toggleSourceSearch}
+        >
+          Search sources
+        </button>
         <button
           class="secondary-button"
           type="button"
@@ -198,6 +245,33 @@
           Mark as resolved
         </button>
       </div>
+
+      {#if sourceSearchOpen && sourceSearchSuggestion}
+        <div class="source-search-panel">
+          <label class="field-label" for="source-search-query">
+            Search query
+            <span>{sourceSearchSuggestion.basis}</span>
+          </label>
+          <div class="source-search-row">
+            <input
+              id="source-search-query"
+              class="path-input"
+              type="text"
+              bind:value={sourceSearchQuery}
+            />
+            {#if sourceSearchUrl}
+              <a
+                class="secondary-button source-search-link"
+                href={sourceSearchUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open Crossref
+              </a>
+            {/if}
+          </div>
+        </div>
+      {/if}
 
       <form
         class="review-action-form"

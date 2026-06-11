@@ -1550,6 +1550,41 @@ button:disabled {
   gap: var(--s-2);
 }
 
+.source-search-panel {
+  display: grid;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-panel-alt);
+}
+
+.source-search-panel .field-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+}
+
+.source-search-panel .field-label span {
+  color: var(--fg-3);
+  font-size: 0.7rem;
+  text-transform: none;
+}
+
+.source-search-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
+}
+
+.source-search-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .review-action-form {
   display: grid;
   gap: var(--s-2);

@@ -50,6 +50,8 @@ const checks = [
   ["suggested-citation summary emphasis", '[data-filter="suggested-citation"].is-active'],
   ["unlinked-citation summary emphasis", '[data-filter="unlinked-citation"].is-active'],
   ["review queue status styling", ".queue-status"],
+  ["source search panel styling", ".source-search-panel"],
+  ["source search row styling", ".source-search-row"],
   ["export panel styling", ".export-panel"],
   ["export mode toggle styling", ".export-mode-toggle"],
   ["module export controls styling", ".module-export-controls"],
@@ -243,6 +245,9 @@ for (const needle of [
   "Suggested references",
   "suggestion-card",
   "Accept",
+  "Search sources",
+  "sourceSearchQuery",
+  "Open Crossref",
   "Mark citations reviewed",
   "Reviewed",
 ]) {
