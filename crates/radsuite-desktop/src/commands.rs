@@ -1660,7 +1660,7 @@ fn format_module_readings_html_with_generico(readings: &[ReferenceEntry]) -> Str
         .filter(|reading| reading_category_label(reading.reading_category) == "optional")
         .collect::<Vec<_>>();
     let mut parts = vec![
-        "<p>These are the readings located in the module content, provided here for your convenience/change text.</p>".to_string(),
+        "<p>The readings for this module are listed below.</p>".to_string(),
         r#"<p>{GENERICO:type="references"}</p>"#.to_string(),
     ];
     let mut generico_open = true;
