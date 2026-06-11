@@ -1,7 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { CourseReferenceSummary } from "../types";
-import { addCourseReference, listCourseReferences } from "./referenceCommands";
+import {
+  addCourseReference,
+  archiveCourseReference,
+  listCourseReferences,
+  updateCourseReference,
+} from "./referenceCommands";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -56,6 +61,38 @@ describe("reference commands", () => {
         project_id: "project-1",
         apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press.",
         notes: "Core course reference",
+      },
+    });
+  });
+
+  test("updates a trimmed course reference", async () => {
+    vi.mocked(invoke).mockResolvedValue(reference);
+
+    await expect(
+      updateCourseReference({
+        reference_id: "reference-1",
+        apa_citation: "  Smith, J. (2020). Worked examples in practice. Learning Press.  ",
+        notes: " Updated note ",
+      }),
+    ).resolves.toBe(reference);
+
+    expect(invoke).toHaveBeenCalledWith("update_course_reference", {
+      request: {
+        reference_id: "reference-1",
+        apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press.",
+        notes: "Updated note",
+      },
+    });
+  });
+
+  test("archives a course reference", async () => {
+    vi.mocked(invoke).mockResolvedValue(reference);
+
+    await expect(archiveCourseReference("reference-1")).resolves.toBe(reference);
+
+    expect(invoke).toHaveBeenCalledWith("archive_course_reference", {
+      request: {
+        reference_id: "reference-1",
       },
     });
   });

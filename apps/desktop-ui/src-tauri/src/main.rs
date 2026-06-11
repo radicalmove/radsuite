@@ -1,15 +1,16 @@
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
-    AppStatus, ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest, CourseModuleSummary,
-    CourseReferenceSummary, CourseReferencesExport, CreateRadciteProjectRequest, DesktopState,
+    AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
+    ArchiveRadciteModuleRequest, CourseModuleSummary, CourseReferenceSummary,
+    CourseReferencesExport, CreateRadciteProjectRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
     ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteModulesRequest,
     ListSavedReviewsRequest, LoadSavedReviewRequest, ModuleReadingImportCandidateSummary,
     ModuleReadingSummary, ModuleReadingsExport, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, RadciteProjectSummary, SaveModuleReadingsImportRequest,
-    SavedRadciteReviewSummary, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteModuleRequest,
+    SavedRadciteReviewSummary, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
+    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -92,6 +93,26 @@ async fn add_course_reference(
     request: AddCourseReferenceRequest,
 ) -> Result<CourseReferenceSummary, String> {
     radsuite_desktop::add_course_reference(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn update_course_reference(
+    state: tauri::State<'_, DesktopState>,
+    request: UpdateCourseReferenceRequest,
+) -> Result<CourseReferenceSummary, String> {
+    radsuite_desktop::update_course_reference(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn archive_course_reference(
+    state: tauri::State<'_, DesktopState>,
+    request: ArchiveCourseReferenceRequest,
+) -> Result<CourseReferenceSummary, String> {
+    radsuite_desktop::archive_course_reference(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -283,6 +304,8 @@ fn main() {
             load_saved_radcite_review,
             list_course_references,
             add_course_reference,
+            update_course_reference,
+            archive_course_reference,
             list_radcite_modules,
             add_radcite_module,
             update_radcite_module,

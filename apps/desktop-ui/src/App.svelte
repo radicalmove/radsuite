@@ -23,7 +23,13 @@
     updateModuleReading,
     updateRadciteModule,
   } from "./lib/readingCommands";
-  import { addCourseReference, listCourseReferences } from "./lib/referenceCommands";
+  import {
+    addCourseReference,
+    archiveCourseReference,
+    listCourseReferences,
+    updateCourseReference,
+    type UpdateCourseReferenceInput,
+  } from "./lib/referenceCommands";
   import {
     persistAddManualCitation,
     persistLinkCitationToReference,
@@ -407,6 +413,28 @@
     }
   }
 
+  async function handleUpdateCourseReference(input: UpdateCourseReferenceInput) {
+    courseReferencesError = null;
+    try {
+      await updateCourseReference(input);
+      referencesExport = null;
+      await refreshCourseReferences();
+    } catch (reason: unknown) {
+      courseReferencesError = `Could not update course reference: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleArchiveCourseReference(referenceId: string) {
+    courseReferencesError = null;
+    try {
+      await archiveCourseReference(referenceId);
+      referencesExport = null;
+      await refreshCourseReferences();
+    } catch (reason: unknown) {
+      courseReferencesError = `Could not remove course reference: ${toErrorMessage(reason)}`;
+    }
+  }
+
   async function handleExportCourseReferences(forAkoLearn: boolean) {
     referencesExportLoading = true;
     referencesExportError = null;
@@ -621,9 +649,9 @@
         references={courseReferences}
         referencesLoading={courseReferencesLoading}
         referencesError={courseReferencesError}
-        onAddReference={(apaCitation, notes) => {
-          void handleAddCourseReference(apaCitation, notes);
-        }}
+        onAddReference={handleAddCourseReference}
+        onUpdateReference={handleUpdateCourseReference}
+        onArchiveReference={handleArchiveCourseReference}
         onRefreshReferences={() => {
           void refreshCourseReferences();
         }}
