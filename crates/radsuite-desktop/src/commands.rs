@@ -661,6 +661,13 @@ pub async fn add_course_reference(
     }
 
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let reference_repo = SqliteReferenceEntryRepository::new(state.database_pool.clone());
+    if let Some(existing_reference) =
+        find_existing_course_reference(&reference_repo, project.id, apa_citation).await?
+    {
+        return Ok(course_reference_summary(existing_reference));
+    }
+
     let mut reference = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
     reference.apa_citation = Some(apa_citation.to_string());
     reference.notes = request
@@ -670,11 +677,29 @@ pub async fn add_course_reference(
         .filter(|value| !value.is_empty())
         .map(str::to_string);
 
-    SqliteReferenceEntryRepository::new(state.database_pool.clone())
-        .insert_reference_entry(&reference)
-        .await?;
+    reference_repo.insert_reference_entry(&reference).await?;
 
     Ok(course_reference_summary(reference))
+}
+
+async fn find_existing_course_reference(
+    reference_repo: &SqliteReferenceEntryRepository,
+    project_id: ProjectId,
+    apa_citation: &str,
+) -> Result<Option<ReferenceEntry>, CourseReferenceError> {
+    let import_key = normalised_reference_identity(apa_citation);
+    let references = reference_repo
+        .list_reference_entries_for_project(project_id, ReferenceEntryType::Reference)
+        .await?;
+
+    Ok(references.into_iter().find(|reference| {
+        reference
+            .apa_citation
+            .as_deref()
+            .or(reference.citation_text.as_deref())
+            .map(normalised_reference_identity)
+            .is_some_and(|existing_key| existing_key == import_key)
+    }))
 }
 
 pub async fn list_radcite_modules(
@@ -1324,6 +1349,10 @@ fn module_reading_entry_identity(reading: &ReferenceEntry) -> Option<(ReadingCat
 }
 
 fn normalised_reading_identity(value: &str) -> String {
+    normalised_reference_identity(value)
+}
+
+fn normalised_reference_identity(value: &str) -> String {
     value
         .split_whitespace()
         .collect::<Vec<_>>()
