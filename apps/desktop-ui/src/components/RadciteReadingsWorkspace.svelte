@@ -15,6 +15,7 @@
     UpdateRadciteModuleInput,
   } from "../lib/readingCommands";
   import { readingCategoryLabel } from "../lib/readingCategoryLabels";
+  import { readingListMetadata } from "../lib/readingDisplay";
   import {
     applyAutoModuleToCandidates,
     defaultModuleIdForImportCandidate,
@@ -1021,13 +1022,9 @@
                   </div>
                 </div>
                 <div class="reference-meta">
-                  <span>{reading.validation_status.replace("_", " ")}</span>
-                  {#if reading.estimated_reading_time}
-                    <span>{reading.estimated_reading_time}</span>
-                  {/if}
-                  {#if reading.url}
-                    <span>{reading.url}</span>
-                  {/if}
+                  {#each readingListMetadata(reading) as item}
+                    <span>{item}</span>
+                  {/each}
                 </div>
               </article>
             {/each}
@@ -1066,13 +1063,9 @@
                   </div>
                 </div>
                 <div class="reference-meta">
-                  <span>{reading.validation_status.replace("_", " ")}</span>
-                  {#if reading.estimated_reading_time}
-                    <span>{reading.estimated_reading_time}</span>
-                  {/if}
-                  {#if reading.url}
-                    <span>{reading.url}</span>
-                  {/if}
+                  {#each readingListMetadata(reading) as item}
+                    <span>{item}</span>
+                  {/each}
                 </div>
               </article>
             {/each}
