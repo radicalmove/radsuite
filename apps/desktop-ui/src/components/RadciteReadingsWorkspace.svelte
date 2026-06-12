@@ -20,6 +20,7 @@
     defaultModuleIdForImportCandidate,
     inferModuleDraftForImport,
     moduleMatchesImportDraft,
+    selectedImportHasUsableModuleAssignments,
     type ImportModuleDraft,
   } from "../lib/readingImportWorkflow";
 
@@ -162,10 +163,13 @@
   let selectedImportNeedsModule = $derived(
     importCandidates.some((candidate) => candidate.selected && !candidate.module_id),
   );
+  let selectedImportHasAssignedModules = $derived(
+    selectedImportHasUsableModuleAssignments(importCandidates),
+  );
   let importSaveDisabled = $derived(
     importSaving ||
       selectedImportCount === 0 ||
-      (selectedImportNeedsModule && !inferredExistingModule && !inferredImportModuleDraft),
+      (!selectedImportHasAssignedModules && !inferredExistingModule && !inferredImportModuleDraft),
   );
 
   $effect(() => {
@@ -402,12 +406,14 @@
 
     try {
       const moduleId = await moduleIdForSelectedImport(selectedCandidates);
-      if (!moduleId) {
+      if (!moduleId && !selectedImportHasUsableModuleAssignments(selectedCandidates)) {
         importError = "Create or select a module before saving these readings.";
         return;
       }
 
-      const candidatesWithModule = applyAutoModuleToCandidates(selectedCandidates, moduleId);
+      const candidatesWithModule = moduleId
+        ? applyAutoModuleToCandidates(selectedCandidates, moduleId)
+        : selectedCandidates;
       const input: SaveModuleReadingsImportInput = {
         candidates: candidatesWithModule.map((candidate) => ({
           module_id: candidate.module_id,
@@ -439,11 +445,11 @@
     const existingModuleIds = new Set(
       selectedCandidates.map((candidate) => candidate.module_id).filter(Boolean),
     );
-    if (existingModuleIds.size > 1) {
-      return null;
-    }
     if (existingModuleIds.size === 1) {
       return [...existingModuleIds][0] ?? null;
+    }
+    if (existingModuleIds.size > 1) {
+      return null;
     }
 
     if (inferredExistingModule) {

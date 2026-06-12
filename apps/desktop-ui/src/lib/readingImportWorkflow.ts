@@ -78,6 +78,16 @@ export function applyAutoModuleToCandidates<T extends CandidateWithModuleSelecti
   );
 }
 
+export function selectedImportHasUsableModuleAssignments<T extends CandidateWithModuleSelection>(
+  candidates: T[],
+): boolean {
+  const selectedCandidates = candidates.filter((candidate) => candidate.selected);
+  return (
+    selectedCandidates.length > 0 &&
+    selectedCandidates.every((candidate) => candidate.module_id.trim().length > 0)
+  );
+}
+
 function inferModuleDraftFromCandidates(
   candidates: ModuleReadingImportCandidate[],
 ): ImportModuleDraft | null {
