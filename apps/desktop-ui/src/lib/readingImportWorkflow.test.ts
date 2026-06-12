@@ -3,6 +3,7 @@ import type { CourseModuleSummary, ModuleReadingImportCandidate } from "../types
 import {
   applyAutoModuleToCandidates,
   defaultModuleIdForImportCandidate,
+  defaultReadingImportNotes,
   inferModuleDraftForImport,
   moduleMatchesImportDraft,
   selectedImportHasUsableModuleAssignments,
@@ -166,5 +167,18 @@ describe("reading import workflow", () => {
         { ...candidate, selected: true, module_id: "" },
       ]),
     ).toBe(false);
+  });
+
+  test("uses source filenames as default import notes", () => {
+    expect(
+      defaultReadingImportNotes({
+        ...candidate,
+        source_filename: "Module 6 Microlearning 3.pdf",
+      }),
+    ).toBe("Imported from Module 6 Microlearning 3.pdf");
+  });
+
+  test("leaves default import notes blank without source filename", () => {
+    expect(defaultReadingImportNotes(candidate)).toBe("");
   });
 });
