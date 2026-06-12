@@ -3086,6 +3086,7 @@ name = "radsuite-cite"
 version = "0.1.0"
 dependencies = [
  "csv",
+ "flate2",
  "quick-xml",
  "radsuite-core",
  "regex",

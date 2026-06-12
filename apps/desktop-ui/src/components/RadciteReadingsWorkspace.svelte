@@ -9,6 +9,7 @@
     AddModuleReadingInput,
     AddRadciteModuleInput,
     PreviewModuleReadingsImportInput,
+    PreviewModuleReadingsPdfImportInput,
     SaveModuleReadingsImportInput,
     UpdateModuleReadingInput,
     UpdateRadciteModuleInput,
@@ -63,6 +64,9 @@
     onPreviewReadingsCsvImport: (
       input: PreviewModuleReadingsImportInput,
     ) => ModuleReadingImportCandidate[] | Promise<ModuleReadingImportCandidate[]>;
+    onPreviewReadingsPdfImport: (
+      input: PreviewModuleReadingsPdfImportInput,
+    ) => ModuleReadingImportCandidate[] | Promise<ModuleReadingImportCandidate[]>;
     onSaveReadingsImport: (
       input: SaveModuleReadingsImportInput,
     ) => ModuleReadingSummary[] | Promise<ModuleReadingSummary[]>;
@@ -89,13 +93,15 @@
     onArchiveReading,
     onPreviewReadingsImport,
     onPreviewReadingsCsvImport,
+    onPreviewReadingsPdfImport,
     onSaveReadingsImport,
     onDocxPathChange,
   }: Props = $props();
 
   let importCandidateCounter = 0;
-  let importSource = $state<"docx" | "csv">("docx");
+  let importSource = $state<"docx" | "csv" | "pdf">("docx");
   let importPath = $state("");
+  let pdfPaths = $state<string[]>([]);
   let importCandidates = $state<EditableImportCandidate[]>([]);
   let importLoading = $state(false);
   let importSaving = $state(false);
@@ -137,7 +143,13 @@
   let selectedImportCount = $derived(
     importCandidates.filter((candidate) => candidate.selected).length,
   );
-  let activeImportPath = $derived(importSource === "docx" ? docxPath : importPath);
+  let activeImportPath = $derived(
+    importSource === "docx"
+      ? docxPath
+      : importSource === "pdf" && pdfPaths.length
+        ? pdfPaths.join("; ")
+        : importPath,
+  );
   let inferredImportModuleDraft = $derived(
     inferModuleDraftForImport(importCandidates, activeImportPath),
   );
@@ -225,18 +237,25 @@
   }
 
   function importSourceLabel(): string {
-    return importSource === "csv" ? "CSV" : "DOCX";
+    if (importSource === "csv") {
+      return "CSV";
+    }
+    if (importSource === "pdf") {
+      return "PDF";
+    }
+    return "DOCX";
   }
 
-  function setImportSource(source: "docx" | "csv") {
+  function setImportSource(source: "docx" | "csv" | "pdf") {
     if (source === importSource) {
       return;
     }
 
     importSource = source;
-    if (source === "csv") {
+    if (source !== "docx") {
       importPath = "";
     }
+    pdfPaths = [];
     importCandidates = [];
     importError = null;
     importStatus = null;
@@ -246,9 +265,19 @@
     const value = (event.currentTarget as HTMLInputElement).value;
     if (importSource === "docx") {
       onDocxPathChange(value);
+    } else if (importSource === "pdf") {
+      importPath = value;
+      pdfPaths = parsePdfPaths(value);
     } else {
       importPath = value;
     }
+  }
+
+  function parsePdfPaths(value: string): string[] {
+    return value
+      .split(/[;\n]/)
+      .map((path) => path.trim())
+      .filter(Boolean);
   }
 
   async function chooseReadingsFile() {
@@ -257,13 +286,18 @@
 
     try {
       const selected = await open({
-        multiple: false,
+        multiple: importSource === "pdf",
         directory: false,
         filters: [
-          importSource === "csv"
+          importSource === "pdf"
             ? {
-                name: "CSV inventories",
-                extensions: ["csv"],
+                name: "PDF documents",
+                extensions: ["pdf"],
+              }
+            : importSource === "csv"
+              ? {
+                  name: "CSV inventories",
+                  extensions: ["csv"],
               }
             : {
                 name: "Word documents",
@@ -275,14 +309,21 @@
       if (typeof selected === "string") {
         if (importSource === "docx") {
           onDocxPathChange(selected);
+        } else if (importSource === "pdf") {
+          pdfPaths = [selected];
+          importPath = selected;
         } else {
           importPath = selected;
         }
       } else if (Array.isArray(selected) && typeof selected[0] === "string") {
+        const selectedPaths = selected as string[];
         if (importSource === "docx") {
-          onDocxPathChange(selected[0]);
+          onDocxPathChange(selectedPaths[0]);
+        } else if (importSource === "pdf") {
+          pdfPaths = selectedPaths;
+          importPath = selectedPaths.join("; ");
         } else {
-          importPath = selected[0];
+          importPath = selectedPaths[0];
         }
       }
     } catch (reason: unknown) {
@@ -302,11 +343,15 @@
     importStatus = null;
 
     try {
-      const preview = importSource === "csv" ? onPreviewReadingsCsvImport : onPreviewReadingsImport;
-      const candidates = await preview({
-        path,
-        original_filename: null,
-      });
+      const candidates =
+        importSource === "pdf"
+          ? await onPreviewReadingsPdfImport({
+              paths: pdfPaths.length ? pdfPaths : parsePdfPaths(importPath),
+            })
+          : await (importSource === "csv" ? onPreviewReadingsCsvImport : onPreviewReadingsImport)({
+              path,
+              original_filename: null,
+            });
       const importDraft = inferModuleDraftForImport(candidates, path);
       importCandidates = candidates.map((candidate) =>
         editableImportCandidate(candidate, importDraft),
@@ -314,7 +359,9 @@
       importStatus = candidates.length
         ? isAutomatic
           ? `${candidates.length} reading candidates found from the analysed DOCX.`
-          : `${candidates.length} reading candidates ready to review.`
+          : importSource === "pdf"
+            ? `${candidates.length} reading candidates ready to review from ${pdfPaths.length || parsePdfPaths(importPath).length} PDF files.`
+            : `${candidates.length} reading candidates ready to review.`
         : `No reading candidates were detected in this ${importSourceLabel()}.`;
     } catch (reason: unknown) {
       importError = `Could not preview readings: ${toErrorMessage(reason)}`;
@@ -569,6 +616,14 @@
           >
             CSV
           </button>
+          <button
+            type="button"
+            class:is-active={importSource === "pdf"}
+            aria-pressed={importSource === "pdf"}
+            onclick={() => setImportSource("pdf")}
+          >
+            PDF
+          </button>
         </div>
         {#if importCandidates.length}
           <span class="module-current">{selectedImportCount} selected</span>
@@ -585,7 +640,9 @@
             placeholder={
               importSource === "csv"
                 ? "/Users/name/Documents/course_readings.csv"
-                : "/Users/name/Documents/module-readings.docx"
+                : importSource === "pdf"
+                  ? "/Users/name/Documents/module-6-microlearning-1.pdf; /Users/name/Documents/module-6-microlearning-2.pdf"
+                  : "/Users/name/Documents/module-readings.docx"
             }
             autocomplete="off"
           />
@@ -595,7 +652,11 @@
             disabled={importLoading || importSaving}
             onclick={() => void chooseReadingsFile()}
           >
-            {importSource === "csv" ? "Choose CSV" : "Choose DOCX"}
+            {importSource === "csv"
+              ? "Choose CSV"
+              : importSource === "pdf"
+                ? "Choose PDFs"
+                : "Choose DOCX"}
           </button>
           <button
             class="primary-button"

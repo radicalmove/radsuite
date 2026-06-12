@@ -19,6 +19,7 @@
     listRadciteModules,
     previewModuleReadingsCsvImport,
     previewModuleReadingsImport,
+    previewModuleReadingsPdfImport,
     saveModuleReadingsImport,
     updateModuleReading,
     updateRadciteModule,
@@ -390,6 +391,13 @@
     return previewModuleReadingsCsvImport(input);
   }
 
+  async function handlePreviewModuleReadingsPdfImport(
+    input: Parameters<typeof previewModuleReadingsPdfImport>[0],
+  ) {
+    moduleReadingsError = null;
+    return previewModuleReadingsPdfImport(input);
+  }
+
   async function handleSaveModuleReadingsImport(
     input: Parameters<typeof saveModuleReadingsImport>[0],
   ) {
@@ -704,6 +712,7 @@
         }}
         onPreviewReadingsImport={handlePreviewModuleReadingsImport}
         onPreviewReadingsCsvImport={handlePreviewModuleReadingsCsvImport}
+        onPreviewReadingsPdfImport={handlePreviewModuleReadingsPdfImport}
         onSaveReadingsImport={handleSaveModuleReadingsImport}
         onDocxPathChange={(path) => {
           sharedDocxPath = path;

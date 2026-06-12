@@ -126,7 +126,7 @@ fn extract_docx_plain_paragraphs(
     Ok(extract_paragraphs(&document_xml, &relationships)?)
 }
 
-fn extract_reading_candidates_from_paragraphs(
+pub(crate) fn extract_reading_candidates_from_paragraphs(
     paragraphs: impl IntoIterator<Item = String>,
 ) -> Vec<ReadingImportCandidate> {
     let mut current_category = ReadingCategory::Compulsory;
