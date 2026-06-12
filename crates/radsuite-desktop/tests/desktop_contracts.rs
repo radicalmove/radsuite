@@ -1228,7 +1228,7 @@ async fn module_readings_pdf_import_preview_extracts_candidates_from_multiple_pd
         ],
     );
 
-    let candidates = preview_module_readings_pdf_import(
+    let preview = preview_module_readings_pdf_import(
         &state,
         PreviewModuleReadingsPdfImportRequest {
             paths: vec![
@@ -1240,6 +1240,8 @@ async fn module_readings_pdf_import_preview_extracts_candidates_from_multiple_pd
     .await
     .expect("preview pdf readings import");
 
+    assert!(preview.failures.is_empty());
+    let candidates = preview.candidates;
     assert_eq!(candidates.len(), 2);
     assert_eq!(
         candidates[0].source_filename.as_deref(),
@@ -1253,6 +1255,44 @@ async fn module_readings_pdf_import_preview_extracts_candidates_from_multiple_pd
     );
     assert_eq!(candidates[0].reading_category, "compulsory");
     assert_eq!(candidates[1].reading_category, "optional");
+}
+
+#[tokio::test]
+async fn module_readings_pdf_import_preview_reports_unreadable_files_without_losing_candidates() {
+    let state = desktop_state_with_migrated_pool().await;
+    let good_path = write_readings_import_pdf(
+        "desktop-module-12-lesson-1.pdf",
+        &[
+            "Required readings",
+            "Turner, A. (2024). Desktop partial PDF imports. Example Press.",
+        ],
+    );
+    let missing_path = good_path.with_file_name("missing-module-12-lesson-2.pdf");
+
+    let preview = preview_module_readings_pdf_import(
+        &state,
+        PreviewModuleReadingsPdfImportRequest {
+            paths: vec![
+                good_path.to_string_lossy().into_owned(),
+                missing_path.to_string_lossy().into_owned(),
+            ],
+        },
+    )
+    .await
+    .expect("preview pdf readings import with partial failure");
+
+    assert_eq!(preview.candidates.len(), 1);
+    assert_eq!(preview.candidates[0].module_order, Some(12));
+    assert_eq!(preview.failures.len(), 1);
+    assert_eq!(
+        preview.failures[0].path,
+        missing_path.to_string_lossy().into_owned()
+    );
+    assert!(
+        preview.failures[0]
+            .message
+            .contains("failed to read PDF file")
+    );
 }
 
 #[tokio::test]

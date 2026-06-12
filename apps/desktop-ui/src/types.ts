@@ -145,6 +145,16 @@ export type ModuleReadingImportCandidate = {
   url: string | null;
 };
 
+export type ModuleReadingsPdfImportFailure = {
+  path: string;
+  message: string;
+};
+
+export type ModuleReadingsPdfImportPreview = {
+  candidates: ModuleReadingImportCandidate[];
+  failures: ModuleReadingsPdfImportFailure[];
+};
+
 export type CourseReferencesExportRequest = {
   project_id?: string | null;
   for_ako_learn: boolean;
