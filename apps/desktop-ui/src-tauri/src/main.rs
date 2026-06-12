@@ -7,11 +7,11 @@ use radsuite_desktop::{
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
     ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteModulesRequest,
     ListSavedReviewsRequest, LoadSavedReviewRequest, ModuleReadingImportCandidateSummary,
-    ModuleReadingSummary, ModuleReadingsExport, PreviewModuleReadingsCsvImportRequest,
-    PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    RadciteProjectSummary, SaveModuleReadingsImportRequest, SavedRadciteReviewSummary,
-    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteModuleRequest,
+    ModuleReadingSummary, ModuleReadingsExport, ModuleReadingsPdfImportPreview,
+    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
+    PreviewModuleReadingsPdfImportRequest, RadciteProjectSummary, SaveModuleReadingsImportRequest,
+    SavedRadciteReviewSummary, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
+    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -222,7 +222,7 @@ async fn preview_module_readings_csv_import(
 async fn preview_module_readings_pdf_import(
     state: tauri::State<'_, DesktopState>,
     request: PreviewModuleReadingsPdfImportRequest,
-) -> Result<Vec<ModuleReadingImportCandidateSummary>, String> {
+) -> Result<ModuleReadingsPdfImportPreview, String> {
     radsuite_desktop::preview_module_readings_pdf_import(&state, request)
         .await
         .map_err(|error| error.to_string())

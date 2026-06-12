@@ -4,6 +4,7 @@
     CourseModuleSummary,
     ModuleReadingImportCandidate,
     ModuleReadingSummary,
+    ModuleReadingsPdfImportPreview,
   } from "../types";
   import type {
     AddModuleReadingInput,
@@ -69,7 +70,7 @@
     ) => ModuleReadingImportCandidate[] | Promise<ModuleReadingImportCandidate[]>;
     onPreviewReadingsPdfImport: (
       input: PreviewModuleReadingsPdfImportInput,
-    ) => ModuleReadingImportCandidate[] | Promise<ModuleReadingImportCandidate[]>;
+    ) => ModuleReadingsPdfImportPreview | Promise<ModuleReadingsPdfImportPreview>;
     onSaveReadingsImport: (
       input: SaveModuleReadingsImportInput,
     ) => ModuleReadingSummary[] | Promise<ModuleReadingSummary[]>;
@@ -368,26 +369,36 @@
     importStatus = null;
 
     try {
-      const candidates =
+      const pdfImportPaths = pdfPaths.length ? pdfPaths : parsePdfPaths(importPath);
+      const preview =
         importSource === "pdf"
           ? await onPreviewReadingsPdfImport({
-              paths: pdfPaths.length ? pdfPaths : parsePdfPaths(importPath),
+              paths: pdfImportPaths,
             })
-          : await (importSource === "csv" ? onPreviewReadingsCsvImport : onPreviewReadingsImport)({
-              path,
-              original_filename: null,
-            });
+          : {
+              candidates: await (
+                importSource === "csv" ? onPreviewReadingsCsvImport : onPreviewReadingsImport
+              )({
+                path,
+                original_filename: null,
+              }),
+              failures: [],
+            };
+      const { candidates, failures } = preview;
       const importDraft = inferModuleDraftForImport(candidates, path);
       importCandidates = candidates.map((candidate) =>
         editableImportCandidate(candidate, importDraft),
       );
-      importStatus = candidates.length
+      const status = candidates.length
         ? isAutomatic
           ? `${candidates.length} reading candidates found from the analysed DOCX.`
           : importSource === "pdf"
-            ? `${candidates.length} reading candidates ready to review from ${pdfPaths.length || parsePdfPaths(importPath).length} PDF files.`
+            ? `${candidates.length} reading candidates ready to review from ${pdfImportPaths.length} PDF files.`
             : `${candidates.length} reading candidates ready to review.`
         : `No reading candidates were detected in this ${importSourceLabel()}.`;
+      importStatus = failures.length
+        ? `${status} ${failures.length} PDF ${failures.length === 1 ? "file could not be read" : "files could not be read"}: ${failures.map((failure) => failure.path).join(", ")}.`
+        : status;
     } catch (reason: unknown) {
       importError = `Could not preview readings: ${toErrorMessage(reason)}`;
     } finally {

@@ -3,6 +3,7 @@ import type {
   CourseModuleSummary,
   ModuleReadingImportCandidate,
   ModuleReadingSummary,
+  ModuleReadingsPdfImportPreview,
 } from "../types";
 
 export type AddRadciteModuleInput = {
@@ -154,8 +155,8 @@ export function previewModuleReadingsCsvImport(
 
 export function previewModuleReadingsPdfImport(
   input: PreviewModuleReadingsPdfImportInput,
-): Promise<ModuleReadingImportCandidate[]> {
-  return invoke<ModuleReadingImportCandidate[]>("preview_module_readings_pdf_import", {
+): Promise<ModuleReadingsPdfImportPreview> {
+  return invoke<ModuleReadingsPdfImportPreview>("preview_module_readings_pdf_import", {
     request: {
       paths: input.paths.map((path) => path.trim()).filter(Boolean),
     },

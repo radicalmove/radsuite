@@ -5,7 +5,7 @@ use radsuite_cite::{
     CsvReadingExtractionRequest, CsvReadingImportError, DocxIngestionError, DocxIngestionRequest,
     DocxReadingExtractionRequest, PdfReadingExtractionError, PdfReadingExtractionRequest,
     ReadingImportCandidate, extract_csv_reading_candidates, extract_docx_reading_candidates,
-    extract_pdf_reading_candidates, ingest_docx,
+    extract_pdf_reading_candidates_with_report, ingest_docx,
 };
 use radsuite_core::{
     ApaValidationStatus, Citation, CitationId, CourseModule, Document, DocumentId, ModuleId,
@@ -333,6 +333,18 @@ pub struct ModuleReadingImportCandidateSummary {
     pub apa_citation: String,
     pub citation_text: Option<String>,
     pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleReadingsPdfImportPreview {
+    pub candidates: Vec<ModuleReadingImportCandidateSummary>,
+    pub failures: Vec<ModuleReadingsPdfImportFailureSummary>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ModuleReadingsPdfImportFailureSummary {
+    pub path: String,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -994,7 +1006,7 @@ pub async fn preview_module_readings_csv_import(
 pub async fn preview_module_readings_pdf_import(
     _state: &DesktopState,
     request: PreviewModuleReadingsPdfImportRequest,
-) -> Result<Vec<ModuleReadingImportCandidateSummary>, ModuleReadingImportError> {
+) -> Result<ModuleReadingsPdfImportPreview, ModuleReadingImportError> {
     let paths = request
         .paths
         .into_iter()
@@ -1007,12 +1019,23 @@ pub async fn preview_module_readings_pdf_import(
         return Err(ModuleReadingImportError::EmptyPath);
     }
 
-    let candidates = extract_pdf_reading_candidates(PdfReadingExtractionRequest { paths })?;
+    let report = extract_pdf_reading_candidates_with_report(PdfReadingExtractionRequest { paths })?;
 
-    Ok(candidates
-        .into_iter()
-        .map(module_reading_import_candidate_summary)
-        .collect())
+    Ok(ModuleReadingsPdfImportPreview {
+        candidates: report
+            .candidates
+            .into_iter()
+            .map(module_reading_import_candidate_summary)
+            .collect(),
+        failures: report
+            .failures
+            .into_iter()
+            .map(|failure| ModuleReadingsPdfImportFailureSummary {
+                path: failure.path.to_string_lossy().into_owned(),
+                message: failure.message,
+            })
+            .collect(),
+    })
 }
 
 pub async fn save_module_readings_import(

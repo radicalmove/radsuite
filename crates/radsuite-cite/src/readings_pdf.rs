@@ -16,6 +16,18 @@ pub struct PdfReadingExtractionRequest {
     pub paths: Vec<PathBuf>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PdfReadingExtractionReport {
+    pub candidates: Vec<ReadingImportCandidate>,
+    pub failures: Vec<PdfReadingExtractionFailure>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PdfReadingExtractionFailure {
+    pub path: PathBuf,
+    pub message: String,
+}
+
 #[derive(Debug, Error)]
 pub enum PdfReadingExtractionError {
     #[error("choose at least one PDF file before previewing module readings")]
@@ -35,7 +47,14 @@ pub enum PdfReadingExtractionError {
 pub fn extract_pdf_reading_candidates(
     request: PdfReadingExtractionRequest,
 ) -> Result<Vec<ReadingImportCandidate>, PdfReadingExtractionError> {
+    Ok(extract_pdf_reading_candidates_with_report(request)?.candidates)
+}
+
+pub fn extract_pdf_reading_candidates_with_report(
+    request: PdfReadingExtractionRequest,
+) -> Result<PdfReadingExtractionReport, PdfReadingExtractionError> {
     let mut all_candidates = Vec::new();
+    let mut failures = Vec::new();
 
     if request.paths.is_empty() {
         return Err(PdfReadingExtractionError::EmptyPaths);
@@ -52,7 +71,16 @@ pub fn extract_pdf_reading_candidates(
         }
 
         let source = infer_pdf_source_context(&path);
-        let paragraphs = extract_pdf_text_lines(&path)?;
+        let paragraphs = match extract_pdf_text_lines(&path) {
+            Ok(paragraphs) => paragraphs,
+            Err(error) => {
+                failures.push(PdfReadingExtractionFailure {
+                    path,
+                    message: error.to_string(),
+                });
+                continue;
+            }
+        };
         let mut candidates = extract_reading_candidates_from_paragraphs(paragraphs);
 
         for candidate in &mut candidates {
@@ -75,7 +103,10 @@ pub fn extract_pdf_reading_candidates(
         merge_candidates(&mut all_candidates, candidates);
     }
 
-    Ok(all_candidates)
+    Ok(PdfReadingExtractionReport {
+        candidates: all_candidates,
+        failures,
+    })
 }
 
 fn expand_pdf_paths(paths: Vec<PathBuf>) -> Result<Vec<PathBuf>, PdfReadingExtractionError> {

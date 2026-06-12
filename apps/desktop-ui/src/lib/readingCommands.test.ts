@@ -269,7 +269,8 @@ describe("reading commands", () => {
   });
 
   test("previews trimmed module readings PDF imports", async () => {
-    const candidates = [
+    const preview = {
+      candidates: [
       {
         source_path: "/tmp/module-6-a.pdf",
         source_filename: "module-6-a.pdf",
@@ -281,14 +282,21 @@ describe("reading commands", () => {
         citation_text: null,
         url: null,
       },
-    ];
-    vi.mocked(invoke).mockResolvedValue(candidates);
+      ],
+      failures: [
+        {
+          path: "/tmp/bad-module.pdf",
+          message: "failed to read PDF file",
+        },
+      ],
+    };
+    vi.mocked(invoke).mockResolvedValue(preview);
 
     await expect(
       previewModuleReadingsPdfImport({
         paths: [" /tmp/module-6-a.pdf ", "", " /tmp/module-6-b.pdf "],
       }),
-    ).resolves.toBe(candidates);
+    ).resolves.toBe(preview);
 
     expect(invoke).toHaveBeenCalledWith("preview_module_readings_pdf_import", {
       request: {

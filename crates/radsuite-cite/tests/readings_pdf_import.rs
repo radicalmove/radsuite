@@ -4,7 +4,10 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use radsuite_cite::{PdfReadingExtractionRequest, extract_pdf_reading_candidates};
+use radsuite_cite::{
+    PdfReadingExtractionRequest, extract_pdf_reading_candidates,
+    extract_pdf_reading_candidates_with_report,
+};
 use radsuite_core::ReadingCategory;
 
 #[test]
@@ -183,6 +186,35 @@ fn readings_pdf_import_rejects_non_pdf_paths() {
         .expect_err("unsupported extension");
 
     assert!(error.to_string().contains("expected a .pdf file"));
+}
+
+#[test]
+fn readings_pdf_import_reports_unreadable_files_without_aborting_batch() {
+    let dir = test_dir("partial-failure");
+    let good_pdf = dir.join("Module 11 Lesson 1.pdf");
+    let missing_pdf = dir.join("Module 11 Lesson 2.pdf");
+    write_minimal_pdf(
+        &good_pdf,
+        &[
+            "Required readings",
+            "Turner, A. (2024). Partial PDF batch imports. Example Press.",
+        ],
+    );
+
+    let report = extract_pdf_reading_candidates_with_report(PdfReadingExtractionRequest {
+        paths: vec![good_pdf, missing_pdf.clone()],
+    })
+    .expect("extract candidates with report");
+
+    assert_eq!(report.candidates.len(), 1);
+    assert_eq!(report.candidates[0].module_order, Some(11));
+    assert_eq!(report.failures.len(), 1);
+    assert_eq!(report.failures[0].path, missing_pdf);
+    assert!(
+        report.failures[0]
+            .message
+            .contains("failed to read PDF file")
+    );
 }
 
 #[test]
