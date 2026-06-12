@@ -35,6 +35,8 @@ pub struct DocxReadingExtractionRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReadingImportCandidate {
+    pub source_path: Option<String>,
+    pub source_filename: Option<String>,
     pub module_order: Option<i32>,
     pub module_title: Option<String>,
     pub reading_category: ReadingCategory,
@@ -190,6 +192,8 @@ pub(crate) fn extract_reading_candidates_from_paragraphs(
             &apa_citation,
         );
         let candidate = ReadingImportCandidate {
+            source_path: None,
+            source_filename: None,
             module_order: current_module_order,
             module_title: current_module_title.clone(),
             reading_category: current_category,

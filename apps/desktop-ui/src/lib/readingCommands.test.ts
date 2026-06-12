@@ -271,6 +271,8 @@ describe("reading commands", () => {
   test("previews trimmed module readings PDF imports", async () => {
     const candidates = [
       {
+        source_path: "/tmp/module-6-a.pdf",
+        source_filename: "module-6-a.pdf",
         module_order: 6,
         module_title: "Module 6",
         reading_category: "compulsory",

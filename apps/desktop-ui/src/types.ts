@@ -134,6 +134,8 @@ export type ModuleReadingSummary = {
 };
 
 export type ModuleReadingImportCandidate = {
+  source_path: string | null;
+  source_filename: string | null;
   module_order: number | null;
   module_title: string | null;
   reading_category: "compulsory" | "optional";

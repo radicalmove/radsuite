@@ -8,6 +8,8 @@ import {
 } from "./readingImportWorkflow";
 
 const candidate: ModuleReadingImportCandidate = {
+  source_path: null,
+  source_filename: null,
   module_order: null,
   module_title: null,
   reading_category: "compulsory",

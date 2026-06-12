@@ -67,6 +67,8 @@ pub fn extract_csv_reading_candidates(
         }
 
         candidates.push(ReadingImportCandidate {
+            source_path: None,
+            source_filename: None,
             module_order,
             module_title,
             reading_category,

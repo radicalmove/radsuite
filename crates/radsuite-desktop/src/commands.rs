@@ -324,6 +324,8 @@ pub struct PreviewModuleReadingsPdfImportRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModuleReadingImportCandidateSummary {
+    pub source_path: Option<String>,
+    pub source_filename: Option<String>,
     pub module_order: Option<i32>,
     pub module_title: Option<String>,
     pub reading_category: String,
@@ -1507,6 +1509,8 @@ fn module_reading_import_candidate_summary(
     candidate: ReadingImportCandidate,
 ) -> ModuleReadingImportCandidateSummary {
     ModuleReadingImportCandidateSummary {
+        source_path: candidate.source_path,
+        source_filename: candidate.source_filename,
         module_order: candidate.module_order,
         module_title: candidate.module_title,
         reading_category: reading_category_label(Some(candidate.reading_category)).to_string(),

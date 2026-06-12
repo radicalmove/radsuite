@@ -33,6 +33,10 @@ fn readings_pdf_import_extracts_microlearning_readings_from_multiple_pdfs() {
     .expect("extract candidates");
 
     assert_eq!(candidates.len(), 2);
+    assert_eq!(
+        candidates[0].source_filename.as_deref(),
+        Some("COMS432 Module 6 Microlearning 3.pdf")
+    );
     assert_eq!(candidates[0].module_order, Some(6));
     assert_eq!(candidates[0].module_title.as_deref(), Some("Module 6"));
     assert_eq!(
@@ -49,6 +53,34 @@ fn readings_pdf_import_extracts_microlearning_readings_from_multiple_pdfs() {
         Some("Microlearning 4")
     );
     assert_eq!(candidates[1].reading_category, ReadingCategory::Optional);
+}
+
+#[test]
+fn readings_pdf_import_expands_directories_recursively() {
+    let dir = test_dir("directory-expansion");
+    let nested = dir.join("Module 10").join("assets");
+    fs::create_dir_all(&nested).expect("create nested folder");
+    let pdf = nested.join("Module 10 Lesson 2.pdf");
+    write_minimal_pdf(
+        &pdf,
+        &[
+            "Required readings",
+            "Parker, S. (2024). Folder imports for SCORM readings. Example Press.",
+        ],
+    );
+    fs::write(nested.join("ignore.txt"), "not a pdf").expect("write ignored file");
+
+    let candidates =
+        extract_pdf_reading_candidates(PdfReadingExtractionRequest { paths: vec![dir] })
+            .expect("extract candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(
+        candidates[0].source_filename.as_deref(),
+        Some("Module 10 Lesson 2.pdf")
+    );
+    assert_eq!(candidates[0].module_order, Some(10));
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("Lesson 2"));
 }
 
 #[test]
