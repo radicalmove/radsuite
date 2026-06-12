@@ -18,6 +18,7 @@
   import {
     applyAutoModuleToCandidates,
     defaultModuleIdForImportCandidate,
+    defaultReadingImportNotes,
     inferModuleDraftForImport,
     moduleMatchesImportDraft,
     selectedImportHasUsableModuleAssignments,
@@ -223,7 +224,7 @@
       lesson_code: candidate.lesson_code ?? "",
       citation_text: candidate.citation_text ?? "",
       url: candidate.url ?? "",
-      notes: "",
+      notes: defaultReadingImportNotes(candidate),
       reading_notes: "",
       estimated_reading_time: "",
     };

@@ -88,6 +88,11 @@ export function selectedImportHasUsableModuleAssignments<T extends CandidateWith
   );
 }
 
+export function defaultReadingImportNotes(candidate: ModuleReadingImportCandidate): string {
+  const sourceFilename = candidate.source_filename?.trim();
+  return sourceFilename ? `Imported from ${sourceFilename}` : "";
+}
+
 function inferModuleDraftFromCandidates(
   candidates: ModuleReadingImportCandidate[],
 ): ImportModuleDraft | null {
