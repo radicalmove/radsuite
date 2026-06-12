@@ -5,6 +5,7 @@ import {
   defaultModuleIdForImportCandidate,
   inferModuleDraftForImport,
   moduleMatchesImportDraft,
+  selectedImportHasUsableModuleAssignments,
 } from "./readingImportWorkflow";
 
 const candidate: ModuleReadingImportCandidate = {
@@ -147,5 +148,23 @@ describe("reading import workflow", () => {
     expect(
       defaultModuleIdForImportCandidate(candidate, [module], module.id, null),
     ).toBe("module-6");
+  });
+
+  test("allows saving selected candidates assigned to multiple existing modules", () => {
+    expect(
+      selectedImportHasUsableModuleAssignments([
+        { ...candidate, selected: true, module_id: "module-1" },
+        { ...candidate, selected: true, module_id: "module-2" },
+      ]),
+    ).toBe(true);
+  });
+
+  test("does not allow saving selected candidates with missing module assignments", () => {
+    expect(
+      selectedImportHasUsableModuleAssignments([
+        { ...candidate, selected: true, module_id: "module-1" },
+        { ...candidate, selected: true, module_id: "" },
+      ]),
+    ).toBe(false);
   });
 });
