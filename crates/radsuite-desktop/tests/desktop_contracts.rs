@@ -4,8 +4,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use radsuite_core::{ModuleId, ProjectId, ReferenceEntryId};
-use radsuite_db::migrate;
+use radsuite_core::{
+    ModuleId, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId, ReferenceEntryType,
+};
+use radsuite_db::{ReferenceEntryRepository, SqliteReferenceEntryRepository, migrate};
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths,
@@ -2169,6 +2171,49 @@ async fn module_readings_can_be_exported_as_html() {
         export.html.find(r#"{GENERICO:type="references_end"}"#)
             < export.html.find("Estimated reading time:")
     );
+}
+
+#[tokio::test]
+async fn module_readings_export_links_stored_doi_when_url_is_blank() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Evidence-informed practice".to_string(),
+            code: Some("Module 2".to_string()),
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    let mut reading = ReferenceEntry::new(module.project_id, ReferenceEntryType::Reading);
+    reading.module_id = Some(module.id);
+    reading.reading_category = Some(ReadingCategory::Compulsory);
+    reading.apa_citation =
+        Some("Smith, J. (2024). DOI-only readings in practice. Learning Journal.".to_string());
+    reading.doi = Some("10.1234/example.doi".to_string());
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .insert_reference_entry(&reading)
+        .await
+        .expect("insert DOI-only reading");
+
+    let export = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: module.id,
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export module readings");
+
+    assert!(export.html.contains(
+        r#"<a href="https://doi.org/10.1234/example.doi" target="_blank" rel="noopener noreferrer">https://doi.org/10.1234/example.doi</a>"#
+    ));
 }
 
 #[tokio::test]

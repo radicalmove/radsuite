@@ -1863,12 +1863,12 @@ fn reading_export_html(reading: &ReferenceEntry) -> String {
     let source_text = reference_export_text(reading);
     let mut html = escape_html(&source_text);
 
-    if let Some(url) = trimmed_str(reading.url.as_deref()) {
-        let escaped_url = escape_html(url);
+    if let Some(url) = reading_export_link_url(reading) {
+        let escaped_url = escape_html(&url);
         let url_link = format!(
             r#"<a href="{escaped_url}" target="_blank" rel="noopener noreferrer">{escaped_url}</a>"#
         );
-        if source_text.contains(url) {
+        if source_text.contains(&url) {
             html = html.replacen(&escaped_url, &url_link, 1);
         } else {
             html = format!("{html} {url_link}");
@@ -1876,6 +1876,23 @@ fn reading_export_html(reading: &ReferenceEntry) -> String {
     }
 
     html
+}
+
+fn reading_export_link_url(reading: &ReferenceEntry) -> Option<String> {
+    if let Some(url) = trimmed_str(reading.url.as_deref()) {
+        return Some(url.to_string());
+    }
+
+    trimmed_str(reading.doi.as_deref()).map(doi_url)
+}
+
+fn doi_url(doi: &str) -> String {
+    let doi = doi.trim();
+    if doi.starts_with("http://") || doi.starts_with("https://") {
+        doi.to_string()
+    } else {
+        format!("https://doi.org/{doi}")
+    }
 }
 
 fn strip_generico_tokens(export_html: &str) -> String {
