@@ -280,6 +280,25 @@
       .filter(Boolean);
   }
 
+  async function chooseReadingsFolder() {
+    importError = null;
+    importStatus = null;
+
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: true,
+      });
+
+      if (typeof selected === "string") {
+        pdfPaths = [selected];
+        importPath = selected;
+      }
+    } catch (reason: unknown) {
+      importError = `Could not open the PDF folder picker: ${toErrorMessage(reason)}`;
+    }
+  }
+
   async function chooseReadingsFile() {
     importError = null;
     importStatus = null;
@@ -658,6 +677,16 @@
                 ? "Choose PDFs"
                 : "Choose DOCX"}
           </button>
+          {#if importSource === "pdf"}
+            <button
+              class="secondary-button compact-button"
+              type="button"
+              disabled={importLoading || importSaving}
+              onclick={() => void chooseReadingsFolder()}
+            >
+              Choose folder
+            </button>
+          {/if}
           <button
             class="primary-button"
             type="submit"
@@ -685,7 +714,11 @@
                 <input type="checkbox" bind:checked={candidate.selected} />
                 <span>Import</span>
               </label>
-              <span class="module-current">{candidateModuleLabel(candidate)}</span>
+              <span class="module-current">
+                {candidate.source_filename
+                  ? `${candidateModuleLabel(candidate)} · ${candidate.source_filename}`
+                  : candidateModuleLabel(candidate)}
+              </span>
             </div>
 
             <div class="form-grid form-grid-reading">

@@ -1241,6 +1241,10 @@ async fn module_readings_pdf_import_preview_extracts_candidates_from_multiple_pd
     .expect("preview pdf readings import");
 
     assert_eq!(candidates.len(), 2);
+    assert_eq!(
+        candidates[0].source_filename.as_deref(),
+        Some("radsuite-desktop-module-6-microlearning-1.pdf")
+    );
     assert_eq!(candidates[0].module_order, Some(6));
     assert_eq!(candidates[0].module_title.as_deref(), Some("module 6"));
     assert_eq!(

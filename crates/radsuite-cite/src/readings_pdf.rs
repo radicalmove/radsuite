@@ -22,6 +22,12 @@ pub enum PdfReadingExtractionError {
     EmptyPaths,
     #[error("expected a .pdf file: {path}")]
     UnsupportedExtension { path: PathBuf },
+    #[error("failed to list PDF folder {path}")]
+    ReadDir {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
     #[error("failed to read PDF file")]
     Io(#[from] std::io::Error),
 }
@@ -35,7 +41,12 @@ pub fn extract_pdf_reading_candidates(
         return Err(PdfReadingExtractionError::EmptyPaths);
     }
 
-    for path in request.paths {
+    let paths = expand_pdf_paths(request.paths)?;
+    if paths.is_empty() {
+        return Err(PdfReadingExtractionError::EmptyPaths);
+    }
+
+    for path in paths {
         if !has_pdf_extension(&path) {
             return Err(PdfReadingExtractionError::UnsupportedExtension { path });
         }
@@ -45,6 +56,11 @@ pub fn extract_pdf_reading_candidates(
         let mut candidates = extract_reading_candidates_from_paragraphs(paragraphs);
 
         for candidate in &mut candidates {
+            candidate.source_path = Some(path.to_string_lossy().into_owned());
+            candidate.source_filename = path
+                .file_name()
+                .and_then(|filename| filename.to_str())
+                .map(str::to_string);
             if candidate.module_order.is_none() {
                 candidate.module_order = source.module_order;
             }
@@ -60,6 +76,46 @@ pub fn extract_pdf_reading_candidates(
     }
 
     Ok(all_candidates)
+}
+
+fn expand_pdf_paths(paths: Vec<PathBuf>) -> Result<Vec<PathBuf>, PdfReadingExtractionError> {
+    let mut expanded = Vec::new();
+
+    for path in paths {
+        if path.is_dir() {
+            collect_pdf_files(&path, &mut expanded)?;
+        } else {
+            expanded.push(path);
+        }
+    }
+
+    expanded.sort();
+    Ok(expanded)
+}
+
+fn collect_pdf_files(
+    directory: &Path,
+    files: &mut Vec<PathBuf>,
+) -> Result<(), PdfReadingExtractionError> {
+    let entries = fs::read_dir(directory).map_err(|source| PdfReadingExtractionError::ReadDir {
+        path: directory.to_path_buf(),
+        source,
+    })?;
+
+    for entry in entries {
+        let entry = entry.map_err(|source| PdfReadingExtractionError::ReadDir {
+            path: directory.to_path_buf(),
+            source,
+        })?;
+        let path = entry.path();
+        if path.is_dir() {
+            collect_pdf_files(&path, files)?;
+        } else if has_pdf_extension(&path) {
+            files.push(path);
+        }
+    }
+
+    Ok(())
 }
 
 fn extract_pdf_text_lines(path: &Path) -> Result<Vec<String>, PdfReadingExtractionError> {
