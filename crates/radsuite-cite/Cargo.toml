@@ -9,6 +9,7 @@ rust-version.workspace = true
 [dependencies]
 radsuite-core = { path = "../radsuite-core" }
 csv.workspace = true
+flate2.workspace = true
 quick-xml.workspace = true
 regex.workspace = true
 thiserror.workspace = true

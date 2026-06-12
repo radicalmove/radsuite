@@ -1,8 +1,10 @@
 use std::{
     fs,
+    io::Read,
     path::{Path, PathBuf},
 };
 
+use flate2::read::ZlibDecoder;
 use radsuite_core::ReadingCategory;
 use regex::Regex;
 use thiserror::Error;
@@ -62,31 +64,213 @@ pub fn extract_pdf_reading_candidates(
 
 fn extract_pdf_text_lines(path: &Path) -> Result<Vec<String>, PdfReadingExtractionError> {
     let bytes = fs::read(path)?;
-    let content = String::from_utf8_lossy(&bytes);
-    let literal_string = Regex::new(r"(?s)\(((?:\\.|[^\\)])*)\)\s*Tj").expect("pdf text regex");
-    let mut lines = Vec::new();
+    let mut lines = extract_pdf_literal_text_lines(&bytes);
+    for stream in extract_flate_streams(&bytes) {
+        lines.extend(extract_pdf_literal_text_lines(&stream));
+    }
+    Ok(lines)
+}
 
-    for captures in literal_string.captures_iter(&content) {
-        if let Some(text) = captures.get(1) {
-            let line = unescape_pdf_literal(text.as_str());
-            if !line.trim().is_empty() {
-                lines.push(line);
+fn extract_pdf_literal_text_lines(bytes: &[u8]) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut cursor = 0;
+    let mut operators_seen = 0;
+
+    while cursor + 2 <= bytes.len() {
+        if operators_seen > 5_000 || lines.len() > 2_000 {
+            break;
+        }
+        if bytes.get(cursor..cursor + 2) == Some(b"TJ") {
+            operators_seen += 1;
+            if let Some(array) = read_pdf_array_before_operator(bytes, cursor) {
+                lines.extend(extract_pdf_literals_from_array(&array));
             }
+            cursor += 2;
+            continue;
+        }
+
+        if bytes.get(cursor..cursor + 2) != Some(b"Tj") {
+            cursor += 1;
+            continue;
+        }
+        operators_seen += 1;
+
+        let Some(literal) = read_pdf_literal_before_operator(bytes, cursor) else {
+            cursor += 1;
+            continue;
+        };
+
+        let line = unescape_pdf_literal(&literal);
+        if is_plausible_pdf_text_line(&line) {
+            lines.push(line);
+        }
+        cursor += 2;
+    }
+
+    lines
+}
+
+fn read_pdf_array_before_operator(bytes: &[u8], operator_start: usize) -> Option<Vec<u8>> {
+    let mut close = operator_start.checked_sub(1)?;
+    while close > 0 && bytes[close].is_ascii_whitespace() {
+        close -= 1;
+    }
+    if bytes[close] != b']' {
+        return None;
+    }
+
+    let lower_bound = close.saturating_sub(16 * 1024);
+    for open in (lower_bound..close).rev() {
+        if bytes[open] == b'[' {
+            return Some(bytes[open + 1..close].to_vec());
         }
     }
 
-    if lines.is_empty() {
-        let fallback = normalize_binary_text(&bytes);
-        lines.extend(
-            fallback
-                .lines()
-                .map(str::trim)
-                .filter(|line| !line.is_empty())
-                .map(str::to_string),
-        );
+    None
+}
+
+fn extract_pdf_literals_from_array(bytes: &[u8]) -> Vec<String> {
+    let mut lines = Vec::new();
+    let mut cursor = 0;
+
+    while cursor < bytes.len() {
+        if bytes[cursor] != b'(' {
+            cursor += 1;
+            continue;
+        }
+        let Some((literal, after_literal)) = read_pdf_literal(bytes, cursor + 1) else {
+            cursor += 1;
+            continue;
+        };
+        let line = unescape_pdf_literal(&literal);
+        if is_plausible_pdf_text_line(&line) {
+            lines.push(line);
+        }
+        cursor = after_literal;
     }
 
-    Ok(lines)
+    lines
+}
+
+fn extract_flate_streams(bytes: &[u8]) -> Vec<Vec<u8>> {
+    let mut streams = Vec::new();
+    let mut cursor = 0;
+
+    while let Some(stream_start_offset) = find_bytes(&bytes[cursor..], b"stream") {
+        let stream_keyword_start = cursor + stream_start_offset;
+        let header_start = stream_keyword_start.saturating_sub(512);
+        let header = &bytes[header_start..stream_keyword_start];
+        let mut stream_data_start = stream_keyword_start + b"stream".len();
+        if bytes.get(stream_data_start) == Some(&b'\r') {
+            stream_data_start += 1;
+        }
+        if bytes.get(stream_data_start) == Some(&b'\n') {
+            stream_data_start += 1;
+        }
+
+        let Some(end_offset) = find_bytes(&bytes[stream_data_start..], b"endstream") else {
+            break;
+        };
+        let stream_data_end = stream_data_start + end_offset;
+
+        if header
+            .windows(b"FlateDecode".len())
+            .any(|part| part == b"FlateDecode")
+        {
+            let mut decoder = ZlibDecoder::new(&bytes[stream_data_start..stream_data_end]);
+            let mut decoded = Vec::new();
+            if decoder.read_to_end(&mut decoded).is_ok() && looks_like_pdf_text_stream(&decoded) {
+                streams.push(decoded);
+            }
+        }
+
+        cursor = stream_data_end + b"endstream".len();
+    }
+
+    streams
+}
+
+fn looks_like_pdf_text_stream(bytes: &[u8]) -> bool {
+    bytes.len() <= 2 * 1024 * 1024
+        && find_bytes(bytes, b"BT").is_some()
+        && (find_bytes(bytes, b"Tj").is_some() || find_bytes(bytes, b"TJ").is_some())
+}
+
+fn find_bytes(haystack: &[u8], needle: &[u8]) -> Option<usize> {
+    haystack
+        .windows(needle.len())
+        .position(|window| window == needle)
+}
+
+fn is_plausible_pdf_text_line(line: &str) -> bool {
+    let trimmed = line.trim();
+    if trimmed.is_empty() || trimmed.len() > 1_000 {
+        return false;
+    }
+    let char_count = trimmed.chars().count();
+    if char_count == 0 {
+        return false;
+    }
+    let printable_count = trimmed
+        .chars()
+        .filter(|character| {
+            character.is_alphanumeric()
+                || character.is_ascii_punctuation()
+                || character.is_ascii_whitespace()
+                || matches!(character, '–' | '—' | '’' | '“' | '”')
+        })
+        .count();
+    let letter_count = trimmed
+        .chars()
+        .filter(|character| character.is_alphabetic())
+        .count();
+
+    printable_count * 100 / char_count >= 80 && letter_count >= 3
+}
+
+fn read_pdf_literal_before_operator(bytes: &[u8], operator_start: usize) -> Option<String> {
+    let mut close = operator_start.checked_sub(1)?;
+    while close > 0 && bytes[close].is_ascii_whitespace() {
+        close -= 1;
+    }
+    if bytes[close] != b')' {
+        return None;
+    }
+
+    let lower_bound = close.saturating_sub(2048);
+    for open in (lower_bound..close).rev() {
+        if bytes[open] == b'(' && (open == 0 || bytes[open - 1] != b'\\') {
+            return Some(String::from_utf8_lossy(&bytes[open + 1..close]).into_owned());
+        }
+    }
+
+    None
+}
+
+#[allow(dead_code)]
+fn read_pdf_literal(bytes: &[u8], start: usize) -> Option<(String, usize)> {
+    let mut output = Vec::new();
+    let mut escaped = false;
+    let mut index = start;
+    let max_literal_len = 16 * 1024;
+
+    while index < bytes.len() && output.len() < max_literal_len {
+        let byte = bytes[index];
+        if escaped {
+            output.push(b'\\');
+            output.push(byte);
+            escaped = false;
+        } else if byte == b'\\' {
+            escaped = true;
+        } else if byte == b')' {
+            return Some((String::from_utf8_lossy(&output).into_owned(), index + 1));
+        } else {
+            output.push(byte);
+        }
+        index += 1;
+    }
+
+    None
 }
 
 fn unescape_pdf_literal(text: &str) -> String {
@@ -112,20 +296,6 @@ fn unescape_pdf_literal(text: &str) -> String {
     }
 
     output
-}
-
-fn normalize_binary_text(bytes: &[u8]) -> String {
-    bytes
-        .iter()
-        .map(|byte| {
-            let character = *byte as char;
-            if character.is_ascii_graphic() || character.is_ascii_whitespace() {
-                character
-            } else {
-                '\n'
-            }
-        })
-        .collect()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

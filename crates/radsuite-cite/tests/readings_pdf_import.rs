@@ -95,6 +95,53 @@ fn readings_pdf_import_required_supersedes_optional_duplicate() {
 }
 
 #[test]
+fn readings_pdf_import_extracts_flate_encoded_text_streams() {
+    let dir = test_dir("flate-stream");
+    let pdf = dir.join("Module 8 Lesson 2.pdf");
+    write_minimal_flate_pdf(
+        &pdf,
+        &[
+            "Required readings",
+            "Miller, P. (2024). Compressed PDF text extraction. Example Press.",
+        ],
+    );
+
+    let candidates =
+        extract_pdf_reading_candidates(PdfReadingExtractionRequest { paths: vec![pdf] })
+            .expect("extract candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].module_order, Some(8));
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("Lesson 2"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "Miller, P. (2024). Compressed PDF text extraction. Example Press."
+    );
+}
+
+#[test]
+fn readings_pdf_import_extracts_tj_array_text() {
+    let dir = test_dir("tj-array");
+    let pdf = dir.join("Module 9 Lesson 4.pdf");
+    write_minimal_pdf_with_stream(
+        &pdf,
+        "[(Required readings) 120 (Miller, P. \\(2024\\). Array text extraction. Example Press.)] TJ",
+    );
+
+    let candidates =
+        extract_pdf_reading_candidates(PdfReadingExtractionRequest { paths: vec![pdf] })
+            .expect("extract candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].module_order, Some(9));
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("Lesson 4"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "Miller, P. (2024). Array text extraction. Example Press."
+    );
+}
+
+#[test]
 fn readings_pdf_import_rejects_non_pdf_paths() {
     let dir = test_dir("non-pdf");
     let path = dir.join("readings.docx");
@@ -106,18 +153,71 @@ fn readings_pdf_import_rejects_non_pdf_paths() {
     assert!(error.to_string().contains("expected a .pdf file"));
 }
 
+#[test]
+#[ignore = "requires RADSUITE_REAL_SCORM_PDFS with semicolon-separated local PDF paths"]
+fn readings_pdf_import_can_probe_real_scorm_pdfs() {
+    let paths = std::env::var("RADSUITE_REAL_SCORM_PDFS")
+        .expect("RADSUITE_REAL_SCORM_PDFS should contain semicolon-separated PDF paths")
+        .split(';')
+        .map(str::trim)
+        .filter(|path| !path.is_empty())
+        .map(PathBuf::from)
+        .collect::<Vec<_>>();
+
+    let candidates = extract_pdf_reading_candidates(PdfReadingExtractionRequest { paths })
+        .expect("extract real SCORM PDF candidates");
+
+    eprintln!("detected {} reading candidates", candidates.len());
+    for candidate in &candidates {
+        eprintln!(
+            "module={:?} lesson={:?} category={:?} citation={}",
+            candidate.module_title,
+            candidate.lesson_code,
+            candidate.reading_category,
+            candidate.apa_citation
+        );
+    }
+}
+
 fn write_minimal_pdf(path: &Path, lines: &[&str]) {
     let text = lines
         .iter()
         .map(|line| format!("({}) Tj", escape_pdf_text(line)))
         .collect::<Vec<_>>()
         .join("\n");
+    write_minimal_pdf_with_stream(path, &text);
+}
+
+fn write_minimal_pdf_with_stream(path: &Path, text: &str) {
     let pdf = format!(
         "%PDF-1.4\n1 0 obj <<>> endobj\n2 0 obj << /Length {} >> stream\nBT\n{}\nET\nendstream\nendobj\ntrailer << /Root 1 0 R >>\n%%EOF\n",
         text.len() + 6,
         text
     );
     fs::write(path, pdf).expect("write pdf");
+}
+
+fn write_minimal_flate_pdf(path: &Path, lines: &[&str]) {
+    use flate2::{Compression, write::ZlibEncoder};
+    use std::io::Write as _;
+
+    let text = lines
+        .iter()
+        .map(|line| format!("({}) Tj", escape_pdf_text(line)))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let mut encoder = ZlibEncoder::new(Vec::new(), Compression::default());
+    encoder
+        .write_all(format!("BT\n{text}\nET").as_bytes())
+        .expect("write flate data");
+    let compressed = encoder.finish().expect("finish flate data");
+    let mut pdf =
+        b"%PDF-1.4\n1 0 obj <<>> endobj\n2 0 obj << /Filter /FlateDecode /Length ".to_vec();
+    pdf.extend_from_slice(compressed.len().to_string().as_bytes());
+    pdf.extend_from_slice(b" >> stream\n");
+    pdf.extend_from_slice(&compressed);
+    pdf.extend_from_slice(b"\nendstream\nendobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
+    fs::write(path, pdf).expect("write flate pdf");
 }
 
 fn test_dir(name: &str) -> PathBuf {
