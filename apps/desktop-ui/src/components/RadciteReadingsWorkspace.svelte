@@ -122,6 +122,7 @@
   let lessonCode = $state("");
   let apaCitation = $state("");
   let citationText = $state("");
+  let readingDoi = $state("");
   let readingUrl = $state("");
   let notes = $state("");
   let readingNotes = $state("");
@@ -536,6 +537,7 @@
     lessonCode = "";
     apaCitation = "";
     citationText = "";
+    readingDoi = "";
     readingUrl = "";
     notes = "";
     readingNotes = "";
@@ -548,6 +550,7 @@
     lessonCode = reading.lesson_code ?? "";
     apaCitation = reading.apa_citation ?? "";
     citationText = reading.citation_text ?? "";
+    readingDoi = reading.doi ?? "";
     readingUrl = reading.url ?? "";
     notes = reading.notes ?? "";
     readingNotes = reading.reading_notes ?? "";
@@ -575,6 +578,7 @@
       lesson_code: lessonCode.trim() || null,
       apa_citation: apaCitation.trim() || null,
       citation_text: citationText.trim() || null,
+      doi: readingDoi.trim() || null,
       url: readingUrl.trim() || null,
       notes: notes.trim() || null,
       reading_notes: readingNotes.trim() || null,
@@ -943,14 +947,19 @@
         <input class="path-input" type="text" bind:value={lessonCode} />
       </label>
       <label>
-        <span class="field-label">URL</span>
-        <input class="path-input" type="url" bind:value={readingUrl} />
+        <span class="field-label">DOI</span>
+        <input class="path-input" type="text" bind:value={readingDoi} />
       </label>
       <label>
         <span class="field-label">Reading time</span>
         <input class="path-input" type="text" bind:value={estimatedReadingTime} />
       </label>
     </div>
+
+    <label>
+      <span class="field-label">URL</span>
+      <input class="path-input" type="url" bind:value={readingUrl} />
+    </label>
 
     <label class="field-label" for="reading-apa">APA reference</label>
     <textarea

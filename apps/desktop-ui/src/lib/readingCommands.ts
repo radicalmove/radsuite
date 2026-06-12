@@ -24,6 +24,7 @@ export type AddModuleReadingInput = {
   lesson_code?: string | null;
   apa_citation?: string | null;
   citation_text?: string | null;
+  doi?: string | null;
   url?: string | null;
   notes?: string | null;
   reading_notes?: string | null;
@@ -115,6 +116,7 @@ export function updateModuleReading(
       lesson_code: trimmedOrNull(input.lesson_code),
       apa_citation: trimmedOrNull(input.apa_citation),
       citation_text: trimmedOrNull(input.citation_text),
+      doi: trimmedOrNull(input.doi),
       url: trimmedOrNull(input.url),
       notes: trimmedOrNull(input.notes),
       reading_notes: trimmedOrNull(input.reading_notes),
@@ -193,6 +195,7 @@ export function addModuleReading(
       lesson_code: trimmedOrNull(input.lesson_code),
       apa_citation: trimmedOrNull(input.apa_citation),
       citation_text: trimmedOrNull(input.citation_text),
+      doi: trimmedOrNull(input.doi),
       url: trimmedOrNull(input.url),
       notes: trimmedOrNull(input.notes),
       reading_notes: trimmedOrNull(input.reading_notes),

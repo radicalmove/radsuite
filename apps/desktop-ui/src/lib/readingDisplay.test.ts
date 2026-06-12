@@ -12,6 +12,7 @@ const baseReading: ModuleReadingSummary = {
   apa_citation: "Smith, J. (2024). Learning design.",
   citation_text: null,
   title: null,
+  doi: null,
   url: null,
   notes: null,
   reading_notes: null,
