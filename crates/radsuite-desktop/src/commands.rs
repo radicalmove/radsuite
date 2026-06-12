@@ -162,6 +162,7 @@ pub struct ModuleReadingSummary {
     pub apa_citation: Option<String>,
     pub citation_text: Option<String>,
     pub title: Option<String>,
+    pub doi: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
     pub reading_notes: Option<String>,
@@ -281,6 +282,7 @@ pub struct AddModuleReadingRequest {
     pub lesson_code: Option<String>,
     pub apa_citation: Option<String>,
     pub citation_text: Option<String>,
+    pub doi: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
     pub reading_notes: Option<String>,
@@ -294,6 +296,7 @@ pub struct UpdateModuleReadingRequest {
     pub lesson_code: Option<String>,
     pub apa_citation: Option<String>,
     pub citation_text: Option<String>,
+    pub doi: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
     pub reading_notes: Option<String>,
@@ -877,6 +880,7 @@ pub async fn add_module_reading(
     reading.lesson_code = trimmed_optional(request.lesson_code);
     reading.apa_citation = apa_citation;
     reading.citation_text = citation_text;
+    reading.doi = trimmed_optional(request.doi);
     reading.url = trimmed_optional(request.url);
     reading.notes = trimmed_optional(request.notes);
     reading.reading_notes = trimmed_optional(request.reading_notes);
@@ -910,6 +914,7 @@ pub async fn update_module_reading(
     reading.lesson_code = trimmed_optional(request.lesson_code);
     reading.apa_citation = apa_citation;
     reading.citation_text = citation_text;
+    reading.doi = trimmed_optional(request.doi);
     reading.url = trimmed_optional(request.url);
     reading.notes = trimmed_optional(request.notes);
     reading.reading_notes = trimmed_optional(request.reading_notes);
@@ -1417,6 +1422,7 @@ fn module_reading_summary(reading: ReferenceEntry) -> Option<ModuleReadingSummar
         apa_citation: reading.apa_citation,
         citation_text: reading.citation_text,
         title: reading.title,
+        doi: reading.doi,
         url: reading.url,
         notes: reading.notes,
         reading_notes: reading.reading_notes,

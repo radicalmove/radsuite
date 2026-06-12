@@ -126,6 +126,7 @@ export type ModuleReadingSummary = {
   apa_citation: string | null;
   citation_text: string | null;
   title: string | null;
+  doi: string | null;
   url: string | null;
   notes: string | null;
   reading_notes: string | null;
