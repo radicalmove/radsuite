@@ -1922,6 +1922,27 @@ pub async fn add_module_reading(
         return Err(ModuleReadingError::EmptyReadingText);
     }
 
+    let reference_repo = SqliteReferenceEntryRepository::new(state.database_pool.clone());
+    if let Some(mut existing_reading) = find_existing_module_reading(
+        &reference_repo,
+        module.id,
+        apa_citation.as_deref(),
+        citation_text.as_deref(),
+    )
+    .await?
+    {
+        if reading_category == ReadingCategory::Compulsory
+            && existing_reading.reading_category == Some(ReadingCategory::Optional)
+        {
+            existing_reading.reading_category = Some(ReadingCategory::Compulsory);
+            reference_repo
+                .update_reference_entry(&existing_reading)
+                .await?;
+        }
+        return module_reading_summary(existing_reading)
+            .ok_or(ModuleReadingError::MissingModule(module.id));
+    }
+
     let mut reading = ReferenceEntry::new(module.project_id, ReferenceEntryType::Reading);
     reading.module_id = Some(module.id);
     reading.reading_category = Some(reading_category);
@@ -1934,9 +1955,7 @@ pub async fn add_module_reading(
     reading.reading_notes = trimmed_optional(request.reading_notes);
     reading.estimated_reading_time = trimmed_optional(request.estimated_reading_time);
 
-    SqliteReferenceEntryRepository::new(state.database_pool.clone())
-        .insert_reference_entry(&reading)
-        .await?;
+    reference_repo.insert_reference_entry(&reading).await?;
 
     module_reading_summary(reading).ok_or(ModuleReadingError::MissingModule(module.id))
 }
@@ -2108,7 +2127,7 @@ pub async fn save_module_readings_import(
             return Err(ModuleReadingImportError::EmptyReadingText);
         }
 
-        if let Some(mut existing_reading) = find_existing_module_reading_for_import(
+        if let Some(mut existing_reading) = find_existing_module_reading(
             &reference_repo,
             module.id,
             apa_citation.as_deref(),
@@ -2154,12 +2173,12 @@ pub async fn save_module_readings_import(
     Ok(saved_readings)
 }
 
-async fn find_existing_module_reading_for_import(
+async fn find_existing_module_reading(
     reference_repo: &SqliteReferenceEntryRepository,
     module_id: ModuleId,
     apa_citation: Option<&str>,
     citation_text: Option<&str>,
-) -> Result<Option<ReferenceEntry>, ModuleReadingImportError> {
+) -> Result<Option<ReferenceEntry>, DbError> {
     let Some(import_key) = module_reading_import_identity(apa_citation, citation_text) else {
         return Ok(None);
     };
