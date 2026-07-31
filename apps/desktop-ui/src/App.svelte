@@ -54,7 +54,11 @@
     persistMarkParagraphResolved,
     persistVerifyParagraphCitations,
   } from "./lib/reviewActionCommands";
-  import { listSavedRadciteReviews, loadSavedRadciteReview } from "./lib/savedReviewCommands";
+  import {
+    canUseSavedReviewForReadings,
+    listSavedRadciteReviews,
+    loadSavedRadciteReview,
+  } from "./lib/savedReviewCommands";
   import type {
     AnalyseDocxReviewResponse,
     AppStatus,
@@ -138,8 +142,8 @@
     analysisResult = result;
     selectedParagraphId = null;
     reviewActionError = null;
-    if (result && documentSource === "docx") {
-      analysedDocxPath = sharedDocxPath.trim();
+    if (result?.source_file_type === "docx") {
+      analysedDocxPath = result.source_path?.trim() || sharedDocxPath.trim();
     } else {
       analysedDocxPath = "";
     }
@@ -350,11 +354,34 @@
     selectedParagraphId = null;
     analysedDocxPath = "";
     try {
-      analysisResult = await loadSavedRadciteReview(documentId);
+      const loaded = await loadSavedRadciteReview(documentId);
+      analysisResult = loaded;
       activeFilter = "all";
+      documentSource = loaded.source_file_type;
+      const sourcePath = loaded.source_path?.trim() ?? "";
+      sharedDocxPath = sourcePath;
+      analysedDocxPath = loaded.source_file_type === "docx" ? sourcePath : "";
     } catch (reason: unknown) {
       savedReviewsError = `Could not open saved review: ${toErrorMessage(reason)}`;
     }
+  }
+
+  async function handleUseSavedReviewForReadings(review: SavedRadciteReviewSummary) {
+    if (!canUseSavedReviewForReadings(review)) {
+      return;
+    }
+
+    const sourcePath = review.source_path?.trim();
+    if (!sourcePath) {
+      return;
+    }
+
+    sharedDocxPath = sourcePath;
+    analysedDocxPath = sourcePath;
+    documentSource = "docx";
+    activeArea = "readings";
+    selectedParagraphId = null;
+    await refreshRadciteModules();
   }
 
   async function handleOpenReadingsFromDocument() {
@@ -806,6 +833,9 @@
         }}
         onLoadSavedReview={(documentId) => {
           void handleLoadSavedReview(documentId);
+        }}
+        onUseForReadings={(review) => {
+          void handleUseSavedReviewForReadings(review);
         }}
         onArchiveDocument={(documentId) => {
           void handleArchiveDocument(documentId);

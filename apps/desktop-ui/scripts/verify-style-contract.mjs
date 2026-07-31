@@ -77,6 +77,7 @@ const checks = [
   ["project expand button styling", ".project-expand-button"],
   ["project archive action styling", ".project-action-button"],
   ["archived project section styling", ".archived-projects-section"],
+  ["saved review action layout", ".saved-review-actions"],
   ["import source selector styling", ".import-source-toggle"],
   ["danger button styling", ".danger-button"],
 ];
@@ -222,6 +223,7 @@ for (const needle of [
   "onChooseDocx",
   "Review readings",
   "onOpenReadings",
+  "Use for readings",
 ]) {
   if (!workspace.includes(needle) && !packageJson.includes(needle)) {
     missing.push(`document workspace includes ${needle}`);

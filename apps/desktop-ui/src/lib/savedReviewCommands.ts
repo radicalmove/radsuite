@@ -1,6 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { AnalyseDocxReviewResponse, SavedRadciteReviewSummary } from "../types";
 
+export function canUseSavedReviewForReadings(review: SavedRadciteReviewSummary): boolean {
+  return review.source_file_type === "docx" && Boolean(review.source_path?.trim());
+}
+
 function trimmedOrNull(value: string | null | undefined): string | null {
   return value?.trim() || null;
 }
