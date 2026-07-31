@@ -14,6 +14,43 @@ export const defaultProjectNavStorageState: ProjectNavStorageState = {
 
 const projectNavStorageKey = "radciteProjectNavState";
 const themeStorageKey = "radciteTheme";
+const radtTsPreferencesStorageKey = "radsuiteRadtTsPreferences";
+
+export type RadtTsProjectPreferences = {
+  voice?: {
+    referenceAudioPath?: string;
+    quality?: "fast" | "high";
+    chunkMode?: "single" | "sentence";
+    pauseMinSeconds?: number;
+    pauseMaxSeconds?: number;
+    outputFormat?: "mp3" | "wav";
+    outputName?: string;
+  };
+  transcription?: {
+    audioPath?: string;
+    name?: string;
+    model?: string;
+    language?: string;
+    beamSize?: number;
+  };
+  clip?: {
+    audioPath?: string;
+    segmentsJsonPath?: string;
+    outputName?: string;
+    boundaryMode?: "phrases" | "times";
+    startPhrase?: string;
+    endPhrase?: string;
+    startTime?: number;
+    endTime?: number;
+    verificationMode?: "strict" | "lenient";
+    outputFormat?: "mp3" | "wav";
+  };
+};
+
+type RadtTsPreferencesStorageState = {
+  version: 1;
+  projects: Record<string, RadtTsProjectPreferences>;
+};
 
 function readRaw(storage: StorageLike | null, key: string): string | null {
   if (!storage) {
@@ -37,6 +74,52 @@ function writeRaw(storage: StorageLike | null, key: string, value: string): void
   } catch {
     // Local storage is a convenience; navigation must still work when it is blocked.
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+export function readRadtTsProjectPreferences(
+  storage: StorageLike | null,
+  projectId: string | null,
+): RadtTsProjectPreferences {
+  if (!projectId) return {};
+  const raw = readRaw(storage, radtTsPreferencesStorageKey);
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!isRecord(parsed) || parsed.version !== 1 || !isRecord(parsed.projects)) return {};
+    const preference = parsed.projects[projectId];
+    return isRecord(preference) ? (preference as RadtTsProjectPreferences) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function writeRadtTsProjectPreferences(
+  storage: StorageLike | null,
+  projectId: string | null,
+  preferences: RadtTsProjectPreferences,
+): void {
+  if (!projectId) return;
+  const state: RadtTsPreferencesStorageState = {
+    version: 1,
+    projects: {},
+  };
+  const raw = readRaw(storage, radtTsPreferencesStorageKey);
+  if (raw) {
+    try {
+      const parsed: unknown = JSON.parse(raw);
+      if (isRecord(parsed) && parsed.version === 1 && isRecord(parsed.projects)) {
+        Object.assign(state.projects, parsed.projects);
+      }
+    } catch {
+      // Replace malformed preferences with a clean state.
+    }
+  }
+  state.projects[projectId] = preferences;
+  writeRaw(storage, radtTsPreferencesStorageKey, JSON.stringify(state));
 }
 
 export function browserStorage(): StorageLike | null {
