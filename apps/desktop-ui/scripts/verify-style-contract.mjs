@@ -193,10 +193,10 @@ for (const needle of [
 }
 
 for (const needle of [
-  "Saved on this Mac",
-  "Local saving unavailable",
+  "Saved locally",
+  "Saving unavailable",
   "Cloud sync on",
-  "Cloud sync not connected",
+  "Cloud sync off",
   "title={",
   "aria-label=",
 ]) {

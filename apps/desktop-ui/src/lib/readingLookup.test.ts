@@ -24,6 +24,7 @@ function reading(overrides: Partial<ModuleReadingSummary>): ModuleReadingSummary
     reading_notes: "Read pages 1-10.",
     estimated_reading_time: "20 minutes",
     validation_status: "valid",
+    validation_report: null,
     ...overrides,
   };
 }

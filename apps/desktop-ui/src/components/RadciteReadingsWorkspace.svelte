@@ -1339,6 +1339,12 @@
                     <span>{item}</span>
                   {/each}
                 </div>
+                {#if reading.validation_report}
+                  <div class="reference-validation-report" role="status">
+                    <strong>APA check</strong>
+                    <span>{reading.validation_report}</span>
+                  </div>
+                {/if}
               </article>
             {/each}
           {:else}
@@ -1380,6 +1386,12 @@
                     <span>{item}</span>
                   {/each}
                 </div>
+                {#if reading.validation_report}
+                  <div class="reference-validation-report" role="status">
+                    <strong>APA check</strong>
+                    <span>{reading.validation_report}</span>
+                  </div>
+                {/if}
               </article>
             {/each}
           {:else}

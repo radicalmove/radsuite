@@ -322,6 +322,7 @@ export type CourseReferenceSummary = {
   url: string | null;
   notes: string | null;
   validation_status: "unknown" | "valid" | "needs_fix";
+  validation_report: string | null;
 };
 
 export type CourseModuleSummary = {
@@ -348,6 +349,7 @@ export type ModuleReadingSummary = {
   reading_notes: string | null;
   estimated_reading_time: string | null;
   validation_status: "unknown" | "valid" | "needs_fix";
+  validation_report: string | null;
 };
 
 export type ModuleReadingImportCandidate = {

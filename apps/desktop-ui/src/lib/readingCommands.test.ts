@@ -45,6 +45,7 @@ const readingSummary: ModuleReadingSummary = {
   reading_notes: "Skim before class",
   estimated_reading_time: "15 minutes",
   validation_status: "unknown",
+  validation_report: null,
 };
 
 describe("reading commands", () => {
