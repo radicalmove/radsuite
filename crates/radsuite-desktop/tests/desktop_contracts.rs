@@ -1,5 +1,5 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     io::Write,
     path::{Path, PathBuf},
 };
@@ -367,6 +367,12 @@ async fn analyse_docx_for_review_returns_ordered_paragraphs_and_citations() {
     .expect("analyse docx for review");
 
     assert_eq!(response.original_filename, "review-source.docx");
+    assert_eq!(response.source_file_type, "docx");
+    assert!(
+        response.source_path.as_ref().is_some_and(|path| {
+            Path::new(path).is_file() && path.ends_with("review-source.docx")
+        })
+    );
     assert_eq!(response.summary.paragraph_count, 2);
     assert_eq!(response.summary.citation_count, 1);
     assert_eq!(response.summary.cited_paragraph_count, 1);
@@ -403,6 +409,12 @@ async fn analyse_pdf_for_review_persists_ordered_paragraphs_and_citations() {
     .expect("analyse PDF for review");
 
     assert_eq!(response.original_filename, "review-source.pdf");
+    assert_eq!(response.source_file_type, "pdf");
+    assert!(
+        response.source_path.as_ref().is_some_and(|path| {
+            Path::new(path).is_file() && path.ends_with("review-source.pdf")
+        })
+    );
     assert_eq!(response.summary.paragraph_count, 2);
     assert_eq!(response.summary.citation_count, 1);
     assert_eq!(response.summary.cited_paragraph_count, 1);
@@ -415,6 +427,37 @@ async fn analyse_pdf_for_review_persists_ordered_paragraphs_and_citations() {
         .expect("list saved PDF review");
     assert_eq!(saved.len(), 1);
     assert_eq!(saved[0].original_filename, "review-source.pdf");
+    assert_eq!(saved[0].source_file_type, "pdf");
+    assert_eq!(saved[0].source_path, response.source_path);
+}
+
+#[tokio::test]
+async fn source_copy_failure_does_not_persist_a_saved_review() {
+    let state = desktop_state_with_migrated_pool().await;
+    let root =
+        std::env::temp_dir().join(format!("radsuite-invalid-source-{}", uuid::Uuid::new_v4()));
+    fs::create_dir_all(&root).expect("create invalid source directory");
+    let path = root.join("not-a-file.docx");
+
+    let error = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: None,
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("not-a-file.docx".to_string()),
+        },
+    )
+    .await
+    .expect_err("directory source should fail before persistence");
+
+    assert!(matches!(error, AnalyseDocxError::Storage(_)));
+    assert!(
+        list_saved_radcite_reviews(&state, ListSavedReviewsRequest::default())
+            .await
+            .expect("list saved reviews")
+            .is_empty()
+    );
+    let _ = fs::remove_dir_all(root);
 }
 
 #[tokio::test]

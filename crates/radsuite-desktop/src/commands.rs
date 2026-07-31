@@ -9,9 +9,9 @@ use radsuite_cite::{
     extract_pdf_reading_candidates_with_report, ingest_docx, ingest_pdf,
 };
 use radsuite_core::{
-    ApaValidationStatus, Citation, CitationId, CourseModule, Document, DocumentId, ModuleId,
-    Paragraph, ParagraphId, Project, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId,
-    ReferenceEntryType, UserId,
+    ApaValidationStatus, Citation, CitationId, CourseModule, Document, DocumentFileType,
+    DocumentId, ModuleId, Paragraph, ParagraphId, Project, ProjectId, ReadingCategory,
+    ReferenceEntry, ReferenceEntryId, ReferenceEntryType, UserId,
 };
 use radsuite_db::{
     CitationDocumentRepository, CourseModuleRepository, DbError, ProjectRepository,
@@ -25,7 +25,10 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
-use crate::DesktopState;
+use crate::{
+    DesktopState,
+    document_store::{DocumentStorageError, store_source, validate_source},
+};
 
 pub use crate::radcast::{
     DeleteRadcastAudioRequest, ImportRadcastAudioRequest, ListRadcastAudioRequest,
@@ -173,6 +176,8 @@ pub struct AnalyseDocxResponse {
     pub project_title: String,
     pub document_id: DocumentId,
     pub original_filename: String,
+    pub source_path: Option<String>,
+    pub source_file_type: String,
     pub paragraph_count: usize,
     pub citation_count: usize,
     pub missing_citation_count: usize,
@@ -184,6 +189,8 @@ pub struct AnalyseDocxReviewResponse {
     pub project_title: String,
     pub document_id: DocumentId,
     pub original_filename: String,
+    pub source_path: Option<String>,
+    pub source_file_type: String,
     pub summary: AnalyseDocxSummary,
     pub paragraphs: Vec<ReviewParagraph>,
 }
@@ -204,6 +211,8 @@ pub struct SavedRadciteReviewSummary {
     pub document_id: DocumentId,
     pub project_id: ProjectId,
     pub original_filename: String,
+    pub source_path: Option<String>,
+    pub source_file_type: String,
     pub paragraph_count: usize,
     pub citation_count: usize,
     pub missing_citation_count: usize,
@@ -552,6 +561,8 @@ pub enum AnalyseDocxError {
     #[error(transparent)]
     Ingestion(#[from] DocxIngestionError),
     #[error(transparent)]
+    Storage(#[from] DocumentStorageError),
+    #[error(transparent)]
     Database(#[from] DbError),
 }
 
@@ -565,6 +576,8 @@ pub enum AnalysePdfError {
     MissingProject(ProjectId),
     #[error(transparent)]
     Ingestion(#[from] PdfIngestionError),
+    #[error(transparent)]
+    Storage(#[from] DocumentStorageError),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -1109,6 +1122,8 @@ pub async fn analyse_docx_path(
         project_title: analysed.project.title,
         document_id: analysed.document.id,
         original_filename: analysed.document.original_filename,
+        source_path: analysed.document.source_path,
+        source_file_type: document_file_type_label(analysed.document.file_type).to_string(),
         paragraph_count: summary.paragraph_count,
         citation_count: summary.citation_count,
         missing_citation_count: summary.missing_citation_count,
@@ -1133,6 +1148,8 @@ pub async fn analyse_docx_for_review(
         project_title: analysed.project.title,
         document_id: analysed.document.id,
         original_filename: analysed.document.original_filename,
+        source_path: analysed.document.source_path,
+        source_file_type: document_file_type_label(analysed.document.file_type).to_string(),
         summary,
         paragraphs,
     })
@@ -1156,6 +1173,8 @@ pub async fn analyse_pdf_for_review(
         project_title: analysed.project.title,
         document_id: analysed.document.id,
         original_filename: analysed.document.original_filename,
+        source_path: analysed.document.source_path,
+        source_file_type: document_file_type_label(analysed.document.file_type).to_string(),
         summary,
         paragraphs,
     })
@@ -1176,6 +1195,8 @@ pub async fn list_saved_radcite_reviews(
             document_id: document.document_id,
             project_id: document.project_id,
             original_filename: document.original_filename,
+            source_path: document.source_path,
+            source_file_type: document_file_type_label(document.file_type).to_string(),
             paragraph_count: document.paragraph_count as usize,
             citation_count: document.citation_count as usize,
             missing_citation_count: document.missing_citation_count as usize,
@@ -1214,6 +1235,8 @@ pub async fn archive_radcite_document(
         document_id: analysis.document.id,
         project_id: project.id,
         original_filename: analysis.document.original_filename,
+        source_path: analysis.document.source_path,
+        source_file_type: document_file_type_label(analysis.document.file_type).to_string(),
         paragraph_count: analysis.paragraphs.len(),
         citation_count: analysis.citations.len(),
         missing_citation_count: analysis
@@ -1959,12 +1982,22 @@ async fn analyse_docx(
         .ok_or(AnalyseDocxError::MissingFilename)?;
 
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    validate_source(&path)?;
 
-    let analysed = ingest_docx(DocxIngestionRequest {
+    let mut analysed = ingest_docx(DocxIngestionRequest {
         project_id: project.id,
-        path,
+        path: path.clone(),
         original_filename,
     })?;
+
+    let managed_path = store_source(
+        &state.paths.data_dir,
+        project.id.0,
+        analysed.document.id.0,
+        &path,
+        &analysed.document.original_filename,
+    )?;
+    analysed.document.source_path = Some(managed_path.to_string_lossy().into_owned());
 
     SqliteCitationDocumentRepository::new(state.database_pool.clone())
         .insert_document_analysis(
@@ -2006,12 +2039,22 @@ async fn analyse_pdf(
         .ok_or(AnalysePdfError::MissingFilename)?;
 
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    validate_source(&path)?;
 
-    let analysed = ingest_pdf(PdfIngestionRequest {
+    let mut analysed = ingest_pdf(PdfIngestionRequest {
         project_id: project.id,
-        path,
+        path: path.clone(),
         original_filename,
     })?;
+
+    let managed_path = store_source(
+        &state.paths.data_dir,
+        project.id.0,
+        analysed.document.id.0,
+        &path,
+        &analysed.document.original_filename,
+    )?;
+    analysed.document.source_path = Some(managed_path.to_string_lossy().into_owned());
 
     SqliteCitationDocumentRepository::new(state.database_pool.clone())
         .insert_document_analysis(
@@ -2059,6 +2102,8 @@ async fn load_review_response(
         project_title: project.title,
         document_id: analysis.document.id,
         original_filename: analysis.document.original_filename,
+        source_path: analysis.document.source_path,
+        source_file_type: document_file_type_label(analysis.document.file_type).to_string(),
         summary,
         paragraphs,
     })
@@ -2297,6 +2342,13 @@ fn module_reading_import_candidate_summary(
         citation_text: candidate.citation_text,
         doi: candidate.doi,
         url: candidate.url,
+    }
+}
+
+fn document_file_type_label(file_type: DocumentFileType) -> &'static str {
+    match file_type {
+        DocumentFileType::Docx => "docx",
+        DocumentFileType::Pdf => "pdf",
     }
 }
 

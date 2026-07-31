@@ -52,14 +52,7 @@ pub fn store_source(
     source_path: &Path,
     original_filename: &str,
 ) -> Result<PathBuf, DocumentStorageError> {
-    let source_metadata = fs::metadata(source_path)?;
-    if !source_metadata.is_file() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidInput,
-            "RADcite source path is not a file",
-        )
-        .into());
-    }
+    validate_source(source_path)?;
 
     let destination = managed_source_path(data_dir, project_id, document_id, original_filename);
     if source_path != destination {
@@ -70,6 +63,19 @@ pub fn store_source(
     }
 
     Ok(destination)
+}
+
+pub fn validate_source(source_path: &Path) -> Result<(), DocumentStorageError> {
+    let source_metadata = fs::metadata(source_path)?;
+    if source_metadata.is_file() {
+        Ok(())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "RADcite source path is not a file",
+        )
+        .into())
+    }
 }
 
 #[cfg(test)]
