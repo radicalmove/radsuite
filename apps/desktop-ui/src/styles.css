@@ -1606,6 +1606,23 @@ button:disabled {
   font-weight: 650;
 }
 
+.reference-filter-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--fg-3);
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.reference-filter-control input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--radcite-red);
+}
+
 .reference-primary-select {
   display: flex;
   align-items: center;
