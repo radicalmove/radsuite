@@ -1,6 +1,7 @@
 use std::{
     fs,
     io::Read,
+    panic::{AssertUnwindSafe, catch_unwind},
     path::{Path, PathBuf},
 };
 
@@ -153,6 +154,28 @@ pub(crate) fn extract_pdf_text_lines(
     path: &Path,
 ) -> Result<Vec<String>, PdfReadingExtractionError> {
     let bytes = fs::read(path)?;
+
+    // Prefer a standards-aware extractor for composite fonts and ToUnicode maps.
+    let library_result = catch_unwind(AssertUnwindSafe(|| {
+        pdf_extract::extract_text_by_pages(path)
+    }));
+    if let Ok(Ok(pages)) = library_result {
+        let lines = pages
+            .into_iter()
+            .flat_map(|page| {
+                page.lines()
+                    .map(str::trim)
+                    .map(str::to_string)
+                    .collect::<Vec<_>>()
+            })
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<_>>();
+        if !lines.is_empty() {
+            return Ok(lines);
+        }
+    }
+
+    // Keep the lightweight parser for malformed or deliberately minimal PDFs.
     let mut lines = extract_pdf_literal_text_lines(&bytes);
     for stream in extract_flate_streams(&bytes) {
         lines.extend(extract_pdf_literal_text_lines(&stream));
