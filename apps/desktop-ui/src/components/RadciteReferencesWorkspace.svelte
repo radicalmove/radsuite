@@ -3,6 +3,12 @@
     searchAcademicWorks,
     type CrossrefSourceResult,
   } from "../lib/sourceSearch";
+  import {
+    filterCourseReferencesForDisplay,
+    readHideApaReady,
+    writeHideApaReady,
+  } from "../lib/referenceDisplay";
+  import { browserStorage } from "../lib/storage";
   import type { UpdateCourseReferenceInput } from "../lib/referenceCommands";
   import type { CourseReferenceSummary } from "../types";
 
@@ -45,17 +51,21 @@
   let lookupHasSearched = $state(false);
   let lookupError = $state<string | null>(null);
   let lookupSavingKey = $state<string | null>(null);
+  let hideApaReady = $state(readHideApaReady(browserStorage()));
   let editingReference = $derived(
     references.find((reference) => reference.id === editingReferenceId) ?? null,
   );
+  let visibleReferences = $derived(
+    filterCourseReferencesForDisplay(references, hideApaReady),
+  );
   let selectedReferences = $derived(
-    references.filter((reference) => selectedReferenceIds.includes(reference.id)),
+    visibleReferences.filter((reference) => selectedReferenceIds.includes(reference.id)),
   );
   let mergeDisabled = $derived(referencesLoading || selectedReferences.length < 2);
   let submitDisabled = $derived(referencesLoading || apaCitation.trim().length === 0);
 
   $effect(() => {
-    const availableIds = new Set(references.map((reference) => reference.id));
+    const availableIds = new Set(visibleReferences.map((reference) => reference.id));
     const nextSelectedIds = selectedReferenceIds.filter((id) => availableIds.has(id));
     if (
       nextSelectedIds.length !== selectedReferenceIds.length ||
@@ -181,6 +191,17 @@
     primaryReferenceId = "";
   }
 
+  function toggleHideApaReady(event: Event) {
+    hideApaReady = (event.currentTarget as HTMLInputElement).checked;
+    writeHideApaReady(browserStorage(), hideApaReady);
+  }
+
+  function referenceCountLabel(): string {
+    return hideApaReady && visibleReferences.length !== references.length
+      ? `${visibleReferences.length} of ${references.length} references`
+      : `${references.length} references`;
+  }
+
   async function mergeSelectedReferences() {
     const primary = selectedReferences.find((reference) => reference.id === primaryReferenceId);
     const mergeReferences = selectedReferences.filter(
@@ -298,9 +319,13 @@
     <div class="reference-list-heading">
       <div>
         <p class="eyebrow">Saved locally</p>
-        <strong>{references.length} references</strong>
+        <strong>{referenceCountLabel()}</strong>
       </div>
       <div class="reference-bulk-actions">
+        <label class="reference-filter-control">
+          <input type="checkbox" checked={hideApaReady} onchange={toggleHideApaReady} />
+          <span>Hide APA ready</span>
+        </label>
         <span class="reference-selection-count">{selectedReferences.length} selected</span>
         {#if selectedReferences.length >= 2}
           <label class="reference-primary-select">
@@ -333,9 +358,9 @@
 
     {#if referencesLoading}
       <div class="references-empty">Loading references</div>
-    {:else if references.length}
+    {:else if visibleReferences.length}
       <div class="reference-list">
-        {#each references as reference (reference.id)}
+        {#each visibleReferences as reference (reference.id)}
           <article class="reference-row">
             <div class="reference-row-header">
               <div class="reference-row-copy">
@@ -467,6 +492,8 @@
           </article>
         {/each}
       </div>
+    {:else if references.length && hideApaReady}
+      <div class="references-empty">All references are APA-ready.</div>
     {:else}
       <div class="references-empty">No course references yet.</div>
     {/if}
