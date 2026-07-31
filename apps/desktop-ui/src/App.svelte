@@ -505,14 +505,18 @@
     }
   }
 
-  async function handleUpdateModuleReading(input: Parameters<typeof updateModuleReading>[0]) {
+  async function handleUpdateModuleReading(
+    input: Parameters<typeof updateModuleReading>[0],
+  ): Promise<boolean> {
     moduleReadingsError = null;
     try {
       const updated = await updateModuleReading(input);
       moduleReadingsExport = null;
       await refreshModuleReadings(updated.module_id);
+      return true;
     } catch (reason: unknown) {
       moduleReadingsError = `Could not update reading: ${toErrorMessage(reason)}`;
+      return false;
     }
   }
 
@@ -919,9 +923,7 @@
         onAddReading={(input) => {
           void handleAddModuleReading(input);
         }}
-        onUpdateReading={(input) => {
-          void handleUpdateModuleReading(input);
-        }}
+        onUpdateReading={handleUpdateModuleReading}
         onArchiveReading={(readingId) => {
           void handleArchiveModuleReading(readingId);
         }}
