@@ -7,6 +7,7 @@
     CaptionFormat,
     CaptionQualityMode,
     EnhancementModel,
+    EnhancementQuality,
     FillerRemovalMode,
     RadcastCapabilityStatus,
     RadcastAudioListing,
@@ -31,6 +32,7 @@
   let captionQualityMode = $state<CaptionQualityMode>("reviewed");
   let captionGlossary = $state("");
   let enhancementModel = $state<EnhancementModel>("studio_v18");
+  let enhancementQuality = $state<EnhancementQuality>("standard");
   let cleanupEnabled = $state(true);
   let shortenPauses = $state(false);
   let maxSilenceSeconds = $state(1.0);
@@ -74,6 +76,12 @@
   function formatBytes(bytes: number): string {
     if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function enhancementQualityLabel(quality: EnhancementQuality | undefined): string {
+    if (quality === "fast") return "Fast";
+    if (quality === "high") return "High";
+    return "Standard";
   }
 
   function setSelectedSource(sourceId: string | null) {
@@ -165,6 +173,7 @@
           caption_quality_mode: captionQualityMode,
           caption_glossary: captionGlossary.trim() || null,
           enhancement_model: enhancementModel,
+          enhancement_quality: enhancementQuality,
           remove_filler_words: removeFillerWords,
           filler_removal_mode: fillerRemovalMode,
         },
@@ -279,6 +288,15 @@
         <small class="field-note">{captionCapability.optimized_detail}</small>
       </label>
       <label class="stack settings-compact-field">
+        <span>Enhancement quality</span>
+        <select bind:value={enhancementQuality} disabled={enhancementModel === "none"}>
+          <option value="fast">Fast · best for short clips</option>
+          <option value="standard">Standard · balanced</option>
+          <option value="high">High · maximum cleanup</option>
+        </select>
+        <small class="field-note">Fast reduces processing time; High preserves the previous RADcast profile.</small>
+      </label>
+      <label class="stack settings-compact-field">
         <span>Output format</span>
         <select bind:value={outputFormat}>
           <option value="mp3">MP3</option>
@@ -390,7 +408,7 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model === "studio_v18" ? " · RADcast Optimized" : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}</span>
+              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model === "studio_v18" ? ` · RADcast Optimized · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}</span>
             </div>
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.

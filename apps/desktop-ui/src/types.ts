@@ -44,6 +44,8 @@ export type FillerRemovalMode = "normal" | "aggressive";
 
 export type EnhancementModel = "none" | "studio_v18";
 
+export type EnhancementQuality = "fast" | "standard" | "high";
+
 export type RadcastAudioSource = {
   id: string;
   original_filename: string;
@@ -69,6 +71,7 @@ export type RadcastAudioOutput = {
   caption_quality_mode: CaptionQualityMode;
   caption_glossary: string | null;
   enhancement_model: EnhancementModel;
+  enhancement_quality: EnhancementQuality;
   caption_segment_count: number;
   remove_filler_words: boolean;
   filler_removal_mode: FillerRemovalMode;

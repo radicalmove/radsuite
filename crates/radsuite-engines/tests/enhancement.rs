@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use radsuite_engines::{EnhancementProcessingRequest, EnhancementProcessor};
+use radsuite_engines::{EnhancementProcessingRequest, EnhancementProcessor, EnhancementQuality};
 
 #[test]
 fn enhancement_processor_builds_directory_helper_arguments() {
@@ -47,6 +47,27 @@ fn enhancement_processor_builds_directory_helper_arguments() {
         args.windows(2)
             .any(|pair| pair == ["--nara-psd-context", "1"])
     );
+}
+
+#[test]
+fn enhancement_processor_maps_quality_profiles_to_model_steps() {
+    let processor = EnhancementProcessor::from_command("radcast-studio-enhance");
+    let request = EnhancementProcessingRequest {
+        input_path: PathBuf::from("/tmp/source.wav"),
+        output_path: PathBuf::from("/tmp/output/enhanced.wav"),
+    };
+
+    for (quality, expected_nfe) in [
+        (EnhancementQuality::Fast, "8"),
+        (EnhancementQuality::Standard, "16"),
+        (EnhancementQuality::High, "32"),
+    ] {
+        let args = processor
+            .helper_arguments_with_quality(&request, quality)
+            .expect("build quality arguments");
+        let args = display_args(&args);
+        assert!(args.windows(2).any(|pair| pair == ["--nfe", expected_nfe]));
+    }
 }
 
 #[test]

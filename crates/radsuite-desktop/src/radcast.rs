@@ -7,7 +7,8 @@ use chrono::Utc;
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
     CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest,
-    EnhancementModel, EnhancementProcessingRequest, EnhancementProcessor, FillerRemovalMode,
+    EnhancementModel, EnhancementProcessingRequest, EnhancementProcessor, EnhancementQuality,
+    FillerRemovalMode,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -25,6 +26,10 @@ fn default_caption_quality_mode() -> CaptionQualityMode {
 
 fn default_enhancement_model() -> EnhancementModel {
     EnhancementModel::None
+}
+
+fn default_enhancement_quality() -> EnhancementQuality {
+    EnhancementQuality::Standard
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -62,6 +67,8 @@ pub struct ProcessRadcastAudioRequest {
     pub caption_glossary: Option<String>,
     #[serde(default = "default_enhancement_model")]
     pub enhancement_model: EnhancementModel,
+    #[serde(default = "default_enhancement_quality")]
+    pub enhancement_quality: EnhancementQuality,
     #[serde(default)]
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
@@ -101,6 +108,8 @@ pub struct RadcastAudioOutput {
     pub caption_glossary: Option<String>,
     #[serde(default = "default_enhancement_model")]
     pub enhancement_model: EnhancementModel,
+    #[serde(default = "default_enhancement_quality")]
+    pub enhancement_quality: EnhancementQuality,
     #[serde(default)]
     pub caption_segment_count: usize,
     #[serde(default)]
@@ -299,10 +308,13 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
             return Err(error.into());
         }
-        if let Err(error) = enhancement_processor.process(EnhancementProcessingRequest {
-            input_path: prepared_path.clone(),
-            output_path: enhanced_path.clone(),
-        }) {
+        if let Err(error) = enhancement_processor.process_with_quality(
+            EnhancementProcessingRequest {
+                input_path: prepared_path.clone(),
+                output_path: enhanced_path.clone(),
+            },
+            request.enhancement_quality,
+        ) {
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
             return Err(error.into());
         }
@@ -383,6 +395,7 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
         caption_quality_mode: request.caption_quality_mode,
         caption_glossary: request.caption_glossary,
         enhancement_model: request.enhancement_model,
+        enhancement_quality: request.enhancement_quality,
         caption_segment_count,
         remove_filler_words: request.remove_filler_words,
         filler_removal_mode: request.filler_removal_mode,
