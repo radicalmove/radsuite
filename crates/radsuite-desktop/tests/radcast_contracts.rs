@@ -240,7 +240,7 @@ fn fake_caption_processor(dir: &Path) -> CaptionProcessor {
     let whisper = write_executable(
         dir,
         "whisper.sh",
-        "#!/bin/sh\noutput=''\njson=0\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  if [ \"$arg\" = \"-oj\" ]; then json=1; fi\n  previous=\"$arg\"\ndone\nif [ \"$json\" = \"1\" ]; then printf '{\\\"transcription\\\":[{\\\"tokens\\\":[{\\\"text\\\":\\\" um\\\",\\\"offsets\\\":{\\\"from\\\":250,\\\"to\\\":450},\\\"p\\\":0.82}]}]}' > \"$output.json\"; else printf '1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n' > \"$output.srt\"; fi\n",
+        "#!/bin/sh\noutput=''\njson=0\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  if [ \"$arg\" = \"-oj\" ]; then json=1; fi\n  previous=\"$arg\"\ndone\nif [ \"$json\" = \"1\" ]; then printf '{\"transcription\":[{\"tokens\":[{\"text\":\" um\",\"offsets\":{\"from\":250,\"to\":450},\"p\":0.82}]}]}' > \"$output.json\"; else printf '1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n' > \"$output.srt\"; fi\n",
     );
     let model = dir.join("caption-model.bin");
     fs::write(&model, b"model").expect("write caption model");
