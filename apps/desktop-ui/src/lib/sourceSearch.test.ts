@@ -3,6 +3,7 @@ import type { ReviewParagraph } from "../types";
 import {
   buildCrossrefSearchUrl,
   buildCrossrefWorksApiUrl,
+  findCitationMatches,
   searchCrossrefWorks,
   suggestedSourceSearchQuery,
 } from "./sourceSearch";
@@ -102,6 +103,45 @@ describe("source search", () => {
     expect(buildCrossrefWorksApiUrl(" Jones & Patel, 2021 ", 3)).toBe(
       "https://api.crossref.org/works?query.bibliographic=Jones+%26+Patel%2C+2021&rows=3&select=DOI%2Ctitle%2Cauthor%2Cissued%2Cpublished-print%2Cpublished-online%2Ccontainer-title%2CURL",
     );
+  });
+
+  test("finds Crossref results matching a citation author and year", () => {
+    const matchingResult = {
+      title: "Worked examples in practice",
+      authors: "Smith, J.; Jones, P.",
+      year: "2024",
+      source: "Teaching Journal",
+      doi: "10.1000/example",
+      url: "https://doi.org/10.1000/example",
+      apaCitation: "Smith, J.; Jones, P. (2024). Worked examples in practice.",
+    };
+
+    const expected = [matchingResult];
+
+    expect(
+      findCitationMatches("Smith (2024)", [
+        matchingResult,
+        { ...matchingResult, authors: "Taylor, R.", doi: "10.1000/other" },
+        { ...matchingResult, year: "2023", doi: "10.1000/older" },
+      ]),
+    ).toEqual(expected);
+    expect(findCitationMatches("(Smith, 2024)", [matchingResult])).toEqual(expected);
+  });
+
+  test("returns no verification matches when a citation has no author-year pair", () => {
+    expect(
+      findCitationMatches("(see the discussion)", [
+        {
+          title: "Untitled source",
+          authors: "Smith, J.",
+          year: "2024",
+          source: null,
+          doi: null,
+          url: null,
+          apaCitation: "Smith, J. (2024). Untitled source.",
+        },
+      ]),
+    ).toEqual([]);
   });
 
   test("searches Crossref works and formats compact results", async () => {

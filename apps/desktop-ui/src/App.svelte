@@ -1054,6 +1054,7 @@
     onAddManualCitation={handleAddManualCitation}
     onAddCourseReference={handleAddCourseReference}
     onVerifyCitation={handleVerifyCitation}
+    onMarkReviewed={handleVerifyCitation}
     onLinkCitation={handleLinkCitation}
   />
 </main>

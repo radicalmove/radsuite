@@ -1,6 +1,7 @@
 <script lang="ts">
   import {
     buildCrossrefSearchUrl,
+    findCitationMatches,
     searchCrossrefWorks,
     suggestedSourceSearchQuery,
     type CrossrefSourceResult,
@@ -27,6 +28,7 @@
       notes: string | null,
     ) => CourseReferenceSummary | null | void | Promise<CourseReferenceSummary | null | void>;
     onVerifyCitation: (paragraphId: string) => void | Promise<void>;
+    onMarkReviewed: (paragraphId: string) => void | Promise<void>;
     onLinkCitation: (citationId: string, referenceEntryId: string) => void | Promise<void>;
   };
 
@@ -37,6 +39,7 @@
     onAddManualCitation,
     onAddCourseReference,
     onVerifyCitation,
+    onMarkReviewed,
     onLinkCitation,
   }: Props = $props();
 
@@ -52,6 +55,9 @@
   let sourceSearchError = $state<string | null>(null);
   let sourceReferenceSavingKey = $state<string | null>(null);
   let sourceReferenceStatus = $state<string | null>(null);
+  let verificationLoading = $state(false);
+  let verificationStatus = $state<string | null>(null);
+  let verificationFailed = $state(false);
   let manualCitationDisabled = $derived(
     !selectedParagraph || manualCitationText.trim().length === 0,
   );
@@ -111,6 +117,8 @@
       sourceSearchError = null;
       sourceReferenceSavingKey = null;
       sourceReferenceStatus = null;
+      verificationStatus = null;
+      verificationFailed = false;
       return;
     }
 
@@ -138,6 +146,54 @@
     }
 
     void onLinkCitation(selectedCitationId, selectedReferenceId);
+  }
+
+  async function verifyCitations() {
+    if (!selectedParagraph || verifyDisabled || verificationLoading) {
+      return;
+    }
+
+    verificationLoading = true;
+    verificationStatus = null;
+    verificationFailed = false;
+
+    try {
+      const pendingCitations = selectedParagraph.citations.filter((citation) => !citation.verified);
+      const unmatchedCitations: string[] = [];
+
+      for (const citation of pendingCitations) {
+        const results = await searchCrossrefWorks(citation.text);
+        if (!findCitationMatches(citation.text, results).length) {
+          unmatchedCitations.push(citation.text);
+        }
+      }
+
+      if (unmatchedCitations.length) {
+        verificationFailed = true;
+        verificationStatus =
+          unmatchedCitations.length === 1
+            ? "No matching Crossref source was found. Use Search sources to review candidates."
+            : `${unmatchedCitations.length} citations could not be matched in Crossref. Use Search sources to review candidates.`;
+        return;
+      }
+
+      await onVerifyCitation(selectedParagraph.id);
+      verificationStatus = `${pendingCitations.length} citation${pendingCitations.length === 1 ? "" : "s"} matched in Crossref and marked verified.`;
+    } catch (reason: unknown) {
+      verificationFailed = true;
+      verificationStatus =
+        reason instanceof Error ? `Could not verify citations: ${reason.message}` : String(reason);
+    } finally {
+      verificationLoading = false;
+    }
+  }
+
+  function markReviewed() {
+    if (!selectedParagraph || verifyDisabled) {
+      return;
+    }
+
+    void onMarkReviewed(selectedParagraph.id);
   }
 
   function toggleSourceSearch() {
@@ -321,9 +377,17 @@
           class="secondary-button"
           type="button"
           disabled={verifyDisabled}
-          onclick={() => void onVerifyCitation(selectedParagraph.id)}
+          onclick={() => void verifyCitations()}
         >
-          Mark citations reviewed
+          {verificationLoading ? "Checking sources" : "Verify citations"}
+        </button>
+        <button
+          class="secondary-button"
+          type="button"
+          disabled={verifyDisabled || verificationLoading}
+          onclick={markReviewed}
+        >
+          Mark reviewed manually
         </button>
         <button
           class="secondary-button"
@@ -334,6 +398,12 @@
           Not required
         </button>
       </div>
+
+      {#if verificationStatus}
+        <p class:action-error={verificationFailed} class="action-note" role="status">
+          {verificationStatus}
+        </p>
+      {/if}
 
       {#if sourceSearchOpen && sourceSearchSuggestion}
         <div class="source-search-panel">
