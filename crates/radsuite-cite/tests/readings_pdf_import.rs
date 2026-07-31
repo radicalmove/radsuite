@@ -181,6 +181,31 @@ fn readings_pdf_import_extracts_tj_array_text() {
 }
 
 #[test]
+fn readings_pdf_import_extracts_composite_font_text_with_tounicode_map() {
+    let dir = test_dir("composite-font");
+    let pdf = dir.join("Module 12 Lesson 1.pdf");
+    write_composite_font_pdf(
+        &pdf,
+        &[
+            "Required readings",
+            "Smith, J. (2024). Composite font reading extraction. Example Press. https://example.com/reading",
+        ],
+    );
+
+    let candidates =
+        extract_pdf_reading_candidates(PdfReadingExtractionRequest { paths: vec![pdf] })
+            .expect("extract candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].module_order, Some(12));
+    assert_eq!(candidates[0].lesson_code.as_deref(), Some("Lesson 1"));
+    assert_eq!(
+        candidates[0].apa_citation,
+        "Smith, J. (2024). Composite font reading extraction. Example Press. https://example.com/reading"
+    );
+}
+
+#[test]
 fn readings_pdf_import_rejects_non_pdf_paths() {
     let dir = test_dir("non-pdf");
     let path = dir.join("readings.docx");
@@ -286,6 +311,101 @@ fn write_minimal_flate_pdf(path: &Path, lines: &[&str]) {
     pdf.extend_from_slice(&compressed);
     pdf.extend_from_slice(b"\nendstream\nendobj\ntrailer << /Root 1 0 R >>\n%%EOF\n");
     fs::write(path, pdf).expect("write flate pdf");
+}
+
+fn write_composite_font_pdf(path: &Path, lines: &[&str]) {
+    let mut characters = std::collections::BTreeMap::new();
+    let mut next_code = 1u16;
+    for line in lines {
+        for character in line.chars() {
+            characters.entry(character).or_insert_with(|| {
+                let code = next_code;
+                next_code += 1;
+                code
+            });
+        }
+    }
+
+    let content = lines
+        .iter()
+        .enumerate()
+        .map(|(index, line)| {
+            let encoded = line
+                .chars()
+                .map(|character| format!("{:04X}", characters[&character]))
+                .collect::<String>();
+            if index == 0 {
+                format!("72 720 Td <{encoded}> Tj")
+            } else {
+                format!("0 -20 Td <{encoded}> Tj")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let content = format!("BT\n/F1 12 Tf\n{content}\nET");
+
+    let cmap_entries = characters
+        .values()
+        .map(|code| {
+            let character = characters
+                .iter()
+                .find_map(|(character, value)| (value == code).then_some(*character))
+                .expect("mapped character");
+            format!("<{code:04X}> <{:04X}>", character as u32)
+        })
+        .collect::<Vec<_>>();
+    let cmap = format!(
+        "/CIDInit /ProcSet findresource begin\n12 dict begin\nbegincmap\n/CMapName /Adobe-Identity-UCS def\n/CMapType 2 def\n1 begincodespacerange\n<0000> <FFFF>\nendcodespacerange\n{} beginbfchar\n{}\nendbfchar\nendcmap\nCMapName currentdict /CMap defineresource pop\nend\nend",
+        cmap_entries.len(),
+        cmap_entries.join("\n")
+    );
+
+    let objects = vec![
+        "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>".to_string(),
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>".to_string(),
+        stream_object(&content),
+        "<< /Type /Font /Subtype /Type0 /BaseFont /TestComposite /Encoding /Identity-H /DescendantFonts [6 0 R] /ToUnicode 8 0 R >>".to_string(),
+        "<< /Type /Font /Subtype /CIDFontType2 /BaseFont /TestComposite /CIDSystemInfo << /Registry (Adobe) /Ordering (Identity) /Supplement 0 >> /FontDescriptor 7 0 R /DW 1000 >>".to_string(),
+        "<< /Type /FontDescriptor /FontName /TestComposite /Flags 4 /FontBBox [0 0 1000 1000] /ItalicAngle 0 /Ascent 800 /Descent -200 /CapHeight 700 /StemV 80 >>".to_string(),
+        stream_object(&cmap),
+    ];
+
+    fs::write(path, build_pdf(objects)).expect("write composite font pdf");
+}
+
+fn stream_object(content: &str) -> String {
+    format!(
+        "<< /Length {} >>\nstream\n{}\nendstream",
+        content.len(),
+        content
+    )
+}
+
+fn build_pdf(objects: Vec<String>) -> Vec<u8> {
+    let mut pdf = b"%PDF-1.4\n%\xE2\xE3\xCF\xD3\n".to_vec();
+    let mut offsets = vec![0usize];
+
+    for (index, object) in objects.iter().enumerate() {
+        offsets.push(pdf.len());
+        pdf.extend_from_slice(format!("{} 0 obj\n{}\nendobj\n", index + 1, object).as_bytes());
+    }
+
+    let xref_offset = pdf.len();
+    pdf.extend_from_slice(format!("xref\n0 {}\n", objects.len() + 1).as_bytes());
+    pdf.extend_from_slice(b"0000000000 65535 f \n");
+    for offset in offsets.iter().skip(1) {
+        pdf.extend_from_slice(format!("{offset:010} 00000 n \n").as_bytes());
+    }
+    pdf.extend_from_slice(
+        format!(
+            "trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{}\n%%EOF\n",
+            objects.len() + 1,
+            xref_offset
+        )
+        .as_bytes(),
+    );
+    pdf
 }
 
 fn test_dir(name: &str) -> PathBuf {
