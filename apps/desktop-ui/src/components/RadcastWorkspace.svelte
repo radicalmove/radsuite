@@ -6,6 +6,7 @@
     AudioOutputFormat,
     CaptionFormat,
     CaptionQualityMode,
+    EnhancementModel,
     FillerRemovalMode,
     RadcastCapabilityStatus,
     RadcastAudioListing,
@@ -29,6 +30,7 @@
   let captionLanguage = $state("en");
   let captionQualityMode = $state<CaptionQualityMode>("reviewed");
   let captionGlossary = $state("");
+  let enhancementModel = $state<EnhancementModel>("studio_v18");
   let cleanupEnabled = $state(true);
   let shortenPauses = $state(false);
   let maxSilenceSeconds = $state(1.0);
@@ -41,6 +43,8 @@
   let captionCapability = $state<RadcastCapabilityStatus>({
     caption_available: false,
     caption_detail: "Checking local caption support.",
+    optimized_available: false,
+    optimized_detail: "Checking local enhancement support.",
   });
 
   let selectedSource = $derived(
@@ -93,6 +97,7 @@
         captionFormat = null;
         removeFillerWords = false;
       }
+      if (!captionCapability.optimized_available) enhancementModel = "none";
       sources = result.sources;
       outputs = result.outputs;
       const nextSource = result.sources.find((source) => source.id === selectedSourceId) ?? result.sources[0] ?? null;
@@ -159,6 +164,7 @@
           caption_language: captionLanguage,
           caption_quality_mode: captionQualityMode,
           caption_glossary: captionGlossary.trim() || null,
+          enhancement_model: enhancementModel,
           remove_filler_words: removeFillerWords,
           filler_removal_mode: fillerRemovalMode,
         },
@@ -264,6 +270,14 @@
           <h3 id="radcast-settings-heading">Create a new version</h3>
         </div>
       </div>
+      <label class="stack settings-compact-field">
+        <span>Enhancement profile</span>
+        <select bind:value={enhancementModel}>
+          <option value="none">Standard cleanup</option>
+          <option value="studio_v18" disabled={!captionCapability.optimized_available}>RADcast Optimized</option>
+        </select>
+        <small class="field-note">{captionCapability.optimized_detail}</small>
+      </label>
       <label class="stack settings-compact-field">
         <span>Output format</span>
         <select bind:value={outputFormat}>
@@ -376,7 +390,7 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}</span>
+              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model === "studio_v18" ? " · RADcast Optimized" : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}</span>
             </div>
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.

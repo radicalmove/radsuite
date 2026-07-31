@@ -9,13 +9,14 @@ use radsuite_db::migrate;
 use radsuite_desktop::{
     CreateRadciteProjectRequest, DesktopState, ImportRadcastAudioRequest, ListRadcastAudioRequest,
     ProcessRadcastAudioRequest, RadcastAudioError, RadcastStorageError, create_radcite_project,
-    get_radcast_capabilities_with_processor, import_radcast_audio_with_processor,
-    list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
-    process_radcast_audio_with_processors,
+    get_radcast_capabilities_with_processor, get_radcast_capabilities_with_processors,
+    import_radcast_audio_with_processor, list_radcast_audio, list_radcite_projects,
+    process_radcast_audio_with_processor, process_radcast_audio_with_processors,
+    process_radcast_audio_with_processors_and_enhancement,
 };
-use radsuite_engines::FillerRemovalMode;
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
+    EnhancementModel, EnhancementProcessor, FillerRemovalMode,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 
@@ -69,6 +70,7 @@ async fn radcast_import_process_and_list_are_project_scoped() {
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
             caption_glossary: None,
+            enhancement_model: EnhancementModel::None,
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -126,6 +128,7 @@ async fn radcast_processing_rejects_unknown_sources() {
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
             caption_glossary: None,
+            enhancement_model: EnhancementModel::None,
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -173,6 +176,7 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
             caption_glossary: Some("Te Tiriti o Waitangi".to_string()),
+            enhancement_model: EnhancementModel::None,
             remove_filler_words: true,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -206,19 +210,82 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
     remove_dir(dir);
 }
 
+#[tokio::test]
+async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let dir = test_dir("enhancement");
+    let source_path = dir.join("lecture.wav");
+    fs::write(&source_path, b"source audio").expect("write source");
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("enhanced-lecture.wav".to_string()),
+        },
+        fake_processor(&dir),
+    )
+    .await
+    .expect("import source");
+
+    let helper = write_executable(
+        &dir,
+        "studio.sh",
+        "#!/bin/sh\nmkdir -p \"$2\"\nprintf '%s' enhanced > \"$2/input.wav\"\n",
+    );
+    let output = process_radcast_audio_with_processors_and_enhancement(
+        &state,
+        ProcessRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            source_id: source.id,
+            output_format: AudioOutputFormat::Mp3,
+            clip_start_seconds: Some(1.0),
+            clip_end_seconds: Some(8.0),
+            cleanup_enabled: true,
+            max_silence_seconds: None,
+            caption_format: None,
+            caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::StudioV18,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
+        },
+        fake_processor(&dir),
+        CaptionProcessor::default(),
+        EnhancementProcessor::from_command(helper),
+    )
+    .await
+    .expect("process with enhancement");
+
+    assert_eq!(output.enhancement_model, EnhancementModel::StudioV18);
+    assert!(Path::new(&output.path).is_file());
+    remove_dir(dir);
+}
+
 #[test]
 fn radcast_capabilities_report_caption_model_readiness() {
     let dir = test_dir("capabilities");
     let whisper = write_executable(&dir, "whisper.sh", "#!/bin/sh\nexit 0\n");
     let model = dir.join("caption-model.bin");
     fs::write(&model, b"model").expect("write caption model");
+    let studio = write_executable(&dir, "studio.sh", "#!/bin/sh\nexit 0\n");
 
     let ready = get_radcast_capabilities_with_processor(CaptionProcessor::from_commands(
         whisper.clone(),
-        model,
+        model.clone(),
     ));
     assert!(ready.caption_available);
     assert!(ready.caption_detail.contains("whisper.cpp"));
+
+    let both_ready = get_radcast_capabilities_with_processors(
+        CaptionProcessor::from_commands(whisper.clone(), model.clone()),
+        EnhancementProcessor::from_command(studio),
+    );
+    assert!(both_ready.optimized_available);
+    assert!(both_ready.optimized_detail.contains("local"));
+    assert!(both_ready.optimized_detail.contains("server"));
 
     let unavailable = get_radcast_capabilities_with_processor(CaptionProcessor::from_commands(
         whisper,

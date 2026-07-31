@@ -19,7 +19,7 @@ use radsuite_db::{
     SqliteProjectRepository, SqliteReferenceEntryRepository,
 };
 use radsuite_engines::EngineStatus;
-use radsuite_engines::{AudioProcessor, CaptionProcessor};
+use radsuite_engines::{AudioProcessor, CaptionProcessor, EnhancementProcessor};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -47,28 +47,65 @@ pub struct AppStatus {
 pub struct RadcastCapabilityStatus {
     pub caption_available: bool,
     pub caption_detail: String,
+    pub optimized_available: bool,
+    pub optimized_detail: String,
 }
 
 pub fn get_radcast_capabilities() -> RadcastCapabilityStatus {
-    get_radcast_capabilities_with_processor(CaptionProcessor::default())
+    get_radcast_capabilities_with_processors(
+        CaptionProcessor::default(),
+        EnhancementProcessor::default(),
+    )
 }
 
 pub fn get_radcast_capabilities_with_processor(
     processor: CaptionProcessor,
 ) -> RadcastCapabilityStatus {
-    if processor.is_available() {
-        RadcastCapabilityStatus {
-            caption_available: true,
-            caption_detail: "Native captions are available through whisper.cpp.".to_string(),
-        }
+    get_radcast_capabilities_with_processors(processor, EnhancementProcessor::default())
+}
+
+pub fn get_radcast_capabilities_with_processors(
+    processor: CaptionProcessor,
+    enhancement_processor: EnhancementProcessor,
+) -> RadcastCapabilityStatus {
+    let (caption_available, caption_detail) = if processor.is_available() {
+        (
+            true,
+            "Native captions are available through whisper.cpp.".to_string(),
+        )
     } else {
-        RadcastCapabilityStatus {
-            caption_available: false,
-            caption_detail: format!(
+        (
+            false,
+            format!(
                 "Install whisper.cpp and a local speech model before generating captions. Expected model: {}.",
                 processor.model_path().display()
             ),
-        }
+        )
+    };
+    let (optimized_available, optimized_detail) = if enhancement_processor.is_available() {
+        (true, optimized_capability_detail())
+    } else {
+        (
+            false,
+            format!(
+                "Install the local RADcast Studio helper to enable RADcast Optimized. Expected command: {}.",
+                enhancement_processor.command_path().display()
+            ),
+        )
+    };
+    RadcastCapabilityStatus {
+        caption_available,
+        caption_detail,
+        optimized_available,
+        optimized_detail,
+    }
+}
+
+fn optimized_capability_detail() -> String {
+    if cfg!(all(target_os = "macos", target_arch = "aarch64")) {
+        "RADcast Optimized is available locally. This Apple Silicon build uses the validated CPU profile and all available CPU threads; no server connection is required.".to_string()
+    } else {
+        "RADcast Optimized is available through the local Studio helper; no server connection is required.".to_string()
     }
 }
 
@@ -769,6 +806,29 @@ pub async fn process_radcast_audio_with_processors(
             request,
             processor,
             caption_processor,
+        )
+    })
+    .await?
+    .map_err(Into::into)
+}
+
+pub async fn process_radcast_audio_with_processors_and_enhancement(
+    state: &DesktopState,
+    request: ProcessRadcastAudioRequest,
+    processor: AudioProcessor,
+    caption_processor: CaptionProcessor,
+    enhancement_processor: EnhancementProcessor,
+) -> Result<RadcastAudioOutput, RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::process_audio_with_processors_and_enhancement(
+            &data_dir,
+            project.id,
+            request,
+            processor,
+            caption_processor,
+            enhancement_processor,
         )
     })
     .await?
