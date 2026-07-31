@@ -25,7 +25,14 @@ export type RadciteProjectSummary = {
   title: string;
 };
 
-export type ToolArea = "documents" | "references" | "readings" | "exports" | "radcast" | "radtts";
+export type ToolArea =
+  | "documents"
+  | "references"
+  | "readings"
+  | "exports"
+  | "archive"
+  | "radcast"
+  | "radtts";
 
 export type AudioOutputFormat = "mp3" | "wav";
 
@@ -144,6 +151,20 @@ export type SavedRadciteReviewSummary = {
   paragraph_count: number;
   citation_count: number;
   missing_citation_count: number;
+};
+
+export type RadciteArchiveItemKind =
+  | "document"
+  | "module"
+  | "course_reference"
+  | "module_reading";
+
+export type RadciteArchiveItem = {
+  id: string;
+  kind: RadciteArchiveItemKind;
+  label: string;
+  detail: string | null;
+  archived_at: string;
 };
 
 export type CourseReferenceSummary = {

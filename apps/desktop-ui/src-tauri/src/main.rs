@@ -2,16 +2,17 @@ use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
     AnalysePdfRequest, AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
-    ArchiveRadciteModuleRequest, CourseModuleSummary, CourseReferenceSummary,
-    CourseReferencesExport, CreateRadciteProjectRequest, DesktopState,
+    ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, CourseModuleSummary,
+    CourseReferenceSummary, CourseReferencesExport, CreateRadciteProjectRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, ImportRadcastAudioRequest,
     LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
-    ListRadcastAudioRequest, ListRadciteModulesRequest, ListSavedReviewsRequest,
-    LoadSavedReviewRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
-    ModuleReadingsExport, ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
-    PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
-    RadcastCapabilityStatus, RadciteProjectSummary, SaveModuleReadingsImportRequest,
+    ListRadcastAudioRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
+    ListSavedReviewsRequest, LoadSavedReviewRequest, ModuleReadingImportCandidateSummary,
+    ModuleReadingSummary, ModuleReadingsExport, ModuleReadingsPdfImportPreview,
+    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
+    PreviewModuleReadingsPdfImportRequest, ProcessRadcastAudioRequest, RadcastAudioListing,
+    RadcastAudioOutput, RadcastAudioSource, RadcastCapabilityStatus, RadciteArchiveItem,
+    RadciteProjectSummary, RestoreRadciteArchiveItemRequest, SaveModuleReadingsImportRequest,
     SavedRadciteReviewSummary, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
     UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
 };
@@ -111,6 +112,36 @@ async fn list_saved_radcite_reviews(
     request: Option<ListSavedReviewsRequest>,
 ) -> Result<Vec<SavedRadciteReviewSummary>, String> {
     radsuite_desktop::list_saved_radcite_reviews(&state, request.unwrap_or_default())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn archive_radcite_document(
+    state: tauri::State<'_, DesktopState>,
+    request: ArchiveRadciteDocumentRequest,
+) -> Result<SavedRadciteReviewSummary, String> {
+    radsuite_desktop::archive_radcite_document(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn list_radcite_archive(
+    state: tauri::State<'_, DesktopState>,
+    request: Option<ListRadciteArchiveRequest>,
+) -> Result<Vec<RadciteArchiveItem>, String> {
+    radsuite_desktop::list_radcite_archive(&state, request.unwrap_or_default())
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn restore_radcite_archive_item(
+    state: tauri::State<'_, DesktopState>,
+    request: RestoreRadciteArchiveItemRequest,
+) -> Result<Vec<RadciteArchiveItem>, String> {
+    radsuite_desktop::restore_radcite_archive_item(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -364,6 +395,9 @@ fn main() {
             list_radcite_projects,
             create_radcite_project,
             list_saved_radcite_reviews,
+            archive_radcite_document,
+            list_radcite_archive,
+            restore_radcite_archive_item,
             load_saved_radcite_review,
             list_course_references,
             add_course_reference,

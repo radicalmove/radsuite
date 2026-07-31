@@ -4,11 +4,17 @@
   import CitationActionsPanel from "./components/CitationActionsPanel.svelte";
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
   import RadcastWorkspace from "./components/RadcastWorkspace.svelte";
+  import RadciteArchiveWorkspace from "./components/RadciteArchiveWorkspace.svelte";
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
   import RadciteExportsWorkspace from "./components/RadciteExportsWorkspace.svelte";
   import RadciteReferencesWorkspace from "./components/RadciteReferencesWorkspace.svelte";
   import RadciteReadingsWorkspace from "./components/RadciteReadingsWorkspace.svelte";
   import moonIcon from "./assets/moon.png";
+  import {
+    archiveRadciteDocument,
+    listRadciteArchive,
+    restoreRadciteArchiveItem,
+  } from "./lib/archiveCommands";
   import { exportCourseReferences, exportModuleReadings } from "./lib/exportCommands";
   import { createRadciteProject, listRadciteProjects } from "./lib/projectCommands";
   import {
@@ -49,6 +55,7 @@
     ModuleReadingSummary,
     ParagraphFilter,
     ProjectNavItem,
+    RadciteArchiveItem,
     ReviewParagraph,
     SavedRadciteReviewSummary,
     ToolArea,
@@ -87,6 +94,9 @@
   let savedReviews = $state<SavedRadciteReviewSummary[]>([]);
   let savedReviewsLoading = $state(false);
   let savedReviewsError = $state<string | null>(null);
+  let archiveItems = $state<RadciteArchiveItem[]>([]);
+  let archiveLoading = $state(false);
+  let archiveError = $state<string | null>(null);
   let courseReferences = $state<CourseReferenceSummary[]>([]);
   let courseReferencesLoading = $state(false);
   let courseReferencesError = $state<string | null>(null);
@@ -157,6 +167,8 @@
     reviewActionError = null;
     savedReviews = [];
     savedReviewsError = null;
+    archiveItems = [];
+    archiveError = null;
     courseReferences = [];
     courseReferencesError = null;
     radciteModules = [];
@@ -198,6 +210,7 @@
       resetProjectScopedState();
       await refreshSavedReviews();
       await refreshCourseReferences();
+      await refreshArchive();
     } catch (reason: unknown) {
       projectsError = `Could not create project: ${toErrorMessage(reason)}`;
       throw reason;
@@ -213,6 +226,9 @@
     resetProjectScopedState();
     await refreshSavedReviews();
     await refreshCourseReferences();
+    if (activeArea === "archive") {
+      await refreshArchive();
+    }
     if (activeArea === "readings" || activeArea === "exports") {
       await refreshRadciteModules(null);
     }
@@ -227,6 +243,50 @@
       savedReviewsError = `Could not load saved reviews: ${toErrorMessage(reason)}`;
     } finally {
       savedReviewsLoading = false;
+    }
+  }
+
+  async function refreshArchive() {
+    archiveLoading = true;
+    archiveError = null;
+    try {
+      archiveItems = await listRadciteArchive(selectedProjectCommandId());
+    } catch (reason: unknown) {
+      archiveError = `Could not load archive: ${toErrorMessage(reason)}`;
+    } finally {
+      archiveLoading = false;
+    }
+  }
+
+  async function handleArchiveDocument(documentId: string) {
+    savedReviewsError = null;
+    try {
+      await archiveRadciteDocument(documentId, selectedProjectCommandId());
+      analysisResult = null;
+      selectedParagraphId = null;
+      await refreshSavedReviews();
+      await refreshArchive();
+    } catch (reason: unknown) {
+      savedReviewsError = `Could not archive document: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleRestoreArchiveItem(item: RadciteArchiveItem) {
+    archiveError = null;
+    try {
+      await restoreRadciteArchiveItem({
+        project_id: selectedProjectCommandId(),
+        kind: item.kind,
+        item_id: item.id,
+      });
+      await Promise.all([
+        refreshArchive(),
+        refreshSavedReviews(),
+        refreshCourseReferences(),
+        refreshRadciteModules(null),
+      ]);
+    } catch (reason: unknown) {
+      archiveError = `Could not restore item: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -576,6 +636,7 @@
     void refreshProjects().then(() => {
       void refreshSavedReviews();
       void refreshCourseReferences();
+      void refreshArchive();
     });
   });
 </script>
@@ -601,6 +662,9 @@
       }
       if (area === "readings" || area === "exports") {
         void refreshRadciteModules();
+      }
+      if (area === "archive") {
+        void refreshArchive();
       }
     }}
   />
@@ -668,12 +732,25 @@
         onLoadSavedReview={(documentId) => {
           void handleLoadSavedReview(documentId);
         }}
+        onArchiveDocument={(documentId) => {
+          void handleArchiveDocument(documentId);
+        }}
         onRefreshSavedReviews={() => {
           void refreshSavedReviews();
         }}
         onSelectParagraph={(paragraphId) => {
           selectedParagraphId = paragraphId;
         }}
+      />
+    {:else if activeArea === "archive"}
+      <RadciteArchiveWorkspace
+        items={archiveItems}
+        loading={archiveLoading}
+        error={archiveError}
+        onRefresh={() => {
+          void refreshArchive();
+        }}
+        onRestore={handleRestoreArchiveItem}
       />
     {:else if activeArea === "references"}
       <RadciteReferencesWorkspace

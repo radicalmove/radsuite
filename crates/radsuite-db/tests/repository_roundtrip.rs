@@ -384,6 +384,17 @@ async fn module_readings_can_be_updated_and_archived() {
         .archive_reference_entry(reading.id)
         .await
         .expect("archive reading");
+    let archived_readings = reference_repo
+        .list_archived_reference_entries_for_project(project.id, ReferenceEntryType::Reading)
+        .await
+        .expect("list archived readings");
+    assert_eq!(archived_readings.len(), 1);
+    assert_eq!(archived_readings[0].id, reading.id);
+    assert_eq!(
+        archived_readings[0].apa_citation.as_deref(),
+        Some("Taylor, J. (2025). Updated reading.")
+    );
+    assert!(archived_readings[0].archived_at.is_some());
     let readings = reference_repo
         .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
         .await
@@ -430,6 +441,40 @@ async fn module_readings_can_be_updated_and_archived() {
             .await
             .expect("list child readings after module archive")
             .is_empty()
+    );
+
+    module_repo
+        .restore_course_module(module.id)
+        .await
+        .expect("restore module");
+    assert_eq!(
+        module_repo
+            .list_archived_course_modules_for_project(project.id)
+            .await
+            .expect("list archived modules")
+            .len(),
+        0
+    );
+    assert!(
+        reference_repo
+            .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
+            .await
+            .expect("list restored readings")
+            .iter()
+            .any(|entry| entry.id == child_reading.id)
+    );
+
+    reference_repo
+        .restore_reference_entry(reading.id)
+        .await
+        .expect("restore reading");
+    assert!(
+        reference_repo
+            .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
+            .await
+            .expect("list all restored readings")
+            .iter()
+            .any(|entry| entry.id == reading.id)
     );
 }
 
@@ -646,6 +691,38 @@ async fn saved_radcite_documents_can_be_listed_across_projects() {
             && item.citation_count == 1
             && item.missing_citation_count == 0
     }));
+
+    document_repo
+        .archive_document(first_document.id)
+        .await
+        .expect("archive first document");
+    let archived = document_repo
+        .list_archived_documents_for_project(first_project.id)
+        .await
+        .expect("list archived documents");
+    assert_eq!(archived.len(), 1);
+    assert_eq!(archived[0].document_id, first_document.id);
+    assert_eq!(
+        document_repo
+            .list_documents_for_project(first_project.id)
+            .await
+            .expect("list active first documents")
+            .len(),
+        0
+    );
+
+    document_repo
+        .restore_document(first_document.id)
+        .await
+        .expect("restore first document");
+    assert_eq!(
+        document_repo
+            .list_documents_for_project(first_project.id)
+            .await
+            .expect("list restored first documents")
+            .len(),
+        1
+    );
 }
 
 #[tokio::test]

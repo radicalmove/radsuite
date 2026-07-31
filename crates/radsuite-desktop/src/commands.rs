@@ -23,6 +23,7 @@ use radsuite_engines::{AudioProcessor, CaptionProcessor, EnhancementProcessor};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::DesktopState;
 
@@ -187,6 +188,45 @@ pub struct SavedRadciteReviewSummary {
     pub paragraph_count: usize,
     pub citation_count: usize,
     pub missing_citation_count: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RadciteArchiveItemKind {
+    Document,
+    Module,
+    CourseReference,
+    ModuleReading,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RadciteArchiveItem {
+    pub id: String,
+    pub kind: RadciteArchiveItemKind,
+    pub label: String,
+    pub detail: Option<String>,
+    pub archived_at: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ListRadciteArchiveRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RestoreRadciteArchiveItemRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub kind: RadciteArchiveItemKind,
+    pub item_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArchiveRadciteDocumentRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub document_id: DocumentId,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -540,6 +580,36 @@ pub enum ReviewActionError {
     MissingProject(ProjectId),
     #[error(transparent)]
     Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum RadciteArchiveError {
+    #[error("could not load RADcite archive project {0}")]
+    MissingProject(ProjectId),
+    #[error("could not load archived RADcite item {kind:?} {item_id}")]
+    MissingItem {
+        kind: RadciteArchiveItemKind,
+        item_id: String,
+    },
+    #[error("invalid archived RADcite item id: {0}")]
+    InvalidItemId(String),
+    #[error("cannot restore a module reading while its module is archived")]
+    ParentModuleArchived,
+    #[error("could not load archived RADcite document {0}")]
+    MissingDocument(DocumentId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+impl From<RadciteProjectLookupError> for RadciteArchiveError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
 }
 
 #[derive(Debug, Error)]
@@ -919,6 +989,191 @@ pub async fn list_saved_radcite_reviews(
             missing_citation_count: document.missing_citation_count as usize,
         })
         .collect())
+}
+
+pub async fn archive_radcite_document(
+    state: &DesktopState,
+    request: ArchiveRadciteDocumentRequest,
+) -> Result<SavedRadciteReviewSummary, RadciteArchiveError> {
+    let document_repo = SqliteCitationDocumentRepository::new(state.database_pool.clone());
+    let analysis = document_repo
+        .load_document_analysis(request.document_id)
+        .await?
+        .ok_or(RadciteArchiveError::MissingDocument(request.document_id))?;
+    let project = SqliteProjectRepository::new(state.database_pool.clone())
+        .load_project(analysis.document.project_id)
+        .await?
+        .ok_or(RadciteArchiveError::MissingProject(
+            analysis.document.project_id,
+        ))?;
+    if let Some(requested_project_id) = request.project_id
+        && requested_project_id != project.id
+    {
+        return Err(RadciteArchiveError::MissingDocument(request.document_id));
+    }
+
+    if analysis.document.archived_at.is_some() {
+        return Err(RadciteArchiveError::MissingDocument(request.document_id));
+    }
+
+    document_repo.archive_document(analysis.document.id).await?;
+
+    Ok(SavedRadciteReviewSummary {
+        document_id: analysis.document.id,
+        project_id: project.id,
+        original_filename: analysis.document.original_filename,
+        paragraph_count: analysis.paragraphs.len(),
+        citation_count: analysis.citations.len(),
+        missing_citation_count: analysis
+            .paragraphs
+            .iter()
+            .filter(|paragraph| paragraph.needs_citation)
+            .count(),
+    })
+}
+
+pub async fn list_radcite_archive(
+    state: &DesktopState,
+    request: ListRadciteArchiveRequest,
+) -> Result<Vec<RadciteArchiveItem>, RadciteArchiveError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let module_repo = SqliteCourseModuleRepository::new(state.database_pool.clone());
+    let reference_repo = SqliteReferenceEntryRepository::new(state.database_pool.clone());
+    let document_repo = SqliteCitationDocumentRepository::new(state.database_pool.clone());
+    let archived_modules = module_repo
+        .list_archived_course_modules_for_project(project.id)
+        .await?;
+    let active_modules = module_repo
+        .list_course_modules_for_project(project.id)
+        .await?;
+    let archived_module_ids = archived_modules
+        .iter()
+        .map(|module| module.id)
+        .collect::<Vec<_>>();
+    let module_titles = active_modules
+        .into_iter()
+        .chain(archived_modules.iter().cloned())
+        .map(|module| (module.id, module.title.clone()))
+        .collect::<Vec<_>>();
+    let archived_documents = document_repo
+        .list_archived_documents_for_project(project.id)
+        .await?;
+    let archived_references = reference_repo
+        .list_archived_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
+        .await?;
+    let archived_readings = reference_repo
+        .list_archived_reference_entries_for_project(project.id, ReferenceEntryType::Reading)
+        .await?;
+
+    let mut items = Vec::new();
+    items.extend(archived_documents.into_iter().filter_map(|document| {
+        Some(RadciteArchiveItem {
+            id: document.document_id.0.to_string(),
+            kind: RadciteArchiveItemKind::Document,
+            label: document.original_filename,
+            detail: Some(format!(
+                "{} paragraphs · {} citations",
+                document.paragraph_count, document.citation_count
+            )),
+            archived_at: document.archived_at?.to_rfc3339(),
+        })
+    }));
+    items.extend(archived_modules.into_iter().filter_map(|module| {
+        Some(RadciteArchiveItem {
+            id: module.id.0.to_string(),
+            kind: RadciteArchiveItemKind::Module,
+            label: module.title,
+            detail: module.code,
+            archived_at: module.archived_at?.to_rfc3339(),
+        })
+    }));
+    items.extend(archived_references.into_iter().filter_map(|reference| {
+        Some(RadciteArchiveItem {
+            id: reference.id.0.to_string(),
+            kind: RadciteArchiveItemKind::CourseReference,
+            label: reference_label(&reference),
+            detail: Some("Course reference".to_string()),
+            archived_at: reference.archived_at?.to_rfc3339(),
+        })
+    }));
+    items.extend(archived_readings.into_iter().filter_map(|reading| {
+        let module_id = reading.module_id?;
+        if archived_module_ids.contains(&module_id) {
+            return None;
+        }
+
+        let module_title = module_titles
+            .iter()
+            .find(|(id, _)| *id == module_id)
+            .map(|(_, title)| title.clone());
+        Some(RadciteArchiveItem {
+            id: reading.id.0.to_string(),
+            kind: RadciteArchiveItemKind::ModuleReading,
+            label: reference_label(&reading),
+            detail: module_title.or_else(|| Some("Module reading".to_string())),
+            archived_at: reading.archived_at?.to_rfc3339(),
+        })
+    }));
+
+    items.sort_by(|left, right| {
+        right
+            .archived_at
+            .cmp(&left.archived_at)
+            .then_with(|| left.label.to_lowercase().cmp(&right.label.to_lowercase()))
+    });
+    Ok(items)
+}
+
+pub async fn restore_radcite_archive_item(
+    state: &DesktopState,
+    request: RestoreRadciteArchiveItemRequest,
+) -> Result<Vec<RadciteArchiveItem>, RadciteArchiveError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let archive = list_radcite_archive(
+        state,
+        ListRadciteArchiveRequest {
+            project_id: Some(project.id),
+        },
+    )
+    .await?;
+    if !archive
+        .iter()
+        .any(|item| item.kind == request.kind && item.id == request.item_id)
+    {
+        return Err(RadciteArchiveError::MissingItem {
+            kind: request.kind,
+            item_id: request.item_id,
+        });
+    }
+
+    match request.kind {
+        RadciteArchiveItemKind::Document => {
+            let document_id = parse_document_id(&request.item_id)?;
+            SqliteCitationDocumentRepository::new(state.database_pool.clone())
+                .restore_document(document_id)
+                .await?;
+        }
+        RadciteArchiveItemKind::Module => {
+            let module_id = parse_module_id(&request.item_id)?;
+            SqliteCourseModuleRepository::new(state.database_pool.clone())
+                .restore_course_module(module_id)
+                .await?;
+        }
+        RadciteArchiveItemKind::CourseReference | RadciteArchiveItemKind::ModuleReading => {
+            let reference_id = parse_reference_entry_id(&request.item_id)?;
+            SqliteReferenceEntryRepository::new(state.database_pool.clone())
+                .restore_reference_entry(reference_id)
+                .await?;
+        }
+    }
+
+    list_radcite_archive(
+        state,
+        ListRadciteArchiveRequest {
+            project_id: Some(project.id),
+        },
+    )
+    .await
 }
 
 pub async fn load_saved_radcite_review(
@@ -1959,6 +2214,24 @@ async fn load_module_reading_or_error(
     }
 
     Ok(reading)
+}
+
+fn parse_document_id(value: &str) -> Result<DocumentId, RadciteArchiveError> {
+    Uuid::parse_str(value)
+        .map(DocumentId)
+        .map_err(|_| RadciteArchiveError::InvalidItemId(value.to_string()))
+}
+
+fn parse_module_id(value: &str) -> Result<ModuleId, RadciteArchiveError> {
+    Uuid::parse_str(value)
+        .map(ModuleId)
+        .map_err(|_| RadciteArchiveError::InvalidItemId(value.to_string()))
+}
+
+fn parse_reference_entry_id(value: &str) -> Result<ReferenceEntryId, RadciteArchiveError> {
+    Uuid::parse_str(value)
+        .map(ReferenceEntryId)
+        .map_err(|_| RadciteArchiveError::InvalidItemId(value.to_string()))
 }
 
 fn trimmed_optional(value: Option<String>) -> Option<String> {
