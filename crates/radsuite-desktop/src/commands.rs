@@ -35,6 +35,10 @@ pub use crate::radcast::{
     ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
     RadcastProcessingPhase, RadcastProjectSettings, RadcastStorageError,
 };
+pub use crate::radt_ts::{
+    ListRadtTsOutputsRequest, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing,
+    StartRadtTsSynthesisRequest,
+};
 pub use radsuite_engines::{AudioOutputFormat, CaptionFormat};
 
 const LOCAL_RADCITE_PROJECT_CODE: &str = "CRJU150";
@@ -111,6 +115,53 @@ pub fn get_radcast_capabilities_with_processors(
         optimized_available,
         optimized_detail,
     }
+}
+
+pub fn get_radt_ts_capabilities() -> RadtTsCapabilityStatus {
+    crate::radt_ts::discover_radt_ts_cli()
+}
+
+pub async fn list_radt_ts_outputs(
+    state: &DesktopState,
+    request: ListRadtTsOutputsRequest,
+) -> Result<RadtTsOutputListing, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    crate::radt_ts::list_radt_ts_outputs_for_project(state, project.id)
+        .map_err(|error| error.to_string())
+}
+
+pub async fn start_radt_ts_synthesis(
+    state: &DesktopState,
+    request: StartRadtTsSynthesisRequest,
+) -> Result<RadtTsJobStatus, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    let request = crate::radt_ts::RadtTsSynthesisRequest {
+        project_id: project.id,
+        text: request.text,
+        reference_audio_path: PathBuf::from(request.reference_audio_path),
+        quality: request.quality,
+        chunk_mode: request.chunk_mode,
+        pause_min_seconds: request.pause_min_seconds,
+        pause_max_seconds: request.pause_max_seconds,
+        output_format: request.output_format,
+        output_name: request.output_name,
+        acknowledge_voice_clone: request.acknowledge_voice_clone,
+    };
+    crate::radt_ts::start_radt_ts_synthesis(state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub fn get_radt_ts_job(state: &DesktopState, job_id: String) -> Result<RadtTsJobStatus, String> {
+    crate::radt_ts::get_radt_ts_job(state, &job_id).map_err(|error| error.to_string())
+}
+
+pub fn cancel_radt_ts_job(state: &DesktopState, job_id: String) -> Result<RadtTsJobStatus, String> {
+    crate::radt_ts::cancel_radt_ts_job(state, &job_id).map_err(|error| error.to_string())
 }
 
 fn optimized_capability_detail() -> String {

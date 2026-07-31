@@ -217,7 +217,15 @@
           <span>Audio cleanup</span>
           <small>RADcast</small>
         </button>
-        <button class="tool-area-button tool-area-button-root media-tool-button" type="button" disabled>
+        <button
+          class="tool-area-button tool-area-button-root media-tool-button"
+          class:is-active={project.id === selectedProjectId && activeArea === "radtts"}
+          type="button"
+          onclick={() => {
+            selectProject(project);
+            onSelectArea("radtts");
+          }}
+        >
           <span>Voice generation</span>
           <small>RADTTS</small>
         </button>

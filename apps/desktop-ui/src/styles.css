@@ -662,7 +662,8 @@ button:disabled {
 .references-workspace,
 .readings-workspace,
 .exports-workspace,
-.radcast-workspace {
+.radcast-workspace,
+.radtts-workspace {
   display: grid;
   gap: var(--s-4);
   padding-top: var(--s-5);
@@ -887,6 +888,210 @@ button:disabled {
   width: 100%;
   height: 8px;
   accent-color: var(--accent);
+}
+
+.radtts-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: var(--s-4);
+}
+
+.radtts-panel,
+.radtts-outputs {
+  display: grid;
+  align-content: start;
+  gap: var(--s-4);
+  padding: var(--s-5);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+}
+
+.radtts-panel-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-4);
+}
+
+.radtts-panel-heading h3 {
+  margin: 0;
+  color: var(--fg-1);
+  font-size: 0.98rem;
+  font-weight: 650;
+}
+
+.radtts-panel .stack {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.radtts-panel .stack > span {
+  color: var(--fg-2);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.radtts-panel textarea,
+.radtts-panel input,
+.radtts-panel select {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--fg-1);
+  background: var(--bg);
+  font: inherit;
+}
+
+.radtts-panel textarea {
+  min-height: 250px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.radtts-reference-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s-2);
+}
+
+.radtts-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--bg-panel-alt);
+}
+
+.radtts-check input {
+  width: 16px;
+  min-height: 16px;
+  margin-top: 2px;
+  accent-color: var(--radcite-red);
+}
+
+.radtts-check span {
+  display: grid;
+  gap: 3px;
+}
+
+.radtts-check strong {
+  color: var(--fg-1);
+  font-size: 0.82rem;
+}
+
+.radtts-check small,
+.radtts-panel .field-note,
+.radtts-processing-note,
+.radtts-output-copy span,
+.radtts-empty,
+.radtts-progress small {
+  color: var(--fg-3);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+.radtts-pause-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.radtts-processing-note {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border: 1px solid rgba(99, 153, 34, 0.26);
+  border-radius: var(--r-sm);
+  background: var(--success-tint);
+}
+
+.radtts-process-button {
+  width: 100%;
+  min-height: 42px;
+}
+
+.radtts-status {
+  border-left-color: var(--success);
+  background: var(--success-tint);
+}
+
+.radtts-capability {
+  border-left-color: var(--accent);
+}
+
+.radtts-progress {
+  display: grid;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid var(--line-soft);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--r-sm);
+  background: var(--bg-panel-alt);
+}
+
+.radtts-progress-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  color: var(--fg-1);
+}
+
+.radtts-progress-heading span {
+  color: var(--fg-3);
+  font-size: 0.76rem;
+}
+
+.radtts-progress progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--accent);
+}
+
+.radtts-output-list {
+  display: grid;
+  gap: var(--s-3);
+}
+
+.radtts-output-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.7fr) minmax(220px, 1.3fr) auto;
+  align-items: center;
+  gap: var(--s-4);
+  padding: var(--s-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--bg-panel-alt);
+}
+
+.radtts-output-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.radtts-output-copy strong {
+  overflow-wrap: anywhere;
+  font-size: 0.82rem;
+}
+
+.radtts-output-row audio {
+  width: 100%;
+}
+
+.radtts-output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
 }
 
 .workspace-header h2,
@@ -2562,6 +2767,7 @@ button:disabled {
   .reading-lookup-item-heading,
   .saved-review-row,
   .radcast-grid,
+  .radtts-grid,
   .path-row,
   .manual-citation-row,
   .citation-link-row,
@@ -2595,7 +2801,11 @@ button:disabled {
   .radcast-grid,
   .radcast-trim-fields,
   .radcast-output-row,
-  .radcast-source-controls {
+  .radcast-source-controls,
+  .radtts-grid,
+  .radtts-pause-fields,
+  .radtts-output-row,
+  .radtts-reference-row {
     grid-template-columns: 1fr;
   }
 
