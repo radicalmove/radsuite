@@ -248,7 +248,9 @@ button:disabled {
 }
 
 .project-create-form input,
-.project-edit-form input {
+.project-edit-form input,
+.project-edit-form textarea,
+.project-edit-form select {
   width: 100%;
   min-height: 34px;
   padding: 7px 9px;
@@ -259,9 +261,15 @@ button:disabled {
 }
 
 .project-create-form input:focus,
-.project-edit-form input:focus {
+.project-edit-form input:focus,
+.project-edit-form textarea:focus,
+.project-edit-form select:focus {
   border-color: rgba(206, 62, 46, 0.72);
   outline: none;
+}
+
+.project-edit-form textarea {
+  resize: vertical;
 }
 
 .sidebar-create-button {

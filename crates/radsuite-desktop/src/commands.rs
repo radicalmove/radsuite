@@ -243,6 +243,8 @@ pub struct RadciteProjectSummary {
     pub id: ProjectId,
     pub code: Option<String>,
     pub title: String,
+    pub description: Option<String>,
+    pub structure_mode: String,
     pub archived_at: Option<String>,
 }
 
@@ -257,6 +259,8 @@ pub struct UpdateRadciteProjectRequest {
     pub project_id: ProjectId,
     pub code: Option<String>,
     pub title: String,
+    pub description: Option<String>,
+    pub structure_mode: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -813,6 +817,8 @@ pub enum RadciteProjectError {
     EmptyTitle,
     #[error("cannot edit archived RADcite project {0}")]
     ArchivedProject(ProjectId),
+    #[error("project structure must be either modules or weeks")]
+    InvalidStructureMode,
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
     #[error(transparent)]
@@ -1110,6 +1116,17 @@ pub async fn update_radcite_project(
         .filter(|value| !value.is_empty())
         .map(str::to_string);
     project.title = title.to_string();
+    project.description = request
+        .description
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    project.structure_mode = match request.structure_mode.trim() {
+        "modules" => "modules".to_string(),
+        "weeks" => "weeks".to_string(),
+        _ => return Err(RadciteProjectError::InvalidStructureMode),
+    };
 
     project_repo.update_project(&project).await?;
     let updated = project_repo
@@ -2984,6 +3001,8 @@ fn radcite_project_summary(project: Project) -> RadciteProjectSummary {
         id: project.id,
         code: project.code,
         title: project.title,
+        description: project.description,
+        structure_mode: project.structure_mode,
         archived_at: project.archived_at.map(|value| value.to_rfc3339()),
     }
 }

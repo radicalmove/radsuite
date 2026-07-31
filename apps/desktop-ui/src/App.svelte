@@ -95,6 +95,7 @@
     id: "radcite-fallback",
     code: "CRJU150",
     title: "RADcite Functional Testing",
+    description: null,
     structureMode: "modules",
     archived_at: null,
   };
@@ -181,13 +182,16 @@
     id: string;
     code: string | null;
     title: string;
+    description: string | null;
+    structure_mode: "modules" | "weeks";
     archived_at: string | null;
   }): ProjectNavItem {
     return {
       id: project.id,
       code: project.code ?? "RADcite",
       title: project.title,
-      structureMode: "modules",
+      description: project.description,
+      structureMode: project.structure_mode,
       archived_at: project.archived_at,
     };
   }

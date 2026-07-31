@@ -11,6 +11,7 @@ const activeProject = (id: string, code: string): ProjectNavItem => ({
   id,
   code,
   title: `${code} course`,
+  description: null,
   structureMode: "modules",
   archived_at: null,
 });

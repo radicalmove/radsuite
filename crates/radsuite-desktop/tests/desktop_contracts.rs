@@ -109,6 +109,8 @@ async fn local_radcite_projects_can_be_updated() {
             project_id,
             code: Some(" COMS432 ".to_string()),
             title: " Strategic Communication ".to_string(),
+            description: Some(" Course foundations and applied practice ".to_string()),
+            structure_mode: "weeks".to_string(),
         },
     )
     .await
@@ -117,6 +119,11 @@ async fn local_radcite_projects_can_be_updated() {
     assert_eq!(updated.id, project_id);
     assert_eq!(updated.code.as_deref(), Some("COMS432"));
     assert_eq!(updated.title, "Strategic Communication");
+    assert_eq!(
+        updated.description.as_deref(),
+        Some("Course foundations and applied practice")
+    );
+    assert_eq!(updated.structure_mode, "weeks");
 
     let listed = list_radcite_projects(&state)
         .await
@@ -127,6 +134,11 @@ async fn local_radcite_projects_can_be_updated() {
         .expect("updated project is listed");
     assert_eq!(listed_project.code.as_deref(), Some("COMS432"));
     assert_eq!(listed_project.title, "Strategic Communication");
+    assert_eq!(
+        listed_project.description.as_deref(),
+        Some("Course foundations and applied practice")
+    );
+    assert_eq!(listed_project.structure_mode, "weeks");
 }
 
 #[tokio::test]
@@ -145,12 +157,36 @@ async fn archived_radcite_projects_cannot_be_updated() {
             project_id,
             code: Some("COMS432".to_string()),
             title: "Strategic Communication".to_string(),
+            description: None,
+            structure_mode: "modules".to_string(),
         },
     )
     .await
     .expect_err("archived project should be read-only");
 
     assert!(matches!(error, RadciteProjectError::ArchivedProject(id) if id == project_id));
+}
+
+#[tokio::test]
+async fn project_updates_reject_unknown_structure_modes() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let project_id = projects[0].id;
+
+    let error = update_radcite_project(
+        &state,
+        UpdateRadciteProjectRequest {
+            project_id,
+            code: Some("CRJU150".to_string()),
+            title: "Legal Method".to_string(),
+            description: None,
+            structure_mode: "terms".to_string(),
+        },
+    )
+    .await
+    .expect_err("unknown structure mode should fail");
+
+    assert!(matches!(error, RadciteProjectError::InvalidStructureMode));
 }
 
 #[tokio::test]

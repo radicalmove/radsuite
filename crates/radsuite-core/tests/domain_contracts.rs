@@ -21,6 +21,8 @@ fn project_owner_can_be_returned_as_api_summary() {
     assert_eq!(summary.id, project.id);
     assert_eq!(summary.code.as_deref(), Some("COMS435"));
     assert_eq!(summary.title, "Good data and how to use it");
+    assert_eq!(summary.description, None);
+    assert_eq!(summary.structure_mode, "modules");
     assert_eq!(summary.role, ProjectRole::Owner);
 }
 
@@ -31,6 +33,7 @@ fn new_projects_and_summaries_start_unarchived() {
 
     assert!(project.archived_at.is_none());
     assert!(summary.archived_at.is_none());
+    assert_eq!(project.structure_mode, "modules");
 }
 
 #[test]

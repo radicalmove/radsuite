@@ -17,6 +17,8 @@ const project: RadciteProjectSummary = {
   id: "project-1",
   code: "CRJU201",
   title: "Criminological Theory",
+  description: "A course about criminological theory",
+  structure_mode: "modules",
   archived_at: null,
 };
 
@@ -78,6 +80,8 @@ describe("project commands", () => {
       updateRadciteProject(" project-1 ", {
         code: " COMS432 ",
         title: " Strategic Communication ",
+        description: " Course foundations and applied practice ",
+        structureMode: "weeks",
       }),
     ).resolves.toBe(project);
 
@@ -86,6 +90,8 @@ describe("project commands", () => {
         project_id: "project-1",
         code: "COMS432",
         title: "Strategic Communication",
+        description: "Course foundations and applied practice",
+        structure_mode: "weeks",
       },
     });
   });

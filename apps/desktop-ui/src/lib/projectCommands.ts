@@ -9,6 +9,8 @@ export type CreateRadciteProjectInput = {
 export type UpdateRadciteProjectInput = {
   code?: string | null;
   title: string;
+  description?: string | null;
+  structureMode?: "modules" | "weeks";
 };
 
 export type ProjectMutationInput = {
@@ -43,6 +45,8 @@ export function updateRadciteProject(
       ...projectMutationRequest(projectId),
       code: trimmedOrNull(input.code),
       title: input.title.trim(),
+      description: trimmedOrNull(input.description),
+      structure_mode: input.structureMode ?? "modules",
     },
   });
 }

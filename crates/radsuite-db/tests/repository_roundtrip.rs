@@ -95,6 +95,8 @@ async fn project_metadata_can_be_updated() {
     let mut updated = project.clone();
     updated.code = Some("COMS432".to_string());
     updated.title = "Strategic Communication".to_string();
+    updated.description = Some("Course foundations and applied practice".to_string());
+    updated.structure_mode = "weeks".to_string();
     repo.update_project(&updated).await.expect("update project");
 
     let loaded = repo
@@ -108,6 +110,11 @@ async fn project_metadata_can_be_updated() {
     assert_eq!(loaded.created_at, project.created_at);
     assert_eq!(loaded.code.as_deref(), Some("COMS432"));
     assert_eq!(loaded.title, "Strategic Communication");
+    assert_eq!(
+        loaded.description.as_deref(),
+        Some("Course foundations and applied practice")
+    );
+    assert_eq!(loaded.structure_mode, "weeks");
     assert!(loaded.updated_at >= project.updated_at);
 }
 

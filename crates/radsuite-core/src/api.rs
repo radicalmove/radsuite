@@ -37,6 +37,8 @@ pub struct ApiProjectSummary {
     pub id: ProjectId,
     pub code: Option<String>,
     pub title: String,
+    pub description: Option<String>,
+    pub structure_mode: String,
     pub archived_at: Option<chrono::DateTime<chrono::Utc>>,
     pub role: ProjectRole,
 }
@@ -47,6 +49,8 @@ impl ApiProjectSummary {
             id: project.id,
             code: project.code.clone(),
             title: project.title.clone(),
+            description: project.description.clone(),
+            structure_mode: project.structure_mode.clone(),
             archived_at: project.archived_at,
             role,
         }
