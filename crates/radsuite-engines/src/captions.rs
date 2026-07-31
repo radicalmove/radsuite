@@ -269,7 +269,7 @@ impl CaptionProcessor {
             quality_mode,
             glossary,
         );
-        let result = Command::new(&self.whisper_command)
+        let result = command_for_executable(&self.whisper_command)
             .args(&args)
             .output()
             .map_err(|source| CaptionProcessingError::StartCommand {
@@ -446,7 +446,7 @@ impl CaptionProcessor {
         fs::create_dir_all(parent).map_err(CaptionProcessingError::PrepareOutput)?;
 
         let args = self.whisper_arguments_with_options(&request, quality_mode, glossary)?;
-        let result = Command::new(&self.whisper_command)
+        let result = command_for_executable(&self.whisper_command)
             .args(&args)
             .output()
             .map_err(|source| CaptionProcessingError::StartCommand {
@@ -621,6 +621,17 @@ fn output_base_path(path: &Path) -> PathBuf {
     } else {
         path.to_path_buf()
     }
+}
+
+fn command_for_executable(path: &Path) -> Command {
+    #[cfg(unix)]
+    if path.extension().is_some_and(|extension| extension == "sh") {
+        let mut command = Command::new("sh");
+        command.arg(path);
+        return command;
+    }
+
+    Command::new(path)
 }
 
 fn command_output(stdout: &[u8], stderr: &[u8]) -> String {
