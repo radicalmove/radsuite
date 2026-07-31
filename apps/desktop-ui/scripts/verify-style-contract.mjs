@@ -17,6 +17,7 @@ const actionsPanel = readFileSync(
   resolve(root, "src/components/CitationActionsPanel.svelte"),
   "utf8",
 );
+const helpModal = readFileSync(resolve(root, "src/components/HelpModal.svelte"), "utf8");
 const referencesWorkspace = readFileSync(
   resolve(root, "src/components/RadciteReferencesWorkspace.svelte"),
   "utf8",
@@ -51,6 +52,9 @@ const checks = [
   ["selected paragraph has red edge", "border-left-color: var(--radcite-red)"],
   ["status chip styling", ".status-chip"],
   ["status dot styling", ".status-dot"],
+  ["help button styling", ".help-button"],
+  ["help modal styling", ".help-dialog"],
+  ["help backdrop styling", ".help-backdrop"],
   ["status chips use square radius", "border-radius: var(--r-sm)"],
   ["theme toggle styling", ".theme-toggle"],
   ["dark theme selector", '[data-theme="dark"]'],
@@ -204,6 +208,18 @@ for (const needle of [
 ]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
+  }
+}
+
+for (const needle of ["HelpModal", "helpOpen", "Open help"]) {
+  if (!app.includes(needle)) {
+    missing.push(`app includes ${needle}`);
+  }
+}
+
+for (const needle of ["Help and quick guide", "Frequently asked questions", "aria-modal=\"true\""]) {
+  if (!helpModal.includes(needle)) {
+    missing.push(`help modal includes ${needle}`);
   }
 }
 
