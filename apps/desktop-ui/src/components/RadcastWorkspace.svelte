@@ -47,7 +47,7 @@
   let status = $state<string | null>(null);
   let radcastJob = $state<RadcastJobStatus | null>(null);
   let settingsLoaded = $state(false);
-  let settingsSaveTimer = $state<number | null>(null);
+  let settingsSaveTimer: number | null = null;
   let captionCapability = $state<RadcastCapabilityStatus>({
     caption_available: false,
     caption_detail: "Checking local caption support.",
