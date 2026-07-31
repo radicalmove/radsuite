@@ -707,6 +707,48 @@ pub struct ModuleReadingsExport {
     pub reading_count: usize,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExportRadciteReviewReportRequest {
+    pub document_id: DocumentId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RadciteReviewReportExport {
+    pub filename: String,
+    pub content_type: String,
+    pub json: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct RadciteReviewReport {
+    filename: String,
+    file_type: String,
+    project_title: String,
+    document_id: DocumentId,
+    generated_at: String,
+    statistics: RadciteReviewReportStatistics,
+    details: Vec<RadciteReviewReportDetail>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct RadciteReviewReportStatistics {
+    total_paragraphs: usize,
+    paragraphs_with_citations: usize,
+    paragraphs_needing_citations: usize,
+    total_citations: usize,
+    citation_coverage: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+struct RadciteReviewReportDetail {
+    index: usize,
+    page: Option<i32>,
+    text_preview: String,
+    citations: Vec<String>,
+    needs_citation: bool,
+    is_table: bool,
+}
+
 #[derive(Debug, Error)]
 pub enum AnalyseDocxError {
     #[error("choose a DOCX file before running RADcite analysis")]
@@ -773,6 +815,8 @@ pub enum ReviewActionError {
     MissingProject(ProjectId),
     #[error(transparent)]
     Database(#[from] DbError),
+    #[error("could not serialise RADcite review report")]
+    ReportSerialization(#[from] serde_json::Error),
 }
 
 #[derive(Debug, Error)]
@@ -1647,6 +1691,79 @@ pub async fn load_saved_radcite_review(
     document_id: DocumentId,
 ) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
     load_review_response(state, document_id).await
+}
+
+pub async fn export_radcite_review_report(
+    state: &DesktopState,
+    request: ExportRadciteReviewReportRequest,
+) -> Result<RadciteReviewReportExport, ReviewActionError> {
+    let review = load_review_response(state, request.document_id).await?;
+    let cited_paragraph_count = review
+        .paragraphs
+        .iter()
+        .filter(|paragraph| !paragraph.citations.is_empty())
+        .count();
+    let citation_count = review
+        .paragraphs
+        .iter()
+        .map(|paragraph| paragraph.citations.len())
+        .sum::<usize>();
+    let citation_coverage = if review.paragraphs.is_empty() {
+        "0.0%".to_string()
+    } else {
+        format!(
+            "{:.1}%",
+            cited_paragraph_count as f64 / review.paragraphs.len() as f64 * 100.0
+        )
+    };
+    let details = review
+        .paragraphs
+        .iter()
+        .filter(|paragraph| paragraph.needs_citation || !paragraph.citations.is_empty())
+        .map(|paragraph| RadciteReviewReportDetail {
+            index: paragraph.order_index.max(0) as usize,
+            page: paragraph.page,
+            text_preview: review_report_text_preview(&paragraph.text),
+            citations: paragraph
+                .citations
+                .iter()
+                .map(|citation| citation.text.clone())
+                .collect(),
+            needs_citation: paragraph.needs_citation,
+            is_table: paragraph.is_table,
+        })
+        .collect::<Vec<_>>();
+    let report = RadciteReviewReport {
+        filename: review.original_filename.clone(),
+        file_type: review.source_file_type.clone(),
+        project_title: review.project_title.clone(),
+        document_id: review.document_id,
+        generated_at: Utc::now().to_rfc3339(),
+        statistics: RadciteReviewReportStatistics {
+            total_paragraphs: review.paragraphs.len(),
+            paragraphs_with_citations: cited_paragraph_count,
+            paragraphs_needing_citations: review
+                .paragraphs
+                .iter()
+                .filter(|paragraph| paragraph.needs_citation)
+                .count(),
+            total_citations: citation_count,
+            citation_coverage,
+        },
+        details,
+    };
+    let json = serde_json::to_string_pretty(&report)?;
+    let original_path = PathBuf::from(&review.original_filename);
+    let source_stem = original_path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("radcite-review");
+
+    Ok(RadciteReviewReportExport {
+        filename: format!("{}-citation-report.json", filename_slug(source_stem)),
+        content_type: "application/json; charset=utf-8".to_string(),
+        json,
+    })
 }
 
 pub async fn list_course_references(
@@ -3484,6 +3601,16 @@ fn filename_slug(value: &str) -> String {
         "radcite".to_string()
     } else {
         slug.to_string()
+    }
+}
+
+fn review_report_text_preview(value: &str) -> String {
+    let mut characters = value.chars();
+    let preview = characters.by_ref().take(100).collect::<String>();
+    if characters.next().is_some() {
+        format!("{preview}...")
+    } else {
+        preview
     }
 }
 

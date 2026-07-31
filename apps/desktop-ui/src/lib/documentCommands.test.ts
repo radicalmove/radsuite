@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
-import type { SavedRadciteReviewSummary } from "../types";
-import { updateRadciteDocument } from "./documentCommands";
+import type { RadciteReviewReportExport, SavedRadciteReviewSummary } from "../types";
+import { exportRadciteReviewReport, updateRadciteDocument } from "./documentCommands";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -20,6 +20,12 @@ const savedReview: SavedRadciteReviewSummary = {
   paragraph_count: 4,
   citation_count: 2,
   missing_citation_count: 0,
+};
+
+const reportExport: RadciteReviewReportExport = {
+  filename: "source-citation-report.json",
+  content_type: "application/json; charset=utf-8",
+  json: "{\n  \"filename\": \"source.docx\"\n}",
 };
 
 describe("document commands", () => {
@@ -50,6 +56,16 @@ describe("document commands", () => {
         doc_variant: "content",
         exclude_from_references: false,
       },
+    });
+  });
+
+  test("exports a saved review report by document id", async () => {
+    vi.mocked(invoke).mockResolvedValue(reportExport);
+
+    await expect(exportRadciteReviewReport("document-1")).resolves.toBe(reportExport);
+
+    expect(invoke).toHaveBeenCalledWith("export_radcite_review_report", {
+      request: { document_id: "document-1" },
     });
   });
 });

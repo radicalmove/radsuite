@@ -294,6 +294,12 @@ export type SavedRadciteReviewSummary = {
   missing_citation_count: number;
 };
 
+export type RadciteReviewReportExport = {
+  filename: string;
+  content_type: string;
+  json: string;
+};
+
 export type RadciteArchiveItemKind =
   | "document"
   | "module"

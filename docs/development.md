@@ -22,9 +22,9 @@ RADSUITE_REAL_COURSE_ROOT=/Users/rcd58/course-output-system \
 ```
 
 The smoke test covers project creation, DOCX review analysis, CRJU201
-`course_readings.csv` preview/import, multi-file SCORM-style learner-reader PDF
-preview, module readings export, course references export, and project-scoped
-saved review lists.
+course_readings.csv preview/import, multi-file SCORM-style learner-reader PDF
+preview, review report export, module readings export, course references export,
+and project-scoped saved review lists.
 
 ## Scope
 

@@ -15,21 +15,22 @@ use radsuite_desktop::{
     ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteDocumentRequest,
     ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest, CourseReferenceError,
     CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
-    ExportModuleReadingsRequest, ImportDocumentReadingsRequest, LinkCitationReferenceRequest,
-    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteArchiveRequest,
-    ListRadciteModulesRequest, ListSavedReviewsRequest, MergeCourseReferencesRequest,
-    ModuleReadingError, ModuleReadingExportError, ModuleReadingImportError,
-    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
-    PreviewModuleReadingsPdfImportRequest, RadciteArchiveItemKind, RadciteDocumentError,
-    RadciteModuleError, RadciteProjectError, RestoreRadciteArchiveItemRequest,
-    RestoreRadciteProjectRequest, SaveModuleReadingsImportCandidate,
-    SaveModuleReadingsImportRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
-    add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
+    ExportModuleReadingsRequest, ExportRadciteReviewReportRequest, ImportDocumentReadingsRequest,
+    LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
+    ListRadciteArchiveRequest, ListRadciteModulesRequest, ListSavedReviewsRequest,
+    MergeCourseReferencesRequest, ModuleReadingError, ModuleReadingExportError,
+    ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
+    PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
+    RadciteArchiveItemKind, RadciteDocumentError, RadciteModuleError, RadciteProjectError,
+    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
+    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, add_course_reference,
+    add_manual_citation_for_review, add_module_reading, add_radcite_module,
     analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
     archive_module_reading, archive_radcite_document, archive_radcite_module,
     archive_radcite_project, create_radcite_project, export_course_references,
-    export_module_readings, get_app_status, import_document_readings,
+    export_module_readings, export_radcite_review_report, get_app_status, import_document_readings,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_archive, list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
     load_saved_radcite_review, mark_paragraph_resolved_for_review, merge_course_references,
@@ -38,6 +39,7 @@ use radsuite_desktop::{
     save_module_readings_import, update_course_reference, update_module_reading,
     update_radcite_document, update_radcite_module, verify_paragraph_citations_for_review,
 };
+use serde_json::Value;
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
 
@@ -387,6 +389,51 @@ async fn analyse_docx_for_review_returns_ordered_paragraphs_and_citations() {
     assert!(!response.paragraphs[0].needs_citation);
     assert_eq!(response.paragraphs[1].order_index, 1);
     assert!(response.paragraphs[1].needs_citation);
+}
+
+#[tokio::test]
+async fn review_report_export_contains_document_statistics_and_findings() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-review-report.docx");
+
+    let review = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: None,
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("review-source.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse report source");
+
+    let export = export_radcite_review_report(
+        &state,
+        ExportRadciteReviewReportRequest {
+            document_id: review.document_id,
+        },
+    )
+    .await
+    .expect("export review report");
+
+    assert_eq!(export.filename, "review-source-citation-report.json");
+    assert_eq!(export.content_type, "application/json; charset=utf-8");
+
+    let report: Value = serde_json::from_str(&export.json).expect("parse report JSON");
+    assert_eq!(report["filename"], "review-source.docx");
+    assert_eq!(report["file_type"], "docx");
+    assert_eq!(report["project_title"], "RADcite Functional Testing");
+    assert_eq!(report["statistics"]["total_paragraphs"], 2);
+    assert_eq!(report["statistics"]["paragraphs_with_citations"], 1);
+    assert_eq!(report["statistics"]["paragraphs_needing_citations"], 1);
+    assert_eq!(report["statistics"]["total_citations"], 1);
+    assert_eq!(report["statistics"]["citation_coverage"], "50.0%");
+    assert_eq!(
+        report["details"].as_array().expect("report details").len(),
+        2
+    );
+    assert_eq!(report["details"][0]["citations"][0], "Smith (2020)");
+    assert_eq!(report["details"][1]["needs_citation"], true);
 }
 
 #[tokio::test]
