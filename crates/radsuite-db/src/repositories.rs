@@ -896,7 +896,11 @@ pub struct CitationDocumentSummary {
     pub document_id: DocumentId,
     pub project_id: ProjectId,
     pub original_filename: String,
+    pub display_name: String,
     pub file_type: DocumentFileType,
+    pub doc_variant: DocumentVariant,
+    pub doc_number: Option<i32>,
+    pub exclude_from_references: bool,
     pub source_path: Option<String>,
     pub paragraph_count: i64,
     pub citation_count: i64,
@@ -919,6 +923,8 @@ pub trait CitationDocumentRepository {
         paragraphs: &[Paragraph],
         citations: &[Citation],
     ) -> Result<(), DbError>;
+
+    async fn update_document_metadata(&self, document: &Document) -> Result<(), DbError>;
 
     async fn list_documents_for_project(
         &self,
@@ -1057,6 +1063,31 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         Ok(())
     }
 
+    async fn update_document_metadata(&self, document: &Document) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            UPDATE documents
+            SET doc_variant = ?2,
+                doc_number = ?3,
+                notes = ?4,
+                exclude_from_references = ?5,
+                updated_at = ?6
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(document.id.0.to_string())
+        .bind(document_variant_as_str(document.doc_variant))
+        .bind(document.doc_number)
+        .bind(document.notes.as_deref())
+        .bind(document.exclude_from_references)
+        .bind(document.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     async fn list_documents_for_project(
         &self,
         project_id: ProjectId,
@@ -1068,7 +1099,11 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 d.project_id,
                 d.source_path,
                 d.original_filename,
+                d.notes,
                 d.file_type,
+                d.doc_variant,
+                d.doc_number,
+                d.exclude_from_references,
                 d.archived_at,
                 COUNT(DISTINCT p.id) AS paragraph_count,
                 COUNT(DISTINCT pc.id) AS citation_count,
@@ -1078,7 +1113,9 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.project_id = ?1
               AND d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.notes,
+                     d.file_type, d.doc_variant, d.doc_number, d.exclude_from_references,
+                     d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -1091,12 +1128,22 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 let document_id: String = row.try_get("id")?;
                 let row_project_id: String = row.try_get("project_id")?;
                 let file_type: String = row.try_get("file_type")?;
+                let original_filename: String = row.try_get("original_filename")?;
+                let display_name = row
+                    .try_get::<Option<String>, _>("notes")?
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or_else(|| original_filename.clone());
+                let doc_variant: String = row.try_get("doc_variant")?;
 
                 Ok(CitationDocumentSummary {
                     document_id: DocumentId(Uuid::parse_str(&document_id)?),
                     project_id: ProjectId(Uuid::parse_str(&row_project_id)?),
-                    original_filename: row.try_get("original_filename")?,
+                    original_filename,
+                    display_name,
                     file_type: parse_document_file_type(&file_type)?,
+                    doc_variant: parse_document_variant(&doc_variant)?,
+                    doc_number: row.try_get("doc_number")?,
+                    exclude_from_references: row.try_get("exclude_from_references")?,
                     source_path: row.try_get("source_path")?,
                     paragraph_count: row.try_get("paragraph_count")?,
                     citation_count: row.try_get("citation_count")?,
@@ -1194,7 +1241,11 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 d.project_id,
                 d.source_path,
                 d.original_filename,
+                d.notes,
                 d.file_type,
+                d.doc_variant,
+                d.doc_number,
+                d.exclude_from_references,
                 d.archived_at,
                 COUNT(DISTINCT p.id) AS paragraph_count,
                 COUNT(DISTINCT pc.id) AS citation_count,
@@ -1204,7 +1255,9 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.project_id = ?1
               AND d.archived_at IS NOT NULL
-            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.notes,
+                     d.file_type, d.doc_variant, d.doc_number, d.exclude_from_references,
+                     d.archived_at, d.uploaded_at
             ORDER BY d.archived_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -1223,7 +1276,11 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 d.project_id,
                 d.source_path,
                 d.original_filename,
+                d.notes,
                 d.file_type,
+                d.doc_variant,
+                d.doc_number,
+                d.exclude_from_references,
                 d.archived_at,
                 COUNT(DISTINCT p.id) AS paragraph_count,
                 COUNT(DISTINCT pc.id) AS citation_count,
@@ -1232,7 +1289,9 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraphs p ON p.document_id = d.id
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.notes,
+                     d.file_type, d.doc_variant, d.doc_number, d.exclude_from_references,
+                     d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -1433,12 +1492,22 @@ fn citation_summary_from_row(
     let document_id: String = row.try_get("id")?;
     let row_project_id: String = row.try_get("project_id")?;
     let file_type: String = row.try_get("file_type")?;
+    let original_filename: String = row.try_get("original_filename")?;
+    let display_name = row
+        .try_get::<Option<String>, _>("notes")?
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or_else(|| original_filename.clone());
+    let doc_variant: String = row.try_get("doc_variant")?;
 
     Ok(CitationDocumentSummary {
         document_id: DocumentId(Uuid::parse_str(&document_id)?),
         project_id: ProjectId(Uuid::parse_str(&row_project_id)?),
-        original_filename: row.try_get("original_filename")?,
+        original_filename,
+        display_name,
         file_type: parse_document_file_type(&file_type)?,
+        doc_variant: parse_document_variant(&doc_variant)?,
+        doc_number: row.try_get("doc_number")?,
+        exclude_from_references: row.try_get("exclude_from_references")?,
         source_path: row.try_get("source_path")?,
         paragraph_count: row.try_get("paragraph_count")?,
         citation_count: row.try_get("citation_count")?,

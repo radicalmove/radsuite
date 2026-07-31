@@ -6,8 +6,8 @@ use std::{
 
 use radsuite_cite::{DocxIngestionRequest, ingest_docx};
 use radsuite_core::{
-    ApaValidationStatus, Citation, CourseModule, Document, DocumentFileType, Paragraph, Project,
-    ProjectRole, ReadingCategory, ReferenceEntry, ReferenceEntryType, UserId,
+    ApaValidationStatus, Citation, CourseModule, Document, DocumentFileType, DocumentVariant,
+    Paragraph, Project, ProjectRole, ReadingCategory, ReferenceEntry, ReferenceEntryType, UserId,
 };
 use radsuite_db::{
     CitationDocumentRepository, CourseModuleRepository, DbError, ProjectRepository,
@@ -277,6 +277,79 @@ async fn radcite_document_can_be_inserted_and_loaded() {
     assert_eq!(loaded.document.source_path, document.source_path);
     assert_eq!(loaded.paragraphs, vec![cited, missing]);
     assert_eq!(loaded.citations, vec![citation]);
+}
+
+#[tokio::test]
+async fn radcite_document_metadata_can_be_updated() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let project = Project::new("CRJU150", "Legal Method", UserId::new());
+    project_repo
+        .insert_project(&project)
+        .await
+        .expect("insert project");
+
+    let document_repo = SqliteCitationDocumentRepository::new(pool);
+    let mut document = Document::new(project.id, "lesson-1.docx", DocumentFileType::Docx);
+    document.source_path = Some("/app-data/documents/project/lesson-1.docx".to_string());
+    let paragraph = Paragraph::new(document.id, 0, "Research shows that examples help.");
+    document_repo
+        .insert_document_analysis(&document, &[paragraph], &[])
+        .await
+        .expect("insert document analysis");
+
+    let identity = document.clone();
+    document.notes = Some("Week 1 reading".to_string());
+    document.doc_number = Some(3);
+    document.doc_variant = DocumentVariant::Rise;
+    document.exclude_from_references = true;
+    document_repo
+        .update_document_metadata(&document)
+        .await
+        .expect("update document metadata");
+
+    let loaded = document_repo
+        .load_document_analysis(document.id)
+        .await
+        .expect("load updated document")
+        .expect("updated document exists")
+        .document;
+    assert_eq!(loaded.notes.as_deref(), Some("Week 1 reading"));
+    assert_eq!(loaded.doc_number, Some(3));
+    assert_eq!(loaded.doc_variant, DocumentVariant::Rise);
+    assert!(loaded.exclude_from_references);
+    assert_eq!(loaded.id, identity.id);
+    assert_eq!(loaded.project_id, identity.project_id);
+    assert_eq!(loaded.original_filename, identity.original_filename);
+    assert_eq!(loaded.source_path, identity.source_path);
+    assert_eq!(loaded.file_type, identity.file_type);
+    assert_eq!(loaded.archived_at, identity.archived_at);
+
+    let summary = document_repo
+        .list_documents_for_project(project.id)
+        .await
+        .expect("list updated documents");
+    assert_eq!(summary[0].display_name, "Week 1 reading");
+    assert_eq!(summary[0].doc_number, Some(3));
+    assert_eq!(summary[0].doc_variant, DocumentVariant::Rise);
+    assert!(summary[0].exclude_from_references);
+
+    document.notes = None;
+    document_repo
+        .update_document_metadata(&document)
+        .await
+        .expect("clear display name");
+    let fallback_summary = document_repo
+        .list_documents_for_project(project.id)
+        .await
+        .expect("list fallback document");
+    assert_eq!(fallback_summary[0].display_name, "lesson-1.docx");
 }
 
 #[tokio::test]
