@@ -1,5 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { RadciteDocumentVariant, SavedRadciteReviewSummary } from "../types";
+import type {
+  RadciteDocumentVariant,
+  RadciteReviewReportExport,
+  SavedRadciteReviewSummary,
+} from "../types";
 
 export type UpdateRadciteDocumentInput = {
   project_id?: string | null;
@@ -25,5 +29,13 @@ export function updateRadciteDocument(
       doc_variant: input.doc_variant,
       exclude_from_references: input.exclude_from_references,
     },
+  });
+}
+
+export function exportRadciteReviewReport(
+  documentId: string,
+): Promise<RadciteReviewReportExport> {
+  return invoke<RadciteReviewReportExport>("export_radcite_review_report", {
+    request: { document_id: documentId },
   });
 }

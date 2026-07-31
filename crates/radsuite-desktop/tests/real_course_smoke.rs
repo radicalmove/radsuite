@@ -10,15 +10,16 @@ use radsuite_db::migrate;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddRadciteModuleRequest, AnalyseDocxRequest, CourseModuleSummary,
     CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
-    ExportModuleReadingsRequest, ListModuleReadingsRequest, ListSavedReviewsRequest,
-    ModuleReadingImportCandidateSummary, PreviewModuleReadingsCsvImportRequest,
-    PreviewModuleReadingsPdfImportRequest, SaveModuleReadingsImportCandidate,
-    SaveModuleReadingsImportRequest, add_course_reference, add_radcite_module,
-    analyse_docx_for_review, create_radcite_project, export_course_references,
-    export_module_readings, list_module_readings, list_saved_radcite_reviews,
-    preview_module_readings_csv_import, preview_module_readings_pdf_import,
-    save_module_readings_import,
+    ExportModuleReadingsRequest, ExportRadciteReviewReportRequest, ListModuleReadingsRequest,
+    ListSavedReviewsRequest, ModuleReadingImportCandidateSummary,
+    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsPdfImportRequest,
+    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest, add_course_reference,
+    add_radcite_module, analyse_docx_for_review, create_radcite_project, export_course_references,
+    export_module_readings, export_radcite_review_report, list_module_readings,
+    list_saved_radcite_reviews, preview_module_readings_csv_import,
+    preview_module_readings_pdf_import, save_module_readings_import,
 };
+use serde_json::Value;
 use sqlx::sqlite::SqlitePoolOptions;
 
 #[tokio::test]
@@ -83,6 +84,25 @@ async fn real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_avail
 
     assert_eq!(crju201_review.project_id, crju201.id);
     assert!(crju201_review.summary.paragraph_count > 20);
+
+    let review_report = export_radcite_review_report(
+        &state,
+        ExportRadciteReviewReportRequest {
+            document_id: crju201_review.document_id,
+        },
+    )
+    .await?;
+    assert!(review_report.filename.ends_with("-citation-report.json"));
+    let report: Value = serde_json::from_str(&review_report.json)?;
+    assert_eq!(
+        report["statistics"]["total_paragraphs"],
+        crju201_review.summary.paragraph_count
+    );
+    assert!(
+        report["details"]
+            .as_array()
+            .is_some_and(|details| !details.is_empty())
+    );
 
     let csv_candidates = preview_module_readings_csv_import(
         &state,

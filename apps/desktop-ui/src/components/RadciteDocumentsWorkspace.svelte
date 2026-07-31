@@ -14,7 +14,10 @@
     retainDocumentEditorDraftAfterFailure,
     type DocumentEditorDraft,
   } from "../lib/documentEditorState";
-  import type { UpdateRadciteDocumentInput } from "../lib/documentCommands";
+  import {
+    exportRadciteReviewReport,
+    type UpdateRadciteDocumentInput,
+  } from "../lib/documentCommands";
   import { canUseSavedReviewForReadings } from "../lib/savedReviewCommands";
   import type {
     AnalyseDocxReviewResponse,
@@ -85,6 +88,9 @@
   let readingsImportLoading = $state(false);
   let readingsImportError = $state<string | null>(null);
   let readingsImportStatus = $state<string | null>(null);
+  let reviewReportLoading = $state(false);
+  let reviewReportError = $state<string | null>(null);
+  let reviewReportStatus = $state<string | null>(null);
   let editingDocumentId = $state<string | null>(null);
   let editorDraft = $state<DocumentEditorDraft | null>(null);
   let editorError = $state<string | null>(null);
@@ -158,6 +164,8 @@
       analysisError = null;
       readingsImportError = null;
       readingsImportStatus = null;
+      reviewReportError = null;
+      reviewReportStatus = null;
       onAnalysisResult(null);
       onSelectParagraph(null);
       onDocumentSourceChange(source);
@@ -200,6 +208,8 @@
     analysisError = null;
     readingsImportError = null;
     readingsImportStatus = null;
+    reviewReportError = null;
+    reviewReportStatus = null;
     onAnalysisResult(null);
     onSelectParagraph(null);
 
@@ -218,6 +228,33 @@
       analysisError = toErrorMessage(reason);
     } finally {
       analysisLoading = false;
+    }
+  }
+
+  async function downloadReviewReport() {
+    if (!analysisResult || reviewReportLoading) {
+      return;
+    }
+
+    reviewReportLoading = true;
+    reviewReportError = null;
+    reviewReportStatus = null;
+    try {
+      const report = await exportRadciteReviewReport(analysisResult.document_id);
+      const blob = new Blob([report.json], { type: report.content_type });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = report.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      reviewReportStatus = "Review report downloaded.";
+    } catch (reason: unknown) {
+      reviewReportError = `Could not download the review report: ${toErrorMessage(reason)}`;
+    } finally {
+      reviewReportLoading = false;
     }
   }
 
@@ -294,6 +331,14 @@
             Review readings
           </button>
         {/if}
+        <button
+          class="secondary-button compact-button"
+          type="button"
+          disabled={reviewReportLoading}
+          onclick={() => void downloadReviewReport()}
+        >
+          {reviewReportLoading ? "Preparing report" : "Download report"}
+        </button>
       </div>
     {/if}
   </div>
@@ -357,6 +402,11 @@
     <div class="notice analysis-notice">{readingsImportError}</div>
   {:else if readingsImportStatus}
     <div class="notice analysis-notice">{readingsImportStatus}</div>
+  {/if}
+  {#if reviewReportError}
+    <div class="notice analysis-notice">{reviewReportError}</div>
+  {:else if reviewReportStatus}
+    <div class="notice analysis-notice">{reviewReportStatus}</div>
   {/if}
 
   <section class="saved-reviews" aria-labelledby="saved-reviews-heading">
