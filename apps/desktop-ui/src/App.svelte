@@ -868,12 +868,12 @@
           class="status-chip"
           class:is-ready={status.sync_configured}
           title={status.sync_configured
-            ? "Cloud synchronisation is connected."
-            : "Cloud synchronisation is off; your work remains saved on this computer."}
-          aria-label={status.sync_configured ? "Cloud sync on" : "Cloud sync off"}
+            ? "Cloud backup is connected."
+            : "Cloud backup is off; your work remains saved on this computer and is not copied to another device."}
+          aria-label={status.sync_configured ? "Cloud backup on" : "Cloud backup off"}
         >
           <span class="status-dot"></span>
-          <span>{status.sync_configured ? "Cloud sync on" : "Cloud sync off"}</span>
+          <span>{status.sync_configured ? "Cloud backup on" : "Cloud backup off"}</span>
         </span>
         <button
           class="theme-toggle"
