@@ -1245,6 +1245,75 @@ async fn module_readings_commands_add_and_list_local_modules_and_readings() {
 }
 
 #[tokio::test]
+async fn manual_required_reading_upgrades_existing_optional_duplicate() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    let citation = "Rice, R. (2024). Learning through practice.";
+
+    let optional = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "optional".to_string(),
+            lesson_code: None,
+            apa_citation: Some(citation.to_string()),
+            citation_text: None,
+            doi: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add optional reading");
+
+    let required = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "required".to_string(),
+            lesson_code: None,
+            apa_citation: Some(citation.to_string()),
+            citation_text: None,
+            doi: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("upgrade optional reading");
+
+    assert_eq!(required.id, optional.id);
+    assert_eq!(required.reading_category, "compulsory");
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert_eq!(readings.len(), 1);
+    assert_eq!(readings[0].reading_category, "compulsory");
+}
+
+#[tokio::test]
 async fn module_readings_are_listed_and_exported_in_natural_lesson_order() {
     let state = desktop_state_with_migrated_pool().await;
     let module = add_radcite_module(
