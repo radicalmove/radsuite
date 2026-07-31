@@ -45,6 +45,7 @@
     addCourseReference,
     archiveCourseReference,
     listCourseReferences,
+    mergeCourseReferences,
     updateCourseReference,
     type UpdateCourseReferenceInput,
   } from "./lib/referenceCommands";
@@ -601,6 +602,25 @@
     }
   }
 
+  async function handleMergeCourseReferences(
+    primaryReferenceId: string,
+    mergeReferenceIds: string[],
+  ): Promise<boolean> {
+    courseReferencesError = null;
+    try {
+      await mergeCourseReferences({
+        primary_reference_id: primaryReferenceId,
+        merge_reference_ids: mergeReferenceIds,
+      });
+      referencesExport = null;
+      await refreshCourseReferences();
+      return true;
+    } catch (reason: unknown) {
+      courseReferencesError = `Could not merge course references: ${toErrorMessage(reason)}`;
+      return false;
+    }
+  }
+
   async function handleExportCourseReferences(forAkoLearn: boolean) {
     referencesExportLoading = true;
     referencesExportError = null;
@@ -865,6 +885,7 @@
         onAddReference={handleAddCourseReference}
         onUpdateReference={handleUpdateCourseReference}
         onArchiveReference={handleArchiveCourseReference}
+        onMergeReferences={handleMergeCourseReferences}
         onRefreshReferences={() => {
           void refreshCourseReferences();
         }}

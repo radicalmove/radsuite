@@ -477,6 +477,11 @@ pub trait ReferenceEntryRepository {
         reference_entry_id: ReferenceEntryId,
     ) -> Result<Option<ReferenceEntry>, DbError>;
     async fn update_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError>;
+    async fn merge_reference_entries(
+        &self,
+        primary: &ReferenceEntry,
+        merged_reference_ids: &[ReferenceEntryId],
+    ) -> Result<(), DbError>;
     async fn archive_reference_entry(
         &self,
         reference_entry_id: ReferenceEntryId,
@@ -687,6 +692,102 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         .execute(&self.pool)
         .await?;
 
+        Ok(())
+    }
+
+    async fn merge_reference_entries(
+        &self,
+        primary: &ReferenceEntry,
+        merged_reference_ids: &[ReferenceEntryId],
+    ) -> Result<(), DbError> {
+        let mut tx = self.pool.begin().await?;
+        let authors_json = serde_json::to_string(&primary.authors)?;
+        let now = Utc::now().to_rfc3339();
+
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET module_id = ?2,
+                document_id = ?3,
+                paragraph_id = ?4,
+                reference_type = ?5,
+                display_order = ?6,
+                lesson_code = ?7,
+                reading_category = ?8,
+                citation_text = ?9,
+                apa_citation = ?10,
+                title = ?11,
+                authors_json = ?12,
+                publication_year = ?13,
+                source = ?14,
+                doi = ?15,
+                url = ?16,
+                notes = ?17,
+                reading_notes = ?18,
+                estimated_reading_time = ?19,
+                apa_validation_status = ?20,
+                apa_validation_report = ?21,
+                updated_at = ?22
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(primary.id.0.to_string())
+        .bind(primary.module_id.map(|id| id.0.to_string()))
+        .bind(primary.document_id.map(|id| id.0.to_string()))
+        .bind(primary.paragraph_id.map(|id| id.0.to_string()))
+        .bind(reference_entry_type_as_str(primary.reference_type))
+        .bind(primary.display_order)
+        .bind(primary.lesson_code.as_deref())
+        .bind(primary.reading_category.map(reading_category_as_str))
+        .bind(primary.citation_text.as_deref())
+        .bind(primary.apa_citation.as_deref())
+        .bind(primary.title.as_deref())
+        .bind(authors_json)
+        .bind(primary.publication_year.as_deref())
+        .bind(primary.source.as_deref())
+        .bind(primary.doi.as_deref())
+        .bind(primary.url.as_deref())
+        .bind(primary.notes.as_deref())
+        .bind(primary.reading_notes.as_deref())
+        .bind(primary.estimated_reading_time.as_deref())
+        .bind(apa_validation_status_as_str(primary.apa_validation_status))
+        .bind(primary.apa_validation_report.as_deref())
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        for merged_reference_id in merged_reference_ids {
+            sqlx::query(
+                r#"
+                UPDATE paragraph_citations
+                SET reference_entry_id = ?2,
+                    updated_at = ?3
+                WHERE reference_entry_id = ?1
+                "#,
+            )
+            .bind(merged_reference_id.0.to_string())
+            .bind(primary.id.0.to_string())
+            .bind(&now)
+            .execute(&mut *tx)
+            .await?;
+
+            sqlx::query(
+                r#"
+                UPDATE reference_entries
+                SET archived_at = ?2,
+                    updated_at = ?2
+                WHERE id = ?1
+                  AND archived_at IS NULL
+                "#,
+            )
+            .bind(merged_reference_id.0.to_string())
+            .bind(&now)
+            .execute(&mut *tx)
+            .await?;
+        }
+
+        tx.commit().await?;
         Ok(())
     }
 

@@ -397,6 +397,12 @@ pub struct ArchiveCourseReferenceRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MergeCourseReferencesRequest {
+    pub primary_reference_id: ReferenceEntryId,
+    pub merge_reference_ids: Vec<ReferenceEntryId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AddRadciteModuleRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
@@ -652,6 +658,8 @@ impl From<RadciteProjectLookupError> for RadciteArchiveError {
 pub enum CourseReferenceError {
     #[error("enter reference text before adding a course reference")]
     EmptyReferenceText,
+    #[error("{0}")]
+    InvalidMerge(String),
     #[error("could not load course reference {0}")]
     MissingReference(ReferenceEntryId),
     #[error("could not load RADcite project {0}")]
@@ -1479,6 +1487,64 @@ pub async fn archive_course_reference(
     Ok(course_reference_summary(reference))
 }
 
+pub async fn merge_course_references(
+    state: &DesktopState,
+    request: MergeCourseReferencesRequest,
+) -> Result<CourseReferenceSummary, CourseReferenceError> {
+    if request.merge_reference_ids.is_empty() {
+        return Err(CourseReferenceError::InvalidMerge(
+            "select at least one other course reference to merge".to_string(),
+        ));
+    }
+    if request.merge_reference_ids.len() > 10 {
+        return Err(CourseReferenceError::InvalidMerge(
+            "choose no more than 10 duplicate references at a time".to_string(),
+        ));
+    }
+    if request
+        .merge_reference_ids
+        .contains(&request.primary_reference_id)
+    {
+        return Err(CourseReferenceError::InvalidMerge(
+            "the primary reference must be different from the references being merged".to_string(),
+        ));
+    }
+    if request
+        .merge_reference_ids
+        .iter()
+        .enumerate()
+        .any(|(index, reference_id)| request.merge_reference_ids[..index].contains(reference_id))
+    {
+        return Err(CourseReferenceError::InvalidMerge(
+            "a duplicate reference can only be selected once".to_string(),
+        ));
+    }
+
+    let mut primary = load_course_reference_or_error(state, request.primary_reference_id).await?;
+    let mut duplicates = Vec::with_capacity(request.merge_reference_ids.len());
+    for reference_id in &request.merge_reference_ids {
+        let duplicate = load_course_reference_or_error(state, *reference_id).await?;
+        if duplicate.project_id != primary.project_id {
+            return Err(CourseReferenceError::InvalidMerge(
+                "course references must belong to the same project".to_string(),
+            ));
+        }
+        duplicates.push(duplicate);
+    }
+
+    for duplicate in &duplicates {
+        fill_missing_course_reference_metadata(&mut primary, duplicate);
+    }
+    apply_basic_apa_validation(&mut primary);
+    primary.updated_at = Utc::now();
+
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .merge_reference_entries(&primary, &request.merge_reference_ids)
+        .await?;
+
+    Ok(course_reference_summary(primary))
+}
+
 async fn find_existing_course_reference(
     reference_repo: &SqliteReferenceEntryRepository,
     project_id: ProjectId,
@@ -1497,6 +1563,39 @@ async fn find_existing_course_reference(
             .map(normalised_reference_identity)
             .is_some_and(|existing_key| existing_key == import_key)
     }))
+}
+
+fn fill_missing_course_reference_metadata(
+    primary: &mut ReferenceEntry,
+    duplicate: &ReferenceEntry,
+) {
+    if primary.citation_text.is_none() {
+        primary.citation_text = duplicate.citation_text.clone();
+    }
+    if primary.apa_citation.is_none() {
+        primary.apa_citation = duplicate.apa_citation.clone();
+    }
+    if primary.title.is_none() {
+        primary.title = duplicate.title.clone();
+    }
+    if primary.authors.is_empty() {
+        primary.authors = duplicate.authors.clone();
+    }
+    if primary.publication_year.is_none() {
+        primary.publication_year = duplicate.publication_year.clone();
+    }
+    if primary.source.is_none() {
+        primary.source = duplicate.source.clone();
+    }
+    if primary.doi.is_none() {
+        primary.doi = duplicate.doi.clone();
+    }
+    if primary.url.is_none() {
+        primary.url = duplicate.url.clone();
+    }
+    if primary.notes.is_none() {
+        primary.notes = duplicate.notes.clone();
+    }
 }
 
 pub async fn list_radcite_modules(

@@ -5,6 +5,7 @@ import {
   addCourseReference,
   archiveCourseReference,
   listCourseReferences,
+  mergeCourseReferences,
   updateCourseReference,
 } from "./referenceCommands";
 
@@ -93,6 +94,24 @@ describe("reference commands", () => {
     expect(invoke).toHaveBeenCalledWith("archive_course_reference", {
       request: {
         reference_id: "reference-1",
+      },
+    });
+  });
+
+  test("merges selected course references into a primary reference", async () => {
+    vi.mocked(invoke).mockResolvedValue(reference);
+
+    await expect(
+      mergeCourseReferences({
+        primary_reference_id: "reference-1",
+        merge_reference_ids: ["reference-2", "reference-3"],
+      }),
+    ).resolves.toBe(reference);
+
+    expect(invoke).toHaveBeenCalledWith("merge_course_references", {
+      request: {
+        primary_reference_id: "reference-1",
+        merge_reference_ids: ["reference-2", "reference-3"],
       },
     });
   });

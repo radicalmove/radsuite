@@ -80,6 +80,9 @@ const checks = [
   ["saved review action layout", ".saved-review-actions"],
   ["import source selector styling", ".import-source-toggle"],
   ["danger button styling", ".danger-button"],
+  ["reference selection styling", ".reference-select"],
+  ["reference merge controls styling", ".reference-bulk-actions"],
+  ["reference primary selector styling", ".reference-primary-select"],
 ];
 
 const missing = checks
@@ -115,13 +118,21 @@ for (const needle of ["radciteProjectNavState", "radciteTheme", "browserStorage"
   }
 }
 
-for (const needle of ["reference-add-form", "reference-list-panel", "Course References"]) {
+for (const needle of [
+  "reference-add-form",
+  "reference-list-panel",
+  "Course References",
+  "Merge selected",
+  "Clear selection",
+  "reference-select",
+  "reference-primary-select",
+]) {
   if (!referencesWorkspace.includes(needle) && !css.includes(needle)) {
     missing.push(`references workspace includes ${needle}`);
   }
 }
 
-for (const needle of ["listCourseReferences", "addCourseReference"]) {
+for (const needle of ["listCourseReferences", "addCourseReference", "mergeCourseReferences"]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
   }
