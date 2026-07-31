@@ -59,6 +59,13 @@ pub struct ListRadcastAudioRequest {
     pub project_id: Option<radsuite_core::ProjectId>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeleteRadcastAudioRequest {
+    #[serde(default)]
+    pub project_id: Option<radsuite_core::ProjectId>,
+    pub source_id: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProcessRadcastAudioRequest {
     #[serde(default)]
@@ -275,6 +282,38 @@ pub(crate) fn list_audio(
         outputs: manifest.outputs,
         settings: manifest.settings,
     })
+}
+
+pub(crate) fn delete_audio(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: DeleteRadcastAudioRequest,
+) -> Result<(), RadcastStorageError> {
+    let mut manifest = load_manifest(data_dir, project_id)?;
+    let source_index = manifest
+        .sources
+        .iter()
+        .position(|source| source.id == request.source_id)
+        .ok_or_else(|| RadcastStorageError::MissingSource(request.source_id.clone()))?;
+    let source = manifest.sources.remove(source_index);
+    manifest
+        .settings
+        .trim_ranges_by_source_id
+        .remove(&source.id);
+
+    write_manifest(data_dir, project_id, &manifest)?;
+
+    let source_path = PathBuf::from(source.path);
+    let project_root = project_root(data_dir, project_id);
+    if let (Ok(resolved_path), Ok(resolved_root)) =
+        (source_path.canonicalize(), project_root.canonicalize())
+        && resolved_path.starts_with(resolved_root)
+        && resolved_path.is_file()
+    {
+        fs::remove_file(resolved_path)?;
+    }
+
+    Ok(())
 }
 
 pub(crate) fn save_settings(

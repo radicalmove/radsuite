@@ -13,9 +13,10 @@ use radsuite_desktop::radcast::{
     process_audio_with_processors_and_enhancement_with_progress_and_cancellation,
 };
 use radsuite_desktop::{
-    CreateRadciteProjectRequest, DesktopState, ImportRadcastAudioRequest, ListRadcastAudioRequest,
-    ProcessRadcastAudioRequest, RadcastAudioError, RadcastJobStatus, RadcastStorageError,
-    SaveRadcastSettingsRequest, cancel_radcast_audio, create_radcite_project,
+    CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
+    ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
+    RadcastAudioError, RadcastJobStatus, RadcastStorageError, SaveRadcastSettingsRequest,
+    cancel_radcast_audio, create_radcite_project, delete_radcast_audio,
     get_radcast_capabilities_with_processor, get_radcast_capabilities_with_processors,
     import_radcast_audio_with_processor, list_radcast_audio, list_radcite_projects,
     process_radcast_audio_with_processor, process_radcast_audio_with_processors,
@@ -123,6 +124,36 @@ async fn radcast_import_process_and_list_are_project_scoped() {
     .expect("list second project audio");
     assert!(other_audio.sources.is_empty());
     assert!(other_audio.outputs.is_empty());
+
+    let source_path = source.path.clone();
+    delete_radcast_audio(
+        &state,
+        DeleteRadcastAudioRequest {
+            project_id: Some(default_project),
+            source_id: source.id.clone(),
+        },
+    )
+    .await
+    .expect("remove saved source");
+
+    let after_delete = list_radcast_audio(
+        &state,
+        ListRadcastAudioRequest {
+            project_id: Some(default_project),
+        },
+    )
+    .await
+    .expect("list audio after source removal");
+    assert!(after_delete.sources.is_empty());
+    assert_eq!(after_delete.outputs.len(), 1);
+    assert!(
+        !after_delete
+            .settings
+            .trim_ranges_by_source_id
+            .contains_key(&source.id)
+    );
+    assert!(!Path::new(&source_path).exists());
+    assert!(Path::new(&output.path).is_file());
 
     remove_dir(dir);
 }

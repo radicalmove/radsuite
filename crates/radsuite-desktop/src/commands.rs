@@ -28,9 +28,9 @@ use uuid::Uuid;
 use crate::DesktopState;
 
 pub use crate::radcast::{
-    ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
-    RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastProcessingPhase,
-    RadcastProjectSettings, RadcastStorageError,
+    DeleteRadcastAudioRequest, ImportRadcastAudioRequest, ListRadcastAudioRequest,
+    ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
+    RadcastProcessingPhase, RadcastProjectSettings, RadcastStorageError,
 };
 pub use radsuite_engines::{AudioOutputFormat, CaptionFormat};
 
@@ -877,6 +877,19 @@ pub async fn list_radcast_audio(
         &state.paths.data_dir,
         project.id,
     )?)
+}
+
+pub async fn delete_radcast_audio(
+    state: &DesktopState,
+    request: DeleteRadcastAudioRequest,
+) -> Result<(), RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::delete_audio(&data_dir, project.id, request)
+    })
+    .await?
+    .map_err(Into::into)
 }
 
 pub async fn import_radcast_audio(

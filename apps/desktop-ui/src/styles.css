@@ -712,6 +712,13 @@ button:disabled {
   width: 100%;
 }
 
+.radcast-source-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-2);
+}
+
 .radcast-source-meta {
   display: grid;
   gap: 3px;
@@ -2206,7 +2213,8 @@ button:disabled {
 
   .radcast-grid,
   .radcast-trim-fields,
-  .radcast-output-row {
+  .radcast-output-row,
+  .radcast-source-controls {
     grid-template-columns: 1fr;
   }
 
