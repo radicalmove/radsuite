@@ -8,7 +8,7 @@ use radsuite_core::ReadingCategory;
 use regex::Regex;
 use thiserror::Error;
 
-use crate::ReadingImportCandidate;
+use crate::{ReadingImportCandidate, docx::extract_doi};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CsvReadingExtractionRequest {
@@ -49,6 +49,10 @@ pub fn extract_csv_reading_candidates(
         let module_title = optional_plain_text(field(&record, headers.module_title));
         let url = optional_plain_text(field(&record, headers.url))
             .or_else(|| extract_first_url(&apa_citation));
+        let doi = field(&record, headers.doi)
+            .and_then(extract_doi)
+            .or_else(|| extract_doi(&apa_citation))
+            .or_else(|| url.as_deref().and_then(extract_doi));
         let reading_category = field(&record, headers.category)
             .and_then(parse_reading_category)
             .unwrap_or(ReadingCategory::Compulsory);
@@ -75,6 +79,7 @@ pub fn extract_csv_reading_candidates(
             lesson_code,
             apa_citation,
             citation_text: None,
+            doi,
             url,
         });
     }
@@ -89,6 +94,7 @@ struct CsvHeaderMap {
     module_order: Option<usize>,
     module_title: Option<usize>,
     category: Option<usize>,
+    doi: Option<usize>,
     url: Option<usize>,
 }
 
@@ -111,6 +117,9 @@ impl CsvHeaderMap {
                 }
                 "readingcategory" | "category" => {
                     map.category = map.category.or(Some(index));
+                }
+                "doi" | "digitalobjectidentifier" => {
+                    map.doi = map.doi.or(Some(index));
                 }
                 "url" | "link" => {
                     map.url = map.url.or(Some(index));

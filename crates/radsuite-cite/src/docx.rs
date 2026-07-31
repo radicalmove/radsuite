@@ -43,6 +43,7 @@ pub struct ReadingImportCandidate {
     pub lesson_code: Option<String>,
     pub apa_citation: String,
     pub citation_text: Option<String>,
+    pub doi: Option<String>,
     pub url: Option<String>,
 }
 
@@ -174,6 +175,7 @@ pub(crate) fn extract_reading_candidates_from_paragraphs(
         }
 
         let url = extract_first_url(reference_text).or_else(|| extract_first_url(&plain));
+        let doi = extract_doi(reference_text).or_else(|| url.as_deref().and_then(extract_doi));
         if !(looks_like_reference(reference_text)
             || in_reading_section
                 && looks_like_standalone_url_reference(reference_text, url.as_deref()))
@@ -200,6 +202,7 @@ pub(crate) fn extract_reading_candidates_from_paragraphs(
             lesson_code,
             apa_citation,
             citation_text: (body.is_some()).then_some(plain.clone()),
+            doi,
             url,
         };
 
@@ -381,6 +384,26 @@ fn extract_first_url(text: &str) -> Option<String> {
             .as_str()
             .trim_end_matches(['.', ',', ')', ';'])
             .to_string()
+    })
+}
+
+pub(crate) fn extract_doi(text: &str) -> Option<String> {
+    let doi =
+        Regex::new(r#"(?i)(?:https?://(?:dx\.)?doi\.org/|doi:\s*|\b)(10\.\d{4,9}/[^\s<>"\]]+)"#)
+            .expect("doi regex");
+
+    doi.captures(text).and_then(|captures| {
+        captures.get(1).map(|matched| {
+            matched
+                .as_str()
+                .trim_end_matches(|character| {
+                    matches!(
+                        character,
+                        '.' | ',' | ';' | ':' | ')' | ']' | '}' | '"' | '\''
+                    )
+                })
+                .to_string()
+        })
     })
 }
 

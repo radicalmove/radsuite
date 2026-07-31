@@ -52,6 +52,10 @@ fn readings_pdf_import_extracts_microlearning_readings_from_multiple_pdfs() {
         Some("https://doi.org/10.1080/1553118X.2022.2137674")
     );
     assert_eq!(
+        candidates[0].doi.as_deref(),
+        Some("10.1080/1553118X.2022.2137674")
+    );
+    assert_eq!(
         candidates[1].lesson_code.as_deref(),
         Some("Microlearning 4")
     );

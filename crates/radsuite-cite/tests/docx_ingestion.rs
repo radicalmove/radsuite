@@ -214,6 +214,63 @@ fn docx_reading_import_extracts_no_date_apa_candidates() {
 }
 
 #[test]
+fn docx_reading_import_extracts_canonical_doi_from_doi_url() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-doi.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Required readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Goldberg, M. (2023). Strategic campaigns. https://doi.org/10.1080/1553118X.2022.2137674</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-doi.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(
+        candidates[0].doi.as_deref(),
+        Some("10.1080/1553118X.2022.2137674")
+    );
+    assert_eq!(
+        candidates[0].url.as_deref(),
+        Some("https://doi.org/10.1080/1553118X.2022.2137674")
+    );
+}
+
+#[test]
+fn docx_reading_import_extracts_bare_doi_without_creating_a_url() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-bare-doi.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Required readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Goldberg, M. (2023). Strategic campaigns. doi:10.1080/1553118X.2022.2137674</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-bare-doi.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(
+        candidates[0].doi.as_deref(),
+        Some("10.1080/1553118X.2022.2137674")
+    );
+    assert_eq!(candidates[0].url, None);
+}
+
+#[test]
 fn docx_reading_import_extracts_standalone_url_readings() {
     let path = write_docx_with_document_xml(
         "docx-reading-import-url-only-candidates.docx",

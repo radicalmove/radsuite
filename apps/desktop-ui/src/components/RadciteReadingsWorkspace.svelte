@@ -29,13 +29,14 @@
 
   type EditableImportCandidate = Omit<
     ModuleReadingImportCandidate,
-    "lesson_code" | "citation_text" | "url"
+    "lesson_code" | "citation_text" | "doi" | "url"
   > & {
     id: string;
     selected: boolean;
     module_id: string;
     lesson_code: string;
     citation_text: string;
+    doi: string;
     url: string;
     notes: string;
     reading_notes: string;
@@ -226,6 +227,7 @@
       ),
       lesson_code: candidate.lesson_code ?? "",
       citation_text: candidate.citation_text ?? "",
+      doi: candidate.doi ?? "",
       url: candidate.url ?? "",
       notes: defaultReadingImportNotes(candidate),
       reading_notes: "",
@@ -435,6 +437,7 @@
           lesson_code: candidate.lesson_code,
           apa_citation: candidate.apa_citation,
           citation_text: candidate.citation_text,
+          doi: candidate.doi,
           url: candidate.url,
           notes: candidate.notes,
           reading_notes: candidate.reading_notes,
@@ -779,6 +782,10 @@
               <label>
                 <span class="field-label">URL</span>
                 <input class="path-input" type="url" bind:value={candidate.url} />
+              </label>
+              <label>
+                <span class="field-label">DOI</span>
+                <input class="path-input" type="text" bind:value={candidate.doi} />
               </label>
               <label>
                 <span class="field-label">Student notes</span>
