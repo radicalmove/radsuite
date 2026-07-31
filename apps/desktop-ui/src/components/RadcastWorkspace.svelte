@@ -4,6 +4,8 @@
   import { open } from "@tauri-apps/plugin-dialog";
   import type {
     AudioOutputFormat,
+    CaptionFormat,
+    RadcastCapabilityStatus,
     RadcastAudioListing,
     RadcastAudioOutput,
     RadcastAudioSource,
@@ -21,11 +23,19 @@
   let clipStart = $state(0);
   let clipEnd = $state(0);
   let outputFormat = $state<AudioOutputFormat>("mp3");
+  let captionFormat = $state<CaptionFormat | null>(null);
+  let captionLanguage = $state("en");
   let cleanupEnabled = $state(true);
+  let shortenPauses = $state(false);
+  let maxSilenceSeconds = $state(1.0);
   let loading = $state(false);
   let processing = $state(false);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
+  let captionCapability = $state<RadcastCapabilityStatus>({
+    caption_available: false,
+    caption_detail: "Checking local caption support.",
+  });
 
   let selectedSource = $derived(
     sources.find((source) => source.id === selectedSourceId) ?? sources[0] ?? null,
@@ -72,6 +82,8 @@
       const result = await invoke<RadcastAudioListing>("list_radcast_audio", {
         request: { project_id: selectedProjectId },
       });
+      captionCapability = await invoke<RadcastCapabilityStatus>("get_radcast_capabilities");
+      if (!captionCapability.caption_available) captionFormat = null;
       sources = result.sources;
       outputs = result.outputs;
       const nextSource = result.sources.find((source) => source.id === selectedSourceId) ?? result.sources[0] ?? null;
@@ -133,10 +145,15 @@
           clip_start_seconds: clipStart,
           clip_end_seconds: clipEnd,
           cleanup_enabled: cleanupEnabled,
+          max_silence_seconds: shortenPauses ? maxSilenceSeconds : null,
+          caption_format: captionFormat,
+          caption_language: captionLanguage,
         },
       });
       outputs = [output, ...outputs];
-      status = "Audio processing complete";
+      status = output.caption_format
+        ? `Audio processing complete with ${output.caption_segment_count} ${output.caption_format.toUpperCase()} caption${output.caption_segment_count === 1 ? "" : "s"}`
+        : "Audio processing complete";
     } catch (reason: unknown) {
       status = null;
       error = `Could not process audio: ${toErrorMessage(reason)}`;
@@ -237,6 +254,32 @@
           <option value="wav">WAV</option>
         </select>
       </label>
+      <label class="stack settings-compact-field">
+        <span>Closed captions</span>
+        <select
+          value={captionFormat ?? ""}
+          disabled={!captionCapability.caption_available}
+          onchange={(event) => {
+            const value = (event.currentTarget as HTMLSelectElement).value;
+            captionFormat = value === "" ? null : (value as CaptionFormat);
+          }}
+        >
+          <option value="">Do not generate</option>
+          <option value="srt">SRT</option>
+          <option value="vtt">VTT</option>
+        </select>
+        <small class="field-note">{captionCapability.caption_detail}</small>
+      </label>
+      {#if captionFormat}
+        <label class="stack settings-compact-field">
+          <span>Caption language</span>
+          <select bind:value={captionLanguage}>
+            <option value="en">English</option>
+            <option value="mi">Maori</option>
+            <option value="auto">Auto-detect</option>
+          </select>
+        </label>
+      {/if}
       <label class="radcast-check">
         <input type="checkbox" bind:checked={cleanupEnabled} />
         <span>
@@ -244,6 +287,24 @@
           <small>Noise reduction and speech-focused loudness balancing.</small>
         </span>
       </label>
+      <label class="radcast-check">
+        <input type="checkbox" bind:checked={shortenPauses} />
+        <span>
+          <strong>Shorten long pauses</strong>
+          <small>Keep a controlled amount of silence between spoken sections.</small>
+        </span>
+      </label>
+      {#if shortenPauses}
+        <label class="stack settings-compact-field">
+          <span>Keep each pause up to</span>
+          <select bind:value={maxSilenceSeconds}>
+            <option value={0.5}>0.5 seconds</option>
+            <option value={1}>1 second</option>
+            <option value={1.5}>1.5 seconds</option>
+            <option value={2}>2 seconds</option>
+          </select>
+        </label>
+      {/if}
       <div class="radcast-processing-note">
         <span class="status-dot is-ready"></span>
         <span>Local FFmpeg processing is available on this computer.</span>
@@ -268,12 +329,21 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.cleanup_enabled ? " · Cleaned" : ""}</span>
+              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}</span>
             </div>
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.
             </audio>
-            <a class="secondary-button compact-button" href={convertFileSrc(output.path)} download={output.filename}>Download</a>
+            <div class="radcast-output-actions">
+              <a class="secondary-button compact-button" href={convertFileSrc(output.path)} download={output.filename}>Download audio</a>
+              {#if output.caption_path && output.caption_format}
+                <a
+                  class="secondary-button compact-button"
+                  href={convertFileSrc(output.caption_path)}
+                  download={`${output.filename}.${output.caption_format}`}
+                >Download {output.caption_format.toUpperCase()}</a>
+              {/if}
+            </div>
           </article>
         {/each}
       </div>

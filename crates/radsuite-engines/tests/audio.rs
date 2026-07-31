@@ -59,6 +59,25 @@ fn audio_processing_builds_trimmed_cleanup_commands_for_mp3_and_wav() {
 }
 
 #[test]
+fn audio_processing_keeps_only_the_configured_length_of_long_silences() {
+    let args = AudioProcessor::ffmpeg_arguments(&AudioProcessingRequest {
+        max_silence_seconds: Some(1.0),
+        ..request(AudioOutputFormat::Mp3)
+    })
+    .expect("build pause cleanup arguments");
+    let args = display_args(&args);
+
+    let filter = args
+        .windows(2)
+        .find(|pair| pair[0] == "-af")
+        .map(|pair| pair[1].clone())
+        .expect("audio filter");
+    assert!(filter.contains("silenceremove"));
+    assert!(filter.contains("stop_duration=1.000"));
+    assert!(filter.contains("stop_silence=1.000"));
+}
+
+#[test]
 fn audio_processor_runs_with_deterministic_tool_commands() {
     let dir = test_dir("process");
     let ffmpeg = write_executable(
@@ -79,6 +98,7 @@ fn audio_processor_runs_with_deterministic_tool_commands() {
             clip_start_seconds: None,
             clip_end_seconds: None,
             cleanup_enabled: true,
+            max_silence_seconds: None,
         })
         .expect("process audio");
 
@@ -101,6 +121,7 @@ fn request(output_format: AudioOutputFormat) -> AudioProcessingRequest {
         clip_start_seconds: None,
         clip_end_seconds: None,
         cleanup_enabled: false,
+        max_silence_seconds: None,
     }
 }
 
