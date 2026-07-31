@@ -26,6 +26,14 @@ course_readings.csv preview/import, multi-file SCORM-style learner-reader PDF
 preview, review report export, module readings export, course references export,
 and project-scoped saved review lists.
 
+RADcast also has a local smoke test for a real audio file. It is skipped unless
+`RADSUITE_REAL_RADCAST_AUDIO` is set, so CI does not need access to course audio.
+
+```bash
+RADSUITE_REAL_RADCAST_AUDIO="/Users/rcd58/course-output-system/Courses/CRJU150/Cleaned up lecture audio/module8_snippets/m8_01_manaakitanga_kaitiakitanga.mp3" \
+  cargo test -p radsuite-desktop --test radcast_contracts radcast_real_audio_fixture_can_process_when_available -- --nocapture
+```
+
 ## Scope
 
 This repository is the new Rust/Tauri implementation of RADsuite. The existing Python apps remain reference implementations only.
