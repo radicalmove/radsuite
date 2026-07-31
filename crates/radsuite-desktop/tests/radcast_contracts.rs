@@ -16,7 +16,7 @@ use radsuite_desktop::{
 };
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
-    EnhancementModel, EnhancementProcessor, FillerRemovalMode,
+    EnhancementModel, EnhancementProcessor, EnhancementQuality, FillerRemovalMode,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 
@@ -71,6 +71,7 @@ async fn radcast_import_process_and_list_are_project_scoped() {
             caption_quality_mode: CaptionQualityMode::Reviewed,
             caption_glossary: None,
             enhancement_model: EnhancementModel::None,
+            enhancement_quality: EnhancementQuality::Standard,
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -129,6 +130,7 @@ async fn radcast_processing_rejects_unknown_sources() {
             caption_quality_mode: CaptionQualityMode::Reviewed,
             caption_glossary: None,
             enhancement_model: EnhancementModel::None,
+            enhancement_quality: EnhancementQuality::Standard,
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -177,6 +179,7 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
             caption_quality_mode: CaptionQualityMode::Reviewed,
             caption_glossary: Some("Te Tiriti o Waitangi".to_string()),
             enhancement_model: EnhancementModel::None,
+            enhancement_quality: EnhancementQuality::Standard,
             remove_filler_words: true,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -249,6 +252,7 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
             caption_quality_mode: CaptionQualityMode::Reviewed,
             caption_glossary: None,
             enhancement_model: EnhancementModel::StudioV18,
+            enhancement_quality: EnhancementQuality::Fast,
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -260,6 +264,7 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
     .expect("process with enhancement");
 
     assert_eq!(output.enhancement_model, EnhancementModel::StudioV18);
+    assert_eq!(output.enhancement_quality, EnhancementQuality::Fast);
     assert!(Path::new(&output.path).is_file());
     remove_dir(dir);
 }

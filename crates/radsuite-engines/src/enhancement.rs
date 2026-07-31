@@ -15,6 +15,15 @@ pub enum EnhancementModel {
     StudioV18,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum EnhancementQuality {
+    Fast,
+    #[default]
+    Standard,
+    High,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnhancementProcessingRequest {
     pub input_path: PathBuf,
@@ -80,6 +89,14 @@ impl EnhancementProcessor {
         &self,
         request: &EnhancementProcessingRequest,
     ) -> Result<Vec<OsString>, EnhancementProcessingError> {
+        self.helper_arguments_with_quality(request, EnhancementQuality::High)
+    }
+
+    pub fn helper_arguments_with_quality(
+        &self,
+        request: &EnhancementProcessingRequest,
+        quality: EnhancementQuality,
+    ) -> Result<Vec<OsString>, EnhancementProcessingError> {
         let input_dir = request
             .input_path
             .parent()
@@ -99,7 +116,7 @@ impl EnhancementProcessor {
             OsString::from("--device"),
             OsString::from(optimized_device()),
             OsString::from("--nfe"),
-            OsString::from("32"),
+            OsString::from(quality.nfe()),
             OsString::from("--lambd"),
             OsString::from("0.62"),
             OsString::from("--tau"),
@@ -124,6 +141,14 @@ impl EnhancementProcessor {
     pub fn process(
         &self,
         request: EnhancementProcessingRequest,
+    ) -> Result<EnhancementProcessingResult, EnhancementProcessingError> {
+        self.process_with_quality(request, EnhancementQuality::High)
+    }
+
+    pub fn process_with_quality(
+        &self,
+        request: EnhancementProcessingRequest,
+        quality: EnhancementQuality,
     ) -> Result<EnhancementProcessingResult, EnhancementProcessingError> {
         if !request.input_path.is_file() {
             return Err(EnhancementProcessingError::MissingInput {
@@ -157,7 +182,7 @@ impl EnhancementProcessor {
             input_path: staged_input,
             output_path: helper_output.clone(),
         };
-        let args = self.helper_arguments(&staged_request)?;
+        let args = self.helper_arguments_with_quality(&staged_request, quality)?;
         let thread_count = local_thread_count();
         let result = Command::new(&self.command)
             .args(&args)
@@ -189,6 +214,16 @@ impl EnhancementProcessor {
         Ok(EnhancementProcessingResult {
             output_path: request.output_path,
         })
+    }
+}
+
+impl EnhancementQuality {
+    fn nfe(self) -> &'static str {
+        match self {
+            Self::Fast => "8",
+            Self::Standard => "16",
+            Self::High => "32",
+        }
     }
 }
 
