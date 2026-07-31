@@ -70,4 +70,12 @@ async fn project_archive_migration_preserves_existing_projects_and_children() {
     .await
     .expect("count preserved modules");
     assert_eq!(module_count, 1);
+
+    let source_path_column_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('documents') WHERE name = 'source_path'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("check source path column");
+    assert_eq!(source_path_column_count, 1);
 }
