@@ -17,12 +17,14 @@ export type ProjectNavItem = {
   code: string;
   title: string;
   structureMode: "modules" | "weeks";
+  archived_at: string | null;
 };
 
 export type RadciteProjectSummary = {
   id: string;
   code: string | null;
   title: string;
+  archived_at: string | null;
 };
 
 export type ToolArea =
