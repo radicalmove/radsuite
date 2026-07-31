@@ -6,6 +6,9 @@ use std::{
 };
 
 use radsuite_db::migrate;
+use radsuite_desktop::radcast::{
+    RadcastProcessingPhase, process_audio_with_processors_and_enhancement_with_progress,
+};
 use radsuite_desktop::{
     CreateRadciteProjectRequest, DesktopState, ImportRadcastAudioRequest, ListRadcastAudioRequest,
     ProcessRadcastAudioRequest, RadcastAudioError, RadcastStorageError, create_radcite_project,
@@ -266,6 +269,64 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
     assert_eq!(output.enhancement_model, EnhancementModel::StudioV18);
     assert_eq!(output.enhancement_quality, EnhancementQuality::Fast);
     assert!(Path::new(&output.path).is_file());
+    remove_dir(dir);
+}
+
+#[tokio::test]
+async fn radcast_processing_reports_ordered_local_progress_phases() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let dir = test_dir("progress");
+    let source_path = dir.join("lecture.wav");
+    fs::write(&source_path, b"source audio").expect("write source");
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("progress-lecture.wav".to_string()),
+        },
+        fake_processor(&dir),
+    )
+    .await
+    .expect("import source");
+
+    let mut phases = Vec::new();
+    process_audio_with_processors_and_enhancement_with_progress(
+        &state.paths.data_dir,
+        projects[0].id,
+        ProcessRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            source_id: source.id,
+            output_format: AudioOutputFormat::Mp3,
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+            cleanup_enabled: false,
+            max_silence_seconds: None,
+            caption_format: None,
+            caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::None,
+            enhancement_quality: EnhancementQuality::Standard,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
+        },
+        fake_processor(&dir),
+        CaptionProcessor::default(),
+        EnhancementProcessor::default(),
+        |progress| phases.push(progress.phase),
+    )
+    .expect("process source");
+
+    assert_eq!(
+        phases,
+        vec![
+            RadcastProcessingPhase::Preparing,
+            RadcastProcessingPhase::RenderingAudio,
+            RadcastProcessingPhase::SavingOutput,
+        ]
+    );
     remove_dir(dir);
 }
 

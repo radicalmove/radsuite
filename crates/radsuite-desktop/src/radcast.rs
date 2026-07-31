@@ -127,6 +127,24 @@ pub struct RadcastAudioListing {
     pub outputs: Vec<RadcastAudioOutput>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RadcastProcessingPhase {
+    Preparing,
+    RemovingFillerWords,
+    PreparingEnhancement,
+    EnhancingAudio,
+    RenderingAudio,
+    GeneratingCaptions,
+    SavingOutput,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RadcastProcessingProgress {
+    pub phase: RadcastProcessingPhase,
+    pub percent: u8,
+}
+
 #[derive(Debug, Error)]
 pub enum RadcastStorageError {
     #[error("choose an audio file before importing it")]
@@ -255,6 +273,33 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
     caption_processor: CaptionProcessor,
     enhancement_processor: EnhancementProcessor,
 ) -> Result<RadcastAudioOutput, RadcastStorageError> {
+    process_audio_with_processors_and_enhancement_with_progress(
+        data_dir,
+        project_id,
+        request,
+        processor,
+        caption_processor,
+        enhancement_processor,
+        |_| {},
+    )
+}
+
+pub fn process_audio_with_processors_and_enhancement_with_progress<F>(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: ProcessRadcastAudioRequest,
+    processor: AudioProcessor,
+    caption_processor: CaptionProcessor,
+    enhancement_processor: EnhancementProcessor,
+    mut report_progress: F,
+) -> Result<RadcastAudioOutput, RadcastStorageError>
+where
+    F: FnMut(RadcastProcessingProgress),
+{
+    report_progress(RadcastProcessingProgress {
+        phase: RadcastProcessingPhase::Preparing,
+        percent: 5,
+    });
     let mut manifest = load_manifest(data_dir, project_id)?;
     let source = manifest
         .sources
@@ -278,6 +323,10 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
         .join("outputs")
         .join(&output_filename);
     let removal_intervals = if request.remove_filler_words {
+        report_progress(RadcastProcessingProgress {
+            phase: RadcastProcessingPhase::RemovingFillerWords,
+            percent: 12,
+        });
         caption_processor.filler_intervals(
             &CaptionTranscriptionRequest {
                 input_path: source_path.clone(),
@@ -293,6 +342,10 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
     let removed_filler_count = removal_intervals.len();
     let mut temporary_paths = Vec::new();
     let processing_input_path = if request.enhancement_model == EnhancementModel::StudioV18 {
+        report_progress(RadcastProcessingProgress {
+            phase: RadcastProcessingPhase::PreparingEnhancement,
+            percent: 20,
+        });
         let prepared_path = output_path.with_file_name(format!(".{output_id}-prepared.wav"));
         let enhanced_path = output_path.with_file_name(format!(".{output_id}-enhanced.wav"));
         if let Err(error) = processor.process(AudioProcessingRequest {
@@ -308,6 +361,10 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
             return Err(error.into());
         }
+        report_progress(RadcastProcessingProgress {
+            phase: RadcastProcessingPhase::EnhancingAudio,
+            percent: 35,
+        });
         if let Err(error) = enhancement_processor.process_with_quality(
             EnhancementProcessingRequest {
                 input_path: prepared_path.clone(),
@@ -323,6 +380,14 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
     } else {
         source_path.clone()
     };
+    report_progress(RadcastProcessingProgress {
+        phase: RadcastProcessingPhase::RenderingAudio,
+        percent: if request.enhancement_model == EnhancementModel::StudioV18 {
+            78
+        } else {
+            35
+        },
+    });
     let clip_start_seconds = (request.enhancement_model == EnhancementModel::None)
         .then_some(request.clip_start_seconds)
         .flatten();
@@ -349,6 +414,10 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
 
     let (caption_path, caption_format, caption_segment_count) =
         if let Some(format) = request.caption_format {
+            report_progress(RadcastProcessingProgress {
+                phase: RadcastProcessingPhase::GeneratingCaptions,
+                percent: 90,
+            });
             let path = output_path.with_extension(format.extension());
             let caption_result = caption_processor.process_with_options(
                 CaptionProcessingRequest {
@@ -378,6 +447,11 @@ pub(crate) fn process_audio_with_processors_and_enhancement(
         } else {
             (None, None, 0)
         };
+
+    report_progress(RadcastProcessingProgress {
+        phase: RadcastProcessingPhase::SavingOutput,
+        percent: 98,
+    });
 
     let output = RadcastAudioOutput {
         id: output_id,
