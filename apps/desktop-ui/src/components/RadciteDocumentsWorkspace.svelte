@@ -238,7 +238,7 @@
   <section class="saved-reviews" aria-labelledby="saved-reviews-heading">
     <div class="saved-reviews-heading">
       <div>
-        <p class="eyebrow">Local DB</p>
+        <p class="eyebrow">Saved locally</p>
         <h3 id="saved-reviews-heading">Saved reviews</h3>
       </div>
       <button

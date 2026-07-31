@@ -310,6 +310,18 @@ button:disabled {
   background: rgba(255, 255, 255, 0.04);
 }
 
+.project-card.is-archived {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.project-card-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 4px;
+}
+
 .project-button {
   display: grid;
   gap: 2px;
@@ -319,6 +331,45 @@ button:disabled {
   color: inherit;
   background: transparent;
   text-align: left;
+}
+
+.project-button:hover,
+.project-button:focus-visible {
+  color: var(--fg-on-dark);
+  outline: none;
+}
+
+.project-expand-button {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--fg-on-dark-dim);
+  background: transparent;
+}
+
+.project-expand-button:hover,
+.project-expand-button:focus-visible {
+  border-color: rgba(206, 62, 46, 0.32);
+  color: var(--fg-on-dark);
+  background: rgba(206, 62, 46, 0.12);
+  outline: none;
+}
+
+.project-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+
+.project-expand-button[aria-expanded="true"] .project-chevron {
+  transform: rotate(45deg);
 }
 
 .project-button strong {
@@ -396,6 +447,102 @@ button:disabled {
   font-size: 0.66rem;
   font-weight: 650;
   line-height: 1.2;
+}
+
+.project-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: var(--s-1);
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.project-action-button {
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--r-sm);
+  color: var(--fg-on-dark-2);
+  background: rgba(255, 255, 255, 0.05);
+  font-size: 0.7rem;
+  font-weight: 650;
+}
+
+.project-action-button:hover:not(:disabled),
+.project-action-button:focus-visible {
+  border-color: rgba(206, 62, 46, 0.48);
+  color: var(--fg-on-dark);
+  background: rgba(206, 62, 46, 0.16);
+  outline: none;
+}
+
+.project-action-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.project-empty {
+  padding: var(--s-3) var(--s-2);
+  color: var(--fg-on-dark-dim);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
+.archived-projects-section {
+  margin-top: var(--s-2);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.archived-projects-section > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: var(--s-3) var(--s-2) var(--s-2);
+  color: var(--fg-on-dark-2);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 650;
+  list-style: none;
+  text-transform: uppercase;
+}
+
+.archived-projects-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.archived-projects-section > summary::before {
+  width: 6px;
+  height: 6px;
+  margin-right: 3px;
+  border-right: 1px solid currentColor;
+  border-bottom: 1px solid currentColor;
+  content: "";
+  transform: rotate(-45deg);
+  transition: transform 120ms ease;
+}
+
+.archived-projects-section[open] > summary::before {
+  transform: rotate(45deg);
+}
+
+.archived-projects-section > summary > span:first-child {
+  margin-right: auto;
+}
+
+.archived-project-count {
+  display: inline-grid;
+  min-width: 20px;
+  min-height: 20px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--r-sm);
+  color: var(--fg-on-dark-dim);
+  font-size: 0.66rem;
+}
+
+.archived-project-list {
+  display: grid;
+  gap: var(--s-2);
 }
 
 .main-workspace {
@@ -563,6 +710,13 @@ button:disabled {
 
 .radcast-source-select {
   width: 100%;
+}
+
+.radcast-source-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-2);
 }
 
 .radcast-source-meta {
@@ -2059,7 +2213,8 @@ button:disabled {
 
   .radcast-grid,
   .radcast-trim-fields,
-  .radcast-output-row {
+  .radcast-output-row,
+  .radcast-source-controls {
     grid-template-columns: 1fr;
   }
 

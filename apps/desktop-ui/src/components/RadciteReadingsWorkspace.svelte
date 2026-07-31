@@ -448,7 +448,7 @@
       const saved = await onSaveReadingsImport(input);
       const savedIds = new Set(selectedCandidates.map((candidate) => candidate.id));
       importCandidates = importCandidates.filter((candidate) => !savedIds.has(candidate.id));
-      importStatus = `${saved.length} readings saved to the Local DB.`;
+      importStatus = `${saved.length} readings saved locally.`;
     } catch (reason: unknown) {
       importError = `Could not save selected readings: ${toErrorMessage(reason)}`;
     } finally {
@@ -1005,7 +1005,7 @@
   <section class="reading-list-panel" aria-label="Module readings list">
     <div class="reference-list-heading">
       <div>
-        <p class="eyebrow">Local DB</p>
+        <p class="eyebrow">Saved locally</p>
         <strong>{readings.length} readings</strong>
       </div>
       {#if readingsLoading}

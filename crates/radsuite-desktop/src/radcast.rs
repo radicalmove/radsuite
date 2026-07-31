@@ -9,7 +9,7 @@ use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
     CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest,
     EnhancementModel, EnhancementProcessingRequest, EnhancementProcessor, EnhancementQuality,
-    FillerRemovalMode,
+    FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -57,6 +57,13 @@ pub struct ImportRadcastAudioRequest {
 pub struct ListRadcastAudioRequest {
     #[serde(default)]
     pub project_id: Option<radsuite_core::ProjectId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeleteRadcastAudioRequest {
+    #[serde(default)]
+    pub project_id: Option<radsuite_core::ProjectId>,
+    pub source_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -275,6 +282,38 @@ pub(crate) fn list_audio(
         outputs: manifest.outputs,
         settings: manifest.settings,
     })
+}
+
+pub(crate) fn delete_audio(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: DeleteRadcastAudioRequest,
+) -> Result<(), RadcastStorageError> {
+    let mut manifest = load_manifest(data_dir, project_id)?;
+    let source_index = manifest
+        .sources
+        .iter()
+        .position(|source| source.id == request.source_id)
+        .ok_or_else(|| RadcastStorageError::MissingSource(request.source_id.clone()))?;
+    let source = manifest.sources.remove(source_index);
+    manifest
+        .settings
+        .trim_ranges_by_source_id
+        .remove(&source.id);
+
+    write_manifest(data_dir, project_id, &manifest)?;
+
+    let source_path = PathBuf::from(source.path);
+    let project_root = project_root(data_dir, project_id);
+    if let (Ok(resolved_path), Ok(resolved_root)) =
+        (source_path.canonicalize(), project_root.canonicalize())
+        && resolved_path.starts_with(resolved_root)
+        && resolved_path.is_file()
+    {
+        fs::remove_file(resolved_path)?;
+    }
+
+    Ok(())
 }
 
 pub(crate) fn save_settings(
@@ -553,16 +592,21 @@ where
     let clip_end_seconds = (request.enhancement_model == EnhancementModel::None)
         .then_some(request.clip_end_seconds)
         .flatten();
-    let result = match processor.process(AudioProcessingRequest {
-        input_path: processing_input_path,
-        output_path: output_path.clone(),
-        output_format: request.output_format,
-        clip_start_seconds,
-        clip_end_seconds,
-        max_silence_seconds: request.max_silence_seconds,
-        remove_intervals: removal_intervals,
-        cleanup_enabled: request.cleanup_enabled,
-    }) {
+    let additional_filter = (request.enhancement_model == EnhancementModel::StudioV18)
+        .then_some(RADCAST_OPTIMIZED_POSTFILTER);
+    let result = match processor.process_with_additional_filter(
+        AudioProcessingRequest {
+            input_path: processing_input_path,
+            output_path: output_path.clone(),
+            output_format: request.output_format,
+            clip_start_seconds,
+            clip_end_seconds,
+            max_silence_seconds: request.max_silence_seconds,
+            remove_intervals: removal_intervals,
+            cleanup_enabled: request.cleanup_enabled,
+        },
+        additional_filter,
+    ) {
         Ok(result) => result,
         Err(error) => {
             cleanup_temporary_paths(&temporary_paths);

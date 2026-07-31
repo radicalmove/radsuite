@@ -6,6 +6,10 @@ export type CreateRadciteProjectInput = {
   title: string;
 };
 
+export type ProjectMutationInput = {
+  project_id: string;
+};
+
 function trimmedOrNull(value: string | null | undefined): string | null {
   return value?.trim() || null;
 }
@@ -22,5 +26,25 @@ export function createRadciteProject(
       code: trimmedOrNull(input.code),
       title: input.title.trim(),
     },
+  });
+}
+
+function projectMutationRequest(projectId: string): ProjectMutationInput {
+  const normalized = projectId.trim();
+  if (!normalized) {
+    throw new Error("project ID is required");
+  }
+  return { project_id: normalized };
+}
+
+export function archiveRadciteProject(projectId: string): Promise<RadciteProjectSummary> {
+  return invoke<RadciteProjectSummary>("archive_radcite_project", {
+    request: projectMutationRequest(projectId),
+  });
+}
+
+export function restoreRadciteProject(projectId: string): Promise<RadciteProjectSummary> {
+  return invoke<RadciteProjectSummary>("restore_radcite_project", {
+    request: projectMutationRequest(projectId),
   });
 }

@@ -21,6 +21,8 @@ pub trait ProjectRepository {
     ) -> Result<Vec<ApiProjectSummary>, DbError>;
     async fn load_project(&self, project_id: ProjectId) -> Result<Option<Project>, DbError>;
     async fn load_project_by_code(&self, code: &str) -> Result<Option<Project>, DbError>;
+    async fn archive_project(&self, project_id: ProjectId) -> Result<(), DbError>;
+    async fn restore_project(&self, project_id: ProjectId) -> Result<(), DbError>;
 }
 
 #[derive(Debug, Clone)]
@@ -58,15 +60,16 @@ impl ProjectRepository for SqliteProjectRepository {
         sqlx::query(
             r#"
             INSERT INTO projects
-                (id, owner_id, code, title, created_at, updated_at)
+                (id, owner_id, code, title, archived_at, created_at, updated_at)
             VALUES
-                (?1, ?2, ?3, ?4, ?5, ?6)
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7)
             "#,
         )
         .bind(project.id.0.to_string())
         .bind(&owner_id)
         .bind(project.code.as_deref())
         .bind(&project.title)
+        .bind(project.archived_at.map(|value| value.to_rfc3339()))
         .bind(project.created_at.to_rfc3339())
         .bind(project.updated_at.to_rfc3339())
         .execute(&self.pool)
@@ -92,7 +95,7 @@ impl ProjectRepository for SqliteProjectRepository {
     async fn list_projects(&self) -> Result<Vec<Project>, DbError> {
         let rows = sqlx::query(
             r#"
-            SELECT id, owner_id, code, title, created_at, updated_at
+            SELECT id, owner_id, code, title, archived_at, created_at, updated_at
             FROM projects
             ORDER BY
                 COALESCE(code, '') COLLATE NOCASE,
@@ -112,7 +115,7 @@ impl ProjectRepository for SqliteProjectRepository {
     ) -> Result<Vec<ApiProjectSummary>, DbError> {
         let rows = sqlx::query(
             r#"
-            SELECT p.id, p.code, p.title, pm.role
+            SELECT p.id, p.code, p.title, p.archived_at, pm.role
             FROM projects p
             INNER JOIN project_members pm ON pm.project_id = p.id
             WHERE pm.user_id = ?1
@@ -131,6 +134,7 @@ impl ProjectRepository for SqliteProjectRepository {
                     id: ProjectId(Uuid::parse_str(&project_id)?),
                     code: row.try_get("code")?,
                     title: row.try_get("title")?,
+                    archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
                     role: parse_role(&role)?,
                 })
             })
@@ -140,7 +144,7 @@ impl ProjectRepository for SqliteProjectRepository {
     async fn load_project(&self, project_id: ProjectId) -> Result<Option<Project>, DbError> {
         let row = sqlx::query(
             r#"
-            SELECT id, owner_id, code, title, created_at, updated_at
+            SELECT id, owner_id, code, title, archived_at, created_at, updated_at
             FROM projects
             WHERE id = ?1
             "#,
@@ -155,7 +159,7 @@ impl ProjectRepository for SqliteProjectRepository {
     async fn load_project_by_code(&self, code: &str) -> Result<Option<Project>, DbError> {
         let row = sqlx::query(
             r#"
-            SELECT id, owner_id, code, title, created_at, updated_at
+            SELECT id, owner_id, code, title, archived_at, created_at, updated_at
             FROM projects
             WHERE code = ?1
             ORDER BY created_at, id
@@ -167,6 +171,66 @@ impl ProjectRepository for SqliteProjectRepository {
         .await?;
 
         row.as_ref().map(project_from_row).transpose()
+    }
+
+    async fn archive_project(&self, project_id: ProjectId) -> Result<(), DbError> {
+        let now = Utc::now().to_rfc3339();
+        let project_id = project_id.0.to_string();
+        let result = sqlx::query(
+            r#"
+            UPDATE projects
+            SET archived_at = ?2,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(&project_id)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            let exists = sqlx::query_scalar::<_, String>("SELECT id FROM projects WHERE id = ?1")
+                .bind(&project_id)
+                .fetch_optional(&self.pool)
+                .await?;
+            if exists.is_none() {
+                return Err(DbError::MissingProject(project_id.parse()?));
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn restore_project(&self, project_id: ProjectId) -> Result<(), DbError> {
+        let now = Utc::now().to_rfc3339();
+        let project_id = project_id.0.to_string();
+        let result = sqlx::query(
+            r#"
+            UPDATE projects
+            SET archived_at = NULL,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NOT NULL
+            "#,
+        )
+        .bind(&project_id)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            let exists = sqlx::query_scalar::<_, String>("SELECT id FROM projects WHERE id = ?1")
+                .bind(&project_id)
+                .fetch_optional(&self.pool)
+                .await?;
+            if exists.is_none() {
+                return Err(DbError::MissingProject(project_id.parse()?));
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -1284,6 +1348,7 @@ fn project_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Project, DbError> {
         owner_id: UserId(Uuid::parse_str(&owner_id)?),
         code: row.try_get("code")?,
         title: row.try_get("title")?,
+        archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
         created_at: parse_datetime(&created_at)?,
         updated_at: parse_datetime(&updated_at)?,
     })

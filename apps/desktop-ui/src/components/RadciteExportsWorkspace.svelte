@@ -184,7 +184,7 @@
     </div>
 
     <div class="export-summary">
-      <p class="eyebrow">Local DB</p>
+      <p class="eyebrow">Saved locally</p>
       {#if exportMode === "course-references"}
         <strong>Course References Export</strong>
         <span>{references.length} references ready</span>

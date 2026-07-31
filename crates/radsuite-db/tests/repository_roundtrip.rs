@@ -10,7 +10,7 @@ use radsuite_core::{
     ProjectRole, ReadingCategory, ReferenceEntry, ReferenceEntryType, UserId,
 };
 use radsuite_db::{
-    CitationDocumentRepository, CourseModuleRepository, ProjectRepository,
+    CitationDocumentRepository, CourseModuleRepository, DbError, ProjectRepository,
     ReferenceEntryRepository, SqliteCitationDocumentRepository, SqliteCourseModuleRepository,
     SqliteProjectRepository, SqliteReferenceEntryRepository, migrate,
 };
@@ -102,6 +102,109 @@ async fn local_projects_can_be_listed_across_owners() {
     let projects = repo.list_projects().await.expect("list local projects");
 
     assert_eq!(projects, vec![second_project, first_project]);
+}
+
+#[tokio::test]
+async fn project_can_be_archived_and_restored_without_touching_children() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let module_repo = SqliteCourseModuleRepository::new(pool.clone());
+    let reference_repo = SqliteReferenceEntryRepository::new(pool);
+    let project = Project::new("CRJU201", "Criminological Theory", UserId::new());
+    project_repo
+        .insert_project(&project)
+        .await
+        .expect("insert project");
+
+    let module = CourseModule::new(project.id, "Module 1", Some(1));
+    module_repo
+        .insert_course_module(&module)
+        .await
+        .expect("insert module");
+    let mut reference = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
+    reference.title = Some("A useful course reference".to_string());
+    reference_repo
+        .insert_reference_entry(&reference)
+        .await
+        .expect("insert reference");
+
+    let before = project_repo
+        .load_project(project.id)
+        .await
+        .expect("load project")
+        .expect("project exists");
+    assert!(before.archived_at.is_none());
+
+    project_repo
+        .archive_project(project.id)
+        .await
+        .expect("archive project");
+
+    let archived = project_repo
+        .load_project(project.id)
+        .await
+        .expect("load archived project")
+        .expect("archived project exists");
+    assert!(archived.archived_at.is_some());
+    assert!(archived.updated_at >= before.updated_at);
+    assert_eq!(
+        module_repo
+            .list_course_modules_for_project(project.id)
+            .await
+            .expect("list modules after archive"),
+        vec![module.clone()]
+    );
+    assert_eq!(
+        reference_repo
+            .list_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
+            .await
+            .expect("list references after archive"),
+        vec![reference.clone()]
+    );
+
+    project_repo
+        .archive_project(project.id)
+        .await
+        .expect("archive already archived project");
+    project_repo
+        .restore_project(project.id)
+        .await
+        .expect("restore project");
+
+    let restored = project_repo
+        .load_project(project.id)
+        .await
+        .expect("load restored project")
+        .expect("restored project exists");
+    assert!(restored.archived_at.is_none());
+    assert_eq!(restored.id, project.id);
+    assert_eq!(restored.title, project.title);
+    assert_eq!(
+        module_repo
+            .list_course_modules_for_project(project.id)
+            .await
+            .expect("list modules after restore"),
+        vec![module]
+    );
+    assert_eq!(
+        reference_repo
+            .list_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
+            .await
+            .expect("list references after restore"),
+        vec![reference]
+    );
+
+    let missing = project_repo
+        .archive_project(radsuite_core::ProjectId::new())
+        .await
+        .expect_err("missing project should fail");
+    assert!(matches!(missing, DbError::MissingProject(_)));
 }
 
 #[tokio::test]

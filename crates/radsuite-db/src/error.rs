@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+use radsuite_core::ProjectId;
+
 #[derive(Debug, Error)]
 pub enum DbError {
     #[error(transparent)]
@@ -13,6 +15,9 @@ pub enum DbError {
 
     #[error(transparent)]
     Json(#[from] serde_json::Error),
+
+    #[error("project not found: {0}")]
+    MissingProject(ProjectId),
 
     #[error("unknown project role: {0}")]
     UnknownRole(String),

@@ -139,7 +139,7 @@
 
   <section class="reference-list-panel" aria-label="Course references">
     <div class="reference-list-heading">
-      <p class="eyebrow">Local DB</p>
+      <p class="eyebrow">Saved locally</p>
       <strong>{references.length} references</strong>
     </div>
 

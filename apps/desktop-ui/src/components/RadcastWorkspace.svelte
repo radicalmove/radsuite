@@ -44,6 +44,7 @@
   let fillerRemovalMode = $state<FillerRemovalMode>("aggressive");
   let trimRangesBySourceId = $state<Record<string, RadcastTrimRange>>({});
   let loading = $state(false);
+  let deletingSource = $state(false);
   let processing = $state(false);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
@@ -328,6 +329,29 @@
     }
   }
 
+  async function deleteSource() {
+    if (!selectedSource || loading || processing || deletingSource) return;
+    if (!window.confirm(`Remove ${selectedSource.original_filename} from this project?`)) return;
+
+    deletingSource = true;
+    error = null;
+    try {
+      await invoke<void>("delete_radcast_audio", {
+        request: {
+          project_id: selectedProjectId,
+          source_id: selectedSource.id,
+        },
+      });
+      status = "Saved source removed";
+      selectedSourceId = null;
+      await refreshAudio();
+    } catch (reason: unknown) {
+      error = `Could not remove source audio: ${toErrorMessage(reason)}`;
+    } finally {
+      deletingSource = false;
+    }
+  }
+
   async function cancelProcessing() {
     if (!radcastJob || !processing || cancelling) return;
     cancelling = true;
@@ -388,16 +412,27 @@
 
       {#if sources.length}
         <label class="field-label" for="radcast-source-select">Saved project audio</label>
-        <select
-          id="radcast-source-select"
-          class="radcast-source-select"
-          value={selectedSourceId ?? ""}
-          onchange={(event) => setSelectedSource((event.currentTarget as HTMLSelectElement).value || null)}
-        >
-          {#each sources as source (source.id)}
-            <option value={source.id}>{source.original_filename}</option>
-          {/each}
-        </select>
+        <div class="radcast-source-controls">
+          <select
+            id="radcast-source-select"
+            class="radcast-source-select"
+            value={selectedSourceId ?? ""}
+            onchange={(event) => setSelectedSource((event.currentTarget as HTMLSelectElement).value || null)}
+          >
+            {#each sources as source (source.id)}
+              <option value={source.id}>{source.original_filename}</option>
+            {/each}
+          </select>
+          <button
+            class="secondary-button compact-button"
+            type="button"
+            disabled={loading || processing || deletingSource}
+            onclick={() => void deleteSource()}
+            title="Remove the selected saved source from this project"
+          >
+            {deletingSource ? "Removing..." : "Remove source"}
+          </button>
+        </div>
       {:else}
         <div class="radcast-empty">No audio has been added to this project.</div>
       {/if}

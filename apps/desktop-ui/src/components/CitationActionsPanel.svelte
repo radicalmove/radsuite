@@ -439,7 +439,7 @@
             Add
           </button>
         </div>
-        <p class="action-note">These changes are saved to the Local DB.</p>
+        <p class="action-note">Changes saved locally.</p>
       </form>
 
       <form
@@ -467,7 +467,7 @@
             Link
           </button>
         </div>
-        <p class="action-note">Citation links are saved to the Local DB.</p>
+        <p class="action-note">Citation links saved locally.</p>
       </form>
     </section>
   {:else}

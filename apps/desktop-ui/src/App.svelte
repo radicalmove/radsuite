@@ -16,7 +16,17 @@
     restoreRadciteArchiveItem,
   } from "./lib/archiveCommands";
   import { exportCourseReferences, exportModuleReadings } from "./lib/exportCommands";
-  import { createRadciteProject, listRadciteProjects } from "./lib/projectCommands";
+  import {
+    archiveRadciteProject,
+    createRadciteProject,
+    listRadciteProjects,
+    restoreRadciteProject,
+  } from "./lib/projectCommands";
+  import {
+    browserStorage,
+    readThemeStorage,
+    writeThemeStorage,
+  } from "./lib/storage";
   import {
     addModuleReading,
     addRadciteModule,
@@ -67,13 +77,12 @@
     sync_configured: false,
     engines: [],
   };
-  const themeStorageKey = "radciteTheme";
-
   const fallbackProject: ProjectNavItem = {
     id: "radcite-fallback",
     code: "CRJU150",
     title: "RADcite Functional Testing",
     structureMode: "modules",
+    archived_at: null,
   };
 
   let status = $state<AppStatus>(fallbackStatus);
@@ -149,12 +158,18 @@
     return selectedProjectId === fallbackProject.id ? null : selectedProjectId;
   }
 
-  function projectNavItem(project: { id: string; code: string | null; title: string }): ProjectNavItem {
+  function projectNavItem(project: {
+    id: string;
+    code: string | null;
+    title: string;
+    archived_at: string | null;
+  }): ProjectNavItem {
     return {
       id: project.id,
       code: project.code ?? "RADcite",
       title: project.title,
       structureMode: "modules",
+      archived_at: project.archived_at,
     };
   }
 
@@ -192,7 +207,8 @@
       selectedProjectId =
         (preferredProjectId && nextProjects.some((project) => project.id === preferredProjectId)
           ? preferredProjectId
-          : nextProjects[0]?.id) ?? fallbackProject.id;
+          : nextProjects.find((project) => project.archived_at === null)?.id ??
+            nextProjects[0]?.id) ?? fallbackProject.id;
     } catch (reason: unknown) {
       projectsError = `Could not load projects: ${toErrorMessage(reason)}`;
       projects = [fallbackProject];
@@ -214,6 +230,44 @@
     } catch (reason: unknown) {
       projectsError = `Could not create project: ${toErrorMessage(reason)}`;
       throw reason;
+    }
+  }
+
+  async function refreshProjectScopedData() {
+    resetProjectScopedState();
+    await Promise.all([
+      refreshSavedReviews(),
+      refreshCourseReferences(),
+      refreshArchive(),
+      refreshRadciteModules(null),
+    ]);
+  }
+
+  async function handleArchiveProject(projectId: string) {
+    const previousSelectedProjectId = selectedProjectId;
+    projectsError = null;
+    try {
+      await archiveRadciteProject(projectId);
+      await refreshProjects(previousSelectedProjectId === projectId ? null : previousSelectedProjectId);
+      if (selectedProjectId !== previousSelectedProjectId) {
+        await refreshProjectScopedData();
+      }
+    } catch (reason: unknown) {
+      projectsError = `Could not archive project: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function handleRestoreProject(projectId: string) {
+    const previousSelectedProjectId = selectedProjectId;
+    projectsError = null;
+    try {
+      await restoreRadciteProject(projectId);
+      await refreshProjects(projectId);
+      if (selectedProjectId !== previousSelectedProjectId) {
+        await refreshProjectScopedData();
+      }
+    } catch (reason: unknown) {
+      projectsError = `Could not restore project: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -618,12 +672,11 @@
   function toggleTheme() {
     const nextTheme = theme === "dark" ? "light" : "dark";
     applyTheme(nextTheme);
-    localStorage.setItem(themeStorageKey, nextTheme);
+    writeThemeStorage(browserStorage(), nextTheme);
   }
 
   onMount(() => {
-    const savedTheme = localStorage.getItem(themeStorageKey);
-    applyTheme(savedTheme === "dark" ? "dark" : "light");
+    applyTheme(readThemeStorage(browserStorage()));
 
     invoke<AppStatus>("get_app_status")
       .then((nextStatus) => {
@@ -654,6 +707,12 @@
     onCreateProject={(input) => {
       void handleCreateProject(input);
     }}
+    onArchiveProject={(projectId) => {
+      void handleArchiveProject(projectId);
+    }}
+    onRestoreProject={(projectId) => {
+      void handleRestoreProject(projectId);
+    }}
     onSelectArea={(area) => {
       activeArea = area;
       selectedParagraphId = null;
@@ -676,13 +735,29 @@
         <h2>{selectedProject.code} · {selectedProject.title}</h2>
       </div>
       <div class="status-strip" aria-label="Application status">
-        <span class="status-chip" class:is-ready={status.database_ready}>
+        <span
+          class="status-chip"
+          class:is-ready={status.database_ready}
+          title={status.database_ready
+            ? "RADsuite is saving your work on this Mac."
+            : "RADsuite cannot currently save work locally."}
+          aria-label={status.database_ready
+            ? "Saved on this Mac"
+            : "Local saving unavailable"}
+        >
           <span class="status-dot"></span>
-          <span>{status.database_ready ? "Local DB ready" : "Local DB offline"}</span>
+          <span>{status.database_ready ? "Saved on this Mac" : "Local saving unavailable"}</span>
         </span>
-        <span class="status-chip" class:is-ready={status.sync_configured}>
+        <span
+          class="status-chip"
+          class:is-ready={status.sync_configured}
+          title={status.sync_configured
+            ? "Cloud synchronisation is connected."
+            : "Cloud synchronisation is not connected; your work remains on this Mac."}
+          aria-label={status.sync_configured ? "Cloud sync on" : "Cloud sync not connected"}
+        >
           <span class="status-dot"></span>
-          <span>{status.sync_configured ? "Sync configured" : "Sync off"}</span>
+          <span>{status.sync_configured ? "Cloud sync on" : "Cloud sync not connected"}</span>
         </span>
         <button
           class="theme-toggle"

@@ -1,7 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import type { RadciteProjectSummary } from "../types";
-import { createRadciteProject, listRadciteProjects } from "./projectCommands";
+import {
+  archiveRadciteProject,
+  createRadciteProject,
+  listRadciteProjects,
+  restoreRadciteProject,
+} from "./projectCommands";
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn(),
@@ -11,6 +16,7 @@ const project: RadciteProjectSummary = {
   id: "project-1",
   code: "CRJU201",
   title: "Criminological Theory",
+  archived_at: null,
 };
 
 describe("project commands", () => {
@@ -41,6 +47,26 @@ describe("project commands", () => {
         code: "CRJU201",
         title: "Criminological Theory",
       },
+    });
+  });
+
+  test("archives a trimmed project by ID", async () => {
+    vi.mocked(invoke).mockResolvedValue(project);
+
+    await expect(archiveRadciteProject(" project-1 ")).resolves.toBe(project);
+
+    expect(invoke).toHaveBeenCalledWith("archive_radcite_project", {
+      request: { project_id: "project-1" },
+    });
+  });
+
+  test("restores a trimmed project by ID", async () => {
+    vi.mocked(invoke).mockResolvedValue(project);
+
+    await expect(restoreRadciteProject(" project-1 ")).resolves.toBe(project);
+
+    expect(invoke).toHaveBeenCalledWith("restore_radcite_project", {
+      request: { project_id: "project-1" },
     });
   });
 });

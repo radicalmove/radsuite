@@ -2,8 +2,9 @@ use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
     AnalysePdfRequest, AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
-    ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, CourseModuleSummary,
-    CourseReferenceSummary, CourseReferencesExport, CreateRadciteProjectRequest, DesktopState,
+    ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest,
+    CourseModuleSummary, CourseReferenceSummary, CourseReferencesExport,
+    CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, ImportRadcastAudioRequest,
     LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
     ListRadcastAudioRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
@@ -13,9 +14,9 @@ use radsuite_desktop::{
     PreviewModuleReadingsPdfImportRequest, ProcessRadcastAudioRequest, RadcastAudioListing,
     RadcastAudioOutput, RadcastAudioSource, RadcastCapabilityStatus, RadcastJobStatus,
     RadciteArchiveItem, RadciteProjectSummary, RestoreRadciteArchiveItemRequest,
-    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
-    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteModuleRequest,
+    RestoreRadciteProjectRequest, SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest,
+    SavedRadciteReviewSummary, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
+    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -59,6 +60,16 @@ async fn list_radcast_audio(
     request: ListRadcastAudioRequest,
 ) -> Result<RadcastAudioListing, String> {
     radsuite_desktop::list_radcast_audio(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn delete_radcast_audio(
+    state: tauri::State<'_, DesktopState>,
+    request: DeleteRadcastAudioRequest,
+) -> Result<(), String> {
+    radsuite_desktop::delete_radcast_audio(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -139,6 +150,26 @@ async fn create_radcite_project(
     request: CreateRadciteProjectRequest,
 ) -> Result<RadciteProjectSummary, String> {
     radsuite_desktop::create_radcite_project(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn archive_radcite_project(
+    state: tauri::State<'_, DesktopState>,
+    request: ArchiveRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, String> {
+    radsuite_desktop::archive_radcite_project(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn restore_radcite_project(
+    state: tauri::State<'_, DesktopState>,
+    request: RestoreRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, String> {
+    radsuite_desktop::restore_radcite_project(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -426,6 +457,7 @@ fn main() {
             analyse_docx_for_review,
             analyse_pdf_for_review,
             list_radcast_audio,
+            delete_radcast_audio,
             save_radcast_settings,
             import_radcast_audio,
             process_radcast_audio,
@@ -435,6 +467,8 @@ fn main() {
             get_radcast_capabilities,
             list_radcite_projects,
             create_radcite_project,
+            archive_radcite_project,
+            restore_radcite_project,
             list_saved_radcite_reviews,
             archive_radcite_document,
             list_radcite_archive,

@@ -25,6 +25,15 @@ fn project_owner_can_be_returned_as_api_summary() {
 }
 
 #[test]
+fn new_projects_and_summaries_start_unarchived() {
+    let project = Project::new("COMS435", "Good data and how to use it", UserId::new());
+    let summary = ApiProjectSummary::from_project(&project, ProjectRole::Owner);
+
+    assert!(project.archived_at.is_none());
+    assert!(summary.archived_at.is_none());
+}
+
+#[test]
 fn radcite_document_contracts_are_serializable() {
     let project_id = ProjectId::new();
     let mut document = Document::new(project_id, "lesson-1.docx", DocumentFileType::Docx);

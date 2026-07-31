@@ -10,6 +10,8 @@ use thiserror::Error;
 
 const CLEANUP_FILTER: &str = "highpass=f=80,lowpass=f=12000,afftdn,loudnorm=I=-16:TP=-1.5:LRA=11";
 
+pub const RADCAST_OPTIMIZED_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=4.05,equalizer=f=200:t=q:w=1.0:g=1.75,equalizer=f=315:t=q:w=1.0:g=-0.55,equalizer=f=455:t=q:w=1.0:g=-0.2,equalizer=f=2350:t=q:w=1.0:g=-2.35,equalizer=f=3000:t=q:w=1.0:g=-1.70,equalizer=f=3850:t=q:w=1.0:g=-0.30,deesser=i=0.045:m=0.18:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-1.40,equalizer=f=6400:t=q:w=1.0:g=-1.20,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=7550";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AudioOutputFormat {
@@ -159,6 +161,13 @@ impl AudioProcessor {
     pub fn ffmpeg_arguments(
         request: &AudioProcessingRequest,
     ) -> Result<Vec<OsString>, AudioProcessingError> {
+        Self::ffmpeg_arguments_with_additional_filter(request, None)
+    }
+
+    pub fn ffmpeg_arguments_with_additional_filter(
+        request: &AudioProcessingRequest,
+        additional_filter: Option<&str>,
+    ) -> Result<Vec<OsString>, AudioProcessingError> {
         Self::validate_request(request)?;
 
         let mut args = vec![
@@ -183,6 +192,12 @@ impl AudioProcessor {
         }
 
         let mut filters = Vec::new();
+        if let Some(additional_filter) = additional_filter
+            .map(str::trim)
+            .filter(|filter| !filter.is_empty())
+        {
+            filters.push(additional_filter.to_string());
+        }
         if request.cleanup_enabled {
             filters.push(CLEANUP_FILTER.to_string());
         }
@@ -257,6 +272,14 @@ impl AudioProcessor {
         &self,
         request: AudioProcessingRequest,
     ) -> Result<AudioProcessingResult, AudioProcessingError> {
+        self.process_with_additional_filter(request, None)
+    }
+
+    pub fn process_with_additional_filter(
+        &self,
+        request: AudioProcessingRequest,
+        additional_filter: Option<&str>,
+    ) -> Result<AudioProcessingResult, AudioProcessingError> {
         Self::validate_request(&request)?;
         if !request.input_path.is_file() {
             return Err(AudioProcessingError::MissingInput {
@@ -271,7 +294,7 @@ impl AudioProcessor {
         };
         fs::create_dir_all(parent).map_err(AudioProcessingError::PrepareOutput)?;
 
-        let args = Self::ffmpeg_arguments(&request)?;
+        let args = Self::ffmpeg_arguments_with_additional_filter(&request, additional_filter)?;
         let result = Command::new(&self.ffmpeg_command)
             .args(&args)
             .output()

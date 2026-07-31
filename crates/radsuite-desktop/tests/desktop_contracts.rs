@@ -12,27 +12,29 @@ use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AnalysePdfRequest, AppPaths,
     ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteDocumentRequest,
-    ArchiveRadciteModuleRequest, CourseReferenceError, CreateRadciteProjectRequest, DesktopState,
-    ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
-    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteArchiveRequest,
-    ListRadciteModulesRequest, ListSavedReviewsRequest, ModuleReadingError,
-    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
+    ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest, CourseReferenceError,
+    CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
+    ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
+    ListModuleReadingsRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
+    ListSavedReviewsRequest, ModuleReadingError, ModuleReadingExportError,
+    ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    RadciteArchiveItemKind, RadciteModuleError, RestoreRadciteArchiveItemRequest,
+    RadciteArchiveItemKind, RadciteModuleError, RadciteProjectError,
+    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
     SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
     UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
     UpdateRadciteModuleRequest, add_course_reference, add_manual_citation_for_review,
     add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
     analyse_pdf_for_review, archive_course_reference, archive_module_reading,
-    archive_radcite_document, archive_radcite_module, create_radcite_project,
-    export_course_references, export_module_readings, get_app_status,
+    archive_radcite_document, archive_radcite_module, archive_radcite_project,
+    create_radcite_project, export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_archive, list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
     load_saved_radcite_review, mark_paragraph_resolved_for_review,
     preview_module_readings_csv_import, preview_module_readings_import,
-    preview_module_readings_pdf_import, restore_radcite_archive_item, save_module_readings_import,
-    update_course_reference, update_module_reading, update_radcite_module,
-    verify_paragraph_citations_for_review,
+    preview_module_readings_pdf_import, restore_radcite_archive_item, restore_radcite_project,
+    save_module_readings_import, update_course_reference, update_module_reading,
+    update_radcite_module, verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -88,6 +90,40 @@ async fn local_radcite_projects_can_be_listed_and_created() {
 
     assert_eq!(projects.len(), 2);
     assert!(projects.iter().any(|project| project.id == created.id));
+}
+
+#[tokio::test]
+async fn local_radcite_projects_can_be_archived_and_restored() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let project_id = projects[0].id;
+
+    let archived = archive_radcite_project(&state, ArchiveRadciteProjectRequest { project_id })
+        .await
+        .expect("archive project");
+    assert_eq!(archived.id, project_id);
+    assert!(archived.archived_at.is_some());
+
+    let listed = list_radcite_projects(&state)
+        .await
+        .expect("list archived project");
+    assert_eq!(listed[0].archived_at, archived.archived_at);
+
+    let restored = restore_radcite_project(&state, RestoreRadciteProjectRequest { project_id })
+        .await
+        .expect("restore project");
+    assert_eq!(restored.id, project_id);
+    assert!(restored.archived_at.is_none());
+
+    let missing = archive_radcite_project(
+        &state,
+        ArchiveRadciteProjectRequest {
+            project_id: ProjectId::new(),
+        },
+    )
+    .await
+    .expect_err("missing project should fail");
+    assert!(matches!(missing, RadciteProjectError::MissingProject(_)));
 }
 
 #[tokio::test]

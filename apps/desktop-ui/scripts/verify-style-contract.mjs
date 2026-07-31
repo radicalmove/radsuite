@@ -8,6 +8,7 @@ const packageJson = readFileSync(resolve(root, "package.json"), "utf8");
 const tauriMain = readFileSync(resolve(root, "src-tauri/src/main.rs"), "utf8");
 const app = readFileSync(resolve(root, "src/App.svelte"), "utf8");
 const sidebar = readFileSync(resolve(root, "src/components/ProjectSidebar.svelte"), "utf8");
+const storage = readFileSync(resolve(root, "src/lib/storage.ts"), "utf8");
 const workspace = readFileSync(
   resolve(root, "src/components/RadciteDocumentsWorkspace.svelte"),
   "utf8",
@@ -28,6 +29,14 @@ const readingsWorkspace = readFileSync(
   resolve(root, "src/components/RadciteReadingsWorkspace.svelte"),
   "utf8",
 );
+
+const userFacingWorkspaces = [
+  ["documents workspace", workspace],
+  ["citation actions", actionsPanel],
+  ["references workspace", referencesWorkspace],
+  ["readings workspace", readingsWorkspace],
+  ["exports workspace", exportsWorkspace],
+];
 
 const checks = [
   ["RADcite red token", "--radcite-red: #ce3e2e"],
@@ -64,6 +73,10 @@ const checks = [
   ["module card action styling", ".module-card-actions"],
   ["reading row action styling", ".reading-row-actions"],
   ["project create form styling", ".project-create-form"],
+  ["project card header layout", ".project-card-header"],
+  ["project expand button styling", ".project-expand-button"],
+  ["project archive action styling", ".project-action-button"],
+  ["archived project section styling", ".archived-projects-section"],
   ["import source selector styling", ".import-source-toggle"],
   ["danger button styling", ".danger-button"],
 ];
@@ -79,6 +92,25 @@ if (!sidebar.includes("radciteLogo")) {
 for (const needle of ["Audio cleanup", "Voice generation", "RADcast", "RADTTS"]) {
   if (!sidebar.includes(needle)) {
     missing.push(`sidebar includes ${needle}`);
+  }
+}
+
+for (const needle of [
+  "Active projects",
+  "Archived projects",
+  "Archive",
+  "Restore",
+  "project-expand-button",
+  "aria-expanded",
+]) {
+  if (!sidebar.includes(needle)) {
+    missing.push(`sidebar includes ${needle}`);
+  }
+}
+
+for (const needle of ["radciteProjectNavState", "radciteTheme", "browserStorage"]) {
+  if (!storage.includes(needle)) {
+    missing.push(`storage helper includes ${needle}`);
   }
 }
 
@@ -108,6 +140,8 @@ for (const needle of [
 for (const needle of [
   "listRadciteProjects",
   "createRadciteProject",
+  "archiveRadciteProject",
+  "restoreRadciteProject",
   "selectedProjectId",
   "handleCreateProject",
   "handleOpenReadingsFromDocument",
@@ -128,11 +162,36 @@ for (const needle of [
   }
 }
 
+for (const needle of [
+  "Saved on this Mac",
+  "Local saving unavailable",
+  "Cloud sync on",
+  "Cloud sync not connected",
+  "title={",
+  "aria-label=",
+]) {
+  if (!app.includes(needle)) {
+    missing.push(`app includes ${needle}`);
+  }
+}
+
+for (const obsolete of ["Local DB ready", "Local DB offline", "Sync configured", "Sync off"]) {
+  if (app.includes(obsolete)) {
+    missing.push(`app removes obsolete status copy: ${obsolete}`);
+  }
+}
+
+for (const [label, content] of userFacingWorkspaces) {
+  if (content.includes("Local DB")) {
+    missing.push(`${label} removes technical Local DB copy`);
+  }
+}
+
 if (sidebar.includes('{ id: "readings", label: "Readings", disabled: true }')) {
   missing.push("sidebar enables Readings");
 }
 
-for (const needle of ["theme-toggle", "radciteTheme", "moonIcon", "data-theme={theme}"]) {
+for (const needle of ["theme-toggle", "moonIcon", "data-theme={theme}"]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
   }
@@ -221,6 +280,10 @@ for (const needle of [
   "list_radcite_projects",
   "CreateRadciteProjectRequest",
   "create_radcite_project",
+  "ArchiveRadciteProjectRequest",
+  "archive_radcite_project",
+  "RestoreRadciteProjectRequest",
+  "restore_radcite_project",
   "update_radcite_module",
   "UpdateRadciteModuleRequest",
   "archive_radcite_module",
