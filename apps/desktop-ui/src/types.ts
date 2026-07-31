@@ -16,6 +16,7 @@ export type ProjectNavItem = {
   id: string;
   code: string;
   title: string;
+  description: string | null;
   structureMode: "modules" | "weeks";
   archived_at: string | null;
 };
@@ -24,6 +25,8 @@ export type RadciteProjectSummary = {
   id: string;
   code: string | null;
   title: string;
+  description: string | null;
+  structure_mode: "modules" | "weeks";
   archived_at: string | null;
 };
 

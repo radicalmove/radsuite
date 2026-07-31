@@ -56,12 +56,20 @@ async fn project_archive_migration_preserves_existing_projects_and_children() {
 
     migrate(&pool).await.expect("apply archive migration");
 
-    let project = sqlx::query("SELECT archived_at FROM projects WHERE id = 'project'")
-        .fetch_one(&pool)
-        .await
-        .expect("load migrated project");
+    let project = sqlx::query(
+        "SELECT archived_at, description, structure_mode FROM projects WHERE id = 'project'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("load migrated project");
     let archived_at: Option<String> = project.try_get("archived_at").expect("archive column");
     assert!(archived_at.is_none());
+    let description: Option<String> = project.try_get("description").expect("description column");
+    assert!(description.is_none());
+    let structure_mode: String = project
+        .try_get("structure_mode")
+        .expect("structure mode column");
+    assert_eq!(structure_mode, "modules");
 
     let module_count: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM course_modules WHERE project_id = 'project' AND id = 'module'",

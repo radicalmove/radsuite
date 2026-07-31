@@ -61,15 +61,17 @@ impl ProjectRepository for SqliteProjectRepository {
         sqlx::query(
             r#"
             INSERT INTO projects
-                (id, owner_id, code, title, archived_at, created_at, updated_at)
+                (id, owner_id, code, title, description, structure_mode, archived_at, created_at, updated_at)
             VALUES
-                (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
             "#,
         )
         .bind(project.id.0.to_string())
         .bind(&owner_id)
         .bind(project.code.as_deref())
         .bind(&project.title)
+        .bind(project.description.as_deref())
+        .bind(&project.structure_mode)
         .bind(project.archived_at.map(|value| value.to_rfc3339()))
         .bind(project.created_at.to_rfc3339())
         .bind(project.updated_at.to_rfc3339())
@@ -101,7 +103,9 @@ impl ProjectRepository for SqliteProjectRepository {
             UPDATE projects
             SET code = ?2,
                 title = ?3,
-                updated_at = ?4
+                description = ?4,
+                structure_mode = ?5,
+                updated_at = ?6
             WHERE id = ?1
               AND archived_at IS NULL
             "#,
@@ -109,6 +113,8 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(&project_id)
         .bind(project.code.as_deref())
         .bind(&project.title)
+        .bind(project.description.as_deref())
+        .bind(&project.structure_mode)
         .bind(&now)
         .execute(&self.pool)
         .await?;
@@ -129,7 +135,7 @@ impl ProjectRepository for SqliteProjectRepository {
     async fn list_projects(&self) -> Result<Vec<Project>, DbError> {
         let rows = sqlx::query(
             r#"
-            SELECT id, owner_id, code, title, archived_at, created_at, updated_at
+            SELECT id, owner_id, code, title, description, structure_mode, archived_at, created_at, updated_at
             FROM projects
             ORDER BY
                 COALESCE(code, '') COLLATE NOCASE,
@@ -149,7 +155,7 @@ impl ProjectRepository for SqliteProjectRepository {
     ) -> Result<Vec<ApiProjectSummary>, DbError> {
         let rows = sqlx::query(
             r#"
-            SELECT p.id, p.code, p.title, p.archived_at, pm.role
+            SELECT p.id, p.code, p.title, p.description, p.structure_mode, p.archived_at, pm.role
             FROM projects p
             INNER JOIN project_members pm ON pm.project_id = p.id
             WHERE pm.user_id = ?1
@@ -168,6 +174,8 @@ impl ProjectRepository for SqliteProjectRepository {
                     id: ProjectId(Uuid::parse_str(&project_id)?),
                     code: row.try_get("code")?,
                     title: row.try_get("title")?,
+                    description: row.try_get("description")?,
+                    structure_mode: row.try_get("structure_mode")?,
                     archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
                     role: parse_role(&role)?,
                 })
@@ -178,7 +186,7 @@ impl ProjectRepository for SqliteProjectRepository {
     async fn load_project(&self, project_id: ProjectId) -> Result<Option<Project>, DbError> {
         let row = sqlx::query(
             r#"
-            SELECT id, owner_id, code, title, archived_at, created_at, updated_at
+            SELECT id, owner_id, code, title, description, structure_mode, archived_at, created_at, updated_at
             FROM projects
             WHERE id = ?1
             "#,
@@ -193,7 +201,7 @@ impl ProjectRepository for SqliteProjectRepository {
     async fn load_project_by_code(&self, code: &str) -> Result<Option<Project>, DbError> {
         let row = sqlx::query(
             r#"
-            SELECT id, owner_id, code, title, archived_at, created_at, updated_at
+            SELECT id, owner_id, code, title, description, structure_mode, archived_at, created_at, updated_at
             FROM projects
             WHERE code = ?1
             ORDER BY created_at, id
@@ -1561,6 +1569,8 @@ fn project_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Project, DbError> {
         owner_id: UserId(Uuid::parse_str(&owner_id)?),
         code: row.try_get("code")?,
         title: row.try_get("title")?,
+        description: row.try_get("description")?,
+        structure_mode: row.try_get("structure_mode")?,
         archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
         created_at: parse_datetime(&created_at)?,
         updated_at: parse_datetime(&updated_at)?,

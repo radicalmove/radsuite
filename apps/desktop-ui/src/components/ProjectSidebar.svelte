@@ -49,6 +49,8 @@
   let editProjectId = $state<string | null>(null);
   let editProjectCode = $state("");
   let editProjectTitle = $state("");
+  let editProjectDescription = $state("");
+  let editProjectStructureMode = $state<"modules" | "weeks">("modules");
   let editSubmitting = $state(false);
   let actionProjectId = $state<string | null>(null);
   let expandedProjectIds = $state<string[]>(defaultProjectNavStorageState.expandedProjectIds);
@@ -98,6 +100,8 @@
     editProjectId = project.id;
     editProjectCode = project.code === "RADcite" ? "" : project.code;
     editProjectTitle = project.title;
+    editProjectDescription = project.description ?? "";
+    editProjectStructureMode = project.structureMode;
     if (!isExpanded(project.id)) {
       expandedProjectIds = [...expandedProjectIds, project.id];
     }
@@ -107,6 +111,8 @@
     editProjectId = null;
     editProjectCode = "";
     editProjectTitle = "";
+    editProjectDescription = "";
+    editProjectStructureMode = "modules";
   }
 
   async function submitProjectEdit(projectId: string) {
@@ -119,6 +125,8 @@
       await onUpdateProject(projectId, {
         code: editProjectCode.trim() || null,
         title: editProjectTitle.trim(),
+        description: editProjectDescription.trim() || null,
+        structureMode: editProjectStructureMode,
       });
       cancelProjectEdit();
     } finally {
@@ -242,6 +250,17 @@
         <label>
           <span>Title</span>
           <input type="text" bind:value={editProjectTitle} autocomplete="off" />
+        </label>
+        <label>
+          <span>Description</span>
+          <textarea bind:value={editProjectDescription} rows="3" maxlength="500"></textarea>
+        </label>
+        <label>
+          <span>Structure</span>
+          <select bind:value={editProjectStructureMode}>
+            <option value="modules">Modules</option>
+            <option value="weeks">Weeks</option>
+          </select>
         </label>
         <div class="project-edit-actions">
           <button class="project-action-button" type="button" onclick={cancelProjectEdit}>
