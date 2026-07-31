@@ -78,14 +78,14 @@ describe("saved review commands", () => {
     });
   });
 
-  test("only managed DOCX reviews can be reused for readings", () => {
+  test("managed DOCX and PDF reviews can be reused for readings", () => {
     expect(canUseSavedReviewForReadings(savedReview)).toBe(true);
     expect(
       canUseSavedReviewForReadings({
         ...savedReview,
         source_file_type: "pdf",
       }),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       canUseSavedReviewForReadings({
         ...savedReview,
