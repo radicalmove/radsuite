@@ -10,15 +10,16 @@ use radsuite_db::migrate;
 use radsuite_desktop::radcast::{
     RadcastProcessingPhase, RadcastProjectSettings, RadcastTrimRange,
     process_audio_with_processors_and_enhancement_with_progress,
+    process_audio_with_processors_and_enhancement_with_progress_and_cancellation,
 };
 use radsuite_desktop::{
     CreateRadciteProjectRequest, DesktopState, ImportRadcastAudioRequest, ListRadcastAudioRequest,
-    ProcessRadcastAudioRequest, RadcastAudioError, RadcastStorageError, SaveRadcastSettingsRequest,
-    create_radcite_project, get_radcast_capabilities_with_processor,
-    get_radcast_capabilities_with_processors, import_radcast_audio_with_processor,
-    list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
-    process_radcast_audio_with_processors, process_radcast_audio_with_processors_and_enhancement,
-    save_radcast_settings,
+    ProcessRadcastAudioRequest, RadcastAudioError, RadcastJobStatus, RadcastStorageError,
+    SaveRadcastSettingsRequest, cancel_radcast_audio, create_radcite_project,
+    get_radcast_capabilities_with_processor, get_radcast_capabilities_with_processors,
+    import_radcast_audio_with_processor, list_radcast_audio, list_radcite_projects,
+    process_radcast_audio_with_processor, process_radcast_audio_with_processors,
+    process_radcast_audio_with_processors_and_enhancement, save_radcast_settings,
 };
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
@@ -159,6 +160,62 @@ async fn radcast_processing_rejects_unknown_sources() {
         error,
         RadcastAudioError::Storage(RadcastStorageError::MissingSource(_))
     ));
+}
+
+#[tokio::test]
+async fn radcast_processing_honours_local_cancellation_before_work_begins() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let result = process_audio_with_processors_and_enhancement_with_progress_and_cancellation(
+        &state.paths.data_dir,
+        projects[0].id,
+        ProcessRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            source_id: "not-needed-after-cancellation".to_string(),
+            output_format: AudioOutputFormat::Mp3,
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+            cleanup_enabled: true,
+            max_silence_seconds: None,
+            caption_format: None,
+            caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::None,
+            enhancement_quality: EnhancementQuality::Standard,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
+        },
+        AudioProcessor::default(),
+        CaptionProcessor::default(),
+        EnhancementProcessor::default(),
+        |_| {},
+        || true,
+    );
+
+    assert!(matches!(result, Err(RadcastStorageError::Cancelled)));
+}
+
+#[tokio::test]
+async fn radcast_cancel_command_marks_a_running_local_job_for_cancellation() {
+    let state = DesktopState::for_tests();
+    let job_id = "cancel-me".to_string();
+    state
+        .radcast_jobs
+        .lock()
+        .expect("lock jobs")
+        .insert(job_id.clone(), RadcastJobStatus::running(job_id.clone()));
+
+    let status = cancel_radcast_audio(&state, job_id.clone()).expect("request cancellation");
+
+    assert_eq!(status.id, job_id);
+    assert!(
+        state
+            .radcast_cancel_requests
+            .lock()
+            .expect("lock cancellation requests")
+            .contains("cancel-me")
+    );
 }
 
 #[tokio::test]

@@ -104,6 +104,14 @@ async fn start_radcast_audio(
 }
 
 #[tauri::command]
+fn cancel_radcast_audio(
+    state: tauri::State<'_, DesktopState>,
+    job_id: String,
+) -> Result<RadcastJobStatus, String> {
+    radsuite_desktop::cancel_radcast_audio(&state, job_id).map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn get_radcast_audio_job(
     state: tauri::State<'_, DesktopState>,
     job_id: String,
@@ -422,6 +430,7 @@ fn main() {
             import_radcast_audio,
             process_radcast_audio,
             start_radcast_audio,
+            cancel_radcast_audio,
             get_radcast_audio_job,
             get_radcast_capabilities,
             list_radcite_projects,

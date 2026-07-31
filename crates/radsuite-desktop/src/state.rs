@@ -1,5 +1,5 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fs,
     path::PathBuf,
     sync::{Arc, Mutex},
@@ -22,6 +22,7 @@ pub enum RadcastJobState {
     Running,
     Completed,
     Failed,
+    Cancelled,
 }
 
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -44,6 +45,7 @@ pub struct DesktopState {
     pub engine_registry: EngineRegistry,
     pub database_pool: SqlitePool,
     pub radcast_jobs: Arc<Mutex<HashMap<String, RadcastJobStatus>>>,
+    pub radcast_cancel_requests: Arc<Mutex<HashSet<String>>>,
 }
 
 #[derive(Debug, Error)]
@@ -123,6 +125,7 @@ impl DesktopState {
             engine_registry: EngineRegistry::default(),
             database_pool,
             radcast_jobs: Arc::new(Mutex::new(HashMap::new())),
+            radcast_cancel_requests: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 }

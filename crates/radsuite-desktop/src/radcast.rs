@@ -253,6 +253,8 @@ pub enum RadcastStorageError {
     CaptionProcessing(#[from] radsuite_engines::CaptionProcessingError),
     #[error("failed to enhance audio: {0}")]
     EnhancementProcessing(#[from] radsuite_engines::EnhancementProcessingError),
+    #[error("local RADcast processing was cancelled")]
+    Cancelled,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -391,11 +393,41 @@ pub fn process_audio_with_processors_and_enhancement_with_progress<F>(
     processor: AudioProcessor,
     caption_processor: CaptionProcessor,
     enhancement_processor: EnhancementProcessor,
-    mut report_progress: F,
+    report_progress: F,
 ) -> Result<RadcastAudioOutput, RadcastStorageError>
 where
     F: FnMut(RadcastProcessingProgress),
 {
+    process_audio_with_processors_and_enhancement_with_progress_and_cancellation(
+        data_dir,
+        project_id,
+        request,
+        processor,
+        caption_processor,
+        enhancement_processor,
+        report_progress,
+        || false,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn process_audio_with_processors_and_enhancement_with_progress_and_cancellation<F, C>(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: ProcessRadcastAudioRequest,
+    processor: AudioProcessor,
+    caption_processor: CaptionProcessor,
+    enhancement_processor: EnhancementProcessor,
+    mut report_progress: F,
+    mut is_cancelled: C,
+) -> Result<RadcastAudioOutput, RadcastStorageError>
+where
+    F: FnMut(RadcastProcessingProgress),
+    C: FnMut() -> bool,
+{
+    if is_cancelled() {
+        return Err(RadcastStorageError::Cancelled);
+    }
     report_progress(RadcastProcessingProgress {
         phase: RadcastProcessingPhase::Preparing,
         percent: 5,
@@ -423,6 +455,9 @@ where
     let source_path = PathBuf::from(&source.path);
     if !source_path.is_file() {
         return Err(RadcastStorageError::MissingSource(source.id));
+    }
+    if is_cancelled() {
+        return Err(RadcastStorageError::Cancelled);
     }
 
     let output_id = Uuid::new_v4().to_string();
@@ -452,6 +487,9 @@ where
     } else {
         Vec::new()
     };
+    if is_cancelled() {
+        return Err(RadcastStorageError::Cancelled);
+    }
     let removed_filler_count = removal_intervals.len();
     let mut temporary_paths = Vec::new();
     let processing_input_path = if request.enhancement_model == EnhancementModel::StudioV18 {
@@ -474,6 +512,10 @@ where
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
             return Err(error.into());
         }
+        if is_cancelled() {
+            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+            return Err(RadcastStorageError::Cancelled);
+        }
         report_progress(RadcastProcessingProgress {
             phase: RadcastProcessingPhase::EnhancingAudio,
             percent: 35,
@@ -487,6 +529,10 @@ where
         ) {
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
             return Err(error.into());
+        }
+        if is_cancelled() {
+            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+            return Err(RadcastStorageError::Cancelled);
         }
         temporary_paths.extend([prepared_path, enhanced_path.clone()]);
         enhanced_path
@@ -523,6 +569,11 @@ where
             return Err(error.into());
         }
     };
+    if is_cancelled() {
+        let _ = fs::remove_file(&output_path);
+        cleanup_temporary_paths(&temporary_paths);
+        return Err(RadcastStorageError::Cancelled);
+    }
     cleanup_temporary_paths(&temporary_paths);
 
     let (caption_path, caption_format, caption_segment_count) =
@@ -560,6 +611,13 @@ where
         } else {
             (None, None, 0)
         };
+    if is_cancelled() {
+        let _ = fs::remove_file(&output_path);
+        if let Some(caption_path) = caption_path.as_deref() {
+            let _ = fs::remove_file(caption_path);
+        }
+        return Err(RadcastStorageError::Cancelled);
+    }
 
     report_progress(RadcastProcessingProgress {
         phase: RadcastProcessingPhase::SavingOutput,

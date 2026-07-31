@@ -917,12 +917,18 @@ pub async fn start_radcast_audio(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .insert(job_id.clone(), initial_status.clone());
+    state
+        .radcast_cancel_requests
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(&job_id);
 
     let data_dir = state.paths.data_dir.clone();
     let jobs = state.radcast_jobs.clone();
+    let cancel_requests = state.radcast_cancel_requests.clone();
     tokio::task::spawn_blocking(move || {
         let started = Instant::now();
-        let result = crate::radcast::process_audio_with_processors_and_enhancement_with_progress(
+        let result = crate::radcast::process_audio_with_processors_and_enhancement_with_progress_and_cancellation(
             &data_dir,
             project.id,
             request,
@@ -935,7 +941,17 @@ pub async fn start_radcast_audio(
                     job.update_progress(progress, started.elapsed().as_secs_f64());
                 }
             },
+            || {
+                cancel_requests
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .contains(&job_id)
+            },
         );
+        cancel_requests
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&job_id);
         let mut jobs = jobs.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if let Some(job) = jobs.get_mut(&job_id) {
             job.elapsed_seconds = started.elapsed().as_secs_f64();
@@ -944,6 +960,10 @@ pub async fn start_radcast_audio(
                     job.state = crate::RadcastJobState::Completed;
                     job.percent = 100;
                     job.output = Some(output);
+                }
+                Err(crate::RadcastStorageError::Cancelled) => {
+                    job.state = crate::RadcastJobState::Cancelled;
+                    job.error = None;
                 }
                 Err(error) => {
                     job.state = crate::RadcastJobState::Failed;
@@ -954,6 +974,27 @@ pub async fn start_radcast_audio(
     });
 
     Ok(initial_status)
+}
+
+pub fn cancel_radcast_audio(
+    state: &DesktopState,
+    job_id: String,
+) -> Result<crate::RadcastJobStatus, RadcastAudioError> {
+    let status = state
+        .radcast_jobs
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&job_id)
+        .cloned()
+        .ok_or_else(|| RadcastAudioError::MissingJob(job_id.clone()))?;
+    if status.state == crate::RadcastJobState::Running {
+        state
+            .radcast_cancel_requests
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .insert(job_id);
+    }
+    Ok(status)
 }
 
 pub fn get_radcast_audio_job(
