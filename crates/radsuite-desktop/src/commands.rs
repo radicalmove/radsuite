@@ -2108,15 +2108,22 @@ pub async fn save_module_readings_import(
             return Err(ModuleReadingImportError::EmptyReadingText);
         }
 
-        if let Some(existing_reading) = find_existing_module_reading_for_import(
+        if let Some(mut existing_reading) = find_existing_module_reading_for_import(
             &reference_repo,
             module.id,
-            reading_category,
             apa_citation.as_deref(),
             citation_text.as_deref(),
         )
         .await?
         {
+            if reading_category == ReadingCategory::Compulsory
+                && existing_reading.reading_category == Some(ReadingCategory::Optional)
+            {
+                existing_reading.reading_category = Some(ReadingCategory::Compulsory);
+                reference_repo
+                    .update_reference_entry(&existing_reading)
+                    .await?;
+            }
             saved_readings.push(
                 module_reading_summary(existing_reading)
                     .ok_or(ModuleReadingImportError::MissingModule(module.id))?,
@@ -2150,13 +2157,10 @@ pub async fn save_module_readings_import(
 async fn find_existing_module_reading_for_import(
     reference_repo: &SqliteReferenceEntryRepository,
     module_id: ModuleId,
-    reading_category: ReadingCategory,
     apa_citation: Option<&str>,
     citation_text: Option<&str>,
 ) -> Result<Option<ReferenceEntry>, ModuleReadingImportError> {
-    let Some(import_key) =
-        module_reading_import_identity(reading_category, apa_citation, citation_text)
-    else {
+    let Some(import_key) = module_reading_import_identity(apa_citation, citation_text) else {
         return Ok(None);
     };
 
@@ -2780,19 +2784,15 @@ fn reading_category_label(reading_category: Option<ReadingCategory>) -> &'static
 }
 
 fn module_reading_import_identity(
-    reading_category: ReadingCategory,
     apa_citation: Option<&str>,
     citation_text: Option<&str>,
-) -> Option<(ReadingCategory, String)> {
+) -> Option<String> {
     let reading_text = apa_citation.or(citation_text)?;
-    Some((reading_category, normalised_reading_identity(reading_text)))
+    Some(normalised_reading_identity(reading_text))
 }
 
-fn module_reading_entry_identity(reading: &ReferenceEntry) -> Option<(ReadingCategory, String)> {
+fn module_reading_entry_identity(reading: &ReferenceEntry) -> Option<String> {
     module_reading_import_identity(
-        reading
-            .reading_category
-            .unwrap_or(ReadingCategory::Compulsory),
         reading.apa_citation.as_deref(),
         reading.citation_text.as_deref(),
     )

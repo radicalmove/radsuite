@@ -1856,6 +1856,79 @@ async fn module_readings_import_save_reuses_existing_duplicate_candidates() {
 }
 
 #[tokio::test]
+async fn module_readings_import_required_upgrades_existing_optional_reading() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    let citation = "Rice, R. (2024). Learning through practice.";
+
+    let optional = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: "optional".to_string(),
+                lesson_code: None,
+                apa_citation: Some(citation.to_string()),
+                citation_text: None,
+                doi: None,
+                url: None,
+                notes: None,
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect("save optional reading");
+
+    let required = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: "required".to_string(),
+                lesson_code: None,
+                apa_citation: Some(citation.to_string()),
+                citation_text: None,
+                doi: None,
+                url: None,
+                notes: None,
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect("upgrade optional reading");
+
+    assert_eq!(required[0].id, optional[0].id);
+    assert_eq!(required[0].reading_category, "compulsory");
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert_eq!(readings.len(), 1);
+    assert_eq!(readings[0].reading_category, "compulsory");
+}
+
+#[tokio::test]
 async fn module_readings_import_save_validates_missing_module() {
     let state = desktop_state_with_migrated_pool().await;
     let missing_module_id = ModuleId::new();
