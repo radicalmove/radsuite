@@ -12,15 +12,17 @@ use radsuite_desktop::{
     CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
     ExportModuleReadingsRequest, ListModuleReadingsRequest, ListSavedReviewsRequest,
     ModuleReadingImportCandidateSummary, PreviewModuleReadingsCsvImportRequest,
-    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest, add_course_reference,
-    add_radcite_module, analyse_docx_for_review, create_radcite_project, export_course_references,
+    PreviewModuleReadingsPdfImportRequest, SaveModuleReadingsImportCandidate,
+    SaveModuleReadingsImportRequest, add_course_reference, add_radcite_module,
+    analyse_docx_for_review, create_radcite_project, export_course_references,
     export_module_readings, list_module_readings, list_saved_radcite_reviews,
-    preview_module_readings_csv_import, save_module_readings_import,
+    preview_module_readings_csv_import, preview_module_readings_pdf_import,
+    save_module_readings_import,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 
 #[tokio::test]
-async fn real_course_materials_can_exercise_project_csv_docx_flow_when_available()
+async fn real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_available()
 -> Result<(), Box<dyn Error>> {
     let Some(course_root) = configured_course_output_root() else {
         eprintln!("skipping real-course smoke test: RADSUITE_REAL_COURSE_ROOT is not set");
@@ -102,6 +104,42 @@ async fn real_course_materials_can_exercise_project_csv_docx_flow_when_available
             && candidate.apa_citation.contains("The Birth of the Prison")
     }));
 
+    let crju150_scorm_pdfs = [
+        course_root.join("output/pdf/crju150-module-06-learner-reader.pdf"),
+        course_root.join("output/pdf/crju150-module-08-learner-reader.pdf"),
+        course_root.join("output/pdf/crju150-module-02-pdf-files.pdf"),
+    ];
+    for path in &crju150_scorm_pdfs {
+        assert!(
+            path.exists(),
+            "missing real SCORM PDF fixture {}",
+            path.display()
+        );
+    }
+
+    let pdf_preview = preview_module_readings_pdf_import(
+        &state,
+        PreviewModuleReadingsPdfImportRequest {
+            paths: crju150_scorm_pdfs
+                .iter()
+                .map(|path| path.to_string_lossy().into_owned())
+                .collect(),
+        },
+    )
+    .await?;
+    assert!(
+        pdf_preview.failures.is_empty(),
+        "PDF failures: {:?}",
+        pdf_preview.failures
+    );
+    assert!(!pdf_preview.candidates.is_empty());
+    assert!(
+        pdf_preview
+            .candidates
+            .iter()
+            .all(|candidate| candidate.source_filename.is_some())
+    );
+
     let modules_by_order =
         create_modules_from_csv_candidates(&state, crju201.id, &csv_candidates).await?;
     let saved_readings = save_module_readings_import(
@@ -123,6 +161,7 @@ async fn real_course_materials_can_exercise_project_csv_docx_flow_when_available
                         lesson_code: candidate.lesson_code.clone(),
                         apa_citation: Some(candidate.apa_citation.clone()),
                         citation_text: candidate.citation_text.clone(),
+                        doi: candidate.doi.clone(),
                         url: candidate.url.clone(),
                         notes: Some("Imported from CRJU201 course_readings.csv".to_string()),
                         reading_notes: None,
@@ -163,6 +202,7 @@ async fn real_course_materials_can_exercise_project_csv_docx_flow_when_available
         ExportCourseReferencesRequest {
             project_id: Some(crju201.id),
             for_ako_learn: false,
+            allow_incomplete: true,
         },
     )
     .await?;
