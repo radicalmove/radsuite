@@ -693,6 +693,13 @@ button:disabled {
   font-size: 0.82rem;
 }
 
+.radcast-output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+
 .radcast-status {
   border-left-color: var(--success);
   background: var(--success-tint);

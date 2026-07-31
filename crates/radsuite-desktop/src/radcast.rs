@@ -4,7 +4,10 @@ use std::{
 };
 
 use chrono::Utc;
-use radsuite_engines::{AudioOutputFormat, AudioProcessingRequest, AudioProcessor};
+use radsuite_engines::{
+    AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
+    CaptionProcessingRequest, CaptionProcessor,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
@@ -34,6 +37,12 @@ pub struct ProcessRadcastAudioRequest {
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
     pub cleanup_enabled: bool,
+    #[serde(default)]
+    pub max_silence_seconds: Option<f64>,
+    #[serde(default)]
+    pub caption_format: Option<CaptionFormat>,
+    #[serde(default = "default_caption_language")]
+    pub caption_language: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -57,6 +66,14 @@ pub struct RadcastAudioOutput {
     pub cleanup_enabled: bool,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
+    #[serde(default)]
+    pub max_silence_seconds: Option<f64>,
+    #[serde(default)]
+    pub caption_path: Option<String>,
+    #[serde(default)]
+    pub caption_format: Option<CaptionFormat>,
+    #[serde(default)]
+    pub caption_segment_count: usize,
     pub created_at: String,
 }
 
@@ -84,6 +101,8 @@ pub enum RadcastStorageError {
     ManifestWrite(#[source] serde_json::Error),
     #[error("failed to process audio: {0}")]
     Processing(#[from] radsuite_engines::AudioProcessingError),
+    #[error("failed to generate captions: {0}")]
+    CaptionProcessing(#[from] radsuite_engines::CaptionProcessingError),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -165,11 +184,12 @@ pub(crate) fn import_audio(
     Ok(source)
 }
 
-pub(crate) fn process_audio(
+pub(crate) fn process_audio_with_processors(
     data_dir: &Path,
     project_id: radsuite_core::ProjectId,
     request: ProcessRadcastAudioRequest,
     processor: AudioProcessor,
+    caption_processor: CaptionProcessor,
 ) -> Result<RadcastAudioOutput, RadcastStorageError> {
     let mut manifest = load_manifest(data_dir, project_id)?;
     let source = manifest
@@ -199,8 +219,36 @@ pub(crate) fn process_audio(
         output_format: request.output_format,
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,
+        max_silence_seconds: request.max_silence_seconds,
         cleanup_enabled: request.cleanup_enabled,
     })?;
+
+    let (caption_path, caption_format, caption_segment_count) =
+        if let Some(format) = request.caption_format {
+            let path = output_path.with_extension(format.extension());
+            let caption_result = caption_processor.process(CaptionProcessingRequest {
+                input_path: output_path.clone(),
+                output_path: path.clone(),
+                caption_format: format,
+                language: request.caption_language.trim().to_string(),
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+            });
+            match caption_result {
+                Ok(caption_result) => (
+                    Some(caption_result.output_path.to_string_lossy().into_owned()),
+                    Some(caption_result.caption_format),
+                    caption_result.segment_count,
+                ),
+                Err(error) => {
+                    let _ = fs::remove_file(&output_path);
+                    let _ = fs::remove_file(path);
+                    return Err(error.into());
+                }
+            }
+        } else {
+            (None, None, 0)
+        };
 
     let output = RadcastAudioOutput {
         id: output_id,
@@ -212,14 +260,25 @@ pub(crate) fn process_audio(
         cleanup_enabled: request.cleanup_enabled,
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,
+        max_silence_seconds: request.max_silence_seconds,
+        caption_path,
+        caption_format,
+        caption_segment_count,
         created_at: Utc::now().to_rfc3339(),
     };
     manifest.outputs.insert(0, output.clone());
     if let Err(error) = write_manifest(data_dir, project_id, &manifest) {
         let _ = fs::remove_file(output_path);
+        if let Some(caption_path) = output.caption_path.as_deref() {
+            let _ = fs::remove_file(caption_path);
+        }
         return Err(error);
     }
     Ok(output)
+}
+
+fn default_caption_language() -> String {
+    "en".to_string()
 }
 
 fn project_root(data_dir: &Path, project_id: radsuite_core::ProjectId) -> PathBuf {

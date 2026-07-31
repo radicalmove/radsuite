@@ -34,6 +34,7 @@ pub struct AudioProcessingRequest {
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
     pub cleanup_enabled: bool,
+    pub max_silence_seconds: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,6 +55,8 @@ pub enum AudioProcessingError {
         start: Option<f64>,
         end: Option<f64>,
     },
+    #[error("invalid maximum silence duration: {seconds:?}")]
+    InvalidMaxSilence { seconds: Option<f64> },
     #[error("could not start {command}: {source}")]
     StartCommand {
         command: String,
@@ -106,10 +109,19 @@ impl AudioProcessor {
             _ => true,
         };
 
+        let valid_max_silence = request
+            .max_silence_seconds
+            .is_none_or(|value| value.is_finite() && value > 0.0);
+
         if !valid_start || !valid_end || !valid_order {
             return Err(AudioProcessingError::InvalidClipRange {
                 start: request.clip_start_seconds,
                 end: request.clip_end_seconds,
+            });
+        }
+        if !valid_max_silence {
+            return Err(AudioProcessingError::InvalidMaxSilence {
+                seconds: request.max_silence_seconds,
             });
         }
 
@@ -142,9 +154,18 @@ impl AudioProcessor {
             args.push(OsString::from(format!("{:.3}", end - start)));
         }
 
+        let mut filters = Vec::new();
         if request.cleanup_enabled {
+            filters.push(CLEANUP_FILTER.to_string());
+        }
+        if let Some(max_silence_seconds) = request.max_silence_seconds {
+            filters.push(format!(
+                "silenceremove=stop_periods=-1:stop_duration={max_silence_seconds:.3}:stop_threshold=-50dB:stop_silence={max_silence_seconds:.3}"
+            ));
+        }
+        if !filters.is_empty() {
             args.push(OsString::from("-af"));
-            args.push(OsString::from(CLEANUP_FILTER));
+            args.push(OsString::from(filters.join(",")));
         }
 
         match request.output_format {

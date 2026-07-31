@@ -29,6 +29,8 @@ export type ToolArea = "documents" | "references" | "readings" | "exports" | "ra
 
 export type AudioOutputFormat = "mp3" | "wav";
 
+export type CaptionFormat = "srt" | "vtt";
+
 export type RadcastAudioSource = {
   id: string;
   original_filename: string;
@@ -48,12 +50,21 @@ export type RadcastAudioOutput = {
   cleanup_enabled: boolean;
   clip_start_seconds: number | null;
   clip_end_seconds: number | null;
+  max_silence_seconds: number | null;
+  caption_path: string | null;
+  caption_format: CaptionFormat | null;
+  caption_segment_count: number;
   created_at: string;
 };
 
 export type RadcastAudioListing = {
   sources: RadcastAudioSource[];
   outputs: RadcastAudioOutput[];
+};
+
+export type RadcastCapabilityStatus = {
+  caption_available: boolean;
+  caption_detail: string;
 };
 
 export type ParagraphFilter =

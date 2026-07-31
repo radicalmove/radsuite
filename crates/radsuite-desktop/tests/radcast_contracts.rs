@@ -9,10 +9,11 @@ use radsuite_db::migrate;
 use radsuite_desktop::{
     CreateRadciteProjectRequest, DesktopState, ImportRadcastAudioRequest, ListRadcastAudioRequest,
     ProcessRadcastAudioRequest, RadcastAudioError, RadcastStorageError, create_radcite_project,
-    import_radcast_audio_with_processor, list_radcast_audio, list_radcite_projects,
-    process_radcast_audio_with_processor,
+    get_radcast_capabilities_with_processor, import_radcast_audio_with_processor,
+    list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
+    process_radcast_audio_with_processors,
 };
-use radsuite_engines::{AudioOutputFormat, AudioProcessor};
+use radsuite_engines::{AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor};
 use sqlx::sqlite::SqlitePoolOptions;
 
 #[tokio::test]
@@ -60,6 +61,9 @@ async fn radcast_import_process_and_list_are_project_scoped() {
             clip_start_seconds: Some(2.0),
             clip_end_seconds: Some(8.0),
             cleanup_enabled: true,
+            max_silence_seconds: None,
+            caption_format: None,
+            caption_language: "en".to_string(),
         },
         processor,
     )
@@ -110,6 +114,9 @@ async fn radcast_processing_rejects_unknown_sources() {
             clip_start_seconds: None,
             clip_end_seconds: None,
             cleanup_enabled: false,
+            max_silence_seconds: None,
+            caption_format: None,
+            caption_language: "en".to_string(),
         },
         AudioProcessor::default(),
     )
@@ -120,6 +127,85 @@ async fn radcast_processing_rejects_unknown_sources() {
         error,
         RadcastAudioError::Storage(RadcastStorageError::MissingSource(_))
     ));
+}
+
+#[tokio::test]
+async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let dir = test_dir("captions");
+    let source_path = dir.join("lecture.wav");
+    fs::write(&source_path, b"source audio").expect("write source");
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("captioned-lecture.wav".to_string()),
+        },
+        fake_processor(&dir),
+    )
+    .await
+    .expect("import source");
+
+    let output = process_radcast_audio_with_processors(
+        &state,
+        ProcessRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            source_id: source.id,
+            output_format: AudioOutputFormat::Mp3,
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+            cleanup_enabled: false,
+            max_silence_seconds: None,
+            caption_format: Some(CaptionFormat::Srt),
+            caption_language: "en".to_string(),
+        },
+        fake_processor(&dir),
+        fake_caption_processor(&dir),
+    )
+    .await
+    .expect("process with captions");
+
+    assert_eq!(output.caption_format, Some(CaptionFormat::Srt));
+    assert_eq!(output.caption_segment_count, 1);
+    let caption_path = output.caption_path.as_deref().expect("caption path");
+    assert!(caption_path.ends_with(".srt"));
+    assert!(Path::new(caption_path).is_file());
+
+    let listing = list_radcast_audio(
+        &state,
+        ListRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+        },
+    )
+    .await
+    .expect("list captioned audio");
+    assert_eq!(listing.outputs[0].caption_path, output.caption_path);
+    remove_dir(dir);
+}
+
+#[test]
+fn radcast_capabilities_report_caption_model_readiness() {
+    let dir = test_dir("capabilities");
+    let whisper = write_executable(&dir, "whisper.sh", "#!/bin/sh\nexit 0\n");
+    let model = dir.join("caption-model.bin");
+    fs::write(&model, b"model").expect("write caption model");
+
+    let ready = get_radcast_capabilities_with_processor(CaptionProcessor::from_commands(
+        whisper.clone(),
+        model,
+    ));
+    assert!(ready.caption_available);
+    assert!(ready.caption_detail.contains("whisper.cpp"));
+
+    let unavailable = get_radcast_capabilities_with_processor(CaptionProcessor::from_commands(
+        whisper,
+        dir.join("missing.bin"),
+    ));
+    assert!(!unavailable.caption_available);
+    assert!(unavailable.caption_detail.contains("model"));
+    remove_dir(dir);
 }
 
 async fn desktop_state_with_migrated_pool() -> DesktopState {
@@ -140,6 +226,17 @@ fn fake_processor(dir: &Path) -> AudioProcessor {
     );
     let ffprobe = write_executable(dir, "ffprobe.sh", "#!/bin/sh\nprintf '12.5\\n'");
     AudioProcessor::from_commands(ffmpeg, ffprobe)
+}
+
+fn fake_caption_processor(dir: &Path) -> CaptionProcessor {
+    let whisper = write_executable(
+        dir,
+        "whisper.sh",
+        "#!/bin/sh\noutput=''\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  previous=\"$arg\"\ndone\nprintf '1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n' > \"$output.srt\"\n",
+    );
+    let model = dir.join("caption-model.bin");
+    fs::write(&model, b"model").expect("write caption model");
+    CaptionProcessor::from_commands(whisper, model)
 }
 
 fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
