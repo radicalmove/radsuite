@@ -27,6 +27,12 @@ impl AudioOutputFormat {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct AudioTimeInterval {
+    pub start_seconds: f64,
+    pub end_seconds: f64,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct AudioProcessingRequest {
     pub input_path: PathBuf,
     pub output_path: PathBuf,
@@ -35,6 +41,7 @@ pub struct AudioProcessingRequest {
     pub clip_end_seconds: Option<f64>,
     pub cleanup_enabled: bool,
     pub max_silence_seconds: Option<f64>,
+    pub remove_intervals: Vec<AudioTimeInterval>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -57,6 +64,11 @@ pub enum AudioProcessingError {
     },
     #[error("invalid maximum silence duration: {seconds:?}")]
     InvalidMaxSilence { seconds: Option<f64> },
+    #[error("invalid audio removal interval: start {start_seconds}, end {end_seconds}")]
+    InvalidRemovalInterval {
+        start_seconds: f64,
+        end_seconds: f64,
+    },
     #[error("could not start {command}: {source}")]
     StartCommand {
         command: String,
@@ -125,6 +137,22 @@ impl AudioProcessor {
             });
         }
 
+        let mut previous_end = 0.0;
+        for interval in &request.remove_intervals {
+            let valid_interval = interval.start_seconds.is_finite()
+                && interval.end_seconds.is_finite()
+                && interval.start_seconds >= 0.0
+                && interval.end_seconds > interval.start_seconds
+                && interval.start_seconds >= previous_end;
+            if !valid_interval {
+                return Err(AudioProcessingError::InvalidRemovalInterval {
+                    start_seconds: interval.start_seconds,
+                    end_seconds: interval.end_seconds,
+                });
+            }
+            previous_end = interval.end_seconds;
+        }
+
         Ok(())
     }
 
@@ -163,7 +191,19 @@ impl AudioProcessor {
                 "silenceremove=stop_periods=-1:stop_duration={max_silence_seconds:.3}:stop_threshold=-50dB:stop_silence={max_silence_seconds:.3}"
             ));
         }
-        if !filters.is_empty() {
+
+        if !request.remove_intervals.is_empty() {
+            let mut graph = Self::removal_filter_graph(&request.remove_intervals);
+            let output_label = if filters.is_empty() {
+                "[outa]"
+            } else {
+                graph.push_str(&format!(";[outa]{}[outa_filtered]", filters.join(",")));
+                "[outa_filtered]"
+            };
+            args.push(OsString::from("-filter_complex"));
+            args.push(OsString::from(graph));
+            args.extend([OsString::from("-map"), OsString::from(output_label)]);
+        } else if !filters.is_empty() {
             args.push(OsString::from("-af"));
             args.push(OsString::from(filters.join(",")));
         }
@@ -184,6 +224,33 @@ impl AudioProcessor {
 
         args.push(request.output_path.clone().into_os_string());
         Ok(args)
+    }
+
+    pub fn removal_filter_graph(intervals: &[AudioTimeInterval]) -> String {
+        let mut graph = Vec::new();
+        let mut previous_end = 0.0;
+        let mut segment_count = 0;
+
+        for interval in intervals {
+            if interval.start_seconds > previous_end {
+                graph.push(format!(
+                    "[0:a]atrim=start={previous_end:.3}:end={start:.3},asetpts=PTS-STARTPTS[a{segment_count}]",
+                    start = interval.start_seconds,
+                ));
+                segment_count += 1;
+            }
+            previous_end = interval.end_seconds;
+        }
+
+        graph.push(format!(
+            "[0:a]atrim=start={previous_end:.3},asetpts=PTS-STARTPTS[a{segment_count}]"
+        ));
+        segment_count += 1;
+        let inputs = (0..segment_count)
+            .map(|index| format!("[a{index}]"))
+            .collect::<String>();
+        graph.push(format!("{inputs}concat=n={segment_count}:v=0:a=1[outa]"));
+        graph.join(";")
     }
 
     pub fn process(

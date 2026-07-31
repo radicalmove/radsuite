@@ -13,6 +13,7 @@ use radsuite_desktop::{
     list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
     process_radcast_audio_with_processors,
 };
+use radsuite_engines::FillerRemovalMode;
 use radsuite_engines::{AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor};
 use sqlx::sqlite::SqlitePoolOptions;
 
@@ -64,6 +65,8 @@ async fn radcast_import_process_and_list_are_project_scoped() {
             max_silence_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
         },
         processor,
     )
@@ -117,6 +120,8 @@ async fn radcast_processing_rejects_unknown_sources() {
             max_silence_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
         },
         AudioProcessor::default(),
     )
@@ -160,6 +165,8 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
             max_silence_seconds: None,
             caption_format: Some(CaptionFormat::Srt),
             caption_language: "en".to_string(),
+            remove_filler_words: true,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
         },
         fake_processor(&dir),
         fake_caption_processor(&dir),
@@ -169,6 +176,7 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
 
     assert_eq!(output.caption_format, Some(CaptionFormat::Srt));
     assert_eq!(output.caption_segment_count, 1);
+    assert_eq!(output.removed_filler_count, 1);
     let caption_path = output.caption_path.as_deref().expect("caption path");
     assert!(caption_path.ends_with(".srt"));
     assert!(Path::new(caption_path).is_file());
@@ -232,7 +240,7 @@ fn fake_caption_processor(dir: &Path) -> CaptionProcessor {
     let whisper = write_executable(
         dir,
         "whisper.sh",
-        "#!/bin/sh\noutput=''\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  previous=\"$arg\"\ndone\nprintf '1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n' > \"$output.srt\"\n",
+        "#!/bin/sh\noutput=''\njson=0\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  if [ \"$arg\" = \"-oj\" ]; then json=1; fi\n  previous=\"$arg\"\ndone\nif [ \"$json\" = \"1\" ]; then printf '{\"transcription\":[{\"tokens\":[{\"text\":\" um\",\"offsets\":{\"from\":250,\"to\":450},\"p\":0.82}]}]}' > \"$output.json\"; else printf '1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n' > \"$output.srt\"; fi\n",
     );
     let model = dir.join("caption-model.bin");
     fs::write(&model, b"model").expect("write caption model");

@@ -6,13 +6,17 @@ use std::{
 use chrono::Utc;
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
-    CaptionProcessingRequest, CaptionProcessor,
+    CaptionProcessingRequest, CaptionProcessor, CaptionTranscriptionRequest, FillerRemovalMode,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use uuid::Uuid;
 
 const RADCAST_ROOT: &str = "radcast";
+
+fn default_filler_removal_mode() -> FillerRemovalMode {
+    FillerRemovalMode::Aggressive
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImportRadcastAudioRequest {
@@ -43,6 +47,10 @@ pub struct ProcessRadcastAudioRequest {
     pub caption_format: Option<CaptionFormat>,
     #[serde(default = "default_caption_language")]
     pub caption_language: String,
+    #[serde(default)]
+    pub remove_filler_words: bool,
+    #[serde(default = "default_filler_removal_mode")]
+    pub filler_removal_mode: FillerRemovalMode,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -74,6 +82,12 @@ pub struct RadcastAudioOutput {
     pub caption_format: Option<CaptionFormat>,
     #[serde(default)]
     pub caption_segment_count: usize,
+    #[serde(default)]
+    pub remove_filler_words: bool,
+    #[serde(default = "default_filler_removal_mode")]
+    pub filler_removal_mode: FillerRemovalMode,
+    #[serde(default)]
+    pub removed_filler_count: usize,
     pub created_at: String,
 }
 
@@ -213,6 +227,20 @@ pub(crate) fn process_audio_with_processors(
     let output_path = project_root(data_dir, project_id)
         .join("outputs")
         .join(&output_filename);
+    let removal_intervals = if request.remove_filler_words {
+        caption_processor.filler_intervals(
+            &CaptionTranscriptionRequest {
+                input_path: source_path.clone(),
+                language: request.caption_language.trim().to_string(),
+                clip_start_seconds: request.clip_start_seconds,
+                clip_end_seconds: request.clip_end_seconds,
+            },
+            request.filler_removal_mode,
+        )?
+    } else {
+        Vec::new()
+    };
+    let removed_filler_count = removal_intervals.len();
     let result = processor.process(AudioProcessingRequest {
         input_path: source_path,
         output_path: output_path.clone(),
@@ -220,6 +248,7 @@ pub(crate) fn process_audio_with_processors(
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,
         max_silence_seconds: request.max_silence_seconds,
+        remove_intervals: removal_intervals,
         cleanup_enabled: request.cleanup_enabled,
     })?;
 
@@ -264,6 +293,9 @@ pub(crate) fn process_audio_with_processors(
         caption_path,
         caption_format,
         caption_segment_count,
+        remove_filler_words: request.remove_filler_words,
+        filler_removal_mode: request.filler_removal_mode,
+        removed_filler_count,
         created_at: Utc::now().to_rfc3339(),
     };
     manifest.outputs.insert(0, output.clone());
