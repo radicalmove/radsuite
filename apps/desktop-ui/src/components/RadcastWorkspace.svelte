@@ -48,6 +48,7 @@
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
   let radcastJob = $state<RadcastJobStatus | null>(null);
+  let cancelling = $state(false);
   let settingsLoaded = $state(false);
   let settingsSaveTimer: number | null = null;
   let captionCapability = $state<RadcastCapabilityStatus>({
@@ -302,6 +303,11 @@
       if (job.state === "failed") {
         throw new Error(job.error ?? "The local audio job failed.");
       }
+      if (job.state === "cancelled") {
+        status = "Audio processing cancelled";
+        radcastJob = null;
+        return;
+      }
       const output = job.output;
       if (!output) throw new Error("The local audio job completed without an output file.");
       outputs = [output, ...outputs];
@@ -319,6 +325,20 @@
       radcastJob = null;
     } finally {
       processing = false;
+    }
+  }
+
+  async function cancelProcessing() {
+    if (!radcastJob || !processing || cancelling) return;
+    cancelling = true;
+    error = null;
+    try {
+      radcastJob = await invoke<RadcastJobStatus>("cancel_radcast_audio", { jobId: radcastJob.id });
+      status = "Cancelling local audio processing...";
+    } catch (reason: unknown) {
+      error = `Could not cancel audio processing: ${toErrorMessage(reason)}`;
+    } finally {
+      cancelling = false;
     }
   }
 </script>
@@ -348,6 +368,9 @@
       </div>
       <progress max="100" value={radcastJob.percent}></progress>
       <small>Elapsed {formatElapsed(radcastJob.elapsed_seconds)}. Everything is being processed locally.</small>
+      <button class="secondary-button compact-button" type="button" disabled={cancelling} onclick={() => void cancelProcessing()}>
+        {cancelling ? "Cancelling..." : "Cancel processing"}
+      </button>
     </div>
   {/if}
 

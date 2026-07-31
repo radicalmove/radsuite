@@ -112,7 +112,7 @@ export type RadcastCapabilityStatus = {
   optimized_detail: string;
 };
 
-export type RadcastJobState = "running" | "completed" | "failed";
+export type RadcastJobState = "running" | "completed" | "failed" | "cancelled";
 
 export type RadcastProcessingPhase =
   | "preparing"
