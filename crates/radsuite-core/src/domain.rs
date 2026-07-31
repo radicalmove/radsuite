@@ -11,6 +11,7 @@ pub struct Project {
     pub owner_id: UserId,
     pub code: Option<String>,
     pub title: String,
+    pub archived_at: Option<DateTime<Utc>>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -24,6 +25,7 @@ impl Project {
             owner_id,
             code: (!code.trim().is_empty()).then_some(code),
             title: title.into(),
+            archived_at: None,
             created_at: now,
             updated_at: now,
         }
