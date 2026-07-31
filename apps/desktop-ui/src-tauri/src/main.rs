@@ -13,8 +13,9 @@ use radsuite_desktop::{
     PreviewModuleReadingsPdfImportRequest, ProcessRadcastAudioRequest, RadcastAudioListing,
     RadcastAudioOutput, RadcastAudioSource, RadcastCapabilityStatus, RadcastJobStatus,
     RadciteArchiveItem, RadciteProjectSummary, RestoreRadciteArchiveItemRequest,
-    SaveModuleReadingsImportRequest, SavedRadciteReviewSummary, UpdateCourseReferenceRequest,
-    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
+    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -58,6 +59,16 @@ async fn list_radcast_audio(
     request: ListRadcastAudioRequest,
 ) -> Result<RadcastAudioListing, String> {
     radsuite_desktop::list_radcast_audio(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn save_radcast_settings(
+    state: tauri::State<'_, DesktopState>,
+    request: SaveRadcastSettingsRequest,
+) -> Result<radsuite_desktop::RadcastProjectSettings, String> {
+    radsuite_desktop::save_radcast_settings(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -407,6 +418,7 @@ fn main() {
             analyse_docx_for_review,
             analyse_pdf_for_review,
             list_radcast_audio,
+            save_radcast_settings,
             import_radcast_audio,
             process_radcast_audio,
             start_radcast_audio,

@@ -28,8 +28,20 @@ fn default_enhancement_model() -> EnhancementModel {
     EnhancementModel::None
 }
 
+fn default_project_enhancement_model() -> EnhancementModel {
+    EnhancementModel::StudioV18
+}
+
 fn default_enhancement_quality() -> EnhancementQuality {
     EnhancementQuality::Standard
+}
+
+fn default_output_format() -> AudioOutputFormat {
+    AudioOutputFormat::Mp3
+}
+
+fn default_cleanup_enabled() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -73,6 +85,68 @@ pub struct ProcessRadcastAudioRequest {
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
     pub filler_removal_mode: FillerRemovalMode,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RadcastProjectSettings {
+    #[serde(default = "default_output_format")]
+    pub output_format: AudioOutputFormat,
+    #[serde(default)]
+    pub caption_format: Option<CaptionFormat>,
+    #[serde(default = "default_caption_language")]
+    pub caption_language: String,
+    #[serde(default = "default_caption_quality_mode")]
+    pub caption_quality_mode: CaptionQualityMode,
+    #[serde(default)]
+    pub caption_glossary: Option<String>,
+    #[serde(default = "default_project_enhancement_model")]
+    pub enhancement_model: EnhancementModel,
+    #[serde(default = "default_enhancement_quality")]
+    pub enhancement_quality: EnhancementQuality,
+    #[serde(default = "default_cleanup_enabled")]
+    pub cleanup_enabled: bool,
+    #[serde(default)]
+    pub max_silence_seconds: Option<f64>,
+    #[serde(default)]
+    pub remove_filler_words: bool,
+    #[serde(default = "default_filler_removal_mode")]
+    pub filler_removal_mode: FillerRemovalMode,
+}
+
+impl Default for RadcastProjectSettings {
+    fn default() -> Self {
+        Self {
+            output_format: default_output_format(),
+            caption_format: None,
+            caption_language: default_caption_language(),
+            caption_quality_mode: default_caption_quality_mode(),
+            caption_glossary: None,
+            enhancement_model: default_project_enhancement_model(),
+            enhancement_quality: default_enhancement_quality(),
+            cleanup_enabled: default_cleanup_enabled(),
+            max_silence_seconds: None,
+            remove_filler_words: false,
+            filler_removal_mode: default_filler_removal_mode(),
+        }
+    }
+}
+
+impl RadcastProjectSettings {
+    pub fn from_request(request: &ProcessRadcastAudioRequest) -> Self {
+        Self {
+            output_format: request.output_format,
+            caption_format: request.caption_format,
+            caption_language: request.caption_language.clone(),
+            caption_quality_mode: request.caption_quality_mode,
+            caption_glossary: request.caption_glossary.clone(),
+            enhancement_model: request.enhancement_model,
+            enhancement_quality: request.enhancement_quality,
+            cleanup_enabled: request.cleanup_enabled,
+            max_silence_seconds: request.max_silence_seconds,
+            remove_filler_words: request.remove_filler_words,
+            filler_removal_mode: request.filler_removal_mode,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -125,6 +199,7 @@ pub struct RadcastAudioOutput {
 pub struct RadcastAudioListing {
     pub sources: Vec<RadcastAudioSource>,
     pub outputs: Vec<RadcastAudioOutput>,
+    pub settings: RadcastProjectSettings,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -173,6 +248,8 @@ pub enum RadcastStorageError {
 struct RadcastManifest {
     sources: Vec<RadcastAudioSource>,
     outputs: Vec<RadcastAudioOutput>,
+    #[serde(default)]
+    settings: RadcastProjectSettings,
 }
 
 pub(crate) fn list_audio(
@@ -183,7 +260,19 @@ pub(crate) fn list_audio(
     Ok(RadcastAudioListing {
         sources: manifest.sources,
         outputs: manifest.outputs,
+        settings: manifest.settings,
     })
+}
+
+pub(crate) fn save_settings(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    settings: RadcastProjectSettings,
+) -> Result<RadcastProjectSettings, RadcastStorageError> {
+    let mut manifest = load_manifest(data_dir, project_id)?;
+    manifest.settings = settings.clone();
+    write_manifest(data_dir, project_id, &manifest)?;
+    Ok(settings)
 }
 
 pub(crate) fn import_audio(
@@ -301,6 +390,7 @@ where
         percent: 5,
     });
     let mut manifest = load_manifest(data_dir, project_id)?;
+    let project_settings = RadcastProjectSettings::from_request(&request);
     let source = manifest
         .sources
         .iter()
@@ -477,6 +567,7 @@ where
         created_at: Utc::now().to_rfc3339(),
     };
     manifest.outputs.insert(0, output.clone());
+    manifest.settings = project_settings;
     if let Err(error) = write_manifest(data_dir, project_id, &manifest) {
         let _ = fs::remove_file(output_path);
         cleanup_temporary_paths(&temporary_paths);

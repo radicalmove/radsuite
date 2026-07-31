@@ -7,15 +7,17 @@ use std::{
 
 use radsuite_db::migrate;
 use radsuite_desktop::radcast::{
-    RadcastProcessingPhase, process_audio_with_processors_and_enhancement_with_progress,
+    RadcastProcessingPhase, RadcastProjectSettings,
+    process_audio_with_processors_and_enhancement_with_progress,
 };
 use radsuite_desktop::{
     CreateRadciteProjectRequest, DesktopState, ImportRadcastAudioRequest, ListRadcastAudioRequest,
-    ProcessRadcastAudioRequest, RadcastAudioError, RadcastStorageError, create_radcite_project,
-    get_radcast_capabilities_with_processor, get_radcast_capabilities_with_processors,
-    import_radcast_audio_with_processor, list_radcast_audio, list_radcite_projects,
-    process_radcast_audio_with_processor, process_radcast_audio_with_processors,
-    process_radcast_audio_with_processors_and_enhancement,
+    ProcessRadcastAudioRequest, RadcastAudioError, RadcastStorageError, SaveRadcastSettingsRequest,
+    create_radcite_project, get_radcast_capabilities_with_processor,
+    get_radcast_capabilities_with_processors, import_radcast_audio_with_processor,
+    list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
+    process_radcast_audio_with_processors, process_radcast_audio_with_processors_and_enhancement,
+    save_radcast_settings,
 };
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
@@ -328,6 +330,45 @@ async fn radcast_processing_reports_ordered_local_progress_phases() {
         ]
     );
     remove_dir(dir);
+}
+
+#[tokio::test]
+async fn radcast_project_settings_are_persisted_in_local_project_storage() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let settings = RadcastProjectSettings {
+        output_format: AudioOutputFormat::Wav,
+        caption_format: Some(CaptionFormat::Vtt),
+        caption_language: "mi".to_string(),
+        caption_quality_mode: CaptionQualityMode::Accurate,
+        caption_glossary: Some("Te Tiriti".to_string()),
+        enhancement_model: EnhancementModel::None,
+        enhancement_quality: EnhancementQuality::Fast,
+        cleanup_enabled: false,
+        max_silence_seconds: Some(1.5),
+        remove_filler_words: true,
+        filler_removal_mode: FillerRemovalMode::Normal,
+    };
+
+    save_radcast_settings(
+        &state,
+        SaveRadcastSettingsRequest {
+            project_id: Some(projects[0].id),
+            settings: settings.clone(),
+        },
+    )
+    .await
+    .expect("save RADcast settings");
+
+    let listing = list_radcast_audio(
+        &state,
+        ListRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+        },
+    )
+    .await
+    .expect("list RADcast settings");
+    assert_eq!(listing.settings, settings);
 }
 
 #[test]
