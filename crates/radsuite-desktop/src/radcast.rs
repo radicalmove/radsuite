@@ -34,7 +34,7 @@ fn default_project_enhancement_model() -> EnhancementModel {
 }
 
 fn default_enhancement_quality() -> EnhancementQuality {
-    EnhancementQuality::Standard
+    EnhancementQuality::High
 }
 
 fn default_output_format() -> AudioOutputFormat {

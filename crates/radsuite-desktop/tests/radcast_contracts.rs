@@ -306,6 +306,67 @@ async fn radcast_real_audio_fixture_can_process_when_available() {
 }
 
 #[tokio::test]
+async fn radcast_real_audio_fixture_can_process_with_the_optimized_profile_when_available() {
+    let Ok(audio_path) = env::var("RADSUITE_REAL_RADCAST_OPTIMIZED_AUDIO") else {
+        eprintln!(
+            "skipping real RADcast optimized smoke test: RADSUITE_REAL_RADCAST_OPTIMIZED_AUDIO is not set"
+        );
+        return;
+    };
+    let audio_path = PathBuf::from(audio_path);
+    assert!(
+        audio_path.is_file(),
+        "missing RADcast optimized audio fixture"
+    );
+
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: audio_path.to_string_lossy().into_owned(),
+            original_filename: Some("optimized-lecture.wav".to_string()),
+        },
+        AudioProcessor::default(),
+    )
+    .await
+    .expect("import optimized audio");
+
+    let output = process_radcast_audio_with_processors_and_enhancement(
+        &state,
+        ProcessRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            source_id: source.id,
+            output_format: AudioOutputFormat::Wav,
+            clip_start_seconds: Some(0.0),
+            clip_end_seconds: Some(8.0),
+            cleanup_enabled: true,
+            max_silence_seconds: None,
+            caption_format: None,
+            caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::StudioV18,
+            enhancement_quality: EnhancementQuality::Fast,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Normal,
+        },
+        AudioProcessor::default(),
+        CaptionProcessor::default(),
+        EnhancementProcessor::default(),
+    )
+    .await
+    .expect("process optimized audio");
+
+    assert_eq!(output.enhancement_model, EnhancementModel::StudioV18);
+    assert_eq!(output.enhancement_quality, EnhancementQuality::Fast);
+    assert!(output.duration_seconds > 0.0);
+    assert!(output.duration_seconds <= 8.5);
+    assert!(Path::new(&output.path).is_file());
+}
+
+#[tokio::test]
 async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
     let state = desktop_state_with_migrated_pool().await;
     let projects = list_radcite_projects(&state).await.expect("list projects");
@@ -568,6 +629,18 @@ fn radcast_capabilities_report_caption_model_readiness() {
     assert!(!unavailable.caption_available);
     assert!(unavailable.caption_detail.contains("model"));
     remove_dir(dir);
+}
+
+#[test]
+fn radcast_defaults_to_the_original_optimized_quality_profile() {
+    assert_eq!(
+        RadcastProjectSettings::default().enhancement_model,
+        EnhancementModel::StudioV18
+    );
+    assert_eq!(
+        RadcastProjectSettings::default().enhancement_quality,
+        EnhancementQuality::High
+    );
 }
 
 async fn desktop_state_with_migrated_pool() -> DesktopState {

@@ -34,6 +34,15 @@ RADSUITE_REAL_RADCAST_AUDIO="/Users/rcd58/course-output-system/Courses/CRJU150/C
   cargo test -p radsuite-desktop --test radcast_contracts radcast_real_audio_fixture_can_process_when_available -- --nocapture
 ```
 
+The optimized profile has a separate smoke test because it requires the local
+RADcast helper and its Torch/NARA/Resemble runtime. On this Mac, a short WAV
+fixture can be used to verify the full optimized path:
+
+```bash
+RADSUITE_REAL_RADCAST_OPTIMIZED_AUDIO="/tmp/radcast-rust-helper-proof/input/input.wav" \
+  cargo test -p radsuite-desktop --test radcast_contracts radcast_real_audio_fixture_can_process_with_the_optimized_profile_when_available -- --nocapture
+```
+
 ## Scope
 
 This repository is the new Rust/Tauri implementation of RADsuite. The existing Python apps remain reference implementations only.
