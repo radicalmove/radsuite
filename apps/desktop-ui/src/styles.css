@@ -2866,8 +2866,12 @@ button:disabled {
 
 .source-search-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) repeat(3, auto);
   gap: var(--s-2);
+}
+
+.copy-search-query {
+  white-space: nowrap;
 }
 
 .source-search-link {
@@ -3014,6 +3018,7 @@ button:disabled {
   .radtts-tools-grid,
   .radtts-tools-fields,
   .radtts-boundary-fields,
+  .source-search-row,
   .path-row,
   .manual-citation-row,
   .citation-link-row,

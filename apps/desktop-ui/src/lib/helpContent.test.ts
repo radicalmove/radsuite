@@ -16,6 +16,7 @@ describe("RADsuite help content", () => {
 
     expect(guideText).toContain("Analyse");
     expect(guideText).toContain("Use for readings");
+    expect(guideText).toContain("Copy search query");
     expect(guideText).toContain("Export");
   });
 

@@ -65,6 +65,7 @@ const checks = [
   ["review queue status styling", ".queue-status"],
   ["source search panel styling", ".source-search-panel"],
   ["source search row styling", ".source-search-row"],
+  ["copy search query styling", ".copy-search-query"],
   ["source result list styling", ".source-result-list"],
   ["source result card styling", ".source-result-card"],
   ["export panel styling", ".export-panel"],
@@ -220,6 +221,12 @@ for (const needle of ["HelpModal", "helpOpen", "Open help"]) {
 for (const needle of ["Help and quick guide", "Frequently asked questions", "aria-modal=\"true\""]) {
   if (!helpModal.includes(needle)) {
     missing.push(`help modal includes ${needle}`);
+  }
+}
+
+for (const needle of ["Copy search query", "Search text copied.", "copySearchQuery"]) {
+  if (!actionsPanel.includes(needle)) {
+    missing.push(`citation actions include ${needle}`);
   }
 }
 

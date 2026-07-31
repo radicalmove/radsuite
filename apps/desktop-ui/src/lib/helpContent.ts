@@ -27,7 +27,7 @@ export const helpSections: HelpSection[] = [
     summary: "Select a paragraph to see its citation actions and keep the review decisions with the document.",
     steps: [
       "Select a paragraph to see detected citations and paragraphs that may need sources.",
-      "Use Search sources to find Crossref and OpenAlex matches, then add or link a reference deliberately.",
+      "Use Search sources to find Crossref and OpenAlex matches, or Copy search query to paste the search into another library service.",
       "Use Verify citations, Mark reviewed manually, or Not required to record the outcome.",
     ],
   },
