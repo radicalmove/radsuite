@@ -15,24 +15,24 @@ use radsuite_desktop::{
     ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteDocumentRequest,
     ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest, CourseReferenceError,
     CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
-    ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
-    ListModuleReadingsRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
-    ListSavedReviewsRequest, MergeCourseReferencesRequest, ModuleReadingError,
-    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
-    PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    RadciteArchiveItemKind, RadciteDocumentError, RadciteModuleError, RadciteProjectError,
-    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
-    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
-    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, add_course_reference,
-    add_manual_citation_for_review, add_module_reading, add_radcite_module,
+    ExportModuleReadingsRequest, ImportDocumentReadingsRequest, LinkCitationReferenceRequest,
+    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteArchiveRequest,
+    ListRadciteModulesRequest, ListSavedReviewsRequest, MergeCourseReferencesRequest,
+    ModuleReadingError, ModuleReadingExportError, ModuleReadingImportError,
+    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
+    PreviewModuleReadingsPdfImportRequest, RadciteArchiveItemKind, RadciteDocumentError,
+    RadciteModuleError, RadciteProjectError, RestoreRadciteArchiveItemRequest,
+    RestoreRadciteProjectRequest, SaveModuleReadingsImportCandidate,
+    SaveModuleReadingsImportRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
+    UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
+    add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
     analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
     archive_module_reading, archive_radcite_document, archive_radcite_module,
     archive_radcite_project, create_radcite_project, export_course_references,
-    export_module_readings, get_app_status, link_citation_to_reference_for_review,
-    list_course_references, list_module_readings, list_radcite_archive, list_radcite_modules,
-    list_radcite_projects, list_saved_radcite_reviews, load_saved_radcite_review,
-    mark_paragraph_resolved_for_review, merge_course_references,
+    export_module_readings, get_app_status, import_document_readings,
+    link_citation_to_reference_for_review, list_course_references, list_module_readings,
+    list_radcite_archive, list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
+    load_saved_radcite_review, mark_paragraph_resolved_for_review, merge_course_references,
     preview_module_readings_csv_import, preview_module_readings_import,
     preview_module_readings_pdf_import, restore_radcite_archive_item, restore_radcite_project,
     save_module_readings_import, update_course_reference, update_module_reading,
@@ -1592,6 +1592,106 @@ async fn module_readings_import_preview_extracts_candidates_without_persisting()
     .expect("list module readings");
 
     assert!(readings.is_empty());
+}
+
+#[tokio::test]
+async fn document_readings_import_creates_modules_and_is_idempotent() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_readings_import_docx("desktop-document-readings-import.docx");
+    let request = ImportDocumentReadingsRequest {
+        project_id: None,
+        path: path.to_string_lossy().into_owned(),
+        source_file_type: radsuite_core::DocumentFileType::Docx,
+    };
+
+    let first_import = import_document_readings(&state, request.clone())
+        .await
+        .expect("import document readings");
+
+    assert_eq!(first_import.candidate_count, 2);
+    assert_eq!(first_import.saved_count, 2);
+    assert_eq!(first_import.created_module_count, 1);
+    assert_eq!(first_import.unassigned_count, 0);
+    assert_eq!(first_import.failed_file_count, 0);
+
+    let modules = list_radcite_modules(&state, ListRadciteModulesRequest { project_id: None })
+        .await
+        .expect("list imported modules");
+    assert_eq!(modules.len(), 1);
+    assert_eq!(modules[0].title, "Module 1");
+    assert_eq!(modules[0].order_index, Some(1));
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: modules[0].id,
+        },
+    )
+    .await
+    .expect("list imported readings");
+    assert_eq!(readings.len(), 2);
+    assert_eq!(readings[0].reading_category, "compulsory");
+    assert_eq!(readings[1].reading_category, "optional");
+
+    let second_import = import_document_readings(&state, request)
+        .await
+        .expect("re-import document readings");
+    assert_eq!(second_import.candidate_count, 2);
+    assert_eq!(second_import.saved_count, 2);
+    assert_eq!(second_import.created_module_count, 0);
+    assert_eq!(second_import.unassigned_count, 0);
+
+    let modules_after_reimport =
+        list_radcite_modules(&state, ListRadciteModulesRequest { project_id: None })
+            .await
+            .expect("list modules after re-import");
+    assert_eq!(modules_after_reimport.len(), 1);
+
+    let readings_after_reimport = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: modules_after_reimport[0].id,
+        },
+    )
+    .await
+    .expect("list readings after re-import");
+    assert_eq!(readings_after_reimport.len(), 2);
+}
+
+#[tokio::test]
+async fn document_pdf_readings_import_infers_module_from_scorm_filename() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_readings_import_pdf(
+        "desktop-module-6-microlearning-1-import.pdf",
+        &[
+            "Required readings",
+            "Goldberg, M. H., & Gustafson, A. (2023). Strategic campaigns. International Journal of Strategic Communication, 17(1), 1-20.",
+        ],
+    );
+
+    let result = import_document_readings(
+        &state,
+        ImportDocumentReadingsRequest {
+            project_id: None,
+            path: path.to_string_lossy().into_owned(),
+            source_file_type: radsuite_core::DocumentFileType::Pdf,
+        },
+    )
+    .await
+    .expect("import PDF readings");
+
+    assert_eq!(result.candidate_count, 1);
+    assert_eq!(result.saved_count, 1);
+    assert_eq!(result.created_module_count, 1);
+    assert_eq!(result.unassigned_count, 0);
+    assert_eq!(result.failed_file_count, 0);
+
+    let modules = list_radcite_modules(&state, ListRadciteModulesRequest { project_id: None })
+        .await
+        .expect("list PDF import module");
+    assert_eq!(modules.len(), 1);
+    assert_eq!(modules[0].title, "Module 6");
+    assert_eq!(modules[0].order_index, Some(6));
 }
 
 #[tokio::test]

@@ -610,6 +610,23 @@ pub struct PreviewModuleReadingsPdfImportRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImportDocumentReadingsRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub path: String,
+    pub source_file_type: DocumentFileType,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImportDocumentReadingsResponse {
+    pub candidate_count: usize,
+    pub saved_count: usize,
+    pub created_module_count: usize,
+    pub unassigned_count: usize,
+    pub failed_file_count: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ModuleReadingImportCandidateSummary {
     pub source_path: Option<String>,
     pub source_filename: Option<String>,
@@ -847,7 +864,7 @@ pub enum ModuleReadingError {
 
 #[derive(Debug, Error)]
 pub enum ModuleReadingImportError {
-    #[error("choose a DOCX, CSV, or PDF file before previewing module readings")]
+    #[error("choose a DOCX, CSV, or PDF file before importing or previewing module readings")]
     EmptyPath,
     #[error(transparent)]
     Docx(#[from] DocxIngestionError),
@@ -857,6 +874,8 @@ pub enum ModuleReadingImportError {
     Pdf(#[from] PdfReadingExtractionError),
     #[error("could not load RADcite module {0}")]
     MissingModule(ModuleId),
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
     #[error("choose compulsory or optional for the reading category")]
     InvalidCategory(String),
     #[error("enter reading text before importing a module reading")]
@@ -2110,6 +2129,147 @@ pub async fn preview_module_readings_pdf_import(
     })
 }
 
+pub async fn import_document_readings(
+    state: &DesktopState,
+    request: ImportDocumentReadingsRequest,
+) -> Result<ImportDocumentReadingsResponse, ModuleReadingImportError> {
+    let path = request.path.trim();
+    if path.is_empty() {
+        return Err(ModuleReadingImportError::EmptyPath);
+    }
+
+    let path = PathBuf::from(path);
+    let (candidates, failed_file_count) = match request.source_file_type {
+        DocumentFileType::Docx => {
+            let original_filename = path
+                .file_name()
+                .and_then(|filename| filename.to_str())
+                .unwrap_or("module-readings.docx")
+                .to_string();
+            (
+                extract_docx_reading_candidates(DocxReadingExtractionRequest {
+                    path: path.clone(),
+                    original_filename,
+                })?,
+                0,
+            )
+        }
+        DocumentFileType::Pdf => {
+            let report = extract_pdf_reading_candidates_with_report(PdfReadingExtractionRequest {
+                paths: vec![path.clone()],
+            })?;
+            (report.candidates, report.failures.len())
+        }
+    };
+
+    let candidate_count = candidates.len();
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                ModuleReadingImportError::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => ModuleReadingImportError::Database(error),
+        })?;
+    let module_repo = SqliteCourseModuleRepository::new(state.database_pool.clone());
+    let mut modules = module_repo
+        .list_course_modules_for_project(project.id)
+        .await?;
+    let mut modules_to_insert = Vec::new();
+    let mut created_module_count = 0;
+    let mut unassigned_count = 0;
+    let mut save_candidates = Vec::new();
+
+    for candidate in candidates {
+        let candidate_path = candidate
+            .source_path
+            .as_deref()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| path.clone());
+        let (path_module_order, path_module_title) = infer_module_from_path(&candidate_path);
+        let module_order = candidate.module_order.or(path_module_order);
+        let module_title = candidate.module_title.clone().or(path_module_title);
+        let module = find_import_module(&modules, module_order, module_title.as_deref())
+            .or_else(|| {
+                (module_order.is_none() && module_title.is_none() && modules.len() == 1)
+                    .then(|| modules.first().cloned())
+                    .flatten()
+            })
+            .or_else(|| {
+                let has_module_signal = module_order.is_some()
+                    || module_title
+                        .as_deref()
+                        .is_some_and(|title| !title.trim().is_empty());
+                if !has_module_signal {
+                    return None;
+                }
+
+                let title = module_title
+                    .as_deref()
+                    .filter(|title| !title.trim().is_empty())
+                    .map(str::trim)
+                    .map(canonical_import_module_title)
+                    .or_else(|| module_order.map(|order| format!("Module {order}")))?;
+                let module = CourseModule::new(project.id, title, module_order);
+                // The in-memory list is updated immediately so later candidates in the same
+                // document resolve to the module just created.
+                modules.push(module.clone());
+                modules_to_insert.push(module.clone());
+                created_module_count += 1;
+                Some(module)
+            });
+
+        let Some(module) = module else {
+            unassigned_count += 1;
+            continue;
+        };
+
+        let source_filename = candidate.source_filename.clone().or_else(|| {
+            candidate_path
+                .file_name()
+                .and_then(|filename| filename.to_str())
+                .map(str::to_string)
+        });
+        let notes = source_filename
+            .as_deref()
+            .map(|filename| format!("Imported from {filename}"));
+
+        save_candidates.push(SaveModuleReadingsImportCandidate {
+            module_id: module.id,
+            reading_category: reading_category_label(Some(candidate.reading_category)).to_string(),
+            lesson_code: candidate.lesson_code,
+            apa_citation: Some(candidate.apa_citation),
+            citation_text: candidate.citation_text,
+            doi: candidate.doi,
+            url: candidate.url,
+            notes,
+            reading_notes: None,
+            estimated_reading_time: None,
+        });
+    }
+
+    for module in modules_to_insert {
+        module_repo.insert_course_module(&module).await?;
+    }
+
+    let saved_count = save_module_readings_import(
+        state,
+        SaveModuleReadingsImportRequest {
+            candidates: save_candidates,
+        },
+    )
+    .await?
+    .len();
+
+    Ok(ImportDocumentReadingsResponse {
+        candidate_count,
+        saved_count,
+        created_module_count,
+        unassigned_count,
+        failed_file_count,
+    })
+}
+
 pub async fn save_module_readings_import(
     state: &DesktopState,
     request: SaveModuleReadingsImportRequest,
@@ -2171,6 +2331,78 @@ pub async fn save_module_readings_import(
     }
 
     Ok(saved_readings)
+}
+
+fn find_import_module(
+    modules: &[CourseModule],
+    module_order: Option<i32>,
+    module_title: Option<&str>,
+) -> Option<CourseModule> {
+    module_order
+        .and_then(|order| {
+            modules
+                .iter()
+                .find(|module| module.order_index == Some(order))
+                .cloned()
+        })
+        .or_else(|| {
+            let title = module_title?.trim();
+            (!title.is_empty()).then(|| {
+                modules
+                    .iter()
+                    .find(|module| {
+                        normalised_reference_identity(&module.title)
+                            == normalised_reference_identity(title)
+                    })
+                    .cloned()
+            })?
+        })
+}
+
+fn infer_module_from_path(path: &std::path::Path) -> (Option<i32>, Option<String>) {
+    let value = path.to_string_lossy();
+    let Some(captures) = Regex::new(r"(?i)\b(module|week)[\s_-]*(\d{1,3})\b")
+        .ok()
+        .and_then(|regex| regex.captures(&value))
+    else {
+        return (None, None);
+    };
+
+    let order = captures
+        .get(2)
+        .and_then(|value| value.as_str().parse::<i32>().ok());
+    let title = order.map(|order| {
+        if captures
+            .get(1)
+            .is_some_and(|value| value.as_str().eq_ignore_ascii_case("week"))
+        {
+            format!("Week {order}")
+        } else {
+            format!("Module {order}")
+        }
+    });
+    (order, title)
+}
+
+fn canonical_import_module_title(title: &str) -> String {
+    let trimmed = title.trim();
+    let Some(captures) = Regex::new(r"(?i)^(module|week)\s+(\d+)$")
+        .ok()
+        .and_then(|regex| regex.captures(trimmed))
+    else {
+        return trimmed.to_string();
+    };
+
+    let label = captures
+        .get(1)
+        .map(|value| value.as_str().to_ascii_lowercase())
+        .unwrap_or_else(|| "module".to_string());
+    let order = captures
+        .get(2)
+        .map(|value| value.as_str())
+        .unwrap_or_default();
+    let label = if label == "week" { "Week" } else { "Module" };
+    format!("{label} {order}")
 }
 
 async fn find_existing_module_reading(

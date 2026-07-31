@@ -5,12 +5,13 @@ use radsuite_desktop::{
     ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest,
     CourseModuleSummary, CourseReferenceSummary, CourseReferencesExport,
     CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
-    ExportCourseReferencesRequest, ExportModuleReadingsRequest, ImportRadcastAudioRequest,
-    LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
-    ListRadcastAudioRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
-    ListRadtTsOutputsRequest, ListSavedReviewsRequest, LoadSavedReviewRequest,
-    MergeCourseReferencesRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
-    ModuleReadingsExport, ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
+    ExportCourseReferencesRequest, ExportModuleReadingsRequest, ImportDocumentReadingsRequest,
+    ImportDocumentReadingsResponse, ImportRadcastAudioRequest, LinkCitationReferenceRequest,
+    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadcastAudioRequest,
+    ListRadciteArchiveRequest, ListRadciteModulesRequest, ListRadtTsOutputsRequest,
+    ListSavedReviewsRequest, LoadSavedReviewRequest, MergeCourseReferencesRequest,
+    ModuleReadingImportCandidateSummary, ModuleReadingSummary, ModuleReadingsExport,
+    ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
     ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
     RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem, RadciteProjectSummary,
@@ -475,6 +476,16 @@ async fn preview_module_readings_pdf_import(
 }
 
 #[tauri::command]
+async fn import_document_readings(
+    state: tauri::State<'_, DesktopState>,
+    request: ImportDocumentReadingsRequest,
+) -> Result<ImportDocumentReadingsResponse, String> {
+    radsuite_desktop::import_document_readings(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn save_module_readings_import(
     state: tauri::State<'_, DesktopState>,
     request: SaveModuleReadingsImportRequest,
@@ -602,6 +613,7 @@ fn main() {
             preview_module_readings_import,
             preview_module_readings_csv_import,
             preview_module_readings_pdf_import,
+            import_document_readings,
             save_module_readings_import,
             export_course_references,
             export_module_readings,
