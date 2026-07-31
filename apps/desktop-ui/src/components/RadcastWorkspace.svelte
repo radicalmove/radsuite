@@ -315,10 +315,13 @@
       const captionDetail = output.caption_format
         ? ` with ${output.caption_segment_count} ${output.caption_format.toUpperCase()} caption${output.caption_segment_count === 1 ? "" : "s"}`
         : "";
+      const captionReviewDetail = output.caption_review_required
+        ? `; ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"} flagged for review`
+        : "";
       const fillerDetail = output.removed_filler_count > 0
         ? ` and removed ${output.removed_filler_count} filler word${output.removed_filler_count === 1 ? "" : "s"}`
         : "";
-      status = `Audio processing complete${captionDetail}${fillerDetail}`;
+      status = `Audio processing complete${captionDetail}${captionReviewDetail}${fillerDetail}`;
       radcastJob = null;
     } catch (reason: unknown) {
       status = null;
@@ -604,7 +607,7 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model === "studio_v18" ? ` · RADcast Optimized · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}</span>
+              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model === "studio_v18" ? ` · RADcast Optimized · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
             </div>
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.
@@ -617,6 +620,13 @@
                   href={convertFileSrc(output.caption_path)}
                   download={`${output.filename}.${output.caption_format}`}
                 >Download {output.caption_format.toUpperCase()}</a>
+              {/if}
+              {#if output.caption_review_path}
+                <a
+                  class="secondary-button compact-button"
+                  href={convertFileSrc(output.caption_review_path)}
+                  download={`${output.filename}.review.txt`}
+                >Download caption review</a>
               {/if}
             </div>
           </article>
