@@ -132,12 +132,23 @@ pub struct RadciteProjectSummary {
     pub id: ProjectId,
     pub code: Option<String>,
     pub title: String,
+    pub archived_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CreateRadciteProjectRequest {
     pub code: Option<String>,
     pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ArchiveRadciteProjectRequest {
+    pub project_id: ProjectId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RestoreRadciteProjectRequest {
+    pub project_id: ProjectId,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -576,6 +587,8 @@ pub enum RadcastAudioError {
 pub enum RadciteProjectError {
     #[error("enter a project title before creating it")]
     EmptyTitle,
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -815,6 +828,44 @@ pub async fn create_radcite_project(
         .await?;
 
     Ok(radcite_project_summary(project))
+}
+
+pub async fn archive_radcite_project(
+    state: &DesktopState,
+    request: ArchiveRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, RadciteProjectError> {
+    let project_repo = SqliteProjectRepository::new(state.database_pool.clone());
+    let project = project_repo
+        .load_project(request.project_id)
+        .await?
+        .ok_or(RadciteProjectError::MissingProject(request.project_id))?;
+
+    project_repo.archive_project(project.id).await?;
+    let archived = project_repo
+        .load_project(project.id)
+        .await?
+        .ok_or(RadciteProjectError::MissingProject(project.id))?;
+
+    Ok(radcite_project_summary(archived))
+}
+
+pub async fn restore_radcite_project(
+    state: &DesktopState,
+    request: RestoreRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, RadciteProjectError> {
+    let project_repo = SqliteProjectRepository::new(state.database_pool.clone());
+    let project = project_repo
+        .load_project(request.project_id)
+        .await?
+        .ok_or(RadciteProjectError::MissingProject(request.project_id))?;
+
+    project_repo.restore_project(project.id).await?;
+    let restored = project_repo
+        .load_project(project.id)
+        .await?
+        .ok_or(RadciteProjectError::MissingProject(project.id))?;
+
+    Ok(radcite_project_summary(restored))
 }
 
 pub async fn list_radcast_audio(
@@ -2064,6 +2115,7 @@ fn radcite_project_summary(project: Project) -> RadciteProjectSummary {
         id: project.id,
         code: project.code,
         title: project.title,
+        archived_at: project.archived_at.map(|value| value.to_rfc3339()),
     }
 }
 
