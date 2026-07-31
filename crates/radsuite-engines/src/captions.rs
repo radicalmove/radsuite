@@ -19,6 +19,24 @@ pub enum CaptionFormat {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+pub enum CaptionQualityMode {
+    Fast,
+    Accurate,
+    Reviewed,
+}
+
+impl CaptionQualityMode {
+    const fn beam_size(self) -> u8 {
+        match self {
+            Self::Fast => 1,
+            Self::Accurate => 3,
+            Self::Reviewed => 5,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum FillerRemovalMode {
     Normal,
     Aggressive,
@@ -140,12 +158,22 @@ impl CaptionProcessor {
         &self,
         request: &CaptionProcessingRequest,
     ) -> Result<Vec<OsString>, CaptionProcessingError> {
+        self.whisper_arguments_with_options(request, CaptionQualityMode::Accurate, None)
+    }
+
+    pub fn whisper_arguments_with_options(
+        &self,
+        request: &CaptionProcessingRequest,
+        quality_mode: CaptionQualityMode,
+        glossary: Option<&str>,
+    ) -> Result<Vec<OsString>, CaptionProcessingError> {
         Self::validate_request(request)?;
+        let model_path = self.model_path_for_quality(quality_mode);
         let output_base = output_base_path(&request.output_path);
         let language = request.language.trim();
         let mut args = vec![
             OsString::from("-m"),
-            self.model_path.clone().into_os_string(),
+            model_path.into_os_string(),
             OsString::from("-f"),
             request.input_path.clone().into_os_string(),
             OsString::from("-of"),
@@ -173,8 +201,13 @@ impl CaptionProcessor {
             }),
             OsString::from("-l"),
             OsString::from(language),
+            OsString::from("-bs"),
+            OsString::from(quality_mode.beam_size().to_string()),
             OsString::from("-np"),
         ]);
+        if let Some(prompt) = caption_prompt(glossary) {
+            args.extend([OsString::from("--prompt"), OsString::from(prompt)]);
+        }
         Ok(args)
     }
 
@@ -207,21 +240,35 @@ impl CaptionProcessor {
         &self,
         request: &CaptionTranscriptionRequest,
     ) -> Result<Vec<CaptionWord>, CaptionProcessingError> {
+        self.transcribe_words_with_options(request, CaptionQualityMode::Fast, None)
+    }
+
+    pub fn transcribe_words_with_options(
+        &self,
+        request: &CaptionTranscriptionRequest,
+        quality_mode: CaptionQualityMode,
+        glossary: Option<&str>,
+    ) -> Result<Vec<CaptionWord>, CaptionProcessingError> {
         validate_transcription_request(request)?;
         if !request.input_path.is_file() {
             return Err(CaptionProcessingError::MissingInput {
                 path: request.input_path.clone(),
             });
         }
-        if !self.model_path.is_file() {
-            return Err(CaptionProcessingError::MissingModel {
-                path: self.model_path.clone(),
-            });
+        let model_path = self.model_path_for_quality(quality_mode);
+        if !model_path.is_file() {
+            return Err(CaptionProcessingError::MissingModel { path: model_path });
         }
 
         let output_base = temporary_output_base();
         let output_path = output_base.with_extension("json");
-        let args = self.transcription_arguments(request, &output_base);
+        let args = self.transcription_arguments(
+            request,
+            &output_base,
+            &model_path,
+            quality_mode,
+            glossary,
+        );
         let result = Command::new(&self.whisper_command)
             .args(&args)
             .output()
@@ -274,7 +321,8 @@ impl CaptionProcessor {
         mode: FillerRemovalMode,
     ) -> Result<Vec<AudioTimeInterval>, CaptionProcessingError> {
         let clip_start = request.clip_start_seconds.unwrap_or(0.0);
-        let mut words = self.transcribe_words(request)?;
+        let mut words =
+            self.transcribe_words_with_options(request, CaptionQualityMode::Fast, None)?;
         if clip_start > 0.0 {
             for word in &mut words {
                 word.start_seconds = (word.start_seconds - clip_start).max(0.0);
@@ -288,10 +336,13 @@ impl CaptionProcessor {
         &self,
         request: &CaptionTranscriptionRequest,
         output_base: &Path,
+        model_path: &Path,
+        quality_mode: CaptionQualityMode,
+        glossary: Option<&str>,
     ) -> Vec<OsString> {
         let mut args = vec![
             OsString::from("-m"),
-            self.model_path.clone().into_os_string(),
+            model_path.to_path_buf().into_os_string(),
             OsString::from("-f"),
             request.input_path.clone().into_os_string(),
             OsString::from("-of"),
@@ -307,14 +358,75 @@ impl CaptionProcessor {
             OsString::from("-ojf"),
             OsString::from("-l"),
             OsString::from(request.language.trim()),
+            OsString::from("-bs"),
+            OsString::from(quality_mode.beam_size().to_string()),
             OsString::from("-np"),
         ]);
+        if let Some(prompt) = caption_prompt(glossary) {
+            args.extend([OsString::from("--prompt"), OsString::from(prompt)]);
+        }
         args
+    }
+
+    pub fn model_path_for_quality(&self, quality_mode: CaptionQualityMode) -> PathBuf {
+        let mode_variable = match quality_mode {
+            CaptionQualityMode::Fast => return self.model_path.clone(),
+            CaptionQualityMode::Accurate => "RADSUITE_WHISPER_ACCURATE_MODEL",
+            CaptionQualityMode::Reviewed => "RADSUITE_WHISPER_REVIEWED_MODEL",
+        };
+        let mut candidates = Vec::new();
+        if let Ok(value) = std::env::var(mode_variable) {
+            candidates.push(PathBuf::from(value.trim()));
+        }
+        if quality_mode == CaptionQualityMode::Reviewed
+            && let Ok(value) = std::env::var("RADSUITE_WHISPER_ACCURATE_MODEL")
+        {
+            candidates.push(PathBuf::from(value.trim()));
+        }
+
+        let standard_model = self
+            .model_path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name.starts_with("ggml-"));
+        if standard_model {
+            let mut local_models = Vec::new();
+            if quality_mode == CaptionQualityMode::Reviewed {
+                local_models.push("ggml-large-v3.bin");
+            }
+            local_models.push("ggml-medium.bin");
+            if let Some(parent) = self.model_path.parent() {
+                candidates.extend(local_models.iter().map(|name| parent.join(name)));
+            }
+            let home = std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_default();
+            for name in local_models {
+                candidates.push(home.join(".radcast/whispercpp-models").join(name));
+            }
+            if quality_mode == CaptionQualityMode::Reviewed {
+                candidates.push(home.join(".cache/whisper/ggml-large-v3.bin"));
+            }
+            candidates.push(home.join(".cache/whisper/ggml-medium.en.bin"));
+        }
+        candidates
+            .into_iter()
+            .find(|path| path.is_file())
+            .unwrap_or_else(|| self.model_path.clone())
     }
 
     pub fn process(
         &self,
         request: CaptionProcessingRequest,
+    ) -> Result<CaptionProcessingResult, CaptionProcessingError> {
+        self.process_with_options(request, CaptionQualityMode::Accurate, None)
+    }
+
+    pub fn process_with_options(
+        &self,
+        request: CaptionProcessingRequest,
+        quality_mode: CaptionQualityMode,
+        glossary: Option<&str>,
     ) -> Result<CaptionProcessingResult, CaptionProcessingError> {
         Self::validate_request(&request)?;
         if !request.input_path.is_file() {
@@ -322,10 +434,9 @@ impl CaptionProcessor {
                 path: request.input_path,
             });
         }
-        if !self.model_path.is_file() {
-            return Err(CaptionProcessingError::MissingModel {
-                path: self.model_path.clone(),
-            });
+        let model_path = self.model_path_for_quality(quality_mode);
+        if !model_path.is_file() {
+            return Err(CaptionProcessingError::MissingModel { path: model_path });
         }
         let Some(parent) = request.output_path.parent() else {
             return Err(CaptionProcessingError::MissingOutputParent {
@@ -334,7 +445,7 @@ impl CaptionProcessor {
         };
         fs::create_dir_all(parent).map_err(CaptionProcessingError::PrepareOutput)?;
 
-        let args = self.whisper_arguments(&request)?;
+        let args = self.whisper_arguments_with_options(&request, quality_mode, glossary)?;
         let result = Command::new(&self.whisper_command)
             .args(&args)
             .output()
@@ -411,6 +522,17 @@ pub fn detect_filler_intervals(
 
 fn round_milliseconds(seconds: f64) -> f64 {
     (seconds * 1000.0).round() / 1000.0
+}
+
+fn caption_prompt(glossary: Option<&str>) -> Option<String> {
+    let glossary = glossary?.split_whitespace().collect::<Vec<_>>().join(" ");
+    if glossary.is_empty() {
+        return None;
+    }
+    let glossary = glossary.chars().take(1500).collect::<String>();
+    Some(format!(
+        "Use these exact names and terms when they occur: {glossary}"
+    ))
 }
 
 #[derive(Debug, Deserialize)]

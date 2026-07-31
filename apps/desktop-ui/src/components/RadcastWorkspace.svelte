@@ -5,6 +5,7 @@
   import type {
     AudioOutputFormat,
     CaptionFormat,
+    CaptionQualityMode,
     FillerRemovalMode,
     RadcastCapabilityStatus,
     RadcastAudioListing,
@@ -26,6 +27,8 @@
   let outputFormat = $state<AudioOutputFormat>("mp3");
   let captionFormat = $state<CaptionFormat | null>(null);
   let captionLanguage = $state("en");
+  let captionQualityMode = $state<CaptionQualityMode>("reviewed");
+  let captionGlossary = $state("");
   let cleanupEnabled = $state(true);
   let shortenPauses = $state(false);
   let maxSilenceSeconds = $state(1.0);
@@ -154,6 +157,8 @@
           max_silence_seconds: shortenPauses ? maxSilenceSeconds : null,
           caption_format: captionFormat,
           caption_language: captionLanguage,
+          caption_quality_mode: captionQualityMode,
+          caption_glossary: captionGlossary.trim() || null,
           remove_filler_words: removeFillerWords,
           filler_removal_mode: fillerRemovalMode,
         },
@@ -290,6 +295,20 @@
             <option value="mi">Maori</option>
             <option value="auto">Auto-detect</option>
           </select>
+        </label>
+        <label class="stack settings-compact-field">
+          <span>Caption quality</span>
+          <select bind:value={captionQualityMode}>
+            <option value="fast">Fast</option>
+            <option value="accurate">Accurate</option>
+            <option value="reviewed">Reviewed</option>
+          </select>
+          <small class="field-note">Reviewed uses the strongest local model and search settings available.</small>
+        </label>
+        <label class="stack settings-compact-field">
+          <span>Glossary and names</span>
+          <textarea bind:value={captionGlossary} rows="3" placeholder="Māori terms, names, or spellings"></textarea>
+          <small class="field-note">Optional terms passed to the transcription model as phrase guidance.</small>
         </label>
       {/if}
       <label class="radcast-check">

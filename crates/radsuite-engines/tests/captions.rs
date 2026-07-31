@@ -7,8 +7,8 @@ use std::{
 
 use radsuite_engines::{
     AudioTimeInterval, CaptionFormat, CaptionProcessingError, CaptionProcessingRequest,
-    CaptionProcessor, CaptionTranscriptionRequest, CaptionWord, FillerRemovalMode,
-    detect_filler_intervals,
+    CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest, CaptionWord,
+    FillerRemovalMode, detect_filler_intervals,
 };
 
 #[test]
@@ -31,6 +31,58 @@ fn caption_processor_builds_trimmed_vtt_arguments() {
     assert!(args.windows(2).any(|pair| pair == ["-ovtt", "-l"]));
     assert!(args.contains(&"2500".to_string()));
     assert!(args.contains(&"9500".to_string()));
+}
+
+#[test]
+fn caption_quality_controls_whisper_search_and_glossary_prompt() {
+    let dir = test_dir("quality-options");
+    let small_model = dir.join("ggml-small.bin");
+    let medium_model = dir.join("ggml-medium.bin");
+    fs::write(&small_model, b"small model").expect("write small model");
+    fs::write(&medium_model, b"medium model").expect("write medium model");
+    let processor = CaptionProcessor::from_commands("whisper", small_model.clone());
+    let request = CaptionProcessingRequest {
+        input_path: PathBuf::from("lecture.wav"),
+        output_path: PathBuf::from("captions.srt"),
+        caption_format: CaptionFormat::Srt,
+        language: "en".to_string(),
+        clip_start_seconds: None,
+        clip_end_seconds: None,
+    };
+
+    let fast = display_args(
+        &processor
+            .whisper_arguments_with_options(&request, CaptionQualityMode::Fast, None)
+            .expect("build fast arguments"),
+    );
+    assert!(fast.windows(2).any(|pair| pair == ["-bs", "1"]));
+    assert!(
+        fast.windows(2)
+            .any(|pair| { pair == ["-m", small_model.to_string_lossy().as_ref()] })
+    );
+
+    let reviewed = display_args(
+        &processor
+            .whisper_arguments_with_options(
+                &request,
+                CaptionQualityMode::Reviewed,
+                Some("Te Tiriti o Waitangi, kaiwhakahaere"),
+            )
+            .expect("build reviewed arguments"),
+    );
+    assert!(
+        reviewed
+            .windows(2)
+            .any(|pair| pair == ["-m", medium_model.to_string_lossy().as_ref()])
+    );
+    assert!(reviewed.windows(2).any(|pair| pair == ["-bs", "5"]));
+    assert!(reviewed.windows(2).any(|pair| {
+        pair == [
+            "--prompt",
+            "Use these exact names and terms when they occur: Te Tiriti o Waitangi, kaiwhakahaere",
+        ]
+    }));
+    remove_dir(dir);
 }
 
 #[test]
