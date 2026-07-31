@@ -265,6 +265,15 @@ pub enum RadcastStorageError {
         #[source]
         source: std::io::Error,
     },
+    #[error(
+        "could not copy selected cloud audio file from '{source_path}' to RADcast project storage at '{destination}': {source}. In OneDrive or iCloud, choose 'Always Keep on This Device' or move the file to a local folder, wait for the download to finish, then retry."
+    )]
+    CloudSourceCopy {
+        source_path: PathBuf,
+        destination: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
     #[error("saved audio source was not found: {0}")]
     MissingSource(String),
     #[error("failed to access RADcast project storage")]
@@ -384,10 +393,18 @@ pub(crate) fn import_audio(
     if let Err(source) = fs::copy(&source_path, &destination) {
         let _ = fs::remove_file(&destination);
         let _ = fs::remove_dir(&sources_dir);
-        return Err(RadcastStorageError::SourceCopy {
-            source_path,
-            destination,
-            source,
+        return Err(if is_cloud_storage_path(&source_path) {
+            RadcastStorageError::CloudSourceCopy {
+                source_path,
+                destination,
+                source,
+            }
+        } else {
+            RadcastStorageError::SourceCopy {
+                source_path,
+                destination,
+                source,
+            }
         });
     }
     let duration_seconds = match processor.probe_duration(&destination) {
@@ -816,4 +833,25 @@ fn safe_stem(filename: &str) -> String {
         .and_then(|value| value.to_str())
         .unwrap_or("audio");
     safe_filename(stem)
+}
+
+fn is_cloud_storage_path(path: &Path) -> bool {
+    path.components()
+        .any(|component| component.as_os_str().to_string_lossy() == "CloudStorage")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_cloud_storage_path;
+    use std::path::Path;
+
+    #[test]
+    fn identifies_macos_cloud_storage_paths() {
+        assert!(is_cloud_storage_path(Path::new(
+            "/Users/example/Library/CloudStorage/OneDrive-Team/audio.wav"
+        )));
+        assert!(!is_cloud_storage_path(Path::new(
+            "/Users/example/Documents/audio.wav"
+        )));
+    }
 }
