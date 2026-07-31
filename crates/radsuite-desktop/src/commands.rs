@@ -2071,6 +2071,8 @@ pub async fn add_module_reading(
         module.id,
         apa_citation.as_deref(),
         citation_text.as_deref(),
+        request.doi.as_deref(),
+        request.url.as_deref(),
     )
     .await?
     {
@@ -2419,6 +2421,8 @@ pub async fn save_module_readings_import(
             module.id,
             apa_citation.as_deref(),
             citation_text.as_deref(),
+            candidate.doi.as_deref(),
+            candidate.url.as_deref(),
         )
         .await?
         {
@@ -2539,8 +2543,11 @@ async fn find_existing_module_reading(
     module_id: ModuleId,
     apa_citation: Option<&str>,
     citation_text: Option<&str>,
+    doi: Option<&str>,
+    url: Option<&str>,
 ) -> Result<Option<ReferenceEntry>, DbError> {
-    let Some(import_key) = module_reading_import_identity(apa_citation, citation_text) else {
+    let Some(import_key) = module_reading_import_identity(apa_citation, citation_text, doi, url)
+    else {
         return Ok(None);
     };
 
@@ -3173,16 +3180,54 @@ fn reading_category_label(reading_category: Option<ReadingCategory>) -> &'static
 fn module_reading_import_identity(
     apa_citation: Option<&str>,
     citation_text: Option<&str>,
+    doi: Option<&str>,
+    url: Option<&str>,
 ) -> Option<String> {
     let reading_text = apa_citation.or(citation_text)?;
-    Some(normalised_reading_identity(reading_text))
+    Some(canonical_reading_identity(reading_text, doi, url))
 }
 
 fn module_reading_entry_identity(reading: &ReferenceEntry) -> Option<String> {
     module_reading_import_identity(
         reading.apa_citation.as_deref(),
         reading.citation_text.as_deref(),
+        reading.doi.as_deref(),
+        reading.url.as_deref(),
     )
+}
+
+fn canonical_reading_identity(value: &str, doi: Option<&str>, url: Option<&str>) -> String {
+    if let Some(doi) = doi.map(canonical_reading_doi).filter(|doi| !doi.is_empty()) {
+        return format!("doi:{doi}");
+    }
+    let citation = normalised_reading_identity(value);
+    if !citation.is_empty() {
+        return citation;
+    }
+    if let Some(url) = url.map(canonical_reading_url).filter(|url| !url.is_empty()) {
+        return format!("url:{url}");
+    }
+    String::new()
+}
+
+fn canonical_reading_doi(value: &str) -> String {
+    value
+        .trim()
+        .trim_end_matches(['.', ',', ';', ')', ']'])
+        .to_lowercase()
+        .trim_start_matches("https://doi.org/")
+        .trim_start_matches("http://doi.org/")
+        .trim_start_matches("doi:")
+        .to_string()
+}
+
+fn canonical_reading_url(value: &str) -> String {
+    normalise_reference_url(value)
+        .trim()
+        .trim_end_matches(['.', ',', ';', ')', ']'])
+        .to_lowercase()
+        .trim_end_matches('/')
+        .to_string()
 }
 
 fn normalised_reading_identity(value: &str) -> String {

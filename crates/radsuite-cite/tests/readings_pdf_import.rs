@@ -134,6 +134,37 @@ fn readings_pdf_import_required_supersedes_optional_duplicate() {
 }
 
 #[test]
+fn readings_pdf_import_deduplicates_by_doi_and_keeps_required_category() {
+    let dir = test_dir("required-doi-precedence");
+    let optional_pdf = dir.join("Module 2 Microlearning 1.pdf");
+    let required_pdf = dir.join("Module 2 Microlearning 2.pdf");
+    write_minimal_pdf(
+        &optional_pdf,
+        &[
+            "Optional readings",
+            "Rice, L. (2024). Communication and culture. Academic Press. https://doi.org/10.1234/rice",
+        ],
+    );
+    write_minimal_pdf(
+        &required_pdf,
+        &[
+            "Required readings",
+            "Rice, L. (2024). Communication and culture: A revised edition. Academic Press. https://doi.org/10.1234/rice",
+        ],
+    );
+
+    let candidates = extract_pdf_reading_candidates(PdfReadingExtractionRequest {
+        paths: vec![optional_pdf, required_pdf],
+    })
+    .expect("extract candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
+    assert!(candidates[0].apa_citation.contains("revised edition"));
+    assert_eq!(candidates[0].doi.as_deref(), Some("10.1234/rice"));
+}
+
+#[test]
 fn readings_pdf_import_extracts_flate_encoded_text_streams() {
     let dir = test_dir("flate-stream");
     let pdf = dir.join("Module 8 Lesson 2.pdf");

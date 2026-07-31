@@ -2222,6 +2222,82 @@ async fn module_readings_import_required_upgrades_existing_optional_reading() {
 }
 
 #[tokio::test]
+async fn module_readings_import_deduplicates_by_doi_and_upgrades_required_category() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 1".to_string(),
+            code: None,
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+
+    let optional = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: "optional".to_string(),
+                lesson_code: None,
+                apa_citation: Some(
+                    "Rice, R. (2024). Communication and culture. Academic Press.".to_string(),
+                ),
+                citation_text: None,
+                doi: Some("10.1234/rice".to_string()),
+                url: Some("https://doi.org/10.1234/rice".to_string()),
+                notes: None,
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect("save optional reading");
+
+    let required = save_module_readings_import(
+        &state,
+        SaveModuleReadingsImportRequest {
+            candidates: vec![SaveModuleReadingsImportCandidate {
+                module_id: module.id,
+                reading_category: "required".to_string(),
+                lesson_code: None,
+                apa_citation: Some(
+                    "Rice, R. (2024). Communication and culture: A revised edition. Academic Press."
+                        .to_string(),
+                ),
+                citation_text: None,
+                doi: Some("10.1234/rice".to_string()),
+                url: Some("https://doi.org/10.1234/rice".to_string()),
+                notes: None,
+                reading_notes: None,
+                estimated_reading_time: None,
+            }],
+        },
+    )
+    .await
+    .expect("save required reading");
+
+    assert_eq!(required[0].id, optional[0].id);
+    assert_eq!(required[0].reading_category, "compulsory");
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list module readings");
+
+    assert_eq!(readings.len(), 1);
+}
+
+#[tokio::test]
 async fn module_readings_import_save_validates_missing_module() {
     let state = desktop_state_with_migrated_pool().await;
     let missing_module_id = ModuleId::new();

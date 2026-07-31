@@ -163,6 +163,13 @@ pub(crate) fn extract_reading_candidates_from_paragraphs(
             continue;
         }
 
+        if let Some(category) = detect_generic_reading_heading(&plain) {
+            current_category = category;
+            ignoring_bibliography = false;
+            in_reading_section = true;
+            continue;
+        }
+
         if is_bibliography_heading(&plain) {
             ignoring_bibliography = true;
             in_reading_section = false;
@@ -202,6 +209,8 @@ pub(crate) fn extract_reading_candidates_from_paragraphs(
             current_module_order,
             current_module_title.as_deref(),
             &apa_citation,
+            doi.as_deref(),
+            url.as_deref(),
         );
         let candidate = ReadingImportCandidate {
             source_path: None,
@@ -248,6 +257,18 @@ fn detect_reading_category(text: &str) -> Option<ReadingCategory> {
         return Some(ReadingCategory::Optional);
     }
     None
+}
+
+fn detect_generic_reading_heading(text: &str) -> Option<ReadingCategory> {
+    let normalized = text.trim().trim_end_matches(':').to_lowercase();
+    match normalized.as_str() {
+        "reading" | "readings" | "reading list" | "reading lists" | "course readings"
+        | "module readings" | "essential reading" | "essential readings" => {
+            Some(ReadingCategory::Compulsory)
+        }
+        "further reading" | "further readings" => Some(ReadingCategory::Optional),
+        _ => None,
+    }
 }
 
 fn is_bibliography_heading(text: &str) -> bool {
@@ -320,18 +341,62 @@ fn looks_like_standalone_url_reference(text: &str, url: Option<&str>) -> bool {
     normalized == url
 }
 
+pub(crate) fn reading_candidate_identity(candidate: &ReadingImportCandidate) -> String {
+    normalised_reading_identity(
+        &candidate.apa_citation,
+        candidate.doi.as_deref(),
+        candidate.url.as_deref(),
+    )
+}
+
 fn reading_candidate_dedupe_key(
     module_order: Option<i32>,
     module_title: Option<&str>,
     apa_citation: &str,
+    doi: Option<&str>,
+    url: Option<&str>,
 ) -> (Option<i32>, String, String) {
     (
         module_order,
         module_title
             .map(|title| title.trim().to_lowercase())
             .unwrap_or_default(),
-        normalize_whitespace(apa_citation).to_lowercase(),
+        normalised_reading_identity(apa_citation, doi, url),
     )
+}
+
+fn normalised_reading_identity(apa_citation: &str, doi: Option<&str>, url: Option<&str>) -> String {
+    if let Some(doi) = doi.map(canonical_doi).filter(|doi| !doi.is_empty()) {
+        return format!("doi:{doi}");
+    }
+    let citation = normalize_whitespace(apa_citation).to_lowercase();
+    if !citation.is_empty() {
+        return citation;
+    }
+    if let Some(url) = url.map(canonical_url).filter(|url| !url.is_empty()) {
+        return format!("url:{url}");
+    }
+    String::new()
+}
+
+fn canonical_doi(value: &str) -> String {
+    value
+        .trim()
+        .trim_end_matches(['.', ',', ';', ')', ']'])
+        .to_lowercase()
+        .trim_start_matches("https://doi.org/")
+        .trim_start_matches("http://doi.org/")
+        .trim_start_matches("doi:")
+        .to_string()
+}
+
+fn canonical_url(value: &str) -> String {
+    value
+        .trim()
+        .trim_end_matches(['.', ',', ';', ')', ']'])
+        .to_lowercase()
+        .trim_end_matches('/')
+        .to_string()
 }
 
 fn should_prefer_reading_candidate(incoming: ReadingCategory, existing: ReadingCategory) -> bool {
