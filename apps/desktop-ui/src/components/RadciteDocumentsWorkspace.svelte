@@ -14,8 +14,11 @@
     SavedRadciteReviewSummary,
   } from "../types";
 
+  type DocumentSource = "docx" | "pdf";
+
   type Props = {
     selectedProjectId: string | null;
+    documentSource: DocumentSource;
     docxPath: string;
     activeFilter: ParagraphFilter;
     analysisResult: AnalyseDocxReviewResponse | null;
@@ -27,6 +30,7 @@
     readingsDocxPath: string;
     onFilterChange: (filter: ParagraphFilter) => void;
     onAnalysisResult: (result: AnalyseDocxReviewResponse | null) => void;
+    onDocumentSourceChange: (source: DocumentSource) => void;
     onDocxPathChange: (path: string) => void;
     onOpenReadings: () => void | Promise<void>;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
@@ -36,6 +40,7 @@
 
   let {
     selectedProjectId,
+    documentSource,
     docxPath,
     activeFilter,
     analysisResult,
@@ -47,6 +52,7 @@
     readingsDocxPath,
     onFilterChange,
     onAnalysisResult,
+    onDocumentSourceChange,
     onDocxPathChange,
     onOpenReadings,
     onLoadSavedReview,
@@ -57,7 +63,11 @@
   let analysisLoading = $state(false);
   let analysisError = $state<string | null>(null);
   let analysisDisabled = $derived(analysisLoading || docxPath.trim().length === 0);
-  let canOpenReadings = $derived(readingsDocxPath.trim().length > 0);
+  let canOpenReadings = $derived(
+    documentSource === "docx" && readingsDocxPath.trim().length > 0,
+  );
+  let sourceLabel = $derived(documentSource === "docx" ? "DOCX" : "PDF");
+  let sourceDescription = $derived(documentSource === "docx" ? "Word document" : "PDF document");
 
   let filteredParagraphs = $derived(
     analysisResult ? filterParagraphs(analysisResult.paragraphs, activeFilter) : [],
@@ -75,11 +85,20 @@
     return `${review.paragraph_count} paragraphs · ${review.citation_count} citations · ${review.missing_citation_count} flagged`;
   }
 
-  function handleDocxPathInput(event: Event) {
+  function handleDocumentPathInput(event: Event) {
     onDocxPathChange((event.currentTarget as HTMLInputElement).value);
   }
 
-  async function onChooseDocx() {
+  function selectDocumentSource(source: DocumentSource) {
+    if (source !== documentSource) {
+      analysisError = null;
+      onAnalysisResult(null);
+      onSelectParagraph(null);
+      onDocumentSourceChange(source);
+    }
+  }
+
+  async function onChooseDocument() {
     analysisError = null;
 
     try {
@@ -88,8 +107,8 @@
         directory: false,
         filters: [
           {
-            name: "Word documents",
-            extensions: ["docx"],
+            name: sourceDescription,
+            extensions: [documentSource],
           },
         ],
       });
@@ -100,14 +119,14 @@
         onDocxPathChange(selected[0]);
       }
     } catch (reason: unknown) {
-      analysisError = `Could not open the DOCX picker: ${toErrorMessage(reason)}`;
+      analysisError = `Could not open the ${sourceLabel} picker: ${toErrorMessage(reason)}`;
     }
   }
 
-  async function analyseDocx() {
+  async function analyseDocument() {
     const path = docxPath.trim();
     if (!path) {
-      analysisError = "Choose a DOCX file before running RADcite analysis.";
+      analysisError = `Choose a ${sourceLabel} file before running RADcite analysis.`;
       return;
     }
 
@@ -117,7 +136,8 @@
     onSelectParagraph(null);
 
     try {
-      const result = await invoke<AnalyseDocxReviewResponse>("analyse_docx_for_review", {
+      const command = documentSource === "docx" ? "analyse_docx_for_review" : "analyse_pdf_for_review";
+      const result = await invoke<AnalyseDocxReviewResponse>(command, {
         request: {
           project_id: selectedProjectId,
           path,
@@ -161,27 +181,47 @@
     class="document-import"
     onsubmit={(event) => {
       event.preventDefault();
-      void analyseDocx();
+      void analyseDocument();
     }}
   >
-    <label class="field-label" for="docx-path">Import DOCX</label>
+    <div class="form-section-heading">
+      <label class="field-label" for="document-path">Import {sourceLabel}</label>
+      <div class="import-source-toggle" aria-label="Document import source">
+        <button
+          type="button"
+          class:is-active={documentSource === "docx"}
+          aria-pressed={documentSource === "docx"}
+          onclick={() => selectDocumentSource("docx")}
+        >
+          DOCX
+        </button>
+        <button
+          type="button"
+          class:is-active={documentSource === "pdf"}
+          aria-pressed={documentSource === "pdf"}
+          onclick={() => selectDocumentSource("pdf")}
+        >
+          PDF
+        </button>
+      </div>
+    </div>
     <div class="path-row">
       <input
-        id="docx-path"
+        id="document-path"
         class="path-input"
         type="text"
         value={docxPath}
-        oninput={handleDocxPathInput}
-        placeholder="/Users/name/Documents/source.docx"
+        oninput={handleDocumentPathInput}
+        placeholder={`/Users/name/Documents/source.${documentSource}`}
         autocomplete="off"
       />
       <button
         class="secondary-button choose-docx-button"
         type="button"
         disabled={analysisLoading}
-        onclick={() => void onChooseDocx()}
+        onclick={() => void onChooseDocument()}
       >
-        Choose DOCX
+        Choose {sourceLabel}
       </button>
       <button class="primary-button" type="submit" disabled={analysisDisabled}>
         {analysisLoading ? "Analysing" : "Analyse"}
@@ -354,7 +394,7 @@
   {:else if !analysisLoading}
     <div class="document-empty">
       <strong>No document loaded</strong>
-      <span>Import a DOCX to start reviewing paragraphs and citation status.</span>
+      <span>Import a {sourceLabel} to start reviewing paragraphs and citation status.</span>
     </div>
   {/if}
 </section>

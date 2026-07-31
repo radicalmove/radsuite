@@ -3,9 +3,10 @@ use std::{cmp::Ordering, path::PathBuf};
 use chrono::Utc;
 use radsuite_cite::{
     CsvReadingExtractionRequest, CsvReadingImportError, DocxIngestionError, DocxIngestionRequest,
-    DocxReadingExtractionRequest, PdfReadingExtractionError, PdfReadingExtractionRequest,
-    ReadingImportCandidate, extract_csv_reading_candidates, extract_docx_reading_candidates,
-    extract_pdf_reading_candidates_with_report, ingest_docx,
+    DocxReadingExtractionRequest, PdfIngestionError, PdfIngestionRequest,
+    PdfReadingExtractionError, PdfReadingExtractionRequest, ReadingImportCandidate,
+    extract_csv_reading_candidates, extract_docx_reading_candidates,
+    extract_pdf_reading_candidates_with_report, ingest_docx, ingest_pdf,
 };
 use radsuite_core::{
     ApaValidationStatus, Citation, CitationId, CourseModule, Document, DocumentId, ModuleId,
@@ -59,6 +60,14 @@ pub struct CreateRadciteProjectRequest {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AnalyseDocxRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub path: String,
+    pub original_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AnalysePdfRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
     pub path: String,
@@ -415,6 +424,20 @@ pub enum AnalyseDocxError {
 }
 
 #[derive(Debug, Error)]
+pub enum AnalysePdfError {
+    #[error("choose a PDF file before running RADcite analysis")]
+    EmptyPath,
+    #[error("could not determine the PDF filename")]
+    MissingFilename,
+    #[error("could not load RADcite project {0}")]
+    MissingProject(ProjectId),
+    #[error(transparent)]
+    Ingestion(#[from] PdfIngestionError),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
 pub enum RadciteProjectError {
     #[error("enter a project title before creating it")]
     EmptyTitle,
@@ -517,6 +540,17 @@ enum RadciteProjectLookupError {
 }
 
 impl From<RadciteProjectLookupError> for AnalyseDocxError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
+impl From<RadciteProjectLookupError> for AnalysePdfError {
     fn from(error: RadciteProjectLookupError) -> Self {
         match error {
             RadciteProjectLookupError::MissingProject(project_id) => {
@@ -630,6 +664,29 @@ pub async fn analyse_docx_for_review(
     request: AnalyseDocxRequest,
 ) -> Result<AnalyseDocxReviewResponse, AnalyseDocxError> {
     let analysed = analyse_docx(state, request).await?;
+    let references = load_course_reference_entries(state, analysed.project.id).await?;
+    let paragraphs = build_review_paragraphs(
+        analysed.paragraphs,
+        analysed.citations,
+        references.as_slice(),
+    );
+    let summary = build_review_summary(&paragraphs);
+
+    Ok(AnalyseDocxReviewResponse {
+        project_id: analysed.project.id,
+        project_title: analysed.project.title,
+        document_id: analysed.document.id,
+        original_filename: analysed.document.original_filename,
+        summary,
+        paragraphs,
+    })
+}
+
+pub async fn analyse_pdf_for_review(
+    state: &DesktopState,
+    request: AnalysePdfRequest,
+) -> Result<AnalyseDocxReviewResponse, AnalysePdfError> {
+    let analysed = analyse_pdf(state, request).await?;
     let references = load_course_reference_entries(state, analysed.project.id).await?;
     let paragraphs = build_review_paragraphs(
         analysed.paragraphs,
@@ -1263,6 +1320,53 @@ async fn analyse_docx(
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
 
     let analysed = ingest_docx(DocxIngestionRequest {
+        project_id: project.id,
+        path,
+        original_filename,
+    })?;
+
+    SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .insert_document_analysis(
+            &analysed.document,
+            &analysed.paragraphs,
+            &analysed.citations,
+        )
+        .await?;
+
+    Ok(DesktopAnalysedDocument {
+        project,
+        document: analysed.document,
+        paragraphs: analysed.paragraphs,
+        citations: analysed.citations,
+    })
+}
+
+async fn analyse_pdf(
+    state: &DesktopState,
+    request: AnalysePdfRequest,
+) -> Result<DesktopAnalysedDocument, AnalysePdfError> {
+    let path = request.path.trim();
+    if path.is_empty() {
+        return Err(AnalysePdfError::EmptyPath);
+    }
+
+    let path = PathBuf::from(path);
+    let original_filename = request
+        .original_filename
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            path.file_name()
+                .and_then(|filename| filename.to_str())
+                .map(str::to_string)
+        })
+        .ok_or(AnalysePdfError::MissingFilename)?;
+
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+
+    let analysed = ingest_pdf(PdfIngestionRequest {
         project_id: project.id,
         path,
         original_filename,

@@ -63,11 +63,21 @@ pub enum DocxIngestionError {
 
 pub fn ingest_docx(request: DocxIngestionRequest) -> Result<AnalysedDocument, DocxIngestionError> {
     let extracted_paragraphs = extract_docx_plain_paragraphs(&request.path)?;
-    let document = Document::new(
+    Ok(analyse_extracted_paragraphs(
         request.project_id,
         request.original_filename,
         DocumentFileType::Docx,
-    );
+        extracted_paragraphs,
+    ))
+}
+
+pub(crate) fn analyse_extracted_paragraphs(
+    project_id: ProjectId,
+    original_filename: impl Into<String>,
+    file_type: DocumentFileType,
+    extracted_paragraphs: impl IntoIterator<Item = ExtractedParagraph>,
+) -> AnalysedDocument {
+    let document = Document::new(project_id, original_filename, file_type);
     let analyzer = CitationAnalyzer;
     let mut paragraphs = Vec::new();
     let mut citations = Vec::new();
@@ -90,11 +100,11 @@ pub fn ingest_docx(request: DocxIngestionRequest) -> Result<AnalysedDocument, Do
         paragraphs.push(paragraph);
     }
 
-    Ok(AnalysedDocument {
+    AnalysedDocument {
         document,
         paragraphs,
         citations,
-    })
+    }
 }
 
 pub fn extract_docx_reading_candidates(
@@ -408,9 +418,9 @@ pub(crate) fn extract_doi(text: &str) -> Option<String> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-struct ExtractedParagraph {
-    text: String,
-    is_table: bool,
+pub(crate) struct ExtractedParagraph {
+    pub(crate) text: String,
+    pub(crate) is_table: bool,
 }
 
 fn has_docx_extension(path: &Path) -> bool {
