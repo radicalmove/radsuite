@@ -10,7 +10,10 @@ use radsuite_core::ReadingCategory;
 use regex::Regex;
 use thiserror::Error;
 
-use crate::{ReadingImportCandidate, docx::extract_reading_candidates_from_paragraphs};
+use crate::{
+    ReadingImportCandidate,
+    docx::{extract_reading_candidates_from_paragraphs, reading_candidate_identity},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PdfReadingExtractionRequest {
@@ -480,7 +483,7 @@ fn same_reading_candidate(left: &ReadingImportCandidate, right: &ReadingImportCa
     left.module_order == right.module_order
         && normalize_key(left.module_title.as_deref())
             == normalize_key(right.module_title.as_deref())
-        && normalize_key(Some(&left.apa_citation)) == normalize_key(Some(&right.apa_citation))
+        && reading_candidate_identity(left) == reading_candidate_identity(right)
 }
 
 fn normalize_key(value: Option<&str>) -> String {

@@ -214,6 +214,38 @@ fn docx_reading_import_extracts_no_date_apa_candidates() {
 }
 
 #[test]
+fn docx_reading_import_accepts_generic_reading_headings_and_standalone_urls() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-generic-headings.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>https://soinsuds.com</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Further readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Rice, L. (2024). Communication and culture. Academic Press.</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-6-readings.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 2);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
+    assert_eq!(candidates[0].apa_citation, "https://soinsuds.com");
+    assert_eq!(candidates[0].url.as_deref(), Some("https://soinsuds.com"));
+    assert_eq!(candidates[1].reading_category, ReadingCategory::Optional);
+    assert_eq!(
+        candidates[1].apa_citation,
+        "Rice, L. (2024). Communication and culture. Academic Press."
+    );
+}
+
+#[test]
 fn docx_reading_import_extracts_canonical_doi_from_doi_url() {
     let path = write_docx_with_document_xml(
         "docx-reading-import-doi.docx",
@@ -352,6 +384,33 @@ fn docx_reading_import_prefers_required_when_duplicate_is_optional_first() {
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
     assert!(candidates[0].apa_citation.contains("Rice"));
+}
+
+#[test]
+fn docx_reading_import_deduplicates_by_doi_and_keeps_required_category() {
+    let path = write_docx_with_document_xml(
+        "docx-reading-import-doi-precedence.docx",
+        r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Optional readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Rice, C. (2025). Communication and culture. Academic Press. https://doi.org/10.1234/rice</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Required readings</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Rice, C. (2025). Communication and culture: A revised edition. Academic Press. https://doi.org/10.1234/rice</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#,
+    );
+
+    let candidates = extract_docx_reading_candidates(DocxReadingExtractionRequest {
+        path,
+        original_filename: "module-6-readings.docx".to_string(),
+    })
+    .expect("extract reading candidates");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(candidates[0].reading_category, ReadingCategory::Compulsory);
+    assert!(candidates[0].apa_citation.contains("revised edition"));
+    assert_eq!(candidates[0].doi.as_deref(), Some("10.1234/rice"));
 }
 
 #[test]
