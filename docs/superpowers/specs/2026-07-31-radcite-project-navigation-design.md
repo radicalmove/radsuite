@@ -1,6 +1,6 @@
 # RADcite Project Navigation Design
 
-**Date:** 2026-07-31  
+**Date:** 2026-07-31
 **Status:** Proposed
 
 ## Goal
