@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fs,
+    env, fs,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -247,6 +247,62 @@ async fn radcast_cancel_command_marks_a_running_local_job_for_cancellation() {
             .expect("lock cancellation requests")
             .contains("cancel-me")
     );
+}
+
+#[tokio::test]
+async fn radcast_real_audio_fixture_can_process_when_available() {
+    let Ok(audio_path) = env::var("RADSUITE_REAL_RADCAST_AUDIO") else {
+        eprintln!("skipping real RADcast smoke test: RADSUITE_REAL_RADCAST_AUDIO is not set");
+        return;
+    };
+    let audio_path = PathBuf::from(audio_path);
+    assert!(audio_path.is_file(), "missing RADcast audio fixture");
+
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: audio_path.to_string_lossy().into_owned(),
+            original_filename: None,
+        },
+        AudioProcessor::default(),
+    )
+    .await
+    .expect("import real audio");
+
+    assert!(source.duration_seconds > 0.0);
+    let output = process_radcast_audio_with_processor(
+        &state,
+        ProcessRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            source_id: source.id,
+            output_format: AudioOutputFormat::Mp3,
+            clip_start_seconds: Some(0.0),
+            clip_end_seconds: Some(10.0),
+            cleanup_enabled: true,
+            max_silence_seconds: Some(1.0),
+            caption_format: None,
+            caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::None,
+            enhancement_quality: EnhancementQuality::Standard,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
+        },
+        AudioProcessor::default(),
+    )
+    .await
+    .expect("process real audio");
+
+    assert!(output.duration_seconds > 0.0);
+    assert!(output.duration_seconds <= 10.5);
+    assert_eq!(output.output_format, AudioOutputFormat::Mp3);
+    assert!(output.cleanup_enabled);
+    assert_eq!(output.max_silence_seconds, Some(1.0));
+    assert!(Path::new(&output.path).is_file());
 }
 
 #[tokio::test]
