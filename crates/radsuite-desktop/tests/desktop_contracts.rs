@@ -717,6 +717,8 @@ async fn course_references_can_be_updated_and_archived() {
             reference_id: added.id,
             apa_citation: " Taylor, J. (2025). Updated reference. ".to_string(),
             notes: Some(" Updated note ".to_string()),
+            citation_text: None,
+            url: None,
         },
     )
     .await
@@ -752,6 +754,68 @@ async fn course_references_can_be_updated_and_archived() {
             .await
             .expect("list course references after archive")
             .is_empty()
+    );
+}
+
+#[tokio::test]
+async fn course_reference_updates_can_apply_lookup_metadata_without_erasing_it() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let added = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2020). Worked examples. Learning Press.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    let enriched = update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: added.id,
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: Some("Imported from Crossref search. DOI: 10.1234/example".to_string()),
+            citation_text: Some("Smith, J. (2020). Worked examples in practice.".to_string()),
+            url: Some("https://doi.org/10.1234/example".to_string()),
+        },
+    )
+    .await
+    .expect("apply lookup metadata");
+
+    assert_eq!(
+        enriched.citation_text.as_deref(),
+        Some("Smith, J. (2020). Worked examples in practice.")
+    );
+    assert_eq!(
+        enriched.url.as_deref(),
+        Some("https://doi.org/10.1234/example")
+    );
+
+    let manually_edited = update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: added.id,
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: Some("Reviewed by the course team".to_string()),
+            citation_text: None,
+            url: None,
+        },
+    )
+    .await
+    .expect("manually edit reference");
+
+    assert_eq!(
+        manually_edited.citation_text.as_deref(),
+        Some("Smith, J. (2020). Worked examples in practice.")
+    );
+    assert_eq!(
+        manually_edited.url.as_deref(),
+        Some("https://doi.org/10.1234/example")
     );
 }
 
@@ -792,6 +856,8 @@ async fn course_references_get_apa_validation_status() {
             reference_id: needs_fix.id,
             apa_citation: "Smith, J. (2024). Fixed reference. Journal of Testing.".to_string(),
             notes: None,
+            citation_text: None,
+            url: None,
         },
     )
     .await
@@ -811,6 +877,8 @@ async fn course_reference_update_commands_validate_input() {
             reference_id: missing_reference_id,
             apa_citation: " ".to_string(),
             notes: None,
+            citation_text: None,
+            url: None,
         },
     )
     .await
@@ -826,6 +894,8 @@ async fn course_reference_update_commands_validate_input() {
             reference_id: missing_reference_id,
             apa_citation: "Smith, J. (2024). Missing reference.".to_string(),
             notes: None,
+            citation_text: None,
+            url: None,
         },
     )
     .await

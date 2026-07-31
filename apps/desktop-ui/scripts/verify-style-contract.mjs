@@ -83,6 +83,8 @@ const checks = [
   ["reference selection styling", ".reference-select"],
   ["reference merge controls styling", ".reference-bulk-actions"],
   ["reference primary selector styling", ".reference-primary-select"],
+  ["reference lookup panel styling", ".reference-lookup-panel"],
+  ["reference lookup result styling", ".reference-lookup-result"],
 ];
 
 const missing = checks
@@ -126,6 +128,9 @@ for (const needle of [
   "Clear selection",
   "reference-select",
   "reference-primary-select",
+  "Find source",
+  "Search Crossref",
+  "Use this result",
 ]) {
   if (!referencesWorkspace.includes(needle) && !css.includes(needle)) {
     missing.push(`references workspace includes ${needle}`);

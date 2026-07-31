@@ -74,6 +74,8 @@ describe("reference commands", () => {
         reference_id: "reference-1",
         apa_citation: "  Smith, J. (2020). Worked examples in practice. Learning Press.  ",
         notes: " Updated note ",
+        citation_text: " Smith, J. (2020). Worked examples in practice. ",
+        url: " https://doi.org/10.1234/example ",
       }),
     ).resolves.toBe(reference);
 
@@ -82,6 +84,8 @@ describe("reference commands", () => {
         reference_id: "reference-1",
         apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press.",
         notes: "Updated note",
+        citation_text: "Smith, J. (2020). Worked examples in practice.",
+        url: "https://doi.org/10.1234/example",
       },
     });
   });

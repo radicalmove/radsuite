@@ -389,6 +389,8 @@ pub struct UpdateCourseReferenceRequest {
     pub reference_id: ReferenceEntryId,
     pub apa_citation: String,
     pub notes: Option<String>,
+    pub citation_text: Option<String>,
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1465,6 +1467,12 @@ pub async fn update_course_reference(
     let mut reference = load_course_reference_or_error(state, request.reference_id).await?;
     reference.apa_citation = Some(apa_citation.to_string());
     reference.notes = trimmed_optional(request.notes);
+    if let Some(citation_text) = request.citation_text {
+        reference.citation_text = trimmed_optional(Some(citation_text));
+    }
+    if let Some(url) = request.url {
+        reference.url = trimmed_optional(Some(url));
+    }
     apply_basic_apa_validation(&mut reference);
     reference.updated_at = Utc::now();
 
