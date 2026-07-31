@@ -176,6 +176,7 @@ export function saveModuleReadingsImport(
         lesson_code: trimmedOrNull(candidate.lesson_code),
         apa_citation: trimmedOrNull(candidate.apa_citation),
         citation_text: trimmedOrNull(candidate.citation_text),
+        doi: trimmedOrNull(candidate.doi),
         url: trimmedOrNull(candidate.url),
         notes: trimmedOrNull(candidate.notes),
         reading_notes: trimmedOrNull(candidate.reading_notes),

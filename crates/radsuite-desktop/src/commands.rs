@@ -335,6 +335,7 @@ pub struct ModuleReadingImportCandidateSummary {
     pub lesson_code: Option<String>,
     pub apa_citation: String,
     pub citation_text: Option<String>,
+    pub doi: Option<String>,
     pub url: Option<String>,
 }
 
@@ -362,6 +363,7 @@ pub struct SaveModuleReadingsImportCandidate {
     pub lesson_code: Option<String>,
     pub apa_citation: Option<String>,
     pub citation_text: Option<String>,
+    pub doi: Option<String>,
     pub url: Option<String>,
     pub notes: Option<String>,
     pub reading_notes: Option<String>,
@@ -1082,6 +1084,7 @@ pub async fn save_module_readings_import(
         reading.lesson_code = trimmed_optional(candidate.lesson_code);
         reading.apa_citation = apa_citation;
         reading.citation_text = citation_text;
+        reading.doi = trimmed_optional(candidate.doi);
         reading.url = trimmed_optional(candidate.url);
         reading.notes = trimmed_optional(candidate.notes);
         reading.reading_notes = trimmed_optional(candidate.reading_notes);
@@ -1546,6 +1549,7 @@ fn module_reading_import_candidate_summary(
         lesson_code: candidate.lesson_code,
         apa_citation: candidate.apa_citation,
         citation_text: candidate.citation_text,
+        doi: candidate.doi,
         url: candidate.url,
     }
 }

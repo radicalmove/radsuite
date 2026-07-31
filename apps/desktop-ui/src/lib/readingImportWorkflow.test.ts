@@ -18,6 +18,7 @@ const candidate: ModuleReadingImportCandidate = {
   lesson_code: null,
   apa_citation: "Smith, J. (2024). Worked examples.",
   citation_text: null,
+  doi: null,
   url: null,
 };
 

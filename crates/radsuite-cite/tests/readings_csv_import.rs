@@ -73,6 +73,28 @@ Module 3,3.1,"Taylor, R. (2023). Optional primer.",optional,https://example.com/
     );
 }
 
+#[test]
+fn readings_csv_import_extracts_doi_from_a_doi_column() {
+    let path = write_csv(
+        "course-readings-doi.csv",
+        r#"citation,doi,url
+"Goldberg, M. (2023). Strategic campaigns.",https://doi.org/10.1080/1553118X.2022.2137674,
+"#,
+    );
+
+    let candidates = extract_csv_reading_candidates(CsvReadingExtractionRequest {
+        path,
+        original_filename: "course_readings.csv".to_string(),
+    })
+    .expect("extract csv readings");
+
+    assert_eq!(candidates.len(), 1);
+    assert_eq!(
+        candidates[0].doi.as_deref(),
+        Some("10.1080/1553118X.2022.2137674")
+    );
+}
+
 fn write_csv(filename: &str, contents: &str) -> PathBuf {
     let path = std::env::temp_dir().join(format!("radsuite-{filename}"));
     std::fs::write(&path, contents).expect("write csv fixture");

@@ -1040,6 +1040,7 @@ async fn module_readings_commands_validate_input() {
                 lesson_code: None,
                 apa_citation: Some("Taylor, J. (2024). Imported required reading.".to_string()),
                 citation_text: None,
+                doi: None,
                 url: None,
                 notes: None,
                 reading_notes: None,
@@ -1101,16 +1102,17 @@ async fn module_readings_import_preview_extracts_candidates_without_persisting()
     assert_eq!(candidates[0].lesson_code.as_deref(), Some("1.2"));
     assert_eq!(
         candidates[0].apa_citation,
-        "Smith, J. (2024). Worked examples. https://example.com/worked"
+        "Smith, J. (2024). Worked examples. https://doi.org/10.1234/worked"
     );
     assert_eq!(
         candidates[0].citation_text.as_deref(),
-        Some("1.2 Smith, J. (2024). Worked examples. https://example.com/worked")
+        Some("1.2 Smith, J. (2024). Worked examples. https://doi.org/10.1234/worked")
     );
     assert_eq!(
         candidates[0].url.as_deref(),
-        Some("https://example.com/worked")
+        Some("https://doi.org/10.1234/worked")
     );
+    assert_eq!(candidates[0].doi.as_deref(), Some("10.1234/worked"));
     assert_eq!(candidates[1].reading_category, "optional");
     assert_eq!(
         candidates[1].apa_citation,
@@ -1188,6 +1190,7 @@ async fn module_readings_csv_import_preview_extracts_candidates_for_selected_mod
                 lesson_code: candidates[0].lesson_code.clone(),
                 apa_citation: Some(candidates[0].apa_citation.clone()),
                 citation_text: candidates[0].citation_text.clone(),
+                doi: candidates[0].doi.clone(),
                 url: candidates[0].url.clone(),
                 notes: Some("Imported from CSV".to_string()),
                 reading_notes: None,
@@ -1347,6 +1350,7 @@ async fn module_readings_import_save_persists_selected_candidates() {
                 lesson_code: Some(" 1.2 ".to_string()),
                 apa_citation: Some(" Smith, J. (2024). Worked examples. ".to_string()),
                 citation_text: None,
+                doi: Some(" 10.1234/worked ".to_string()),
                 url: Some(" https://example.com/worked ".to_string()),
                 notes: Some(" Imported from DOCX ".to_string()),
                 reading_notes: Some(" Read before class ".to_string()),
@@ -1367,6 +1371,7 @@ async fn module_readings_import_save_persists_selected_candidates() {
         Some("Smith, J. (2024). Worked examples.")
     );
     assert_eq!(saved[0].url.as_deref(), Some("https://example.com/worked"));
+    assert_eq!(saved[0].doi.as_deref(), Some("10.1234/worked"));
     assert_eq!(saved[0].notes.as_deref(), Some("Imported from DOCX"));
     assert_eq!(saved[0].reading_notes.as_deref(), Some("Read before class"));
     assert_eq!(
@@ -1411,6 +1416,7 @@ async fn module_readings_import_save_reuses_existing_duplicate_candidates() {
                 lesson_code: Some("1.2".to_string()),
                 apa_citation: Some("Smith, J. (2024). Worked examples.".to_string()),
                 citation_text: None,
+                doi: None,
                 url: Some("https://example.com/worked".to_string()),
                 notes: Some("Imported from DOCX".to_string()),
                 reading_notes: Some("Read before class".to_string()),
@@ -1430,6 +1436,7 @@ async fn module_readings_import_save_reuses_existing_duplicate_candidates() {
                 lesson_code: Some(" 9.9 ".to_string()),
                 apa_citation: Some("  smith, j. (2024).   worked examples. ".to_string()),
                 citation_text: None,
+                doi: None,
                 url: Some("https://example.com/duplicate".to_string()),
                 notes: Some("Imported again".to_string()),
                 reading_notes: Some("Duplicate note".to_string()),
@@ -1468,6 +1475,7 @@ async fn module_readings_import_save_validates_missing_module() {
                 lesson_code: None,
                 apa_citation: Some("Smith, J. (2024). Worked examples.".to_string()),
                 citation_text: None,
+                doi: None,
                 url: None,
                 notes: None,
                 reading_notes: None,
@@ -2479,7 +2487,7 @@ fn readings_import_document_xml() -> &'static str {
       <w:r><w:t>Compulsory readings</w:t></w:r>
     </w:p>
     <w:p>
-      <w:r><w:t>1.2 Smith, J. (2024). Worked examples. https://example.com/worked</w:t></w:r>
+      <w:r><w:t>1.2 Smith, J. (2024). Worked examples. https://doi.org/10.1234/worked</w:t></w:r>
     </w:p>
     <w:p>
       <w:r><w:t>Optional readings</w:t></w:r>

@@ -143,6 +143,7 @@ export type ModuleReadingImportCandidate = {
   lesson_code: string | null;
   apa_citation: string;
   citation_text: string | null;
+  doi: string | null;
   url: string | null;
 };
 
