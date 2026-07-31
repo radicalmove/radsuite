@@ -36,7 +36,7 @@
     savedReviewsError: string | null;
     selectedParagraphId: string | null;
     selectedDocumentId: string | null;
-    readingsDocxPath: string;
+    readingsPath: string;
     onFilterChange: (filter: ParagraphFilter) => void;
     onAnalysisResult: (result: AnalyseDocxReviewResponse | null) => void;
     onDocumentSourceChange: (source: DocumentSource) => void;
@@ -63,7 +63,7 @@
     savedReviewsError,
     selectedParagraphId,
     selectedDocumentId,
-    readingsDocxPath,
+    readingsPath,
     onFilterChange,
     onAnalysisResult,
     onDocumentSourceChange,
@@ -85,7 +85,7 @@
   let editorSaving = $state(false);
   let analysisDisabled = $derived(analysisLoading || docxPath.trim().length === 0);
   let canOpenReadings = $derived(
-    documentSource === "docx" && readingsDocxPath.trim().length > 0,
+    (documentSource === "docx" || documentSource === "pdf") && readingsPath.trim().length > 0,
   );
   let sourceLabel = $derived(documentSource === "docx" ? "DOCX" : "PDF");
   let sourceDescription = $derived(documentSource === "docx" ? "Word document" : "PDF document");

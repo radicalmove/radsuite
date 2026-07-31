@@ -63,7 +63,8 @@
   type Props = {
     modules: CourseModuleSummary[];
     docxPath: string;
-    autoPreviewDocxPath: string;
+    autoPreviewPath: string;
+    autoPreviewSource: "docx" | "pdf" | null;
     selectedModuleId: string | null;
     readings: ModuleReadingSummary[];
     modulesLoading: boolean;
@@ -100,7 +101,8 @@
   let {
     modules,
     docxPath,
-    autoPreviewDocxPath,
+    autoPreviewPath,
+    autoPreviewSource,
     selectedModuleId,
     readings,
     modulesLoading,
@@ -131,7 +133,7 @@
   let importSaving = $state(false);
   let importError = $state<string | null>(null);
   let importStatus = $state<string | null>(null);
-  let lastAutoPreviewDocxPath = $state("");
+  let lastAutoPreviewKey = $state("");
   let editingModuleId = $state<string | null>(null);
   let moduleTitle = $state("");
   let moduleCode = $state("");
@@ -208,15 +210,27 @@
   );
 
   $effect(() => {
-    const path = autoPreviewDocxPath.trim();
+    const path = autoPreviewPath.trim();
+    const source = autoPreviewSource;
+    const previewKey = source && path ? `${source}:${path}` : "";
     if (
       path &&
-      importSource === "docx" &&
-      path !== lastAutoPreviewDocxPath &&
+      source &&
+      previewKey !== lastAutoPreviewKey &&
       !importLoading &&
       !importSaving
     ) {
-      lastAutoPreviewDocxPath = path;
+      lastAutoPreviewKey = previewKey;
+      if (importSource !== source) {
+        importSource = source;
+        importCandidates = [];
+        importError = null;
+        importStatus = null;
+      }
+      if (source === "pdf") {
+        importPath = path;
+        pdfPaths = [path];
+      }
       void previewReadingsImport(true);
     }
   });

@@ -105,7 +105,8 @@
   let activeArea = $state<ToolArea>("documents");
   let documentSource = $state<"docx" | "pdf">("docx");
   let sharedDocxPath = $state("");
-  let analysedDocxPath = $state("");
+  let analysedReadingsPath = $state("");
+  let analysedReadingsSource = $state<"docx" | "pdf" | null>(null);
   let analysisResult = $state<AnalyseDocxReviewResponse | null>(null);
   let activeFilter = $state<ParagraphFilter>("all");
   let selectedParagraphId = $state<string | null>(null);
@@ -149,10 +150,12 @@
     analysisResult = result;
     selectedParagraphId = null;
     reviewActionError = null;
-    if (result?.source_file_type === "docx") {
-      analysedDocxPath = result.source_path?.trim() || sharedDocxPath.trim();
+    if (result) {
+      analysedReadingsPath = result.source_path?.trim() || sharedDocxPath.trim();
+      analysedReadingsSource = result.source_file_type;
     } else {
-      analysedDocxPath = "";
+      analysedReadingsPath = "";
+      analysedReadingsSource = null;
     }
     if (result) {
       void refreshSavedReviews();
@@ -162,7 +165,8 @@
   function handleDocumentSourceChange(source: "docx" | "pdf") {
     documentSource = source;
     sharedDocxPath = "";
-    analysedDocxPath = "";
+    analysedReadingsPath = "";
+    analysedReadingsSource = null;
   }
 
   function selectedProjectCommandId(): string | null {
@@ -186,7 +190,8 @@
 
   function resetProjectScopedState() {
     sharedDocxPath = "";
-    analysedDocxPath = "";
+    analysedReadingsPath = "";
+    analysedReadingsSource = null;
     analysisResult = null;
     activeFilter = "all";
     selectedParagraphId = null;
@@ -380,7 +385,8 @@
     savedReviewsError = null;
     reviewActionError = null;
     selectedParagraphId = null;
-    analysedDocxPath = "";
+    analysedReadingsPath = "";
+    analysedReadingsSource = null;
     try {
       const loaded = await loadSavedRadciteReview(documentId);
       analysisResult = loaded;
@@ -388,7 +394,8 @@
       documentSource = loaded.source_file_type;
       const sourcePath = loaded.source_path?.trim() ?? "";
       sharedDocxPath = sourcePath;
-      analysedDocxPath = loaded.source_file_type === "docx" ? sourcePath : "";
+      analysedReadingsPath = sourcePath;
+      analysedReadingsSource = loaded.source_file_type;
     } catch (reason: unknown) {
       savedReviewsError = `Could not open saved review: ${toErrorMessage(reason)}`;
     }
@@ -405,8 +412,9 @@
     }
 
     sharedDocxPath = sourcePath;
-    analysedDocxPath = sourcePath;
-    documentSource = "docx";
+    analysedReadingsPath = sourcePath;
+    analysedReadingsSource = review.source_file_type;
+    documentSource = review.source_file_type;
     activeArea = "readings";
     selectedParagraphId = null;
     await refreshRadciteModules();
@@ -872,7 +880,7 @@
         {savedReviewsError}
         {selectedParagraphId}
         selectedDocumentId={analysisResult?.document_id ?? null}
-        readingsDocxPath={analysedDocxPath}
+        readingsPath={analysedReadingsPath}
         onFilterChange={(filter) => {
           activeFilter = filter;
           selectedParagraphId = null;
@@ -929,7 +937,8 @@
       <RadciteReadingsWorkspace
         modules={radciteModules}
         docxPath={sharedDocxPath}
-        autoPreviewDocxPath={analysedDocxPath}
+        autoPreviewPath={analysedReadingsPath}
+        autoPreviewSource={analysedReadingsSource}
         {selectedModuleId}
         readings={moduleReadings}
         modulesLoading={radciteModulesLoading}
