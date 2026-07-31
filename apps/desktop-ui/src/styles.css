@@ -663,7 +663,8 @@ button:disabled {
 .readings-workspace,
 .exports-workspace,
 .radcast-workspace,
-.radtts-workspace {
+.radtts-workspace,
+.radtts-tools-workspace {
   display: grid;
   gap: var(--s-4);
   padding-top: var(--s-5);
@@ -896,6 +897,49 @@ button:disabled {
   gap: var(--s-4);
 }
 
+.radtts-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-4);
+}
+
+.radtts-tools-fields,
+.radtts-boundary-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-3);
+}
+
+.radtts-boundary-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.segmented-control {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-panel-alt);
+}
+
+.segmented-control button {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 3px;
+  color: var(--fg-2);
+  background: transparent;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.segmented-control button.is-selected {
+  color: var(--radcite-white);
+  background: var(--radcite-red);
+}
+
 .radtts-panel,
 .radtts-outputs {
   display: grid;
@@ -1081,6 +1125,15 @@ button:disabled {
 .radtts-output-copy strong {
   overflow-wrap: anywhere;
   font-size: 0.82rem;
+}
+
+.radtts-output-copy small {
+  color: var(--danger-deep);
+  font-size: 0.72rem;
+}
+
+.radtts-tools-output-row {
+  grid-template-columns: minmax(140px, 0.8fr) minmax(220px, 1.2fr) auto;
 }
 
 .radtts-output-row audio {
@@ -2768,6 +2821,9 @@ button:disabled {
   .saved-review-row,
   .radcast-grid,
   .radtts-grid,
+  .radtts-tools-grid,
+  .radtts-tools-fields,
+  .radtts-boundary-fields,
   .path-row,
   .manual-citation-row,
   .citation-link-row,
@@ -2805,6 +2861,7 @@ button:disabled {
   .radtts-grid,
   .radtts-pause-fields,
   .radtts-output-row,
+  .radtts-tools-output-row,
   .radtts-reference-row {
     grid-template-columns: 1fr;
   }

@@ -5,6 +5,7 @@
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
   import RadcastWorkspace from "./components/RadcastWorkspace.svelte";
   import RadtTsWorkspace from "./components/RadtTsWorkspace.svelte";
+  import RadtTsToolsWorkspace from "./components/RadtTsToolsWorkspace.svelte";
   import RadciteArchiveWorkspace from "./components/RadciteArchiveWorkspace.svelte";
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
   import RadciteExportsWorkspace from "./components/RadciteExportsWorkspace.svelte";
@@ -997,6 +998,8 @@
       <RadcastWorkspace selectedProjectId={selectedProjectCommandId()} />
     {:else if activeArea === "radtts"}
       <RadtTsWorkspace selectedProjectId={selectedProjectCommandId()} />
+    {:else if activeArea === "radt-tools"}
+      <RadtTsToolsWorkspace selectedProjectId={selectedProjectCommandId()} />
     {:else}
       <section class="workspace-placeholder">
         <p class="eyebrow">Coming later</p>

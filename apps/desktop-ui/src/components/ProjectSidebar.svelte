@@ -229,6 +229,18 @@
           <span>Voice generation</span>
           <small>RADTTS</small>
         </button>
+        <button
+          class="tool-area-button tool-area-button-root media-tool-button"
+          class:is-active={project.id === selectedProjectId && activeArea === "radt-tools"}
+          type="button"
+          onclick={() => {
+            selectProject(project);
+            onSelectArea("radt-tools");
+          }}
+        >
+          <span>Transcribe &amp; clip</span>
+          <small>RADTTS</small>
+        </button>
 
         <div class="project-card-actions">
           {#if project.archived_at === null}

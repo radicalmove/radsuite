@@ -16,6 +16,7 @@ use crate::AppPaths;
 
 use crate::radcast::{RadcastAudioOutput, RadcastProcessingPhase, RadcastProcessingProgress};
 use crate::radt_ts::{RadtTsChildHandle, RadtTsJobStatus};
+use crate::radt_ts_tools::{RadtTsMediaChildHandle, RadtTsMediaJobStatus};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -51,6 +52,9 @@ pub struct DesktopState {
     pub radt_ts_children: Arc<Mutex<HashMap<String, RadtTsChildHandle>>>,
     pub radt_ts_cancel_requests: Arc<Mutex<HashSet<String>>>,
     pub radt_ts_active_projects: Arc<Mutex<HashSet<String>>>,
+    pub radt_ts_media_jobs: Arc<Mutex<HashMap<String, RadtTsMediaJobStatus>>>,
+    pub radt_ts_media_children: Arc<Mutex<HashMap<String, RadtTsMediaChildHandle>>>,
+    pub radt_ts_media_cancel_requests: Arc<Mutex<HashSet<String>>>,
 }
 
 #[derive(Debug, Error)]
@@ -135,6 +139,9 @@ impl DesktopState {
             radt_ts_children: Arc::new(Mutex::new(HashMap::new())),
             radt_ts_cancel_requests: Arc::new(Mutex::new(HashSet::new())),
             radt_ts_active_projects: Arc::new(Mutex::new(HashSet::new())),
+            radt_ts_media_jobs: Arc::new(Mutex::new(HashMap::new())),
+            radt_ts_media_children: Arc::new(Mutex::new(HashMap::new())),
+            radt_ts_media_cancel_requests: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 }
