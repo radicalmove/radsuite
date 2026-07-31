@@ -6,6 +6,11 @@ export type CreateRadciteProjectInput = {
   title: string;
 };
 
+export type UpdateRadciteProjectInput = {
+  code?: string | null;
+  title: string;
+};
+
 export type ProjectMutationInput = {
   project_id: string;
 };
@@ -23,6 +28,19 @@ export function createRadciteProject(
 ): Promise<RadciteProjectSummary> {
   return invoke<RadciteProjectSummary>("create_radcite_project", {
     request: {
+      code: trimmedOrNull(input.code),
+      title: input.title.trim(),
+    },
+  });
+}
+
+export function updateRadciteProject(
+  projectId: string,
+  input: UpdateRadciteProjectInput,
+): Promise<RadciteProjectSummary> {
+  return invoke<RadciteProjectSummary>("update_radcite_project", {
+    request: {
+      ...projectMutationRequest(projectId),
       code: trimmedOrNull(input.code),
       title: input.title.trim(),
     },

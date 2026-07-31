@@ -80,6 +80,38 @@ async fn project_can_be_loaded_by_code() {
 }
 
 #[tokio::test]
+async fn project_metadata_can_be_updated() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let repo = SqliteProjectRepository::new(pool);
+    let project = Project::new("CRJU150", "Legal Method", UserId::new());
+    repo.insert_project(&project).await.expect("insert project");
+
+    let mut updated = project.clone();
+    updated.code = Some("COMS432".to_string());
+    updated.title = "Strategic Communication".to_string();
+    repo.update_project(&updated).await.expect("update project");
+
+    let loaded = repo
+        .load_project(project.id)
+        .await
+        .expect("load updated project")
+        .expect("project exists");
+
+    assert_eq!(loaded.id, project.id);
+    assert_eq!(loaded.owner_id, project.owner_id);
+    assert_eq!(loaded.created_at, project.created_at);
+    assert_eq!(loaded.code.as_deref(), Some("COMS432"));
+    assert_eq!(loaded.title, "Strategic Communication");
+    assert!(loaded.updated_at >= project.updated_at);
+}
+
+#[tokio::test]
 async fn local_projects_can_be_listed_across_owners() {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)

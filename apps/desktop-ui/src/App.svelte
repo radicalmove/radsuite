@@ -28,6 +28,7 @@
     createRadciteProject,
     listRadciteProjects,
     restoreRadciteProject,
+    updateRadciteProject,
   } from "./lib/projectCommands";
   import {
     browserStorage,
@@ -248,6 +249,20 @@
       await refreshArchive();
     } catch (reason: unknown) {
       projectsError = `Could not create project: ${toErrorMessage(reason)}`;
+      throw reason;
+    }
+  }
+
+  async function handleUpdateProject(
+    projectId: string,
+    input: Parameters<typeof updateRadciteProject>[1],
+  ) {
+    projectsError = null;
+    try {
+      const updated = await updateRadciteProject(projectId, input);
+      await refreshProjects(updated.id);
+    } catch (reason: unknown) {
+      projectsError = `Could not update project: ${toErrorMessage(reason)}`;
       throw reason;
     }
   }
@@ -830,6 +845,9 @@
     }}
     onRestoreProject={(projectId) => {
       void handleRestoreProject(projectId);
+    }}
+    onUpdateProject={(projectId, input) => {
+      void handleUpdateProject(projectId, input);
     }}
     onSelectArea={(area) => {
       activeArea = area;

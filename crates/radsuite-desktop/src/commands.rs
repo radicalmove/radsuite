@@ -253,6 +253,13 @@ pub struct CreateRadciteProjectRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateRadciteProjectRequest {
+    pub project_id: ProjectId,
+    pub code: Option<String>,
+    pub title: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ArchiveRadciteProjectRequest {
     pub project_id: ProjectId,
 }
@@ -804,6 +811,8 @@ pub enum RadcastAudioError {
 pub enum RadciteProjectError {
     #[error("enter a project title before creating it")]
     EmptyTitle,
+    #[error("cannot edit archived RADcite project {0}")]
+    ArchivedProject(ProjectId),
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
     #[error(transparent)]
@@ -1074,6 +1083,41 @@ pub async fn create_radcite_project(
         .await?;
 
     Ok(radcite_project_summary(project))
+}
+
+pub async fn update_radcite_project(
+    state: &DesktopState,
+    request: UpdateRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, RadciteProjectError> {
+    let title = request.title.trim();
+    if title.is_empty() {
+        return Err(RadciteProjectError::EmptyTitle);
+    }
+
+    let project_repo = SqliteProjectRepository::new(state.database_pool.clone());
+    let mut project = project_repo
+        .load_project(request.project_id)
+        .await?
+        .ok_or(RadciteProjectError::MissingProject(request.project_id))?;
+    if project.archived_at.is_some() {
+        return Err(RadciteProjectError::ArchivedProject(project.id));
+    }
+
+    project.code = request
+        .code
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string);
+    project.title = title.to_string();
+
+    project_repo.update_project(&project).await?;
+    let updated = project_repo
+        .load_project(project.id)
+        .await?
+        .ok_or(RadciteProjectError::MissingProject(project.id))?;
+
+    Ok(radcite_project_summary(updated))
 }
 
 pub async fn archive_radcite_project(

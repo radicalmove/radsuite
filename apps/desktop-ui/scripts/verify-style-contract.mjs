@@ -350,6 +350,8 @@ for (const needle of [
   "list_radcite_projects",
   "CreateRadciteProjectRequest",
   "create_radcite_project",
+  "UpdateRadciteProjectRequest",
+  "update_radcite_project",
   "ArchiveRadciteProjectRequest",
   "archive_radcite_project",
   "RestoreRadciteProjectRequest",

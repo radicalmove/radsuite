@@ -6,6 +6,7 @@ import {
   createRadciteProject,
   listRadciteProjects,
   restoreRadciteProject,
+  updateRadciteProject,
 } from "./projectCommands";
 
 vi.mock("@tauri-apps/api/core", () => ({
@@ -67,6 +68,25 @@ describe("project commands", () => {
 
     expect(invoke).toHaveBeenCalledWith("restore_radcite_project", {
       request: { project_id: "project-1" },
+    });
+  });
+
+  test("updates a trimmed project by ID", async () => {
+    vi.mocked(invoke).mockResolvedValue(project);
+
+    await expect(
+      updateRadciteProject(" project-1 ", {
+        code: " COMS432 ",
+        title: " Strategic Communication ",
+      }),
+    ).resolves.toBe(project);
+
+    expect(invoke).toHaveBeenCalledWith("update_radcite_project", {
+      request: {
+        project_id: "project-1",
+        code: "COMS432",
+        title: "Strategic Communication",
+      },
     });
   });
 });

@@ -25,8 +25,8 @@ use radsuite_desktop::{
     RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
     SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
     UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, add_course_reference,
-    add_manual_citation_for_review, add_module_reading, add_radcite_module,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, UpdateRadciteProjectRequest,
+    add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
     analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
     archive_module_reading, archive_radcite_document, archive_radcite_module,
     archive_radcite_project, create_radcite_project, export_course_references,
@@ -37,7 +37,8 @@ use radsuite_desktop::{
     preview_module_readings_csv_import, preview_module_readings_import,
     preview_module_readings_pdf_import, restore_radcite_archive_item, restore_radcite_project,
     save_module_readings_import, update_course_reference, update_module_reading,
-    update_radcite_document, update_radcite_module, verify_paragraph_citations_for_review,
+    update_radcite_document, update_radcite_module, update_radcite_project,
+    verify_paragraph_citations_for_review,
 };
 use serde_json::Value;
 use sqlx::sqlite::SqlitePoolOptions;
@@ -94,6 +95,62 @@ async fn local_radcite_projects_can_be_listed_and_created() {
 
     assert_eq!(projects.len(), 2);
     assert!(projects.iter().any(|project| project.id == created.id));
+}
+
+#[tokio::test]
+async fn local_radcite_projects_can_be_updated() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let project_id = projects[0].id;
+
+    let updated = update_radcite_project(
+        &state,
+        UpdateRadciteProjectRequest {
+            project_id,
+            code: Some(" COMS432 ".to_string()),
+            title: " Strategic Communication ".to_string(),
+        },
+    )
+    .await
+    .expect("update project");
+
+    assert_eq!(updated.id, project_id);
+    assert_eq!(updated.code.as_deref(), Some("COMS432"));
+    assert_eq!(updated.title, "Strategic Communication");
+
+    let listed = list_radcite_projects(&state)
+        .await
+        .expect("list updated projects");
+    let listed_project = listed
+        .iter()
+        .find(|project| project.id == project_id)
+        .expect("updated project is listed");
+    assert_eq!(listed_project.code.as_deref(), Some("COMS432"));
+    assert_eq!(listed_project.title, "Strategic Communication");
+}
+
+#[tokio::test]
+async fn archived_radcite_projects_cannot_be_updated() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let project_id = projects[0].id;
+
+    archive_radcite_project(&state, ArchiveRadciteProjectRequest { project_id })
+        .await
+        .expect("archive project");
+
+    let error = update_radcite_project(
+        &state,
+        UpdateRadciteProjectRequest {
+            project_id,
+            code: Some("COMS432".to_string()),
+            title: "Strategic Communication".to_string(),
+        },
+    )
+    .await
+    .expect_err("archived project should be read-only");
+
+    assert!(matches!(error, RadciteProjectError::ArchivedProject(id) if id == project_id));
 }
 
 #[tokio::test]

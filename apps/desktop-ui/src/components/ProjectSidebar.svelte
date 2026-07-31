@@ -1,7 +1,10 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import type { ProjectNavItem, ToolArea } from "../types";
-  import type { CreateRadciteProjectInput } from "../lib/projectCommands";
+  import type {
+    CreateRadciteProjectInput,
+    UpdateRadciteProjectInput,
+  } from "../lib/projectCommands";
   import radciteLogo from "../assets/radcite-logo.svg";
   import {
     browserStorage,
@@ -19,6 +22,7 @@
     projectsError: string | null;
     onSelectProject: (projectId: string) => void;
     onCreateProject: (input: CreateRadciteProjectInput) => void | Promise<void>;
+    onUpdateProject: (projectId: string, input: UpdateRadciteProjectInput) => void | Promise<void>;
     onArchiveProject: (projectId: string) => void | Promise<void>;
     onRestoreProject: (projectId: string) => void | Promise<void>;
     onSelectArea: (area: ToolArea) => void;
@@ -32,6 +36,7 @@
     projectsError,
     onSelectProject,
     onCreateProject,
+    onUpdateProject,
     onArchiveProject,
     onRestoreProject,
     onSelectArea,
@@ -41,6 +46,10 @@
   let projectCode = $state("");
   let projectTitle = $state("");
   let createSubmitting = $state(false);
+  let editProjectId = $state<string | null>(null);
+  let editProjectCode = $state("");
+  let editProjectTitle = $state("");
+  let editSubmitting = $state(false);
   let actionProjectId = $state<string | null>(null);
   let expandedProjectIds = $state<string[]>(defaultProjectNavStorageState.expandedProjectIds);
   let archivedSectionOpen = $state(defaultProjectNavStorageState.archivedSectionOpen);
@@ -57,6 +66,7 @@
   ];
 
   let createDisabled = $derived(createSubmitting || projectTitle.trim().length === 0);
+  let editDisabled = $derived(editSubmitting || editProjectTitle.trim().length === 0);
   let activeProjects = $derived(projects.filter((project) => project.archived_at === null));
   let archivedProjects = $derived(projects.filter((project) => project.archived_at !== null));
 
@@ -82,6 +92,38 @@
       archivedSectionOpen = true;
     }
     onSelectProject(project.id);
+  }
+
+  function startProjectEdit(project: ProjectNavItem) {
+    editProjectId = project.id;
+    editProjectCode = project.code === "RADcite" ? "" : project.code;
+    editProjectTitle = project.title;
+    if (!isExpanded(project.id)) {
+      expandedProjectIds = [...expandedProjectIds, project.id];
+    }
+  }
+
+  function cancelProjectEdit() {
+    editProjectId = null;
+    editProjectCode = "";
+    editProjectTitle = "";
+  }
+
+  async function submitProjectEdit(projectId: string) {
+    if (editDisabled || editProjectId !== projectId) {
+      return;
+    }
+
+    editSubmitting = true;
+    try {
+      await onUpdateProject(projectId, {
+        code: editProjectCode.trim() || null,
+        title: editProjectTitle.trim(),
+      });
+      cancelProjectEdit();
+    } finally {
+      editSubmitting = false;
+    }
   }
 
   async function archiveProject(projectId: string) {
@@ -185,6 +227,33 @@
       </button>
     </div>
 
+    {#if editProjectId === project.id}
+      <form
+        class="project-edit-form"
+        onsubmit={(event) => {
+          event.preventDefault();
+          void submitProjectEdit(project.id);
+        }}
+      >
+        <label>
+          <span>Code</span>
+          <input type="text" bind:value={editProjectCode} autocomplete="off" />
+        </label>
+        <label>
+          <span>Title</span>
+          <input type="text" bind:value={editProjectTitle} autocomplete="off" />
+        </label>
+        <div class="project-edit-actions">
+          <button class="project-action-button" type="button" onclick={cancelProjectEdit}>
+            Cancel
+          </button>
+          <button class="sidebar-create-button" type="submit" disabled={editDisabled}>
+            {editSubmitting ? "Saving" : "Save changes"}
+          </button>
+        </div>
+      </form>
+    {/if}
+
     {#if isExpanded(project.id)}
       <div class="tool-group" aria-label={project.code + " tools"}>
         <div class="tool-heading">RADcite</div>
@@ -244,6 +313,14 @@
 
         <div class="project-card-actions">
           {#if project.archived_at === null}
+            <button
+              class="project-action-button"
+              type="button"
+              disabled={actionProjectId !== null || editSubmitting}
+              onclick={() => startProjectEdit(project)}
+            >
+              Edit
+            </button>
             <button
               class="project-action-button"
               type="button"
