@@ -91,6 +91,27 @@ export type RadcastCapabilityStatus = {
   optimized_detail: string;
 };
 
+export type RadcastJobState = "running" | "completed" | "failed";
+
+export type RadcastProcessingPhase =
+  | "preparing"
+  | "removing_filler_words"
+  | "preparing_enhancement"
+  | "enhancing_audio"
+  | "rendering_audio"
+  | "generating_captions"
+  | "saving_output";
+
+export type RadcastJobStatus = {
+  id: string;
+  state: RadcastJobState;
+  phase: RadcastProcessingPhase;
+  percent: number;
+  elapsed_seconds: number;
+  output: RadcastAudioOutput | null;
+  error: string | null;
+};
+
 export type ParagraphFilter =
   | "all"
   | "citation-total"

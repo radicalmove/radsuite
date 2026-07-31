@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, path::PathBuf};
+use std::{cmp::Ordering, path::PathBuf, time::Instant};
 
 use chrono::Utc;
 use radsuite_cite::{
@@ -29,7 +29,8 @@ use crate::DesktopState;
 
 pub use crate::radcast::{
     ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
-    RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastStorageError,
+    RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastProcessingPhase,
+    RadcastStorageError,
 };
 pub use radsuite_engines::{AudioOutputFormat, CaptionFormat};
 
@@ -560,6 +561,8 @@ pub enum RadcastAudioError {
     Storage(#[from] RadcastStorageError),
     #[error("RADcast processing task failed")]
     ProcessingTask(#[from] tokio::task::JoinError),
+    #[error("RADcast processing job was not found: {0}")]
+    MissingJob(String),
 }
 
 #[derive(Debug, Error)]
@@ -880,6 +883,70 @@ pub async fn process_radcast_audio_with_processors(
     })
     .await?
     .map_err(Into::into)
+}
+
+pub async fn start_radcast_audio(
+    state: &DesktopState,
+    request: ProcessRadcastAudioRequest,
+) -> Result<crate::RadcastJobStatus, RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let job_id = Uuid::new_v4().to_string();
+    let initial_status = crate::RadcastJobStatus::running(job_id.clone());
+    state
+        .radcast_jobs
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(job_id.clone(), initial_status.clone());
+
+    let data_dir = state.paths.data_dir.clone();
+    let jobs = state.radcast_jobs.clone();
+    tokio::task::spawn_blocking(move || {
+        let started = Instant::now();
+        let result = crate::radcast::process_audio_with_processors_and_enhancement_with_progress(
+            &data_dir,
+            project.id,
+            request,
+            AudioProcessor::default(),
+            CaptionProcessor::default(),
+            EnhancementProcessor::default(),
+            |progress| {
+                let mut jobs = jobs.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+                if let Some(job) = jobs.get_mut(&job_id) {
+                    job.update_progress(progress, started.elapsed().as_secs_f64());
+                }
+            },
+        );
+        let mut jobs = jobs.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(job) = jobs.get_mut(&job_id) {
+            job.elapsed_seconds = started.elapsed().as_secs_f64();
+            match result {
+                Ok(output) => {
+                    job.state = crate::RadcastJobState::Completed;
+                    job.percent = 100;
+                    job.output = Some(output);
+                }
+                Err(error) => {
+                    job.state = crate::RadcastJobState::Failed;
+                    job.error = Some(error.to_string());
+                }
+            }
+        }
+    });
+
+    Ok(initial_status)
+}
+
+pub fn get_radcast_audio_job(
+    state: &DesktopState,
+    job_id: String,
+) -> Result<crate::RadcastJobStatus, RadcastAudioError> {
+    state
+        .radcast_jobs
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .get(&job_id)
+        .cloned()
+        .ok_or(RadcastAudioError::MissingJob(job_id))
 }
 
 pub async fn process_radcast_audio_with_processors_and_enhancement(

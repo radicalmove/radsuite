@@ -11,10 +11,10 @@ use radsuite_desktop::{
     ModuleReadingSummary, ModuleReadingsExport, ModuleReadingsPdfImportPreview,
     PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
     PreviewModuleReadingsPdfImportRequest, ProcessRadcastAudioRequest, RadcastAudioListing,
-    RadcastAudioOutput, RadcastAudioSource, RadcastCapabilityStatus, RadciteArchiveItem,
-    RadciteProjectSummary, RestoreRadciteArchiveItemRequest, SaveModuleReadingsImportRequest,
-    SavedRadciteReviewSummary, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
+    RadcastAudioOutput, RadcastAudioSource, RadcastCapabilityStatus, RadcastJobStatus,
+    RadciteArchiveItem, RadciteProjectSummary, RestoreRadciteArchiveItemRequest,
+    SaveModuleReadingsImportRequest, SavedRadciteReviewSummary, UpdateCourseReferenceRequest,
+    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -80,6 +80,24 @@ async fn process_radcast_audio(
     radsuite_desktop::process_radcast_audio(&state, request)
         .await
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn start_radcast_audio(
+    state: tauri::State<'_, DesktopState>,
+    request: ProcessRadcastAudioRequest,
+) -> Result<RadcastJobStatus, String> {
+    radsuite_desktop::start_radcast_audio(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn get_radcast_audio_job(
+    state: tauri::State<'_, DesktopState>,
+    job_id: String,
+) -> Result<RadcastJobStatus, String> {
+    radsuite_desktop::get_radcast_audio_job(&state, job_id).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -391,6 +409,8 @@ fn main() {
             list_radcast_audio,
             import_radcast_audio,
             process_radcast_audio,
+            start_radcast_audio,
+            get_radcast_audio_job,
             get_radcast_capabilities,
             list_radcite_projects,
             create_radcite_project,

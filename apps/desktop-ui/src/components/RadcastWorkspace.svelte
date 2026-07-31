@@ -13,6 +13,8 @@
     RadcastAudioListing,
     RadcastAudioOutput,
     RadcastAudioSource,
+    RadcastJobStatus,
+    RadcastProcessingPhase,
   } from "../types";
 
   type Props = {
@@ -42,6 +44,7 @@
   let processing = $state(false);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
+  let radcastJob = $state<RadcastJobStatus | null>(null);
   let captionCapability = $state<RadcastCapabilityStatus>({
     caption_available: false,
     caption_detail: "Checking local caption support.",
@@ -84,6 +87,26 @@
     return "Standard";
   }
 
+  function processingPhaseLabel(phase: RadcastProcessingPhase): string {
+    const labels: Record<RadcastProcessingPhase, string> = {
+      preparing: "Preparing audio",
+      removing_filler_words: "Finding filler words",
+      preparing_enhancement: "Preparing enhancement",
+      enhancing_audio: "Enhancing speech",
+      rendering_audio: "Rendering audio",
+      generating_captions: "Generating captions",
+      saving_output: "Saving output",
+    };
+    return labels[phase];
+  }
+
+  function formatElapsed(seconds: number): string {
+    const safe = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0;
+    const minutes = Math.floor(safe / 60);
+    const remainder = safe % 60;
+    return minutes ? `${minutes}m ${remainder}s` : `${remainder}s`;
+  }
+
   function setSelectedSource(sourceId: string | null) {
     selectedSourceId = sourceId;
     const source = sources.find((item) => item.id === sourceId);
@@ -91,6 +114,7 @@
     clipEnd = source?.duration_seconds ?? 0;
     error = null;
     status = null;
+    radcastJob = null;
   }
 
   async function refreshAudio() {
@@ -157,9 +181,9 @@
     if (processDisabled || !selectedSource) return;
     processing = true;
     error = null;
-    status = "Processing audio";
+    status = null;
     try {
-      const output = await invoke<RadcastAudioOutput>("process_radcast_audio", {
+      let job = await invoke<RadcastJobStatus>("start_radcast_audio", {
         request: {
           project_id: selectedProjectId,
           source_id: selectedSource.id,
@@ -178,6 +202,17 @@
           filler_removal_mode: fillerRemovalMode,
         },
       });
+      radcastJob = job;
+      while (job.state === "running") {
+        await new Promise((resolve) => window.setTimeout(resolve, 400));
+        job = await invoke<RadcastJobStatus>("get_radcast_audio_job", { jobId: job.id });
+        radcastJob = job;
+      }
+      if (job.state === "failed") {
+        throw new Error(job.error ?? "The local audio job failed.");
+      }
+      const output = job.output;
+      if (!output) throw new Error("The local audio job completed without an output file.");
       outputs = [output, ...outputs];
       const captionDetail = output.caption_format
         ? ` with ${output.caption_segment_count} ${output.caption_format.toUpperCase()} caption${output.caption_segment_count === 1 ? "" : "s"}`
@@ -186,9 +221,11 @@
         ? ` and removed ${output.removed_filler_count} filler word${output.removed_filler_count === 1 ? "" : "s"}`
         : "";
       status = `Audio processing complete${captionDetail}${fillerDetail}`;
+      radcastJob = null;
     } catch (reason: unknown) {
       status = null;
       error = `Could not process audio: ${toErrorMessage(reason)}`;
+      radcastJob = null;
     } finally {
       processing = false;
     }
@@ -211,6 +248,16 @@
   {/if}
   {#if status}
     <div class="notice radcast-status" aria-live="polite">{status}</div>
+  {/if}
+  {#if processing && radcastJob}
+    <div class="radcast-progress" aria-live="polite">
+      <div class="radcast-progress-heading">
+        <strong>{processingPhaseLabel(radcastJob.phase)}</strong>
+        <span>{radcastJob.percent}%</span>
+      </div>
+      <progress max="100" value={radcastJob.percent}></progress>
+      <small>Elapsed {formatElapsed(radcastJob.elapsed_seconds)}. Everything is being processed locally.</small>
+    </div>
   {/if}
 
   <div class="radcast-grid">

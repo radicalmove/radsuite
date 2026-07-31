@@ -1,4 +1,9 @@
-use std::{fs, path::PathBuf};
+use std::{
+    collections::HashMap,
+    fs,
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 use radsuite_engines::EngineRegistry;
 use sqlx::{
@@ -9,6 +14,27 @@ use thiserror::Error;
 
 use crate::AppPaths;
 
+use crate::radcast::{RadcastAudioOutput, RadcastProcessingPhase, RadcastProcessingProgress};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum RadcastJobState {
+    Running,
+    Completed,
+    Failed,
+}
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct RadcastJobStatus {
+    pub id: String,
+    pub state: RadcastJobState,
+    pub phase: RadcastProcessingPhase,
+    pub percent: u8,
+    pub elapsed_seconds: f64,
+    pub output: Option<RadcastAudioOutput>,
+    pub error: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct DesktopState {
     pub app_name: String,
@@ -17,6 +43,7 @@ pub struct DesktopState {
     pub sync_configured: bool,
     pub engine_registry: EngineRegistry,
     pub database_pool: SqlitePool,
+    pub radcast_jobs: Arc<Mutex<HashMap<String, RadcastJobStatus>>>,
 }
 
 #[derive(Debug, Error)]
@@ -95,6 +122,27 @@ impl DesktopState {
             sync_configured,
             engine_registry: EngineRegistry::default(),
             database_pool,
+            radcast_jobs: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+}
+
+impl RadcastJobStatus {
+    pub fn running(id: String) -> Self {
+        Self {
+            id,
+            state: RadcastJobState::Running,
+            phase: RadcastProcessingPhase::Preparing,
+            percent: 0,
+            elapsed_seconds: 0.0,
+            output: None,
+            error: None,
+        }
+    }
+
+    pub fn update_progress(&mut self, progress: RadcastProcessingProgress, elapsed_seconds: f64) {
+        self.phase = progress.phase;
+        self.percent = progress.percent;
+        self.elapsed_seconds = elapsed_seconds;
     }
 }
