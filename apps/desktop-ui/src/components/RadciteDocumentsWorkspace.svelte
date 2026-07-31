@@ -34,6 +34,7 @@
     onDocxPathChange: (path: string) => void;
     onOpenReadings: () => void | Promise<void>;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
+    onArchiveDocument: (documentId: string) => void | Promise<void>;
     onRefreshSavedReviews: () => void | Promise<void>;
     onSelectParagraph: (paragraphId: string | null) => void;
   };
@@ -56,6 +57,7 @@
     onDocxPathChange,
     onOpenReadings,
     onLoadSavedReview,
+    onArchiveDocument,
     onRefreshSavedReviews,
     onSelectParagraph,
   }: Props = $props();
@@ -98,7 +100,7 @@
     }
   }
 
-  async function onChooseDocument() {
+  async function onChooseDocx() {
     analysisError = null;
 
     try {
@@ -219,7 +221,7 @@
         class="secondary-button choose-docx-button"
         type="button"
         disabled={analysisLoading}
-        onclick={() => void onChooseDocument()}
+        onclick={() => void onChooseDocx()}
       >
         Choose {sourceLabel}
       </button>
@@ -256,18 +258,26 @@
     {:else if savedReviews.length}
       <div class="saved-reviews-list" aria-label="Saved RADcite reviews">
         {#each savedReviews as review (review.document_id)}
-          <button
-            class="saved-review-row"
-            class:is-active={selectedDocumentId === review.document_id}
-            type="button"
-            onclick={() => void onLoadSavedReview(review.document_id)}
-          >
-            <span>
-              <strong>{review.original_filename}</strong>
-              <small>{reviewStats(review)}</small>
-            </span>
-            <span class="saved-review-action">Open</span>
-          </button>
+          <div class="saved-review-row" class:is-active={selectedDocumentId === review.document_id}>
+            <button
+              class="saved-review-open"
+              type="button"
+              onclick={() => void onLoadSavedReview(review.document_id)}
+            >
+              <span>
+                <strong>{review.original_filename}</strong>
+                <small>{reviewStats(review)}</small>
+              </span>
+              <span class="saved-review-action">Open</span>
+            </button>
+            <button
+              class="secondary-button compact-button danger-button"
+              type="button"
+              onclick={() => void onArchiveDocument(review.document_id)}
+            >
+              Archive
+            </button>
+          </div>
         {/each}
       </div>
     {:else}

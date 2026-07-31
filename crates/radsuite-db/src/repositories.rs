@@ -184,7 +184,12 @@ pub trait CourseModuleRepository {
     async fn insert_course_module(&self, module: &CourseModule) -> Result<(), DbError>;
     async fn update_course_module(&self, module: &CourseModule) -> Result<(), DbError>;
     async fn archive_course_module(&self, module_id: ModuleId) -> Result<(), DbError>;
+    async fn restore_course_module(&self, module_id: ModuleId) -> Result<(), DbError>;
     async fn list_course_modules_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<CourseModule>, DbError>;
+    async fn list_archived_course_modules_for_project(
         &self,
         project_id: ProjectId,
     ) -> Result<Vec<CourseModule>, DbError>;
@@ -296,6 +301,44 @@ impl CourseModuleRepository for SqliteCourseModuleRepository {
         Ok(())
     }
 
+    async fn restore_course_module(&self, module_id: ModuleId) -> Result<(), DbError> {
+        let mut tx = self.pool.begin().await?;
+        let now = Utc::now().to_rfc3339();
+        let module_id = module_id.0.to_string();
+
+        sqlx::query(
+            r#"
+            UPDATE course_modules
+            SET archived_at = NULL,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NOT NULL
+            "#,
+        )
+        .bind(&module_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET archived_at = NULL,
+                updated_at = ?2
+            WHERE module_id = ?1
+              AND archived_at IS NOT NULL
+            "#,
+        )
+        .bind(&module_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
     async fn list_course_modules_for_project(
         &self,
         project_id: ProjectId,
@@ -311,6 +354,27 @@ impl CourseModuleRepository for SqliteCourseModuleRepository {
                 COALESCE(order_index, 2147483647),
                 title COLLATE NOCASE,
                 id
+            "#,
+        )
+        .bind(project_id.0.to_string())
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.iter().map(course_module_from_row).collect()
+    }
+
+    async fn list_archived_course_modules_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<CourseModule>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT id, project_id, code, title, order_index, description, archived_at, created_at,
+                   updated_at
+            FROM course_modules
+            WHERE project_id = ?1
+              AND archived_at IS NOT NULL
+            ORDER BY archived_at DESC, title COLLATE NOCASE, id
             "#,
         )
         .bind(project_id.0.to_string())
@@ -353,7 +417,16 @@ pub trait ReferenceEntryRepository {
         &self,
         reference_entry_id: ReferenceEntryId,
     ) -> Result<(), DbError>;
+    async fn restore_reference_entry(
+        &self,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<(), DbError>;
     async fn list_reference_entries_for_project(
+        &self,
+        project_id: ProjectId,
+        reference_type: ReferenceEntryType,
+    ) -> Result<Vec<ReferenceEntry>, DbError>;
+    async fn list_archived_reference_entries_for_project(
         &self,
         project_id: ProjectId,
         reference_type: ReferenceEntryType,
@@ -419,6 +492,27 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         .bind(entry.archived_at.map(|value| value.to_rfc3339()))
         .bind(entry.created_at.to_rfc3339())
         .bind(entry.updated_at.to_rfc3339())
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    async fn restore_reference_entry(
+        &self,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<(), DbError> {
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET archived_at = NULL,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NOT NULL
+            "#,
+        )
+        .bind(reference_entry_id.0.to_string())
+        .bind(Utc::now().to_rfc3339())
         .execute(&self.pool)
         .await?;
 
@@ -563,6 +657,37 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         rows.iter().map(reference_entry_from_row).collect()
     }
 
+    async fn list_archived_reference_entries_for_project(
+        &self,
+        project_id: ProjectId,
+        reference_type: ReferenceEntryType,
+    ) -> Result<Vec<ReferenceEntry>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                id, project_id, module_id, document_id, paragraph_id, reference_type,
+                display_order, lesson_code, reading_category, citation_text, apa_citation,
+                title, authors_json, publication_year, source, doi, url, notes, reading_notes,
+                estimated_reading_time, apa_validation_status, apa_validation_report, archived_at,
+                created_at, updated_at
+            FROM reference_entries
+            WHERE project_id = ?1
+              AND reference_type = ?2
+              AND archived_at IS NOT NULL
+            ORDER BY archived_at DESC,
+                COALESCE(display_order, 2147483647),
+                COALESCE(apa_citation, citation_text, title, '') COLLATE NOCASE,
+                id
+            "#,
+        )
+        .bind(project_id.0.to_string())
+        .bind(reference_entry_type_as_str(reference_type))
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.iter().map(reference_entry_from_row).collect()
+    }
+
     async fn list_reference_entries_for_module(
         &self,
         module_id: ModuleId,
@@ -610,6 +735,7 @@ pub struct CitationDocumentSummary {
     pub paragraph_count: i64,
     pub citation_count: i64,
     pub missing_citation_count: i64,
+    pub archived_at: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -629,6 +755,15 @@ pub trait CitationDocumentRepository {
     ) -> Result<(), DbError>;
 
     async fn list_documents_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<CitationDocumentSummary>, DbError>;
+
+    async fn archive_document(&self, document_id: DocumentId) -> Result<(), DbError>;
+
+    async fn restore_document(&self, document_id: DocumentId) -> Result<(), DbError>;
+
+    async fn list_archived_documents_for_project(
         &self,
         project_id: ProjectId,
     ) -> Result<Vec<CitationDocumentSummary>, DbError>;
@@ -765,6 +900,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 d.project_id,
                 d.original_filename,
                 d.file_type,
+                d.archived_at,
                 COUNT(DISTINCT p.id) AS paragraph_count,
                 COUNT(DISTINCT pc.id) AS citation_count,
                 COUNT(DISTINCT CASE WHEN p.needs_citation = 1 THEN p.id END) AS missing_citation_count
@@ -773,7 +909,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.project_id = ?1
               AND d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -795,9 +931,117 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                     paragraph_count: row.try_get("paragraph_count")?,
                     citation_count: row.try_get("citation_count")?,
                     missing_citation_count: row.try_get("missing_citation_count")?,
+                    archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
                 })
             })
             .collect()
+    }
+
+    async fn archive_document(&self, document_id: DocumentId) -> Result<(), DbError> {
+        let mut tx = self.pool.begin().await?;
+        let now = Utc::now().to_rfc3339();
+        let document_id = document_id.0.to_string();
+
+        sqlx::query(
+            r#"
+            UPDATE documents
+            SET archived_at = ?2,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(&document_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET archived_at = ?2,
+                updated_at = ?2
+            WHERE document_id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(&document_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
+    async fn restore_document(&self, document_id: DocumentId) -> Result<(), DbError> {
+        let mut tx = self.pool.begin().await?;
+        let now = Utc::now().to_rfc3339();
+        let document_id = document_id.0.to_string();
+
+        sqlx::query(
+            r#"
+            UPDATE documents
+            SET archived_at = NULL,
+                updated_at = ?2
+            WHERE id = ?1
+              AND archived_at IS NOT NULL
+            "#,
+        )
+        .bind(&document_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE reference_entries
+            SET archived_at = NULL,
+                updated_at = ?2
+            WHERE document_id = ?1
+              AND archived_at IS NOT NULL
+            "#,
+        )
+        .bind(&document_id)
+        .bind(&now)
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(())
+    }
+
+    async fn list_archived_documents_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<CitationDocumentSummary>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                d.id,
+                d.project_id,
+                d.original_filename,
+                d.file_type,
+                d.archived_at,
+                COUNT(DISTINCT p.id) AS paragraph_count,
+                COUNT(DISTINCT pc.id) AS citation_count,
+                COUNT(DISTINCT CASE WHEN p.needs_citation = 1 THEN p.id END) AS missing_citation_count
+            FROM documents d
+            LEFT JOIN paragraphs p ON p.document_id = d.id
+            LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
+            WHERE d.project_id = ?1
+              AND d.archived_at IS NOT NULL
+            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
+            ORDER BY d.archived_at DESC, d.original_filename COLLATE NOCASE
+            "#,
+        )
+        .bind(project_id.0.to_string())
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter().map(citation_summary_from_row).collect()
     }
 
     async fn list_saved_documents(&self) -> Result<Vec<CitationDocumentSummary>, DbError> {
@@ -808,6 +1052,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 d.project_id,
                 d.original_filename,
                 d.file_type,
+                d.archived_at,
                 COUNT(DISTINCT p.id) AS paragraph_count,
                 COUNT(DISTINCT pc.id) AS citation_count,
                 COUNT(DISTINCT CASE WHEN p.needs_citation = 1 THEN p.id END) AS missing_citation_count
@@ -815,7 +1060,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraphs p ON p.document_id = d.id
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -1024,6 +1269,7 @@ fn citation_summary_from_row(
         paragraph_count: row.try_get("paragraph_count")?,
         citation_count: row.try_get("citation_count")?,
         missing_citation_count: row.try_get("missing_citation_count")?,
+        archived_at: parse_optional_datetime(row.try_get("archived_at")?)?,
     })
 }
 

@@ -35,6 +35,7 @@
     { id: "references", label: "References" },
     { id: "readings", label: "Readings" },
     { id: "exports", label: "Exports" },
+    { id: "archive", label: "Archive" },
   ];
 
   let createDisabled = $derived(createSubmitting || projectTitle.trim().length === 0);

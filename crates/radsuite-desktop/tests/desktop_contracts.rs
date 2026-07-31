@@ -11,25 +11,28 @@ use radsuite_db::{ReferenceEntryRepository, SqliteReferenceEntryRepository, migr
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AnalysePdfRequest, AppPaths,
-    ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest,
-    CourseReferenceError, CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
-    ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
-    ListModuleReadingsRequest, ListRadciteModulesRequest, ListSavedReviewsRequest,
-    ModuleReadingError, ModuleReadingExportError, ModuleReadingImportError,
-    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
-    PreviewModuleReadingsPdfImportRequest, RadciteModuleError, SaveModuleReadingsImportCandidate,
-    SaveModuleReadingsImportRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest, add_course_reference,
-    add_manual_citation_for_review, add_module_reading, add_radcite_module,
-    analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
-    archive_module_reading, archive_radcite_module, create_radcite_project,
+    ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteDocumentRequest,
+    ArchiveRadciteModuleRequest, CourseReferenceError, CreateRadciteProjectRequest, DesktopState,
+    ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
+    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteArchiveRequest,
+    ListRadciteModulesRequest, ListSavedReviewsRequest, ModuleReadingError,
+    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
+    PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
+    RadciteArchiveItemKind, RadciteModuleError, RestoreRadciteArchiveItemRequest,
+    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteModuleRequest, add_course_reference, add_manual_citation_for_review,
+    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
+    analyse_pdf_for_review, archive_course_reference, archive_module_reading,
+    archive_radcite_document, archive_radcite_module, create_radcite_project,
     export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
-    list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
+    list_radcite_archive, list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
     load_saved_radcite_review, mark_paragraph_resolved_for_review,
     preview_module_readings_csv_import, preview_module_readings_import,
-    preview_module_readings_pdf_import, save_module_readings_import, update_course_reference,
-    update_module_reading, update_radcite_module, verify_paragraph_citations_for_review,
+    preview_module_readings_pdf_import, restore_radcite_archive_item, save_module_readings_import,
+    update_course_reference, update_module_reading, update_radcite_module,
+    verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -2414,6 +2417,152 @@ async fn analyse_docx_path_rejects_empty_path() {
     .expect_err("reject empty path");
 
     assert!(matches!(error, AnalyseDocxError::EmptyPath));
+}
+
+#[tokio::test]
+async fn radcite_archive_lists_and_restores_project_items() {
+    let state = desktop_state_with_migrated_pool().await;
+    let document = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: None,
+            path: write_minimal_docx("desktop-archive.docx")
+                .to_string_lossy()
+                .into_owned(),
+            original_filename: Some("desktop-archive.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse archive document");
+    let reference = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2024). Archived reference.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add archive reference");
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Archived module".to_string(),
+            code: Some("M1".to_string()),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add archive module");
+    let reading = add_module_reading(
+        &state,
+        AddModuleReadingRequest {
+            module_id: module.id,
+            reading_category: "required".to_string(),
+            lesson_code: Some("1.1".to_string()),
+            apa_citation: Some("Taylor, R. (2023). Archived reading.".to_string()),
+            citation_text: None,
+            doi: None,
+            url: None,
+            notes: None,
+            reading_notes: None,
+            estimated_reading_time: None,
+        },
+    )
+    .await
+    .expect("add archive reading");
+
+    archive_radcite_document(
+        &state,
+        ArchiveRadciteDocumentRequest {
+            project_id: None,
+            document_id: document.document_id,
+        },
+    )
+    .await
+    .expect("archive document");
+    archive_course_reference(
+        &state,
+        ArchiveCourseReferenceRequest {
+            reference_id: reference.id,
+        },
+    )
+    .await
+    .expect("archive reference");
+    archive_module_reading(
+        &state,
+        ArchiveModuleReadingRequest {
+            reading_id: reading.id,
+        },
+    )
+    .await
+    .expect("archive reading");
+    archive_radcite_module(
+        &state,
+        ArchiveRadciteModuleRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("archive module");
+
+    let archive = list_radcite_archive(&state, ListRadciteArchiveRequest::default())
+        .await
+        .expect("list archive");
+    assert!(archive.iter().any(|item| {
+        item.kind == RadciteArchiveItemKind::Document && item.id == document.document_id.to_string()
+    }));
+    assert!(archive.iter().any(|item| {
+        item.kind == RadciteArchiveItemKind::CourseReference && item.id == reference.id.to_string()
+    }));
+    assert!(archive.iter().any(|item| {
+        item.kind == RadciteArchiveItemKind::Module && item.id == module.id.to_string()
+    }));
+    assert!(
+        !archive
+            .iter()
+            .any(|item| item.kind == RadciteArchiveItemKind::ModuleReading)
+    );
+
+    restore_radcite_archive_item(
+        &state,
+        RestoreRadciteArchiveItemRequest {
+            project_id: None,
+            kind: RadciteArchiveItemKind::Document,
+            item_id: document.document_id.to_string(),
+        },
+    )
+    .await
+    .expect("restore document");
+    restore_radcite_archive_item(
+        &state,
+        RestoreRadciteArchiveItemRequest {
+            project_id: None,
+            kind: RadciteArchiveItemKind::CourseReference,
+            item_id: reference.id.to_string(),
+        },
+    )
+    .await
+    .expect("restore reference");
+    restore_radcite_archive_item(
+        &state,
+        RestoreRadciteArchiveItemRequest {
+            project_id: None,
+            kind: RadciteArchiveItemKind::Module,
+            item_id: module.id.to_string(),
+        },
+    )
+    .await
+    .expect("restore module and child reading");
+
+    assert!(
+        list_radcite_archive(&state, ListRadciteArchiveRequest::default())
+            .await
+            .expect("list restored archive")
+            .is_empty()
+    );
 }
 
 async fn desktop_state_with_migrated_pool() -> DesktopState {

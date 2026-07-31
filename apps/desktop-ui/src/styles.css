@@ -880,6 +880,19 @@ button:disabled {
   text-align: left;
 }
 
+.saved-review-open {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s-3);
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  text-align: left;
+}
+
 .saved-review-row:hover,
 .saved-review-row.is-active {
   border-color: rgba(206, 62, 46, 0.34);
@@ -911,6 +924,99 @@ button:disabled {
 }
 
 .saved-reviews-notice {
+  margin-top: 0;
+}
+
+.archive-workspace {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.workspace-subtitle {
+  margin: var(--s-2) 0 0;
+  color: var(--fg-3);
+  font-size: 0.8rem;
+}
+
+.archive-groups {
+  display: grid;
+  gap: var(--s-4);
+}
+
+.archive-group {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.archive-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.archive-group-heading h3 {
+  margin: 0;
+  color: var(--fg-1);
+  font-size: 0.92rem;
+}
+
+.archive-group-heading span {
+  color: var(--fg-3);
+  font-size: 0.74rem;
+  font-weight: 650;
+}
+
+.archive-list {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.archive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  padding: var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+}
+
+.archive-row-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.archive-row-copy strong,
+.archive-row-copy span,
+.archive-row-copy small {
+  overflow-wrap: anywhere;
+}
+
+.archive-row-copy strong {
+  color: var(--fg-1);
+  font-size: 0.84rem;
+}
+
+.archive-row-copy span,
+.archive-row-copy small,
+.archive-empty {
+  color: var(--fg-3);
+  font-size: 0.74rem;
+}
+
+.archive-empty {
+  padding: var(--s-5) var(--s-4);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg-panel);
+  text-align: center;
+}
+
+.archive-notice {
   margin-top: 0;
 }
 
