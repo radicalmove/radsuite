@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import CitationActionsPanel from "./components/CitationActionsPanel.svelte";
+  import HelpModal from "./components/HelpModal.svelte";
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
   import RadcastWorkspace from "./components/RadcastWorkspace.svelte";
   import RadtTsWorkspace from "./components/RadtTsWorkspace.svelte";
@@ -112,6 +113,7 @@
   let activeFilter = $state<ParagraphFilter>("all");
   let selectedParagraphId = $state<string | null>(null);
   let theme = $state<"light" | "dark">("light");
+  let helpOpen = $state(false);
   let reviewActionError = $state<string | null>(null);
   let savedReviews = $state<SavedRadciteReviewSummary[]>([]);
   let savedReviewsLoading = $state(false);
@@ -876,6 +878,15 @@
           <span>{status.sync_configured ? "Cloud sync on" : "Cloud sync not connected"}</span>
         </span>
         <button
+          class="help-button"
+          type="button"
+          aria-label="Open help"
+          title="Open help"
+          onclick={() => (helpOpen = true)}
+        >
+          Help
+        </button>
+        <button
           class="theme-toggle"
           type="button"
           aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -887,6 +898,8 @@
         </button>
       </div>
     </header>
+
+    <HelpModal open={helpOpen} onClose={() => (helpOpen = false)} />
 
     {#if bridgeError}
       <div class="notice">Command bridge unavailable: {bridgeError}</div>
