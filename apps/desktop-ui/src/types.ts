@@ -34,7 +34,8 @@ export type ToolArea =
   | "exports"
   | "archive"
   | "radcast"
-  | "radtts";
+  | "radtts"
+  | "radt-tools";
 
 export type DocumentSource = "docx" | "pdf";
 
@@ -172,6 +173,42 @@ export type RadtTsJobStatus = {
   phase: RadtTsProcessingPhase;
   percent: number | null;
   output: RadtTsAudioOutput | null;
+  error: string | null;
+};
+
+export type RadtTsMediaJobKind = "transcription" | "clip";
+
+export type RadtTsMediaProcessingPhase =
+  | "preparing"
+  | "transcribing"
+  | "extracting_clip"
+  | "saving_output";
+
+export type RadtTsVerificationMode = "strict" | "lenient";
+
+export type RadtTsMediaArtifact = {
+  label: string;
+  path: string;
+};
+
+export type RadtTsMediaOutput = {
+  id: string;
+  kind: RadtTsMediaJobKind;
+  name: string;
+  primary_path: string;
+  artifacts: RadtTsMediaArtifact[];
+  output_format: RadtTsOutputFormat | null;
+  warnings: string[];
+};
+
+export type RadtTsMediaJobStatus = {
+  id: string;
+  project_id: string;
+  kind: RadtTsMediaJobKind;
+  state: RadtTsJobState;
+  phase: RadtTsMediaProcessingPhase;
+  percent: number | null;
+  output: RadtTsMediaOutput | null;
   error: string | null;
 };
 

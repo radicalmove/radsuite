@@ -14,11 +14,12 @@ use radsuite_desktop::{
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
     ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
     RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem, RadciteProjectSummary,
-    RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing, RestoreRadciteArchiveItemRequest,
-    RestoreRadciteProjectRequest, SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest,
-    SavedRadciteReviewSummary, StartRadtTsSynthesisRequest, UpdateCourseReferenceRequest,
-    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest,
-    UpdateRadciteModuleRequest,
+    RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsMediaJobStatus, RadtTsMediaOutputListing,
+    RadtTsOutputListing, RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
+    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
+    StartRadtTsClipRequest, StartRadtTsSynthesisRequest, StartRadtTsTranscriptionRequest,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -172,6 +173,46 @@ fn cancel_radt_ts_job(
     job_id: String,
 ) -> Result<RadtTsJobStatus, String> {
     radsuite_desktop::cancel_radt_ts_job(&state, job_id)
+}
+
+#[tauri::command]
+async fn list_radt_ts_media_outputs(
+    state: tauri::State<'_, DesktopState>,
+    request: ListRadtTsOutputsRequest,
+) -> Result<RadtTsMediaOutputListing, String> {
+    radsuite_desktop::list_radt_ts_media_outputs(&state, request).await
+}
+
+#[tauri::command]
+async fn start_radt_ts_transcription(
+    state: tauri::State<'_, DesktopState>,
+    request: StartRadtTsTranscriptionRequest,
+) -> Result<RadtTsMediaJobStatus, String> {
+    radsuite_desktop::start_radt_ts_transcription(&state, request).await
+}
+
+#[tauri::command]
+async fn start_radt_ts_clip(
+    state: tauri::State<'_, DesktopState>,
+    request: StartRadtTsClipRequest,
+) -> Result<RadtTsMediaJobStatus, String> {
+    radsuite_desktop::start_radt_ts_clip(&state, request).await
+}
+
+#[tauri::command]
+fn get_radt_ts_media_job(
+    state: tauri::State<'_, DesktopState>,
+    job_id: String,
+) -> Result<RadtTsMediaJobStatus, String> {
+    radsuite_desktop::get_radt_ts_media_job(&state, job_id)
+}
+
+#[tauri::command]
+fn cancel_radt_ts_media_job(
+    state: tauri::State<'_, DesktopState>,
+    job_id: String,
+) -> Result<RadtTsMediaJobStatus, String> {
+    radsuite_desktop::cancel_radt_ts_media_job(&state, job_id)
 }
 
 #[tauri::command]
@@ -530,6 +571,11 @@ fn main() {
             start_radt_ts_synthesis,
             get_radt_ts_job,
             cancel_radt_ts_job,
+            list_radt_ts_media_outputs,
+            start_radt_ts_transcription,
+            start_radt_ts_clip,
+            get_radt_ts_media_job,
+            cancel_radt_ts_media_job,
             list_radcite_projects,
             create_radcite_project,
             archive_radcite_project,
@@ -572,6 +618,7 @@ fn main() {
                 tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
             ) {
                 radsuite_desktop::shutdown_radt_ts_jobs(&shutdown_state);
+                radsuite_desktop::shutdown_radt_ts_media_jobs(&shutdown_state);
             }
         });
 }

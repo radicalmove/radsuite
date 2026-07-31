@@ -39,6 +39,10 @@ pub use crate::radt_ts::{
     ListRadtTsOutputsRequest, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing,
     StartRadtTsSynthesisRequest,
 };
+pub use crate::radt_ts_tools::{
+    RadtTsMediaJobStatus, RadtTsMediaOutputListing, StartRadtTsClipRequest,
+    StartRadtTsTranscriptionRequest,
+};
 pub use radsuite_engines::{AudioOutputFormat, CaptionFormat};
 
 const LOCAL_RADCITE_PROJECT_CODE: &str = "CRJU150";
@@ -162,6 +166,58 @@ pub fn get_radt_ts_job(state: &DesktopState, job_id: String) -> Result<RadtTsJob
 
 pub fn cancel_radt_ts_job(state: &DesktopState, job_id: String) -> Result<RadtTsJobStatus, String> {
     crate::radt_ts::cancel_radt_ts_job(state, &job_id).map_err(|error| error.to_string())
+}
+
+pub async fn list_radt_ts_media_outputs(
+    state: &DesktopState,
+    request: ListRadtTsOutputsRequest,
+) -> Result<RadtTsMediaOutputListing, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    crate::radt_ts_tools::list_radt_ts_media_outputs(state, project.id)
+        .map_err(|error| error.to_string())
+}
+
+pub async fn start_radt_ts_transcription(
+    state: &DesktopState,
+    mut request: StartRadtTsTranscriptionRequest,
+) -> Result<RadtTsMediaJobStatus, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    request.project_id = Some(project.id);
+    crate::radt_ts_tools::start_radt_ts_transcription(state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub async fn start_radt_ts_clip(
+    state: &DesktopState,
+    mut request: StartRadtTsClipRequest,
+) -> Result<RadtTsMediaJobStatus, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    request.project_id = Some(project.id);
+    crate::radt_ts_tools::start_radt_ts_clip(state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+pub fn get_radt_ts_media_job(
+    state: &DesktopState,
+    job_id: String,
+) -> Result<RadtTsMediaJobStatus, String> {
+    crate::radt_ts_tools::get_radt_ts_media_job(state, &job_id).map_err(|error| error.to_string())
+}
+
+pub fn cancel_radt_ts_media_job(
+    state: &DesktopState,
+    job_id: String,
+) -> Result<RadtTsMediaJobStatus, String> {
+    crate::radt_ts_tools::cancel_radt_ts_media_job(state, &job_id)
+        .map_err(|error| error.to_string())
 }
 
 fn optimized_capability_detail() -> String {

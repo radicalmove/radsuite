@@ -32,7 +32,7 @@ pub enum RadtTsQuality {
 }
 
 impl RadtTsQuality {
-    fn as_cli_value(self) -> &'static str {
+    pub(crate) fn as_cli_value(self) -> &'static str {
         match self {
             Self::Fast => "fast",
             Self::High => "quality",
@@ -64,7 +64,7 @@ pub enum RadtTsOutputFormat {
 }
 
 impl RadtTsOutputFormat {
-    fn as_cli_value(self) -> &'static str {
+    pub(crate) fn as_cli_value(self) -> &'static str {
         match self {
             Self::Mp3 => "mp3",
             Self::Wav => "wav",
@@ -709,7 +709,7 @@ fn configure_process_group(command: &mut Command) {
     }
 }
 
-fn ensure_project_root(
+pub(crate) fn ensure_project_root(
     projects_root: &Path,
     project_id: ProjectId,
 ) -> Result<PathBuf, RadtTsError> {
@@ -818,7 +818,7 @@ fn output_from_metadata(
     })
 }
 
-fn contained_file(root: &Path, path: &Path) -> Result<PathBuf, RadtTsError> {
+pub(crate) fn contained_file(root: &Path, path: &Path) -> Result<PathBuf, RadtTsError> {
     let candidate = if path.is_absolute() {
         path.to_path_buf()
     } else {
