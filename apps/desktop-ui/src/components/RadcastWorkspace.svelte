@@ -36,7 +36,7 @@
   let captionQualityMode = $state<CaptionQualityMode>("reviewed");
   let captionGlossary = $state("");
   let enhancementModel = $state<EnhancementModel>("studio_v18");
-  let enhancementQuality = $state<EnhancementQuality>("standard");
+  let enhancementQuality = $state<EnhancementQuality>("high");
   let cleanupEnabled = $state(true);
   let shortenPauses = $state(false);
   let maxSilenceSeconds = $state(1.0);
@@ -493,7 +493,7 @@
           <option value="standard">Standard · balanced</option>
           <option value="high">High · maximum cleanup</option>
         </select>
-        <small class="field-note">Fast reduces processing time; High preserves the previous RADcast profile.</small>
+        <small class="field-note">High uses the original RADcast Optimized quality; Fast and Standard reduce processing time.</small>
       </label>
       <label class="stack settings-compact-field">
         <span>Output format</span>
