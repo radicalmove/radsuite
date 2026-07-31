@@ -195,8 +195,8 @@ for (const needle of [
 for (const needle of [
   "Saved locally",
   "Saving unavailable",
-  "Cloud sync on",
-  "Cloud sync off",
+  "Cloud backup on",
+  "Cloud backup off",
   "title={",
   "aria-label=",
 ]) {
@@ -205,7 +205,14 @@ for (const needle of [
   }
 }
 
-for (const obsolete of ["Local DB ready", "Local DB offline", "Sync configured", "Sync off"]) {
+for (const obsolete of [
+  "Local DB ready",
+  "Local DB offline",
+  "Sync configured",
+  "Sync off",
+  "Cloud sync on",
+  "Cloud sync off",
+]) {
   if (app.includes(obsolete)) {
     missing.push(`app removes obsolete status copy: ${obsolete}`);
   }
