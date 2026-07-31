@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, path::PathBuf, time::Instant};
+use std::{cmp::Ordering, collections::HashSet, path::PathBuf, time::Instant};
 
 use chrono::Utc;
 use radsuite_cite::{
@@ -1518,9 +1518,7 @@ pub async fn list_course_references(
     request: ListCourseReferencesRequest,
 ) -> Result<Vec<CourseReferenceSummary>, CourseReferenceError> {
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
-    let references = SqliteReferenceEntryRepository::new(state.database_pool.clone())
-        .list_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
-        .await?;
+    let references = load_course_reference_entries(state, project.id).await?;
 
     Ok(references
         .into_iter()
@@ -2089,8 +2087,10 @@ pub async fn export_module_readings(
     let project = SqliteProjectRepository::new(state.database_pool.clone())
         .load_project(module.project_id)
         .await?;
-    let mut readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+    let readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
+        .await?;
+    let mut readings = filter_references_by_document_exclusion(state, module.project_id, readings)
         .await?;
     sort_module_reading_entries(&mut readings);
     let reading_count = readings.len();
@@ -2359,13 +2359,38 @@ async fn load_requested_or_local_radcite_project(
         .ok_or(RadciteProjectLookupError::MissingProject(project_id))
 }
 
+async fn filter_references_by_document_exclusion(
+    state: &DesktopState,
+    project_id: ProjectId,
+    references: Vec<ReferenceEntry>,
+) -> Result<Vec<ReferenceEntry>, DbError> {
+    let excluded_document_ids = SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .list_documents_for_project(project_id)
+        .await?
+        .into_iter()
+        .filter(|document| document.exclude_from_references)
+        .map(|document| document.document_id)
+        .collect::<HashSet<_>>();
+
+    Ok(references
+        .into_iter()
+        .filter(|reference| {
+            reference
+                .document_id
+                .is_none_or(|document_id| !excluded_document_ids.contains(&document_id))
+        })
+        .collect())
+}
+
 async fn load_course_reference_entries(
     state: &DesktopState,
     project_id: ProjectId,
 ) -> Result<Vec<ReferenceEntry>, DbError> {
-    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+    let references = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_project(project_id, ReferenceEntryType::Reference)
-        .await
+        .await?;
+
+    filter_references_by_document_exclusion(state, project_id, references).await
 }
 
 async fn load_course_reference_or_error(

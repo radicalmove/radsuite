@@ -2418,6 +2418,136 @@ async fn reference_suggestions_are_empty_when_course_references_do_not_match() {
 }
 
 #[tokio::test]
+async fn radcite_excluded_document_filtering() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-excluded-document.docx");
+    let analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: None,
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("excluded-document.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse document");
+
+    let reference_repo = SqliteReferenceEntryRepository::new(state.database_pool.clone());
+    let mut linked_reference = ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reference);
+    linked_reference.document_id = Some(analysis.document_id);
+    linked_reference.apa_citation = Some(
+        "Smith, J. (2020). Linked reference from an excluded document. Learning Press."
+            .to_string(),
+    );
+    reference_repo
+        .insert_reference_entry(&linked_reference)
+        .await
+        .expect("insert linked course reference");
+
+    let mut unlinked_reference = ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reference);
+    unlinked_reference.apa_citation = Some(
+        "Jones, A. (2024). Unlinked course reference. Teaching Press.".to_string(),
+    );
+    reference_repo
+        .insert_reference_entry(&unlinked_reference)
+        .await
+        .expect("insert unlinked course reference");
+
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Excluded document module".to_string(),
+            code: Some("M1".to_string()),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add module");
+    let mut linked_reading = ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reading);
+    linked_reading.module_id = Some(module.id);
+    linked_reading.document_id = Some(analysis.document_id);
+    linked_reading.reading_category = Some(ReadingCategory::Compulsory);
+    linked_reading.apa_citation = Some(
+        "Smith, J. (2020). Linked reading from an excluded document. Learning Press."
+            .to_string(),
+    );
+    reference_repo
+        .insert_reference_entry(&linked_reading)
+        .await
+        .expect("insert linked module reading");
+
+    let mut unlinked_reading = ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reading);
+    unlinked_reading.module_id = Some(module.id);
+    unlinked_reading.reading_category = Some(ReadingCategory::Optional);
+    unlinked_reading.apa_citation = Some(
+        "Jones, A. (2024). Unlinked module reading. Teaching Press.".to_string(),
+    );
+    reference_repo
+        .insert_reference_entry(&unlinked_reading)
+        .await
+        .expect("insert unlinked module reading");
+
+    update_radcite_document(
+        &state,
+        UpdateRadciteDocumentRequest {
+            project_id: None,
+            document_id: analysis.document_id,
+            display_name: String::new(),
+            doc_number: None,
+            doc_variant: DocumentVariant::Content,
+            exclude_from_references: true,
+        },
+    )
+    .await
+    .expect("exclude document");
+
+    let references = list_course_references(&state, ListCourseReferencesRequest::default())
+        .await
+        .expect("list filtered course references");
+    assert_eq!(references.len(), 1);
+    assert_eq!(references[0].id, unlinked_reference.id);
+
+    let loaded = load_saved_radcite_review(&state, analysis.document_id)
+        .await
+        .expect("load filtered review");
+    assert!(!loaded.paragraphs.iter().any(|paragraph| {
+        paragraph
+            .citations
+            .iter()
+            .flat_map(|citation| citation.reference_suggestions.iter())
+            .any(|suggestion| suggestion.reference_entry_id == linked_reference.id)
+    }));
+
+    let course_export = export_course_references(
+        &state,
+        ExportCourseReferencesRequest {
+            project_id: None,
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export filtered course references");
+    assert_eq!(course_export.reference_count, 1);
+    assert!(!course_export.html.contains("Linked reference from an excluded document"));
+    assert!(course_export.html.contains("Unlinked course reference"));
+
+    let module_export = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: module.id,
+            for_ako_learn: false,
+        },
+    )
+    .await
+    .expect("export filtered module readings");
+    assert_eq!(module_export.reading_count, 1);
+    assert!(!module_export.html.contains("Linked reading from an excluded document"));
+    assert!(module_export.html.contains("Unlinked module reading"));
+}
+
+#[tokio::test]
 async fn course_references_can_be_exported_as_html() {
     let state = desktop_state_with_migrated_pool().await;
 
