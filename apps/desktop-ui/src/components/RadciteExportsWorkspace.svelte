@@ -79,6 +79,9 @@
   let apaWarningCount = $derived(
     references.filter((reference) => reference.validation_status === "unknown").length,
   );
+  let apaFixDetails = $derived(
+    references.filter((reference) => reference.validation_status === "needs_fix").slice(0, 3),
+  );
   let exportDisabled = $derived(
     activeExportLoading ||
       sourceLoading ||
@@ -96,6 +99,10 @@
 
   function exportCount(result: HtmlExportResult): number {
     return "reference_count" in result ? result.reference_count : result.reading_count;
+  }
+
+  function referenceLabel(reference: CourseReferenceSummary): string {
+    return reference.title ?? reference.apa_citation ?? reference.citation_text ?? "Untitled reference";
   }
 
   function setExportMode(mode: ExportMode) {
@@ -245,6 +252,20 @@
           <input type="checkbox" bind:checked={allowIncomplete} />
           <span>Export with APA fixes pending</span>
         </label>
+        <div class="export-apa-issues">
+          <strong>What to review</strong>
+          <ul>
+            {#each apaFixDetails as reference (reference.id)}
+              <li>
+                <span>{referenceLabel(reference)}</span>
+                <small>{reference.validation_report ?? "Review the APA reference text."}</small>
+              </li>
+            {/each}
+          </ul>
+          {#if apaFixCount > apaFixDetails.length}
+            <small>Open References to see the remaining APA checks.</small>
+          {/if}
+        </div>
       </div>
     {:else if exportMode === "course-references" && apaWarningCount > 0}
       <div class="notice export-notice" role="status">

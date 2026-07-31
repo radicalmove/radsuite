@@ -940,6 +940,26 @@ async fn course_reference_updates_can_apply_lookup_metadata_without_erasing_it()
         manually_edited.url.as_deref(),
         Some("https://doi.org/10.1234/example")
     );
+    assert!(manually_edited.validation_report.is_none());
+
+    let insecure_url = update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: added.id,
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: None,
+            citation_text: None,
+            url: Some("http://doi.org/10.1234/example".to_string()),
+        },
+    )
+    .await
+    .expect("normalise insecure URL");
+
+    assert_eq!(
+        insecure_url.url.as_deref(),
+        Some("https://doi.org/10.1234/example")
+    );
 }
 
 #[tokio::test]
@@ -959,6 +979,7 @@ async fn course_references_get_apa_validation_status() {
     .expect("add valid reference");
 
     assert_eq!(valid.validation_status, "valid");
+    assert!(valid.validation_report.is_none());
 
     let needs_fix = add_course_reference(
         &state,
@@ -972,6 +993,12 @@ async fn course_references_get_apa_validation_status() {
     .expect("add incomplete reference");
 
     assert_eq!(needs_fix.validation_status, "needs_fix");
+    let validation_report = needs_fix
+        .validation_report
+        .as_deref()
+        .expect("validation report");
+    assert!(validation_report.contains("Author names should follow Lastname, Initials."));
+    assert!(validation_report.contains("Title segment missing after the year."));
 
     let fixed = update_course_reference(
         &state,
@@ -987,6 +1014,7 @@ async fn course_references_get_apa_validation_status() {
     .expect("fix incomplete reference");
 
     assert_eq!(fixed.validation_status, "valid");
+    assert!(fixed.validation_report.is_none());
 }
 
 #[tokio::test]
@@ -1216,6 +1244,8 @@ async fn module_readings_commands_add_and_list_local_modules_and_readings() {
     );
     assert_eq!(reading.doi.as_deref(), Some("10.1234/manual.doi"));
     assert_eq!(reading.url.as_deref(), Some("https://example.com/reading"));
+    assert_eq!(reading.validation_status, "valid");
+    assert!(reading.validation_report.is_none());
     assert_eq!(reading.notes.as_deref(), Some("Manual entry"));
     assert_eq!(reading.reading_notes.as_deref(), Some("Skim before class"));
     assert_eq!(
@@ -2200,7 +2230,7 @@ async fn module_readings_commands_update_and_archive_modules_and_readings() {
             apa_citation: Some(" Taylor, J. (2025). Updated reading. ".to_string()),
             citation_text: None,
             doi: Some(" 10.1234/updated.doi ".to_string()),
-            url: Some(" https://example.com/updated ".to_string()),
+            url: Some(" http://example.com/updated ".to_string()),
             notes: Some(" Staff note ".to_string()),
             reading_notes: Some(" Student note ".to_string()),
             estimated_reading_time: Some(" 20 minutes ".to_string()),
@@ -2222,6 +2252,8 @@ async fn module_readings_commands_update_and_archive_modules_and_readings() {
         updated_reading.url.as_deref(),
         Some("https://example.com/updated")
     );
+    assert_eq!(updated_reading.validation_status, "valid");
+    assert!(updated_reading.validation_report.is_none());
     assert_eq!(updated_reading.notes.as_deref(), Some("Staff note"));
     assert_eq!(
         updated_reading.reading_notes.as_deref(),

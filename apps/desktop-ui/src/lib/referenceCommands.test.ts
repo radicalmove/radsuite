@@ -27,6 +27,7 @@ const reference: CourseReferenceSummary = {
   url: null,
   notes: "Core course reference",
   validation_status: "unknown",
+  validation_report: null,
 };
 
 describe("reference commands", () => {

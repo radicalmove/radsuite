@@ -1721,6 +1721,50 @@ button:disabled {
   font-weight: 650;
 }
 
+.reference-validation-report {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  align-items: baseline;
+  padding: var(--s-2);
+  border-left: 3px solid var(--radcite-red);
+  color: var(--fg-2);
+  background: color-mix(in srgb, var(--radcite-red) 8%, var(--bg));
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
+.reference-validation-report strong {
+  color: var(--radcite-red);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.export-apa-issues {
+  display: grid;
+  gap: var(--s-1);
+  padding-top: var(--s-1);
+  border-top: 1px solid color-mix(in srgb, var(--radcite-red) 20%, transparent);
+}
+
+.export-apa-issues ul {
+  display: grid;
+  gap: var(--s-1);
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.export-apa-issues li {
+  display: grid;
+  gap: 2px;
+}
+
+.export-apa-issues small {
+  color: var(--fg-2);
+  line-height: 1.4;
+}
+
 .reference-lookup-panel {
   display: grid;
   gap: var(--s-3);

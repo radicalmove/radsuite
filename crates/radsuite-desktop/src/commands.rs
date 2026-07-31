@@ -410,6 +410,7 @@ pub struct CourseReferenceSummary {
     pub url: Option<String>,
     pub notes: Option<String>,
     pub validation_status: String,
+    pub validation_report: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -444,6 +445,7 @@ pub struct ModuleReadingSummary {
     pub reading_notes: Option<String>,
     pub estimated_reading_time: Option<String>,
     pub validation_status: String,
+    pub validation_report: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1954,10 +1956,11 @@ pub async fn add_module_reading(
             && existing_reading.reading_category == Some(ReadingCategory::Optional)
         {
             existing_reading.reading_category = Some(ReadingCategory::Compulsory);
-            reference_repo
-                .update_reference_entry(&existing_reading)
-                .await?;
         }
+        apply_basic_apa_validation(&mut existing_reading);
+        reference_repo
+            .update_reference_entry(&existing_reading)
+            .await?;
         return module_reading_summary(existing_reading)
             .ok_or(ModuleReadingError::MissingModule(module.id));
     }
@@ -1973,6 +1976,7 @@ pub async fn add_module_reading(
     reading.notes = trimmed_optional(request.notes);
     reading.reading_notes = trimmed_optional(request.reading_notes);
     reading.estimated_reading_time = trimmed_optional(request.estimated_reading_time);
+    apply_basic_apa_validation(&mut reading);
 
     reference_repo.insert_reference_entry(&reading).await?;
 
@@ -2005,6 +2009,7 @@ pub async fn update_module_reading(
     reading.notes = trimmed_optional(request.notes);
     reading.reading_notes = trimmed_optional(request.reading_notes);
     reading.estimated_reading_time = trimmed_optional(request.estimated_reading_time);
+    apply_basic_apa_validation(&mut reading);
     reading.updated_at = Utc::now();
 
     SqliteReferenceEntryRepository::new(state.database_pool.clone())
@@ -2299,10 +2304,11 @@ pub async fn save_module_readings_import(
                 && existing_reading.reading_category == Some(ReadingCategory::Optional)
             {
                 existing_reading.reading_category = Some(ReadingCategory::Compulsory);
-                reference_repo
-                    .update_reference_entry(&existing_reading)
-                    .await?;
             }
+            apply_basic_apa_validation(&mut existing_reading);
+            reference_repo
+                .update_reference_entry(&existing_reading)
+                .await?;
             saved_readings.push(
                 module_reading_summary(existing_reading)
                     .ok_or(ModuleReadingImportError::MissingModule(module.id))?,
@@ -2321,6 +2327,7 @@ pub async fn save_module_readings_import(
         reading.notes = trimmed_optional(candidate.notes);
         reading.reading_notes = trimmed_optional(candidate.reading_notes);
         reading.estimated_reading_time = trimmed_optional(candidate.estimated_reading_time);
+        apply_basic_apa_validation(&mut reading);
 
         reference_repo.insert_reference_entry(&reading).await?;
 
@@ -2818,6 +2825,7 @@ fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary
         url: reference.url,
         notes: reference.notes,
         validation_status: validation_status_label(reference.apa_validation_status).to_string(),
+        validation_report: reference.apa_validation_report,
     }
 }
 
@@ -2848,6 +2856,7 @@ fn module_reading_summary(reading: ReferenceEntry) -> Option<ModuleReadingSummar
         reading_notes: reading.reading_notes,
         estimated_reading_time: reading.estimated_reading_time,
         validation_status: validation_status_label(reading.apa_validation_status).to_string(),
+        validation_report: reading.apa_validation_report,
     })
 }
 
@@ -3152,6 +3161,10 @@ fn trimmed_optional(value: Option<String>) -> Option<String> {
 }
 
 fn apply_basic_apa_validation(reference: &mut ReferenceEntry) {
+    if let Some(url) = reference.url.as_deref() {
+        reference.url = Some(normalise_reference_url(url));
+    }
+
     let issues = basic_apa_validation_issues(
         reference
             .apa_citation
@@ -3166,20 +3179,38 @@ fn apply_basic_apa_validation(reference: &mut ReferenceEntry) {
     reference.apa_validation_report = (!issues.is_empty()).then(|| issues.join("; "));
 }
 
+fn normalise_reference_url(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed
+        .get(..7)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("http://"))
+    {
+        format!("https://{}", &trimmed[7..])
+    } else {
+        trimmed.to_string()
+    }
+}
+
 fn basic_apa_validation_issues(text: Option<&str>) -> Vec<&'static str> {
     let Some(text) = text.map(str::trim).filter(|value| !value.is_empty()) else {
-        return vec!["missing_apa"];
+        return vec!["No APA citation text recorded."];
     };
 
     let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let mut issues = Vec::new();
 
     let lowered = normalized.to_lowercase();
+    if text.contains('\n') {
+        issues.push("Keep each APA reference on a single line without blank breaks.");
+    }
     if lowered.starts_with("adapted from ")
         || lowered.starts_with("from ")
         || lowered.contains("adapted from")
     {
-        issues.push("narrative_prefix");
+        issues.push("Remove narrative prefixes such as 'Adapted from ...'; APA references should start with the author name.");
+    }
+    if lowered.contains("examples are from") {
+        issues.push("Remove explanatory sentences such as 'Examples are from ...'.");
     }
 
     let year_marker =
@@ -3190,17 +3221,24 @@ fn basic_apa_validation_issues(text: Option<&str>) -> Vec<&'static str> {
 
     let author_format = Regex::new(r"[A-Za-z'’`\-]+,\s*[A-Z]").expect("APA author format regex");
     if !author_format.is_match(&normalized) {
-        issues.push("author_format");
+        issues.push("Author names should follow Lastname, Initials.");
     }
 
     let year_punctuation = Regex::new(r"\)\.\s+").expect("APA year punctuation regex");
     if !year_punctuation.is_match(&normalized) {
-        issues.push("year_punctuation");
+        issues.push("Add a period after the year (e.g., (2024). Title...).");
     }
 
     let title_segment = Regex::new(r"\)\.\s+\S.{2,}").expect("APA title segment regex");
     if !title_segment.is_match(&normalized) {
-        issues.push("title_missing");
+        issues.push("Title segment missing after the year.");
+    }
+
+    if let Some(title) = normalized.split_once("). ").map(|(_, rest)| rest) {
+        let title = title.split('.').next().unwrap_or_default().trim();
+        if title.ends_with('/') {
+            issues.push("Remove the trailing slash from the title.");
+        }
     }
 
     issues

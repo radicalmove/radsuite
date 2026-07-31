@@ -383,6 +383,12 @@
                 <span>{reference.notes}</span>
               {/if}
             </div>
+            {#if reference.validation_report}
+              <div class="reference-validation-report" role="status">
+                <strong>APA check</strong>
+                <span>{reference.validation_report}</span>
+              </div>
+            {/if}
             {#if lookupReferenceId === reference.id}
               <div class="reference-lookup-panel">
                 <div class="reference-lookup-heading">

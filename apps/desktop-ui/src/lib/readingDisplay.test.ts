@@ -18,6 +18,7 @@ const baseReading: ModuleReadingSummary = {
   reading_notes: null,
   estimated_reading_time: null,
   validation_status: "needs_fix",
+  validation_report: "Author names should follow Lastname, Initials.",
 };
 
 describe("reading display metadata", () => {
