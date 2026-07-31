@@ -36,6 +36,8 @@ export type ToolArea =
   | "radcast"
   | "radtts";
 
+export type DocumentSource = "docx" | "pdf";
+
 export type AudioOutputFormat = "mp3" | "wav";
 
 export type CaptionFormat = "srt" | "vtt";
@@ -187,6 +189,8 @@ export type AnalyseDocxReviewResponse = {
   project_title: string;
   document_id: string;
   original_filename: string;
+  source_path: string | null;
+  source_file_type: DocumentSource;
   summary: AnalyseDocxSummary;
   paragraphs: ReviewParagraph[];
 };
@@ -195,6 +199,8 @@ export type SavedRadciteReviewSummary = {
   document_id: string;
   project_id: string;
   original_filename: string;
+  source_path: string | null;
+  source_file_type: DocumentSource;
   paragraph_count: number;
   citation_count: number;
   missing_citation_count: number;

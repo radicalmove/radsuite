@@ -1077,6 +1077,13 @@ button:disabled {
   text-align: left;
 }
 
+.saved-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--s-2);
+}
+
 .saved-review-row:hover,
 .saved-review-row.is-active {
   border-color: rgba(206, 62, 46, 0.34);
@@ -2188,6 +2195,7 @@ button:disabled {
 
   .workspace-topbar,
   .workspace-header,
+  .saved-review-row,
   .radcast-grid,
   .path-row,
   .manual-citation-row,
@@ -2208,6 +2216,10 @@ button:disabled {
   }
 
   .status-strip {
+    justify-content: flex-start;
+  }
+
+  .saved-review-actions {
     justify-content: flex-start;
   }
 

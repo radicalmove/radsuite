@@ -1,5 +1,6 @@
 use std::{
     fs,
+    io::Write,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
@@ -234,12 +235,18 @@ fn display_args(args: &[std::ffi::OsString]) -> Vec<String> {
 
 fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
     let path = dir.join(filename);
-    fs::write(&path, contents).expect("write fake tool");
-    let mut permissions = fs::metadata(&path)
+    let temporary_path = dir.join(format!(".{filename}.tmp"));
+    let mut file = fs::File::create(&temporary_path).expect("create fake tool");
+    file.write_all(contents.as_bytes())
+        .expect("write fake tool");
+    file.sync_all().expect("sync fake tool");
+    drop(file);
+    let mut permissions = fs::metadata(&temporary_path)
         .expect("read fake tool metadata")
         .permissions();
     permissions.set_mode(0o755);
-    fs::set_permissions(&path, permissions).expect("make fake tool executable");
+    fs::set_permissions(&temporary_path, permissions).expect("make fake tool executable");
+    fs::rename(temporary_path, &path).expect("publish fake tool");
     path
 }
 

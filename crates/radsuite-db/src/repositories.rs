@@ -796,6 +796,7 @@ pub struct CitationDocumentSummary {
     pub project_id: ProjectId,
     pub original_filename: String,
     pub file_type: DocumentFileType,
+    pub source_path: Option<String>,
     pub paragraph_count: i64,
     pub citation_count: i64,
     pub missing_citation_count: i64,
@@ -880,15 +881,17 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         sqlx::query(
             r#"
             INSERT INTO documents
-                (id, project_id, asset_id, original_filename, file_type, doc_variant, doc_number,
-                 notes, exclude_from_references, archived_at, uploaded_at, created_at, updated_at)
+                (id, project_id, asset_id, source_path, original_filename, file_type, doc_variant,
+                 doc_number, notes, exclude_from_references, archived_at, uploaded_at, created_at,
+                 updated_at)
             VALUES
-                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
             "#,
         )
         .bind(document.id.0.to_string())
         .bind(document.project_id.0.to_string())
         .bind(document.asset_id.map(|id| id.0.to_string()))
+        .bind(document.source_path.as_deref())
         .bind(&document.original_filename)
         .bind(document_file_type_as_str(document.file_type))
         .bind(document_variant_as_str(document.doc_variant))
@@ -962,6 +965,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             SELECT
                 d.id,
                 d.project_id,
+                d.source_path,
                 d.original_filename,
                 d.file_type,
                 d.archived_at,
@@ -973,7 +977,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.project_id = ?1
               AND d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -992,6 +996,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                     project_id: ProjectId(Uuid::parse_str(&row_project_id)?),
                     original_filename: row.try_get("original_filename")?,
                     file_type: parse_document_file_type(&file_type)?,
+                    source_path: row.try_get("source_path")?,
                     paragraph_count: row.try_get("paragraph_count")?,
                     citation_count: row.try_get("citation_count")?,
                     missing_citation_count: row.try_get("missing_citation_count")?,
@@ -1086,6 +1091,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             SELECT
                 d.id,
                 d.project_id,
+                d.source_path,
                 d.original_filename,
                 d.file_type,
                 d.archived_at,
@@ -1097,7 +1103,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.project_id = ?1
               AND d.archived_at IS NOT NULL
-            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
             ORDER BY d.archived_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -1114,6 +1120,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             SELECT
                 d.id,
                 d.project_id,
+                d.source_path,
                 d.original_filename,
                 d.file_type,
                 d.archived_at,
@@ -1124,7 +1131,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraphs p ON p.document_id = d.id
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
+            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.file_type, d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
             "#,
         )
@@ -1141,8 +1148,9 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         let Some(document_row) = sqlx::query(
             r#"
             SELECT
-                id, project_id, asset_id, original_filename, file_type, doc_variant, doc_number,
-                notes, exclude_from_references, archived_at, uploaded_at, created_at, updated_at
+                id, project_id, asset_id, source_path, original_filename, file_type, doc_variant,
+                doc_number, notes, exclude_from_references, archived_at, uploaded_at, created_at,
+                updated_at
             FROM documents
             WHERE id = ?1
             "#,
@@ -1330,6 +1338,7 @@ fn citation_summary_from_row(
         project_id: ProjectId(Uuid::parse_str(&row_project_id)?),
         original_filename: row.try_get("original_filename")?,
         file_type: parse_document_file_type(&file_type)?,
+        source_path: row.try_get("source_path")?,
         paragraph_count: row.try_get("paragraph_count")?,
         citation_count: row.try_get("citation_count")?,
         missing_citation_count: row.try_get("missing_citation_count")?,
@@ -1521,6 +1530,7 @@ fn document_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Document, DbError>
     let id: String = row.try_get("id")?;
     let project_id: String = row.try_get("project_id")?;
     let asset_id: Option<String> = row.try_get("asset_id")?;
+    let source_path: Option<String> = row.try_get("source_path")?;
     let file_type: String = row.try_get("file_type")?;
     let doc_variant: String = row.try_get("doc_variant")?;
     let uploaded_at: String = row.try_get("uploaded_at")?;
@@ -1535,6 +1545,7 @@ fn document_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Document, DbError>
             .map(Uuid::parse_str)
             .transpose()?
             .map(AssetId),
+        source_path,
         original_filename: row.try_get("original_filename")?,
         file_type: parse_document_file_type(&file_type)?,
         doc_variant: parse_document_variant(&doc_variant)?,

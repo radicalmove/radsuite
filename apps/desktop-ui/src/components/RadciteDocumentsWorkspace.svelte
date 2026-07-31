@@ -7,6 +7,7 @@
     hasSuggestedCitation,
     hasUnlinkedCitation,
   } from "../lib/paragraphFilters";
+  import { canUseSavedReviewForReadings } from "../lib/savedReviewCommands";
   import type {
     AnalyseDocxReviewResponse,
     ParagraphFilter,
@@ -34,6 +35,7 @@
     onDocxPathChange: (path: string) => void;
     onOpenReadings: () => void | Promise<void>;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
+    onUseForReadings: (review: SavedRadciteReviewSummary) => void | Promise<void>;
     onArchiveDocument: (documentId: string) => void | Promise<void>;
     onRefreshSavedReviews: () => void | Promise<void>;
     onSelectParagraph: (paragraphId: string | null) => void;
@@ -57,6 +59,7 @@
     onDocxPathChange,
     onOpenReadings,
     onLoadSavedReview,
+    onUseForReadings,
     onArchiveDocument,
     onRefreshSavedReviews,
     onSelectParagraph,
@@ -270,13 +273,24 @@
               </span>
               <span class="saved-review-action">Open</span>
             </button>
-            <button
-              class="secondary-button compact-button danger-button"
-              type="button"
-              onclick={() => void onArchiveDocument(review.document_id)}
-            >
-              Archive
-            </button>
+            <div class="saved-review-actions">
+              {#if canUseSavedReviewForReadings(review)}
+                <button
+                  class="secondary-button compact-button"
+                  type="button"
+                  onclick={() => void onUseForReadings(review)}
+                >
+                  Use for readings
+                </button>
+              {/if}
+              <button
+                class="secondary-button compact-button danger-button"
+                type="button"
+                onclick={() => void onArchiveDocument(review.document_id)}
+              >
+                Archive
+              </button>
+            </div>
           </div>
         {/each}
       </div>
