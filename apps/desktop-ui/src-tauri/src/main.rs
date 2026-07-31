@@ -21,6 +21,7 @@ use radsuite_desktop::{
     SavedRadciteReviewSummary, StartRadtTsClipRequest, StartRadtTsSynthesisRequest,
     StartRadtTsTranscriptionRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
     UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
+    UpdateRadciteProjectRequest,
 };
 
 #[tauri::command]
@@ -241,6 +242,16 @@ async fn create_radcite_project(
     request: CreateRadciteProjectRequest,
 ) -> Result<RadciteProjectSummary, String> {
     radsuite_desktop::create_radcite_project(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn update_radcite_project(
+    state: tauri::State<'_, DesktopState>,
+    request: UpdateRadciteProjectRequest,
+) -> Result<RadciteProjectSummary, String> {
+    radsuite_desktop::update_radcite_project(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -600,6 +611,7 @@ fn main() {
             cancel_radt_ts_media_job,
             list_radcite_projects,
             create_radcite_project,
+            update_radcite_project,
             archive_radcite_project,
             restore_radcite_project,
             list_saved_radcite_reviews,

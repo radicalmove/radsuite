@@ -14,6 +14,7 @@ use crate::DbError;
 #[async_trait]
 pub trait ProjectRepository {
     async fn insert_project(&self, project: &Project) -> Result<(), DbError>;
+    async fn update_project(&self, project: &Project) -> Result<(), DbError>;
     async fn list_projects(&self) -> Result<Vec<Project>, DbError>;
     async fn list_projects_for_user(
         &self,
@@ -88,6 +89,39 @@ impl ProjectRepository for SqliteProjectRepository {
         .bind(now)
         .execute(&self.pool)
         .await?;
+
+        Ok(())
+    }
+
+    async fn update_project(&self, project: &Project) -> Result<(), DbError> {
+        let now = Utc::now().to_rfc3339();
+        let project_id = project.id.0.to_string();
+        let result = sqlx::query(
+            r#"
+            UPDATE projects
+            SET code = ?2,
+                title = ?3,
+                updated_at = ?4
+            WHERE id = ?1
+              AND archived_at IS NULL
+            "#,
+        )
+        .bind(&project_id)
+        .bind(project.code.as_deref())
+        .bind(&project.title)
+        .bind(&now)
+        .execute(&self.pool)
+        .await?;
+
+        if result.rows_affected() == 0 {
+            let exists = sqlx::query_scalar::<_, String>("SELECT id FROM projects WHERE id = ?1")
+                .bind(&project_id)
+                .fetch_optional(&self.pool)
+                .await?;
+            if exists.is_none() {
+                return Err(DbError::MissingProject(project.id));
+            }
+        }
 
         Ok(())
     }

@@ -227,7 +227,8 @@ button:disabled {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.project-create-form {
+.project-create-form,
+.project-edit-form {
   display: grid;
   gap: var(--s-2);
   margin-bottom: var(--s-3);
@@ -237,7 +238,8 @@ button:disabled {
   background: rgba(255, 255, 255, 0.04);
 }
 
-.project-create-form label {
+.project-create-form label,
+.project-edit-form label {
   display: grid;
   gap: 5px;
   color: var(--fg-on-dark-dim);
@@ -245,7 +247,8 @@ button:disabled {
   font-weight: 650;
 }
 
-.project-create-form input {
+.project-create-form input,
+.project-edit-form input {
   width: 100%;
   min-height: 34px;
   padding: 7px 9px;
@@ -255,7 +258,8 @@ button:disabled {
   background: rgba(255, 255, 255, 0.06);
 }
 
-.project-create-form input:focus {
+.project-create-form input:focus,
+.project-edit-form input:focus {
   border-color: rgba(206, 62, 46, 0.72);
   outline: none;
 }
@@ -274,6 +278,12 @@ button:disabled {
   border-color: var(--line-on-dark);
   color: var(--fg-on-dark-dim);
   background: rgba(255, 255, 255, 0.06);
+}
+
+.project-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s-2);
 }
 
 .sidebar-notice {
