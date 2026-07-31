@@ -77,11 +77,21 @@ pub struct CaptionProcessingRequest {
     pub clip_end_seconds: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct CaptionProcessingResult {
     pub output_path: PathBuf,
     pub caption_format: CaptionFormat,
     pub segment_count: usize,
+    pub quality: CaptionQualitySummary,
+}
+
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct CaptionQualitySummary {
+    pub average_probability: Option<f64>,
+    pub low_confidence_segment_count: usize,
+    pub total_segment_count: usize,
+    pub review_recommended: bool,
+    pub review_path: Option<PathBuf>,
 }
 
 #[derive(Debug, Error)]
@@ -113,6 +123,11 @@ pub enum CaptionProcessingError {
     PrepareOutput(#[source] std::io::Error),
     #[error("failed to read caption output: {source}")]
     ReadOutput {
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("failed to write caption review file: {source}")]
+    WriteReview {
         #[source]
         source: std::io::Error,
     },
@@ -199,6 +214,8 @@ impl CaptionProcessor {
                 CaptionFormat::Srt => "-osrt",
                 CaptionFormat::Vtt => "-ovtt",
             }),
+            OsString::from("-oj"),
+            OsString::from("-ojf"),
             OsString::from("-l"),
             OsString::from(language),
             OsString::from("-bs"),
@@ -446,6 +463,7 @@ impl CaptionProcessor {
         fs::create_dir_all(parent).map_err(CaptionProcessingError::PrepareOutput)?;
 
         let args = self.whisper_arguments_with_options(&request, quality_mode, glossary)?;
+        let json_path = output_base_path(&request.output_path).with_extension("json");
         let result = command_for_executable(&self.whisper_command)
             .args(&args)
             .output()
@@ -454,6 +472,7 @@ impl CaptionProcessor {
                 source,
             })?;
         if !result.status.success() {
+            let _ = fs::remove_file(&json_path);
             return Err(CaptionProcessingError::CommandFailed {
                 command: self.whisper_command.display().to_string(),
                 message: command_output(&result.stdout, &result.stderr),
@@ -461,12 +480,36 @@ impl CaptionProcessor {
         }
 
         if !request.output_path.is_file() {
+            let _ = fs::remove_file(&json_path);
             return Err(CaptionProcessingError::MissingOutput {
                 path: request.output_path,
             });
         }
         let contents = fs::read_to_string(&request.output_path)
             .map_err(|source| CaptionProcessingError::ReadOutput { source })?;
+        let quality_document = fs::read_to_string(&json_path)
+            .ok()
+            .and_then(|contents| serde_json::from_str::<WhisperDocument>(&contents).ok());
+        let _ = fs::remove_file(&json_path);
+        let mut quality = quality_document
+            .as_ref()
+            .map(build_caption_quality_summary)
+            .unwrap_or_default();
+        if quality.review_recommended {
+            let review_path = request.output_path.with_file_name(format!(
+                "{}.review.txt",
+                request
+                    .output_path
+                    .file_name()
+                    .and_then(|name| name.to_str())
+                    .unwrap_or("captions")
+            ));
+            let review_document =
+                format_caption_review_document(&quality, quality_document.as_ref());
+            fs::write(&review_path, review_document)
+                .map_err(|source| CaptionProcessingError::WriteReview { source })?;
+            quality.review_path = Some(review_path);
+        }
         Ok(CaptionProcessingResult {
             output_path: request.output_path,
             caption_format: request.caption_format,
@@ -474,6 +517,7 @@ impl CaptionProcessor {
                 .lines()
                 .filter(|line| line.contains(" --> "))
                 .count(),
+            quality,
         })
     }
 }
@@ -544,7 +588,11 @@ struct WhisperDocument {
 #[derive(Debug, Deserialize)]
 struct WhisperSegment {
     #[serde(default)]
+    text: String,
+    #[serde(default)]
     tokens: Vec<WhisperToken>,
+    #[serde(default)]
+    offsets: Option<WhisperOffsets>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -560,6 +608,223 @@ struct WhisperToken {
 struct WhisperOffsets {
     from: u64,
     to: u64,
+}
+
+#[derive(Debug, Clone)]
+struct CaptionQualityFlag {
+    start_seconds: f64,
+    end_seconds: f64,
+    text: String,
+    probability: Option<f64>,
+    reason: String,
+}
+
+fn build_caption_quality_summary(document: &WhisperDocument) -> CaptionQualitySummary {
+    let segments = document
+        .transcription
+        .iter()
+        .filter_map(caption_quality_segment)
+        .collect::<Vec<_>>();
+    let probabilities = segments
+        .iter()
+        .filter_map(|segment| segment.probability)
+        .collect::<Vec<_>>();
+    let average_probability = (!probabilities.is_empty())
+        .then(|| probabilities.iter().sum::<f64>() / probabilities.len() as f64);
+    let low_threshold = average_probability
+        .map(|average| 0.45_f64.min(0.34_f64.max(average - 0.22)))
+        .unwrap_or(0.45);
+    let warn_threshold = average_probability
+        .map(|average| 0.58_f64.min(0.46_f64.max(average - 0.14)))
+        .unwrap_or(0.58);
+    let flags = caption_quality_flags(&segments, low_threshold, warn_threshold);
+
+    CaptionQualitySummary {
+        average_probability,
+        low_confidence_segment_count: flags.len(),
+        total_segment_count: segments.len(),
+        review_recommended: !flags.is_empty()
+            || average_probability.is_some_and(|average| average < 0.72 && segments.len() >= 4),
+        review_path: None,
+    }
+}
+
+#[derive(Debug, Clone)]
+struct CaptionQualitySegment {
+    start_seconds: f64,
+    end_seconds: f64,
+    text: String,
+    probability: Option<f64>,
+}
+
+fn caption_quality_segment(segment: &WhisperSegment) -> Option<CaptionQualitySegment> {
+    let token_text = segment
+        .tokens
+        .iter()
+        .map(|token| token.text.as_str())
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ");
+    let text = if token_text.is_empty() {
+        segment
+            .text
+            .split_whitespace()
+            .collect::<Vec<_>>()
+            .join(" ")
+    } else {
+        token_text
+    };
+    if text.is_empty() {
+        return None;
+    }
+
+    let token_probabilities = segment
+        .tokens
+        .iter()
+        .map(|token| token.probability)
+        .filter(|probability| probability.is_finite())
+        .collect::<Vec<_>>();
+    let probability = (!token_probabilities.is_empty())
+        .then(|| token_probabilities.iter().sum::<f64>() / token_probabilities.len() as f64);
+    let start_seconds = segment
+        .offsets
+        .as_ref()
+        .map(|offsets| offsets.from as f64 / 1000.0)
+        .or_else(|| {
+            segment
+                .tokens
+                .iter()
+                .filter_map(|token| token.offsets.as_ref())
+                .map(|offsets| offsets.from as f64 / 1000.0)
+                .min_by(|left, right| left.total_cmp(right))
+        })
+        .unwrap_or_default();
+    let end_seconds = segment
+        .offsets
+        .as_ref()
+        .map(|offsets| offsets.to as f64 / 1000.0)
+        .or_else(|| {
+            segment
+                .tokens
+                .iter()
+                .filter_map(|token| token.offsets.as_ref())
+                .map(|offsets| offsets.to as f64 / 1000.0)
+                .max_by(|left, right| left.total_cmp(right))
+        })
+        .unwrap_or(start_seconds);
+
+    Some(CaptionQualitySegment {
+        start_seconds,
+        end_seconds: end_seconds.max(start_seconds),
+        text,
+        probability,
+    })
+}
+
+fn caption_quality_flags(
+    segments: &[CaptionQualitySegment],
+    low_threshold: f64,
+    warn_threshold: f64,
+) -> Vec<CaptionQualityFlag> {
+    segments
+        .iter()
+        .filter_map(|segment| {
+            let reason = match segment.probability {
+                Some(probability) if probability < low_threshold => {
+                    "Very low confidence caption line."
+                }
+                Some(probability)
+                    if probability < warn_threshold
+                        && segment.text.split_whitespace().count() >= 5 =>
+                {
+                    "Low confidence on a longer caption line."
+                }
+                Some(_) => return None,
+                None => "No word confidence data was available for this caption line.",
+            };
+            Some(CaptionQualityFlag {
+                start_seconds: segment.start_seconds,
+                end_seconds: segment.end_seconds,
+                text: segment.text.clone(),
+                probability: segment.probability,
+                reason: reason.to_string(),
+            })
+        })
+        .collect()
+}
+
+fn format_caption_review_document(
+    quality: &CaptionQualitySummary,
+    document: Option<&WhisperDocument>,
+) -> String {
+    let flags = document
+        .map(|document| {
+            let segments = document
+                .transcription
+                .iter()
+                .filter_map(caption_quality_segment)
+                .collect::<Vec<_>>();
+            let probabilities = segments
+                .iter()
+                .filter_map(|segment| segment.probability)
+                .collect::<Vec<_>>();
+            let average = (!probabilities.is_empty())
+                .then(|| probabilities.iter().sum::<f64>() / probabilities.len() as f64);
+            let low_threshold = average
+                .map(|value| 0.45_f64.min(0.34_f64.max(value - 0.22)))
+                .unwrap_or(0.45);
+            let warn_threshold = average
+                .map(|value| 0.58_f64.min(0.46_f64.max(value - 0.14)))
+                .unwrap_or(0.58);
+            caption_quality_flags(&segments, low_threshold, warn_threshold)
+                .into_iter()
+                .take(24)
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let mut lines = vec!["RADcast Caption Review".to_string(), String::new()];
+    if let Some(average) = quality.average_probability {
+        lines.push(format!("Average word confidence: {:.0}%", average * 100.0));
+    }
+    lines.push(format!(
+        "Low-confidence caption lines: {}",
+        quality.low_confidence_segment_count
+    ));
+    lines.push(format!(
+        "Total caption lines: {}",
+        quality.total_segment_count
+    ));
+    lines.push(String::new());
+    if flags.is_empty() {
+        lines.push("No specific caption lines were flagged.".to_string());
+    } else {
+        lines.push("Review these timestamp ranges:".to_string());
+        lines.push(String::new());
+        for flag in flags {
+            lines.push(format!(
+                "{} --> {} | confidence {}",
+                format_review_timestamp(flag.start_seconds),
+                format_review_timestamp(flag.end_seconds.max(flag.start_seconds + 0.2)),
+                flag.probability
+                    .map(|probability| format!("{:.0}%", probability * 100.0))
+                    .unwrap_or_else(|| "unknown".to_string())
+            ));
+            lines.push(format!("Reason: {}", flag.reason));
+            lines.push(flag.text);
+            lines.push(String::new());
+        }
+    }
+    lines.join("\n") + "\n"
+}
+
+fn format_review_timestamp(seconds: f64) -> String {
+    let total_milliseconds = (seconds.max(0.0) * 1000.0).round() as u64;
+    let minutes = total_milliseconds / 60_000;
+    let seconds = (total_milliseconds % 60_000) / 1000;
+    let milliseconds = total_milliseconds % 1000;
+    format!("{minutes:02}:{seconds:02}.{milliseconds:03}")
 }
 
 fn validate_transcription_request(

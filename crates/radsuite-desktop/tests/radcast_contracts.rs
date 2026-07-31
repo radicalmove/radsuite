@@ -300,6 +300,11 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
         Some("Te Tiriti o Waitangi")
     );
     assert_eq!(output.caption_segment_count, 1);
+    assert!(!output.caption_review_required);
+    assert_eq!(output.caption_average_probability, Some(0.82));
+    assert_eq!(output.caption_low_confidence_segments, 0);
+    assert_eq!(output.caption_total_segments, 1);
+    assert!(output.caption_review_path.is_none());
     assert_eq!(output.removed_filler_count, 1);
     let caption_path = output.caption_path.as_deref().expect("caption path");
     assert!(caption_path.ends_with(".srt"));
@@ -533,7 +538,7 @@ fn fake_caption_processor(dir: &Path) -> CaptionProcessor {
     let whisper = write_executable(
         dir,
         "whisper.sh",
-        "#!/bin/sh\noutput=''\njson=0\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  if [ \"$arg\" = \"-oj\" ]; then json=1; fi\n  previous=\"$arg\"\ndone\nif [ \"$json\" = \"1\" ]; then printf '{\"transcription\":[{\"tokens\":[{\"text\":\" um\",\"offsets\":{\"from\":250,\"to\":450},\"p\":0.82}]}]}' > \"$output.json\"; else printf '1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n' > \"$output.srt\"; fi\n",
+        "#!/bin/sh\noutput=''\njson=0\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  if [ \"$arg\" = \"-oj\" ]; then json=1; fi\n  previous=\"$arg\"\ndone\nprintf '1\\n00:00:00,000 --> 00:00:01,000\\nHello\\n' > \"$output.srt\"\nif [ \"$json\" = \"1\" ]; then printf '{\"transcription\":[{\"tokens\":[{\"text\":\" um\",\"offsets\":{\"from\":250,\"to\":450},\"p\":0.82}]}]}' > \"$output.json\"; fi\n",
     );
     let model = dir.join("caption-model.bin");
     fs::write(&model, b"model").expect("write caption model");

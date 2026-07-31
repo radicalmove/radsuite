@@ -82,6 +82,11 @@ export type RadcastAudioOutput = {
   caption_format: CaptionFormat | null;
   caption_quality_mode: CaptionQualityMode;
   caption_glossary: string | null;
+  caption_review_path: string | null;
+  caption_review_required: boolean;
+  caption_average_probability: number | null;
+  caption_low_confidence_segments: number;
+  caption_total_segments: number;
   enhancement_model: EnhancementModel;
   enhancement_quality: EnhancementQuality;
   caption_segment_count: number;

@@ -29,7 +29,9 @@ fn caption_processor_builds_trimmed_vtt_arguments() {
 
     assert!(args.windows(2).any(|pair| pair == ["-m", "model.bin"]));
     assert!(args.windows(2).any(|pair| pair == ["-f", "lecture.wav"]));
-    assert!(args.windows(2).any(|pair| pair == ["-ovtt", "-l"]));
+    assert!(args.contains(&"-ovtt".to_string()));
+    assert!(args.contains(&"-oj".to_string()));
+    assert!(args.contains(&"-ojf".to_string()));
     assert!(args.contains(&"2500".to_string()));
     assert!(args.contains(&"9500".to_string()));
 }
@@ -114,6 +116,110 @@ fn caption_processor_runs_cli_and_counts_srt_segments() {
     assert_eq!(result.output_path, output);
     assert_eq!(result.segment_count, 2);
     assert_eq!(result.caption_format, CaptionFormat::Srt);
+    remove_dir(dir);
+}
+
+#[test]
+fn reviewed_captions_write_a_confidence_review_file() {
+    let dir = test_dir("caption-review");
+    let whisper = write_executable(
+        &dir,
+        "whisper-review.sh",
+        r#"#!/bin/sh
+output=''
+previous=''
+for arg in "$@"; do
+  if [ "$previous" = "-of" ]; then output="$arg"; fi
+  previous="$arg"
+done
+printf '1\n00:00:00,000 --> 00:00:01,000\nLow confidence line\n\n2\n00:00:01,000 --> 00:00:02,000\nStable line\n' > "$output.srt"
+printf '%s' '{"transcription":[{"offsets":{"from":0,"to":1000},"tokens":[{"text":" Low","offsets":{"from":0,"to":400},"p":0.35},{"text":" confidence","offsets":{"from":400,"to":800},"p":0.35},{"text":" line","offsets":{"from":800,"to":1000},"p":0.35}]},{"offsets":{"from":1000,"to":2000},"tokens":[{"text":" Stable","offsets":{"from":1000,"to":1400},"p":0.92},{"text":" line","offsets":{"from":1400,"to":2000},"p":0.92}]}]}' > "$output.json"
+"#,
+    );
+    let model = dir.join("model.bin");
+    fs::write(&model, b"model").expect("write model");
+    let input = dir.join("source.wav");
+    fs::write(&input, b"source audio").expect("write source");
+    let output = dir.join("outputs").join("captions.srt");
+
+    let result = CaptionProcessor::from_commands(whisper, model)
+        .process_with_options(
+            CaptionProcessingRequest {
+                input_path: input,
+                output_path: output.clone(),
+                caption_format: CaptionFormat::Srt,
+                language: "en".to_string(),
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+            },
+            CaptionQualityMode::Reviewed,
+            None,
+        )
+        .expect("process reviewed captions");
+
+    assert_eq!(result.segment_count, 2);
+    assert_eq!(result.quality.total_segment_count, 2);
+    assert_eq!(result.quality.low_confidence_segment_count, 1);
+    assert!(result.quality.review_recommended);
+    assert_eq!(result.quality.average_probability, Some(0.635));
+    let review_path = result.quality.review_path.expect("review file path");
+    assert_eq!(
+        review_path,
+        output.with_file_name("captions.srt.review.txt")
+    );
+    let review = fs::read_to_string(review_path).expect("read caption review");
+    assert!(review.contains("Low-confidence caption lines: 1"));
+    assert!(review.contains("Low confidence line"));
+
+    remove_dir(dir);
+}
+
+#[test]
+fn reviewed_captions_flag_text_without_confidence_data() {
+    let dir = test_dir("caption-review-without-confidence");
+    let whisper = write_executable(
+        &dir,
+        "whisper-review.sh",
+        r#"#!/bin/sh
+output=''
+previous=''
+for arg in "$@"; do
+  if [ "$previous" = "-of" ]; then output="$arg"; fi
+  previous="$arg"
+done
+printf '1\n00:00:00,000 --> 00:00:01,000\nNeeds review\n' > "$output.srt"
+printf '%s' '{"transcription":[{"offsets":{"from":0,"to":1000},"text":"Needs review"}]}' > "$output.json"
+"#,
+    );
+    let model = dir.join("model.bin");
+    fs::write(&model, b"model").expect("write model");
+    let input = dir.join("source.wav");
+    fs::write(&input, b"source audio").expect("write source");
+    let output = dir.join("outputs").join("captions.srt");
+
+    let result = CaptionProcessor::from_commands(whisper, model)
+        .process_with_options(
+            CaptionProcessingRequest {
+                input_path: input,
+                output_path: output,
+                caption_format: CaptionFormat::Srt,
+                language: "en".to_string(),
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+            },
+            CaptionQualityMode::Reviewed,
+            None,
+        )
+        .expect("process reviewed captions");
+
+    assert_eq!(result.quality.average_probability, None);
+    assert_eq!(result.quality.low_confidence_segment_count, 1);
+    assert!(result.quality.review_recommended);
+    let review_path = result.quality.review_path.expect("review file path");
+    let review = fs::read_to_string(review_path).expect("read caption review");
+    assert!(review.contains("No word confidence data was available"));
+    assert!(review.contains("Needs review"));
+
     remove_dir(dir);
 }
 

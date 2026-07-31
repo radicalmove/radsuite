@@ -7,9 +7,9 @@ use std::{
 use chrono::Utc;
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
-    CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest,
-    EnhancementModel, EnhancementProcessingRequest, EnhancementProcessor, EnhancementQuality,
-    FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
+    CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionQualitySummary,
+    CaptionTranscriptionRequest, EnhancementModel, EnhancementProcessingRequest,
+    EnhancementProcessor, EnhancementQuality, FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -204,6 +204,16 @@ pub struct RadcastAudioOutput {
     pub enhancement_quality: EnhancementQuality,
     #[serde(default)]
     pub caption_segment_count: usize,
+    #[serde(default)]
+    pub caption_review_path: Option<String>,
+    #[serde(default)]
+    pub caption_review_required: bool,
+    #[serde(default)]
+    pub caption_average_probability: Option<f64>,
+    #[serde(default)]
+    pub caption_low_confidence_segments: usize,
+    #[serde(default)]
+    pub caption_total_segments: usize,
     #[serde(default)]
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
@@ -620,7 +630,7 @@ where
     }
     cleanup_temporary_paths(&temporary_paths);
 
-    let (caption_path, caption_format, caption_segment_count) =
+    let (caption_path, caption_format, caption_segment_count, caption_quality) =
         if let Some(format) = request.caption_format {
             report_progress(RadcastProcessingProgress {
                 phase: RadcastProcessingPhase::GeneratingCaptions,
@@ -644,6 +654,7 @@ where
                     Some(caption_result.output_path.to_string_lossy().into_owned()),
                     Some(caption_result.caption_format),
                     caption_result.segment_count,
+                    caption_result.quality,
                 ),
                 Err(error) => {
                     let _ = fs::remove_file(&output_path);
@@ -653,12 +664,15 @@ where
                 }
             }
         } else {
-            (None, None, 0)
+            (None, None, 0, CaptionQualitySummary::default())
         };
     if is_cancelled() {
         let _ = fs::remove_file(&output_path);
         if let Some(caption_path) = caption_path.as_deref() {
             let _ = fs::remove_file(caption_path);
+        }
+        if let Some(review_path) = caption_quality.review_path.as_deref() {
+            let _ = fs::remove_file(review_path);
         }
         return Err(RadcastStorageError::Cancelled);
     }
@@ -683,6 +697,14 @@ where
         caption_format,
         caption_quality_mode: request.caption_quality_mode,
         caption_glossary: request.caption_glossary,
+        caption_review_path: caption_quality
+            .review_path
+            .as_deref()
+            .map(|path| path.to_string_lossy().into_owned()),
+        caption_review_required: caption_quality.review_recommended,
+        caption_average_probability: caption_quality.average_probability,
+        caption_low_confidence_segments: caption_quality.low_confidence_segment_count,
+        caption_total_segments: caption_quality.total_segment_count,
         enhancement_model: request.enhancement_model,
         enhancement_quality: request.enhancement_quality,
         caption_segment_count,
@@ -698,6 +720,9 @@ where
         cleanup_temporary_paths(&temporary_paths);
         if let Some(caption_path) = output.caption_path.as_deref() {
             let _ = fs::remove_file(caption_path);
+        }
+        if let Some(review_path) = output.caption_review_path.as_deref() {
+            let _ = fs::remove_file(review_path);
         }
         return Err(error);
     }
