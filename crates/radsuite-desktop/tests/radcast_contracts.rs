@@ -14,7 +14,9 @@ use radsuite_desktop::{
     process_radcast_audio_with_processors,
 };
 use radsuite_engines::FillerRemovalMode;
-use radsuite_engines::{AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor};
+use radsuite_engines::{
+    AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
+};
 use sqlx::sqlite::SqlitePoolOptions;
 
 #[tokio::test]
@@ -65,6 +67,8 @@ async fn radcast_import_process_and_list_are_project_scoped() {
             max_silence_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -120,6 +124,8 @@ async fn radcast_processing_rejects_unknown_sources() {
             max_silence_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -165,6 +171,8 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
             max_silence_seconds: None,
             caption_format: Some(CaptionFormat::Srt),
             caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: Some("Te Tiriti o Waitangi".to_string()),
             remove_filler_words: true,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
@@ -175,6 +183,11 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
     .expect("process with captions");
 
     assert_eq!(output.caption_format, Some(CaptionFormat::Srt));
+    assert_eq!(output.caption_quality_mode, CaptionQualityMode::Reviewed);
+    assert_eq!(
+        output.caption_glossary.as_deref(),
+        Some("Te Tiriti o Waitangi")
+    );
     assert_eq!(output.caption_segment_count, 1);
     assert_eq!(output.removed_filler_count, 1);
     let caption_path = output.caption_path.as_deref().expect("caption path");

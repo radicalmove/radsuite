@@ -31,6 +31,8 @@ export type AudioOutputFormat = "mp3" | "wav";
 
 export type CaptionFormat = "srt" | "vtt";
 
+export type CaptionQualityMode = "fast" | "accurate" | "reviewed";
+
 export type FillerRemovalMode = "normal" | "aggressive";
 
 export type RadcastAudioSource = {
@@ -55,6 +57,8 @@ export type RadcastAudioOutput = {
   max_silence_seconds: number | null;
   caption_path: string | null;
   caption_format: CaptionFormat | null;
+  caption_quality_mode: CaptionQualityMode;
+  caption_glossary: string | null;
   caption_segment_count: number;
   remove_filler_words: boolean;
   filler_removal_mode: FillerRemovalMode;

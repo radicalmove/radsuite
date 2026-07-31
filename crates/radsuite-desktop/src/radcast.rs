@@ -6,7 +6,8 @@ use std::{
 use chrono::Utc;
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
-    CaptionProcessingRequest, CaptionProcessor, CaptionTranscriptionRequest, FillerRemovalMode,
+    CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest,
+    FillerRemovalMode,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -16,6 +17,10 @@ const RADCAST_ROOT: &str = "radcast";
 
 fn default_filler_removal_mode() -> FillerRemovalMode {
     FillerRemovalMode::Aggressive
+}
+
+fn default_caption_quality_mode() -> CaptionQualityMode {
+    CaptionQualityMode::Reviewed
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -47,6 +52,10 @@ pub struct ProcessRadcastAudioRequest {
     pub caption_format: Option<CaptionFormat>,
     #[serde(default = "default_caption_language")]
     pub caption_language: String,
+    #[serde(default = "default_caption_quality_mode")]
+    pub caption_quality_mode: CaptionQualityMode,
+    #[serde(default)]
+    pub caption_glossary: Option<String>,
     #[serde(default)]
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
@@ -80,6 +89,10 @@ pub struct RadcastAudioOutput {
     pub caption_path: Option<String>,
     #[serde(default)]
     pub caption_format: Option<CaptionFormat>,
+    #[serde(default = "default_caption_quality_mode")]
+    pub caption_quality_mode: CaptionQualityMode,
+    #[serde(default)]
+    pub caption_glossary: Option<String>,
     #[serde(default)]
     pub caption_segment_count: usize,
     #[serde(default)]
@@ -255,14 +268,18 @@ pub(crate) fn process_audio_with_processors(
     let (caption_path, caption_format, caption_segment_count) =
         if let Some(format) = request.caption_format {
             let path = output_path.with_extension(format.extension());
-            let caption_result = caption_processor.process(CaptionProcessingRequest {
-                input_path: output_path.clone(),
-                output_path: path.clone(),
-                caption_format: format,
-                language: request.caption_language.trim().to_string(),
-                clip_start_seconds: None,
-                clip_end_seconds: None,
-            });
+            let caption_result = caption_processor.process_with_options(
+                CaptionProcessingRequest {
+                    input_path: output_path.clone(),
+                    output_path: path.clone(),
+                    caption_format: format,
+                    language: request.caption_language.trim().to_string(),
+                    clip_start_seconds: None,
+                    clip_end_seconds: None,
+                },
+                request.caption_quality_mode,
+                request.caption_glossary.as_deref(),
+            );
             match caption_result {
                 Ok(caption_result) => (
                     Some(caption_result.output_path.to_string_lossy().into_owned()),
@@ -292,6 +309,8 @@ pub(crate) fn process_audio_with_processors(
         max_silence_seconds: request.max_silence_seconds,
         caption_path,
         caption_format,
+        caption_quality_mode: request.caption_quality_mode,
+        caption_glossary: request.caption_glossary,
         caption_segment_count,
         remove_filler_words: request.remove_filler_words,
         filler_removal_mode: request.filler_removal_mode,
