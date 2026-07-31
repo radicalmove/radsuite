@@ -46,7 +46,7 @@
   let archivedSectionOpen = $state(defaultProjectNavStorageState.archivedSectionOpen);
   let projectStorage = $state<StorageLike | null>(null);
   let storageReady = $state(false);
-  let autoExpandedSelectionId = $state<string | null>(null);
+  let autoExpandedSelectionKey = $state<string | null>(null);
 
   const radciteAreas: Array<{ id: ToolArea; label: string; disabled?: boolean }> = [
     { id: "documents", label: "Documents" },
@@ -131,11 +131,16 @@
 
   $effect(() => {
     const selectedProject = projects.find((project) => project.id === selectedProjectId);
-    if (!selectedProject || selectedProject.id === autoExpandedSelectionId) {
+    if (!selectedProject) {
       return;
     }
 
-    autoExpandedSelectionId = selectedProject.id;
+    const selectionKey = selectedProject.id + ":" + (selectedProject.archived_at !== null ? "archived" : "active");
+    if (selectionKey === autoExpandedSelectionKey) {
+      return;
+    }
+
+    autoExpandedSelectionKey = selectionKey;
     if (!isExpanded(selectedProject.id)) {
       expandedProjectIds = [...expandedProjectIds, selectedProject.id];
     }
