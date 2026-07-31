@@ -256,6 +256,15 @@ pub enum RadcastStorageError {
     MissingFilename,
     #[error("audio source does not exist: {path}")]
     MissingInput { path: PathBuf },
+    #[error(
+        "could not copy selected audio file from '{source_path}' to RADcast project storage at '{destination}': {source}"
+    )]
+    SourceCopy {
+        source_path: PathBuf,
+        destination: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
     #[error("saved audio source was not found: {0}")]
     MissingSource(String),
     #[error("failed to access RADcast project storage")]
@@ -372,7 +381,15 @@ pub(crate) fn import_audio(
     let sources_dir = project_root.join("sources");
     fs::create_dir_all(&sources_dir)?;
     let destination = sources_dir.join(format!("{}-{}", id, safe_filename(&original_filename)));
-    fs::copy(&source_path, &destination)?;
+    if let Err(source) = fs::copy(&source_path, &destination) {
+        let _ = fs::remove_file(&destination);
+        let _ = fs::remove_dir(&sources_dir);
+        return Err(RadcastStorageError::SourceCopy {
+            source_path,
+            destination,
+            source,
+        });
+    }
     let duration_seconds = match processor.probe_duration(&destination) {
         Ok(duration_seconds) => duration_seconds,
         Err(error) => {

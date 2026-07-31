@@ -159,6 +159,45 @@ async fn radcast_import_process_and_list_are_project_scoped() {
 }
 
 #[tokio::test]
+async fn radcast_import_reports_when_the_selected_source_cannot_be_read() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let dir = test_dir("unreadable-source");
+    let source_path = dir.join("protected.wav");
+    fs::write(&source_path, b"source audio").expect("write source");
+    let mut permissions = fs::metadata(&source_path)
+        .expect("read source metadata")
+        .permissions();
+    permissions.set_mode(0o000);
+    fs::set_permissions(&source_path, permissions).expect("protect source");
+
+    let error = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: None,
+        },
+        AudioProcessor::default(),
+    )
+    .await
+    .expect_err("unreadable source");
+
+    assert!(matches!(
+        error,
+        RadcastAudioError::Storage(RadcastStorageError::SourceCopy { source_path: path, .. })
+            if path == source_path
+    ));
+
+    let mut permissions = fs::metadata(&source_path)
+        .expect("read protected source metadata")
+        .permissions();
+    permissions.set_mode(0o644);
+    fs::set_permissions(&source_path, permissions).expect("restore source permissions");
+    remove_dir(dir);
+}
+
+#[tokio::test]
 async fn radcast_processing_rejects_unknown_sources() {
     let state = desktop_state_with_migrated_pool().await;
     let projects = list_radcite_projects(&state).await.expect("list projects");
