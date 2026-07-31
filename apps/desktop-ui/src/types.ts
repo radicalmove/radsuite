@@ -52,7 +52,7 @@ export type CaptionQualityMode = "fast" | "accurate" | "reviewed";
 
 export type FillerRemovalMode = "normal" | "aggressive";
 
-export type EnhancementModel = "none" | "studio_v18";
+export type EnhancementModel = "none" | "resemble" | "deepfilternet" | "studio" | "studio_v18";
 
 export type EnhancementQuality = "fast" | "standard" | "high";
 
@@ -125,6 +125,15 @@ export type RadcastCapabilityStatus = {
   caption_detail: string;
   optimized_available: boolean;
   optimized_detail: string;
+  enhancement_models: RadcastEnhancementCapability[];
+};
+
+export type RadcastEnhancementCapability = {
+  id: EnhancementModel;
+  label: string;
+  description: string;
+  available: boolean;
+  detail: string;
 };
 
 export type RadcastJobState = "running" | "completed" | "failed" | "cancelled";

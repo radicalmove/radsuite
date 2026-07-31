@@ -12,7 +12,52 @@ use thiserror::Error;
 #[serde(rename_all = "snake_case")]
 pub enum EnhancementModel {
     None,
+    Resemble,
+    DeepFilterNet,
+    Studio,
     StudioV18,
+}
+
+impl EnhancementModel {
+    pub const fn all() -> [Self; 5] {
+        [
+            Self::None,
+            Self::Resemble,
+            Self::DeepFilterNet,
+            Self::Studio,
+            Self::StudioV18,
+        ]
+    }
+
+    pub const fn label(self) -> &'static str {
+        match self {
+            Self::None => "Standard cleanup",
+            Self::Resemble => "Resemble Enhance",
+            Self::DeepFilterNet => "DeepFilterNet3",
+            Self::Studio => "Studio Cleanup",
+            Self::StudioV18 => "RADcast Optimized",
+        }
+    }
+
+    pub const fn description(self) -> &'static str {
+        match self {
+            Self::None => {
+                "Keeps the original audio quality and applies only the selected cleanup options."
+            }
+            Self::Resemble => {
+                "Strong speech enhancement that can sound more processed on some recordings."
+            }
+            Self::DeepFilterNet => {
+                "Natural-sounding speech enhancement using the official DeepFilterNet3 model."
+            }
+            Self::Studio => {
+                "Custom room-tail suppression followed by Resemble Enhance for a drier voice."
+            }
+            Self::StudioV18 => {
+                "RADcast's tuned lecture-cleanup path with chunked dereverb and speech restoration."
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -61,28 +106,75 @@ pub enum EnhancementProcessingError {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnhancementProcessor {
-    command: PathBuf,
+    resemble_command: PathBuf,
+    deepfilternet_command: PathBuf,
+    studio_command: PathBuf,
+    optimized_command: PathBuf,
 }
 
 impl Default for EnhancementProcessor {
     fn default() -> Self {
-        Self::from_command(resolve_command())
+        Self::from_commands(
+            resolve_command(
+                &["RADSUITE_RESEMBLE_COMMAND", "RADCAST_ENHANCE_COMMAND"],
+                "radcast-enhance",
+            ),
+            resolve_command(
+                &[
+                    "RADSUITE_DEEPFILTERNET_COMMAND",
+                    "RADCAST_DEEPFILTERNET_COMMAND",
+                ],
+                "deepFilter",
+            ),
+            resolve_command(
+                &["RADSUITE_STUDIO_COMMAND", "RADCAST_STUDIO_COMMAND"],
+                "radcast-studio-enhance",
+            ),
+            resolve_command(
+                &["RADSUITE_STUDIO_COMMAND", "RADCAST_STUDIO_COMMAND"],
+                "radcast-studio-enhance",
+            ),
+        )
     }
 }
 
 impl EnhancementProcessor {
     pub fn from_command(command: impl Into<PathBuf>) -> Self {
+        let command = command.into();
+        Self::from_commands(command.clone(), command.clone(), command.clone(), command)
+    }
+
+    pub fn from_commands(
+        resemble_command: impl Into<PathBuf>,
+        deepfilternet_command: impl Into<PathBuf>,
+        studio_command: impl Into<PathBuf>,
+        optimized_command: impl Into<PathBuf>,
+    ) -> Self {
         Self {
-            command: command.into(),
+            resemble_command: resemble_command.into(),
+            deepfilternet_command: deepfilternet_command.into(),
+            studio_command: studio_command.into(),
+            optimized_command: optimized_command.into(),
         }
     }
 
     pub fn is_available(&self) -> bool {
-        self.command.is_file()
+        self.is_model_available(EnhancementModel::StudioV18)
+    }
+
+    pub fn is_model_available(&self, model: EnhancementModel) -> bool {
+        match self.command_for_model(model) {
+            None => true,
+            Some(command) => command.is_file(),
+        }
     }
 
     pub fn command_path(&self) -> &Path {
-        &self.command
+        &self.optimized_command
+    }
+
+    pub fn command_path_for(&self, model: EnhancementModel) -> Option<&Path> {
+        self.command_for_model(model)
     }
 
     pub fn helper_arguments(
@@ -97,6 +189,15 @@ impl EnhancementProcessor {
         request: &EnhancementProcessingRequest,
         quality: EnhancementQuality,
     ) -> Result<Vec<OsString>, EnhancementProcessingError> {
+        self.helper_arguments_for_model(request, EnhancementModel::StudioV18, quality)
+    }
+
+    pub fn helper_arguments_for_model(
+        &self,
+        request: &EnhancementProcessingRequest,
+        model: EnhancementModel,
+        quality: EnhancementQuality,
+    ) -> Result<Vec<OsString>, EnhancementProcessingError> {
         let input_dir = request
             .input_path
             .parent()
@@ -108,34 +209,61 @@ impl EnhancementProcessor {
             .map(Path::to_path_buf)
             .unwrap_or_default();
         let suffix = audio_suffix(&request.input_path);
-        Ok(vec![
-            input_dir.into_os_string(),
-            output_dir.into_os_string(),
-            OsString::from("--suffix"),
-            OsString::from(suffix),
-            OsString::from("--device"),
-            OsString::from(optimized_device()),
-            OsString::from("--nfe"),
-            OsString::from(quality.nfe()),
-            OsString::from("--lambd"),
-            OsString::from("0.62"),
-            OsString::from("--tau"),
-            OsString::from("0.45"),
-            OsString::from("--dereverb-method"),
-            OsString::from("nara"),
-            OsString::from("--nara-chunk-seconds"),
-            OsString::from("8"),
-            OsString::from("--nara-overlap-seconds"),
-            OsString::from("1"),
-            OsString::from("--nara-taps"),
-            OsString::from("6"),
-            OsString::from("--nara-delay"),
-            OsString::from("2"),
-            OsString::from("--nara-iterations"),
-            OsString::from("1"),
-            OsString::from("--nara-psd-context"),
-            OsString::from("1"),
-        ])
+        match model {
+            EnhancementModel::None => Ok(Vec::new()),
+            EnhancementModel::Resemble | EnhancementModel::Studio => Ok(vec![
+                input_dir.into_os_string(),
+                output_dir.into_os_string(),
+                OsString::from("--suffix"),
+                OsString::from(suffix),
+                OsString::from("--device"),
+                OsString::from(general_device()),
+                OsString::from("--nfe"),
+                OsString::from(quality.nfe()),
+                OsString::from("--lambd"),
+                OsString::from("0.7"),
+                OsString::from("--tau"),
+                OsString::from("0.5"),
+            ]),
+            EnhancementModel::DeepFilterNet => Ok(vec![
+                OsString::from("--output-dir"),
+                output_dir.into_os_string(),
+                OsString::from("--model-base-dir"),
+                OsString::from(deepfilternet_model()),
+                OsString::from("--log-level"),
+                OsString::from("info"),
+                OsString::from("--no-suffix"),
+                request.input_path.clone().into_os_string(),
+            ]),
+            EnhancementModel::StudioV18 => Ok(vec![
+                input_dir.into_os_string(),
+                output_dir.into_os_string(),
+                OsString::from("--suffix"),
+                OsString::from(suffix),
+                OsString::from("--device"),
+                OsString::from(optimized_device()),
+                OsString::from("--nfe"),
+                OsString::from(quality.nfe()),
+                OsString::from("--lambd"),
+                OsString::from("0.62"),
+                OsString::from("--tau"),
+                OsString::from("0.45"),
+                OsString::from("--dereverb-method"),
+                OsString::from("nara"),
+                OsString::from("--nara-chunk-seconds"),
+                OsString::from("8"),
+                OsString::from("--nara-overlap-seconds"),
+                OsString::from("1"),
+                OsString::from("--nara-taps"),
+                OsString::from("6"),
+                OsString::from("--nara-delay"),
+                OsString::from("2"),
+                OsString::from("--nara-iterations"),
+                OsString::from("1"),
+                OsString::from("--nara-psd-context"),
+                OsString::from("1"),
+            ]),
+        }
     }
 
     pub fn process(
@@ -150,6 +278,15 @@ impl EnhancementProcessor {
         request: EnhancementProcessingRequest,
         quality: EnhancementQuality,
     ) -> Result<EnhancementProcessingResult, EnhancementProcessingError> {
+        self.process_model_with_quality(request, EnhancementModel::StudioV18, quality)
+    }
+
+    pub fn process_model_with_quality(
+        &self,
+        request: EnhancementProcessingRequest,
+        model: EnhancementModel,
+        quality: EnhancementQuality,
+    ) -> Result<EnhancementProcessingResult, EnhancementProcessingError> {
         if !request.input_path.is_file() {
             return Err(EnhancementProcessingError::MissingInput {
                 path: request.input_path,
@@ -160,9 +297,14 @@ impl EnhancementProcessor {
                 path: request.output_path,
             });
         };
-        if !self.command.is_file() {
+        let Some(command) = self.command_path_for(model) else {
+            return Ok(EnhancementProcessingResult {
+                output_path: request.output_path,
+            });
+        };
+        if !command.is_file() {
             return Err(EnhancementProcessingError::MissingCommand {
-                path: self.command.clone(),
+                path: command.to_path_buf(),
             });
         }
         fs::create_dir_all(parent).map_err(EnhancementProcessingError::PrepareWorkspace)?;
@@ -182,9 +324,9 @@ impl EnhancementProcessor {
             input_path: staged_input,
             output_path: helper_output.clone(),
         };
-        let args = self.helper_arguments_with_quality(&staged_request, quality)?;
+        let args = self.helper_arguments_for_model(&staged_request, model, quality)?;
         let thread_count = local_thread_count();
-        let result = Command::new(&self.command)
+        let result = Command::new(command)
             .args(&args)
             .env("OMP_NUM_THREADS", &thread_count)
             .env("MKL_NUM_THREADS", &thread_count)
@@ -193,7 +335,7 @@ impl EnhancementProcessor {
             .env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
             .output()
             .map_err(|source| EnhancementProcessingError::StartCommand {
-                command: self.command.display().to_string(),
+                command: command.display().to_string(),
                 source,
             })?;
         if !result.status.success() {
@@ -214,6 +356,16 @@ impl EnhancementProcessor {
         Ok(EnhancementProcessingResult {
             output_path: request.output_path,
         })
+    }
+
+    fn command_for_model(&self, model: EnhancementModel) -> Option<&Path> {
+        match model {
+            EnhancementModel::None => None,
+            EnhancementModel::Resemble => Some(&self.resemble_command),
+            EnhancementModel::DeepFilterNet => Some(&self.deepfilternet_command),
+            EnhancementModel::Studio => Some(&self.studio_command),
+            EnhancementModel::StudioV18 => Some(&self.optimized_command),
+        }
     }
 }
 
@@ -264,6 +416,23 @@ fn optimized_device() -> String {
         .unwrap_or_else(|| "cpu".to_string())
 }
 
+fn general_device() -> String {
+    std::env::var("RADSUITE_RADCAST_DEVICE")
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "cpu".to_string())
+}
+
+fn deepfilternet_model() -> String {
+    std::env::var("RADSUITE_DEEPFILTERNET_MODEL")
+        .or_else(|_| std::env::var("RADCAST_DEEPFILTERNET_MODEL"))
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "DeepFilterNet3".to_string())
+}
+
 fn local_thread_count() -> String {
     std::thread::available_parallelism()
         .map(|parallelism| parallelism.get())
@@ -271,26 +440,42 @@ fn local_thread_count() -> String {
         .to_string()
 }
 
-fn resolve_command() -> PathBuf {
-    if let Ok(value) = std::env::var("RADSUITE_STUDIO_COMMAND") {
-        let path = PathBuf::from(value.trim());
-        if !path.as_os_str().is_empty() {
-            return path;
+fn resolve_command(environment_variables: &[&str], command: &str) -> PathBuf {
+    for environment_variable in environment_variables {
+        if let Ok(value) = std::env::var(environment_variable) {
+            let path = PathBuf::from(value.trim());
+            if !path.as_os_str().is_empty() {
+                return path;
+            }
         }
     }
-
     let home = std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_default();
-    for candidate in [
-        home.join(".radcast/venv311/bin/radcast-studio-enhance"),
-        home.join(".radcast/venv/bin/radcast-studio-enhance"),
-        PathBuf::from("/opt/homebrew/bin/radcast-studio-enhance"),
-        PathBuf::from("/usr/local/bin/radcast-studio-enhance"),
-    ] {
+    let candidates = match command {
+        "radcast-enhance" => vec![
+            home.join(".radcast/venv311/bin/radcast-enhance"),
+            home.join(".radcast/venv/bin/radcast-enhance"),
+            PathBuf::from("/opt/homebrew/bin/radcast-enhance"),
+            PathBuf::from("/usr/local/bin/radcast-enhance"),
+        ],
+        "deepFilter" => vec![
+            home.join(".radcast/venv311/bin/deepFilter"),
+            home.join(".radcast/venv/bin/deepFilter"),
+            PathBuf::from("/opt/homebrew/bin/deepFilter"),
+            PathBuf::from("/usr/local/bin/deepFilter"),
+        ],
+        _ => vec![
+            home.join(".radcast/venv311/bin/radcast-studio-enhance"),
+            home.join(".radcast/venv/bin/radcast-studio-enhance"),
+            PathBuf::from("/opt/homebrew/bin/radcast-studio-enhance"),
+            PathBuf::from("/usr/local/bin/radcast-studio-enhance"),
+        ],
+    };
+    for candidate in candidates {
         if candidate.is_file() {
             return candidate;
         }
     }
-    PathBuf::from("radcast-studio-enhance")
+    PathBuf::from(command)
 }

@@ -12,6 +12,10 @@ const CLEANUP_FILTER: &str = "highpass=f=80,lowpass=f=12000,afftdn,loudnorm=I=-1
 
 pub const RADCAST_OPTIMIZED_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=4.05,equalizer=f=200:t=q:w=1.0:g=1.75,equalizer=f=315:t=q:w=1.0:g=-0.55,equalizer=f=455:t=q:w=1.0:g=-0.2,equalizer=f=2350:t=q:w=1.0:g=-2.35,equalizer=f=3000:t=q:w=1.0:g=-1.70,equalizer=f=3850:t=q:w=1.0:g=-0.30,deesser=i=0.045:m=0.18:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-1.40,equalizer=f=6400:t=q:w=1.0:g=-1.20,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=7550";
 
+pub const RADCAST_STANDARD_PREFILTER: &str = "highpass=f=85,agate=threshold=0.027:ratio=1.26:attack=8:release=280:range=0.56:knee=4,afftdn=nr=4:nf=-48:tn=1,equalizer=f=380:t=q:w=1.0:g=-1.0,equalizer=f=6800:t=q:w=1.2:g=-1.3";
+pub const RADCAST_STANDARD_POSTFILTER: &str = "highpass=f=65,equalizer=f=150:t=q:w=1.05:g=2.8,equalizer=f=320:t=q:w=1.0:g=-1.2,equalizer=f=520:t=q:w=1.0:g=-0.9,equalizer=f=2800:t=q:w=1.0:g=0.4,deesser=i=0.06:m=0.25:f=0.5:s=o,loudnorm=I=-20.5:TP=-1.5:LRA=8,equalizer=f=6200:t=q:w=1.2:g=-2.5,lowpass=f=6800";
+pub const RADCAST_STUDIO_POSTFILTER: &str = "highpass=f=65,equalizer=f=150:t=q:w=1.05:g=2.2,equalizer=f=320:t=q:w=1.0:g=-1.0,equalizer=f=520:t=q:w=1.0:g=-0.8,equalizer=f=2600:t=q:w=1.0:g=-2.0,equalizer=f=3400:t=q:w=1.0:g=-1.4,deesser=i=0.03:m=0.18:f=0.5:s=o,loudnorm=I=-20.5:TP=-1.5:LRA=8,equalizer=f=7000:t=q:w=1.0:g=0.8,lowpass=f=9500";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AudioOutputFormat {

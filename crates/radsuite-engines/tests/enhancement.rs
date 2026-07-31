@@ -5,7 +5,9 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use radsuite_engines::{EnhancementProcessingRequest, EnhancementProcessor, EnhancementQuality};
+use radsuite_engines::{
+    EnhancementModel, EnhancementProcessingRequest, EnhancementProcessor, EnhancementQuality,
+};
 
 #[test]
 fn enhancement_processor_builds_directory_helper_arguments() {
@@ -68,6 +70,58 @@ fn enhancement_processor_maps_quality_profiles_to_model_steps() {
         let args = display_args(&args);
         assert!(args.windows(2).any(|pair| pair == ["--nfe", expected_nfe]));
     }
+}
+
+#[test]
+fn enhancement_processor_builds_resemble_arguments_for_the_selected_backend() {
+    let processor = EnhancementProcessor::from_command("radcast-enhance");
+    let request = EnhancementProcessingRequest {
+        input_path: PathBuf::from("/tmp/source.wav"),
+        output_path: PathBuf::from("/tmp/output/enhanced.wav"),
+    };
+
+    let args = processor
+        .helper_arguments_for_model(
+            &request,
+            EnhancementModel::Resemble,
+            EnhancementQuality::Fast,
+        )
+        .expect("build Resemble arguments");
+    let args = display_args(&args);
+
+    assert!(args.windows(2).any(|pair| pair == ["--nfe", "8"]));
+    assert!(args.windows(2).any(|pair| pair == ["--lambd", "0.7"]));
+    assert!(args.windows(2).any(|pair| pair == ["--tau", "0.5"]));
+    assert!(!args.iter().any(|arg| arg == "--dereverb-method"));
+}
+
+#[test]
+fn enhancement_processor_builds_deepfilternet_arguments_for_the_selected_backend() {
+    let processor = EnhancementProcessor::from_command("deepFilter");
+    let request = EnhancementProcessingRequest {
+        input_path: PathBuf::from("/tmp/source.wav"),
+        output_path: PathBuf::from("/tmp/output/enhanced.wav"),
+    };
+
+    let args = processor
+        .helper_arguments_for_model(
+            &request,
+            EnhancementModel::DeepFilterNet,
+            EnhancementQuality::Standard,
+        )
+        .expect("build DeepFilterNet arguments");
+    let args = display_args(&args);
+
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--output-dir", "/tmp/output"])
+    );
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--model-base-dir", "DeepFilterNet3"])
+    );
+    assert!(args.iter().any(|arg| arg == "/tmp/source.wav"));
+    assert!(args.iter().any(|arg| arg == "--no-suffix"));
 }
 
 #[test]

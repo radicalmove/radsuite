@@ -57,14 +57,58 @@
     caption_detail: "Checking local caption support.",
     optimized_available: false,
     optimized_detail: "Checking local enhancement support.",
+    enhancement_models: [
+      {
+        id: "none",
+        label: "Standard cleanup",
+        description: "Keeps the original audio and applies only the selected cleanup options.",
+        available: true,
+        detail: "Available without an additional model.",
+      },
+      {
+        id: "resemble",
+        label: "Resemble Enhance",
+        description: "Strong speech enhancement that can sound more processed on some recordings.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
+      {
+        id: "deepfilternet",
+        label: "DeepFilterNet3",
+        description: "Natural-sounding speech enhancement using the official DeepFilterNet3 model.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
+      {
+        id: "studio",
+        label: "Studio Cleanup",
+        description: "Custom room-tail suppression followed by Resemble Enhance for a drier voice.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
+      {
+        id: "studio_v18",
+        label: "RADcast Optimized",
+        description: "RADcast's tuned lecture-cleanup path with chunked dereverb and speech restoration.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
+    ],
   });
 
   let selectedSource = $derived(
     sources.find((source) => source.id === selectedSourceId) ?? sources[0] ?? null,
   );
+  let selectedEnhancementCapability = $derived(
+    captionCapability.enhancement_models.find((model) => model.id === enhancementModel) ?? null,
+  );
   let sourceAudioUrl = $derived(selectedSource ? convertFileSrc(selectedSource.path) : null);
   let processDisabled = $derived(
-    processing || !selectedSource || clipEnd <= clipStart || clipEnd > selectedSource.duration_seconds,
+    processing ||
+    !selectedSource ||
+    clipEnd <= clipStart ||
+    clipEnd > selectedSource.duration_seconds ||
+    (settingsLoaded && selectedEnhancementCapability !== null && !selectedEnhancementCapability.available),
   );
 
   $effect(() => {
@@ -103,6 +147,10 @@
     if (quality === "fast") return "Fast";
     if (quality === "high") return "High";
     return "Standard";
+  }
+
+  function enhancementModelLabel(model: EnhancementModel): string {
+    return captionCapability.enhancement_models.find((item) => item.id === model)?.label ?? model;
   }
 
   function processingPhaseLabel(phase: RadcastProcessingPhase): string {
@@ -202,7 +250,8 @@
       const result = await invoke<RadcastAudioListing>("list_radcast_audio", {
         request: { project_id: selectedProjectId },
       });
-      captionCapability = await invoke<RadcastCapabilityStatus>("get_radcast_capabilities");
+      const capabilities = await invoke<RadcastCapabilityStatus>("get_radcast_capabilities");
+      captionCapability = capabilities;
       outputFormat = result.settings.output_format;
       captionFormat = result.settings.caption_format;
       captionLanguage = result.settings.caption_language;
@@ -220,7 +269,9 @@
         captionFormat = null;
         removeFillerWords = false;
       }
-      if (!captionCapability.optimized_available) enhancementModel = "none";
+      if (!capabilities.enhancement_models.some((model) => model.id === enhancementModel && model.available)) {
+        enhancementModel = "none";
+      }
       sources = result.sources;
       outputs = result.outputs;
       const nextSource = result.sources.find((source) => source.id === selectedSourceId) ?? result.sources[0] ?? null;
@@ -481,10 +532,12 @@
       <label class="stack settings-compact-field">
         <span>Enhancement profile</span>
         <select bind:value={enhancementModel}>
-          <option value="none">Standard cleanup</option>
-          <option value="studio_v18" disabled={!captionCapability.optimized_available}>RADcast Optimized</option>
+          {#each captionCapability.enhancement_models as model}
+            <option value={model.id} disabled={!model.available}>{model.label}{model.available ? "" : " (not installed)"}</option>
+          {/each}
         </select>
-        <small class="field-note">{captionCapability.optimized_detail}</small>
+        <small class="field-note">{selectedEnhancementCapability?.description ?? "Checking local enhancement support."}</small>
+        <small class="field-note">{selectedEnhancementCapability?.detail ?? "Checking local enhancement support."}</small>
       </label>
       <label class="stack settings-compact-field">
         <span>Enhancement quality</span>
@@ -584,8 +637,8 @@
         </label>
       {/if}
       <div class="radcast-processing-note">
-        <span class="status-dot is-ready"></span>
-        <span>Local FFmpeg processing is available on this computer.</span>
+        <span class={selectedEnhancementCapability?.available ? "status-dot is-ready" : "status-dot"}></span>
+        <span>{selectedEnhancementCapability?.label ?? "Local enhancement"} runs on this computer without a server.</span>
       </div>
       <button class="primary-button radcast-process-button" type="button" disabled={processDisabled} onclick={() => void processAudio()}>
         {processing ? "Processing" : "Create audio version"}
@@ -607,7 +660,7 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model === "studio_v18" ? ` · RADcast Optimized · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
+              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model !== "none" ? ` · ${enhancementModelLabel(output.enhancement_model)} · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
             </div>
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.
