@@ -17,7 +17,7 @@ use radsuite_desktop::{
     RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
     SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
     UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteModuleRequest,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -191,6 +191,16 @@ async fn archive_radcite_document(
     request: ArchiveRadciteDocumentRequest,
 ) -> Result<SavedRadciteReviewSummary, String> {
     radsuite_desktop::archive_radcite_document(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn update_radcite_document(
+    state: tauri::State<'_, DesktopState>,
+    request: UpdateRadciteDocumentRequest,
+) -> Result<SavedRadciteReviewSummary, String> {
+    radsuite_desktop::update_radcite_document(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -482,6 +492,7 @@ fn main() {
             restore_radcite_project,
             list_saved_radcite_reviews,
             archive_radcite_document,
+            update_radcite_document,
             list_radcite_archive,
             restore_radcite_archive_item,
             load_saved_radcite_review,

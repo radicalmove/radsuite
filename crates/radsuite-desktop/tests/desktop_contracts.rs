@@ -5,7 +5,8 @@ use std::{
 };
 
 use radsuite_core::{
-    ModuleId, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId, ReferenceEntryType,
+    DocumentVariant, ModuleId, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId,
+    ReferenceEntryType,
 };
 use radsuite_db::{ReferenceEntryRepository, SqliteReferenceEntryRepository, migrate};
 use radsuite_desktop::{
@@ -20,10 +21,12 @@ use radsuite_desktop::{
     ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
     RadciteArchiveItemKind, RadciteModuleError, RadciteProjectError,
+    RadciteDocumentError,
     RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
     SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
     UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteModuleRequest, add_course_reference, add_manual_citation_for_review,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, add_course_reference,
+    add_manual_citation_for_review,
     add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
     analyse_pdf_for_review, archive_course_reference, archive_module_reading,
     archive_radcite_document, archive_radcite_module, archive_radcite_project,
@@ -34,7 +37,7 @@ use radsuite_desktop::{
     preview_module_readings_csv_import, preview_module_readings_import,
     preview_module_readings_pdf_import, restore_radcite_archive_item, restore_radcite_project,
     save_module_readings_import, update_course_reference, update_module_reading,
-    update_radcite_module, verify_paragraph_citations_for_review,
+    update_radcite_document, update_radcite_module, verify_paragraph_citations_for_review,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -584,6 +587,126 @@ async fn saved_radcite_review_can_be_listed_and_loaded() {
     assert!(loaded.paragraphs[1].citations.iter().any(|citation| {
         citation.text == "Jones (2024)" && citation.verified && citation.start.is_none()
     }));
+}
+
+#[tokio::test]
+async fn radcite_document_metadata_contract() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-document-metadata.docx");
+    let response = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: None,
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("document-metadata.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse document");
+
+    assert_eq!(response.display_name, "document-metadata.docx");
+    assert_eq!(response.doc_variant, "content");
+    assert_eq!(response.doc_number, None);
+    assert!(!response.exclude_from_references);
+
+    let invalid_number = update_radcite_document(
+        &state,
+        UpdateRadciteDocumentRequest {
+            project_id: None,
+            document_id: response.document_id,
+            display_name: "Week 1".to_string(),
+            doc_number: Some(0),
+            doc_variant: DocumentVariant::Rise,
+            exclude_from_references: true,
+        },
+    )
+    .await
+    .expect_err("reject non-positive document number");
+    assert!(matches!(
+        invalid_number,
+        RadciteDocumentError::InvalidDocumentNumber(0)
+    ));
+
+    let other_project = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("OTHER".to_string()),
+            title: "Other project".to_string(),
+        },
+    )
+    .await
+    .expect("create second project");
+    let mismatched_project = update_radcite_document(
+        &state,
+        UpdateRadciteDocumentRequest {
+            project_id: Some(other_project.id),
+            document_id: response.document_id,
+            display_name: "Week 1".to_string(),
+            doc_number: Some(1),
+            doc_variant: DocumentVariant::Rise,
+            exclude_from_references: true,
+        },
+    )
+    .await
+    .expect_err("reject project mismatch");
+    assert!(matches!(
+        mismatched_project,
+        RadciteDocumentError::ProjectMismatch { .. }
+    ));
+
+    let updated = update_radcite_document(
+        &state,
+        UpdateRadciteDocumentRequest {
+            project_id: None,
+            document_id: response.document_id,
+            display_name: " Week 1 reading ".to_string(),
+            doc_number: Some(3),
+            doc_variant: DocumentVariant::Rise,
+            exclude_from_references: true,
+        },
+    )
+    .await
+    .expect("update document metadata");
+    assert_eq!(updated.display_name, "Week 1 reading");
+    assert_eq!(updated.original_filename, "document-metadata.docx");
+    assert_eq!(updated.doc_variant, "rise");
+    assert_eq!(updated.doc_number, Some(3));
+    assert!(updated.exclude_from_references);
+
+    let loaded = load_saved_radcite_review(&state, response.document_id)
+        .await
+        .expect("load updated review");
+    assert_eq!(loaded.display_name, "Week 1 reading");
+    assert_eq!(loaded.doc_variant, "rise");
+    assert_eq!(loaded.doc_number, Some(3));
+    assert!(loaded.exclude_from_references);
+
+    archive_radcite_document(
+        &state,
+        ArchiveRadciteDocumentRequest {
+            project_id: None,
+            document_id: response.document_id,
+        },
+    )
+    .await
+    .expect("archive document");
+    let archived = update_radcite_document(
+        &state,
+        UpdateRadciteDocumentRequest {
+            project_id: None,
+            document_id: response.document_id,
+            display_name: "Archived".to_string(),
+            doc_number: None,
+            doc_variant: DocumentVariant::Other,
+            exclude_from_references: false,
+        },
+    )
+    .await
+    .expect_err("reject archived document update");
+    assert!(matches!(
+        archived,
+        RadciteDocumentError::ArchivedDocument(document_id) if document_id == response.document_id
+    ));
 }
 
 #[tokio::test]
