@@ -55,6 +55,11 @@ export type RadcastAudioSource = {
   created_at: string;
 };
 
+export type RadcastTrimRange = {
+  clip_start_seconds: number;
+  clip_end_seconds: number;
+};
+
 export type RadcastAudioOutput = {
   id: string;
   source_id: string;
@@ -97,6 +102,7 @@ export type RadcastProjectSettings = {
   max_silence_seconds: number | null;
   remove_filler_words: boolean;
   filler_removal_mode: FillerRemovalMode;
+  trim_ranges_by_source_id: Record<string, RadcastTrimRange>;
 };
 
 export type RadcastCapabilityStatus = {

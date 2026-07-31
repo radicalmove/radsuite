@@ -16,6 +16,7 @@
     RadcastJobStatus,
     RadcastProjectSettings,
     RadcastProcessingPhase,
+    RadcastTrimRange,
   } from "../types";
 
   type Props = {
@@ -41,6 +42,7 @@
   let maxSilenceSeconds = $state(1.0);
   let removeFillerWords = $state(false);
   let fillerRemovalMode = $state<FillerRemovalMode>("aggressive");
+  let trimRangesBySourceId = $state<Record<string, RadcastTrimRange>>({});
   let loading = $state(false);
   let processing = $state(false);
   let error = $state<string | null>(null);
@@ -122,16 +124,47 @@
   }
 
   function setSelectedSource(sourceId: string | null) {
+    rememberSelectedTrimRange();
     selectedSourceId = sourceId;
     const source = sources.find((item) => item.id === sourceId);
-    clipStart = 0;
-    clipEnd = source?.duration_seconds ?? 0;
+    const savedRange = source ? trimRangesBySourceId[source.id] : null;
+    clipStart = savedRange?.clip_start_seconds ?? 0;
+    clipEnd = savedRange?.clip_end_seconds ?? source?.duration_seconds ?? 0;
     error = null;
     status = null;
     radcastJob = null;
   }
 
+  function rememberSelectedTrimRange() {
+    if (!selectedSourceId) return;
+    const source = sources.find((item) => item.id === selectedSourceId);
+    if (!source || !Number.isFinite(clipStart) || !Number.isFinite(clipEnd)) return;
+    if (clipStart < 0 || clipEnd <= clipStart || clipEnd > source.duration_seconds) return;
+    trimRangesBySourceId = {
+      ...trimRangesBySourceId,
+      [selectedSourceId]: {
+        clip_start_seconds: clipStart,
+        clip_end_seconds: clipEnd,
+      },
+    };
+  }
+
   function currentSettings(): RadcastProjectSettings {
+    const trimRanges = { ...trimRangesBySourceId };
+    if (
+      selectedSourceId &&
+      selectedSource &&
+      Number.isFinite(clipStart) &&
+      Number.isFinite(clipEnd) &&
+      clipStart >= 0 &&
+      clipEnd > clipStart &&
+      clipEnd <= selectedSource.duration_seconds
+    ) {
+      trimRanges[selectedSourceId] = {
+        clip_start_seconds: clipStart,
+        clip_end_seconds: clipEnd,
+      };
+    }
     return {
       output_format: outputFormat,
       caption_format: captionFormat,
@@ -144,6 +177,7 @@
       max_silence_seconds: shortenPauses ? maxSilenceSeconds : null,
       remove_filler_words: removeFillerWords,
       filler_removal_mode: fillerRemovalMode,
+      trim_ranges_by_source_id: trimRanges,
     };
   }
 
@@ -179,6 +213,7 @@
       maxSilenceSeconds = result.settings.max_silence_seconds ?? 1.0;
       removeFillerWords = result.settings.remove_filler_words;
       fillerRemovalMode = result.settings.filler_removal_mode;
+      trimRangesBySourceId = result.settings.trim_ranges_by_source_id ?? {};
       if (!captionCapability.caption_available) {
         captionFormat = null;
         removeFillerWords = false;
@@ -188,8 +223,9 @@
       outputs = result.outputs;
       const nextSource = result.sources.find((source) => source.id === selectedSourceId) ?? result.sources[0] ?? null;
       selectedSourceId = nextSource?.id ?? null;
-      clipStart = 0;
-      clipEnd = nextSource?.duration_seconds ?? 0;
+      const savedRange = nextSource ? trimRangesBySourceId[nextSource.id] : null;
+      clipStart = savedRange?.clip_start_seconds ?? 0;
+      clipEnd = savedRange?.clip_end_seconds ?? nextSource?.duration_seconds ?? 0;
       settingsLoaded = true;
     } catch (reason: unknown) {
       error = `Could not load RADcast audio: ${toErrorMessage(reason)}`;
