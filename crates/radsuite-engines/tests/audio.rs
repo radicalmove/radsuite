@@ -7,6 +7,7 @@ use std::{
 
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingError, AudioProcessingRequest, AudioProcessor,
+    AudioTimeInterval,
 };
 
 #[test]
@@ -78,6 +79,37 @@ fn audio_processing_keeps_only_the_configured_length_of_long_silences() {
 }
 
 #[test]
+fn audio_processing_builds_a_concat_graph_for_filler_intervals() {
+    let args = AudioProcessor::ffmpeg_arguments(&AudioProcessingRequest {
+        remove_intervals: vec![AudioTimeInterval {
+            start_seconds: 1.25,
+            end_seconds: 1.75,
+        }],
+        cleanup_enabled: true,
+        max_silence_seconds: Some(1.0),
+        ..request(AudioOutputFormat::Mp3)
+    })
+    .expect("build filler removal arguments");
+    let args = display_args(&args);
+
+    let graph = args
+        .windows(2)
+        .find(|pair| pair[0] == "-filter_complex")
+        .map(|pair| pair[1].clone())
+        .expect("concat filter graph");
+    assert!(graph.contains("atrim=start=0.000:end=1.250"));
+    assert!(graph.contains("atrim=start=1.750"));
+    assert!(graph.contains("concat=n=2:v=0:a=1[outa]"));
+    assert!(graph.contains("afftdn"));
+    assert!(graph.contains("silenceremove"));
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["-map", "[outa_filtered]"])
+    );
+    assert!(!args.contains(&"-af".to_string()));
+}
+
+#[test]
 fn audio_processor_runs_with_deterministic_tool_commands() {
     let dir = test_dir("process");
     let ffmpeg = write_executable(
@@ -99,6 +131,7 @@ fn audio_processor_runs_with_deterministic_tool_commands() {
             clip_end_seconds: None,
             cleanup_enabled: true,
             max_silence_seconds: None,
+            remove_intervals: Vec::new(),
         })
         .expect("process audio");
 
@@ -122,6 +155,7 @@ fn request(output_format: AudioOutputFormat) -> AudioProcessingRequest {
         clip_end_seconds: None,
         cleanup_enabled: false,
         max_silence_seconds: None,
+        remove_intervals: Vec::new(),
     }
 }
 

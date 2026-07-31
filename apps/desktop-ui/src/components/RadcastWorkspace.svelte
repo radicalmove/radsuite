@@ -5,6 +5,7 @@
   import type {
     AudioOutputFormat,
     CaptionFormat,
+    FillerRemovalMode,
     RadcastCapabilityStatus,
     RadcastAudioListing,
     RadcastAudioOutput,
@@ -28,6 +29,8 @@
   let cleanupEnabled = $state(true);
   let shortenPauses = $state(false);
   let maxSilenceSeconds = $state(1.0);
+  let removeFillerWords = $state(false);
+  let fillerRemovalMode = $state<FillerRemovalMode>("aggressive");
   let loading = $state(false);
   let processing = $state(false);
   let error = $state<string | null>(null);
@@ -83,7 +86,10 @@
         request: { project_id: selectedProjectId },
       });
       captionCapability = await invoke<RadcastCapabilityStatus>("get_radcast_capabilities");
-      if (!captionCapability.caption_available) captionFormat = null;
+      if (!captionCapability.caption_available) {
+        captionFormat = null;
+        removeFillerWords = false;
+      }
       sources = result.sources;
       outputs = result.outputs;
       const nextSource = result.sources.find((source) => source.id === selectedSourceId) ?? result.sources[0] ?? null;
@@ -148,12 +154,18 @@
           max_silence_seconds: shortenPauses ? maxSilenceSeconds : null,
           caption_format: captionFormat,
           caption_language: captionLanguage,
+          remove_filler_words: removeFillerWords,
+          filler_removal_mode: fillerRemovalMode,
         },
       });
       outputs = [output, ...outputs];
-      status = output.caption_format
-        ? `Audio processing complete with ${output.caption_segment_count} ${output.caption_format.toUpperCase()} caption${output.caption_segment_count === 1 ? "" : "s"}`
-        : "Audio processing complete";
+      const captionDetail = output.caption_format
+        ? ` with ${output.caption_segment_count} ${output.caption_format.toUpperCase()} caption${output.caption_segment_count === 1 ? "" : "s"}`
+        : "";
+      const fillerDetail = output.removed_filler_count > 0
+        ? ` and removed ${output.removed_filler_count} filler word${output.removed_filler_count === 1 ? "" : "s"}`
+        : "";
+      status = `Audio processing complete${captionDetail}${fillerDetail}`;
     } catch (reason: unknown) {
       status = null;
       error = `Could not process audio: ${toErrorMessage(reason)}`;
@@ -305,6 +317,22 @@
           </select>
         </label>
       {/if}
+      <label class="radcast-check">
+        <input type="checkbox" bind:checked={removeFillerWords} disabled={!captionCapability.caption_available} />
+        <span>
+          <strong>Remove filler words</strong>
+          <small>Remove recognised ums, uhs, and similar speech fillers.</small>
+        </span>
+      </label>
+      {#if removeFillerWords}
+        <label class="stack settings-compact-field">
+          <span>Filler removal</span>
+          <select bind:value={fillerRemovalMode}>
+            <option value="normal">Normal</option>
+            <option value="aggressive">Aggressive</option>
+          </select>
+        </label>
+      {/if}
       <div class="radcast-processing-note">
         <span class="status-dot is-ready"></span>
         <span>Local FFmpeg processing is available on this computer.</span>
@@ -329,7 +357,7 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}</span>
+              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}</span>
             </div>
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.

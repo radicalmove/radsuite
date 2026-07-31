@@ -8,11 +8,36 @@ use std::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::audio::AudioTimeInterval;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CaptionFormat {
     Srt,
     Vtt,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FillerRemovalMode {
+    Normal,
+    Aggressive,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CaptionTranscriptionRequest {
+    pub input_path: PathBuf,
+    pub language: String,
+    pub clip_start_seconds: Option<f64>,
+    pub clip_end_seconds: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CaptionWord {
+    pub text: String,
+    pub start_seconds: f64,
+    pub end_seconds: f64,
+    pub probability: f64,
 }
 
 impl CaptionFormat {
@@ -73,6 +98,8 @@ pub enum CaptionProcessingError {
         #[source]
         source: std::io::Error,
     },
+    #[error("failed to parse whisper transcription output: {0}")]
+    ParseTranscription(#[source] serde_json::Error),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -176,6 +203,115 @@ impl CaptionProcessor {
         Ok(())
     }
 
+    pub fn transcribe_words(
+        &self,
+        request: &CaptionTranscriptionRequest,
+    ) -> Result<Vec<CaptionWord>, CaptionProcessingError> {
+        validate_transcription_request(request)?;
+        if !request.input_path.is_file() {
+            return Err(CaptionProcessingError::MissingInput {
+                path: request.input_path.clone(),
+            });
+        }
+        if !self.model_path.is_file() {
+            return Err(CaptionProcessingError::MissingModel {
+                path: self.model_path.clone(),
+            });
+        }
+
+        let output_base = temporary_output_base();
+        let output_path = output_base.with_extension("json");
+        let args = self.transcription_arguments(request, &output_base);
+        let result = Command::new(&self.whisper_command)
+            .args(&args)
+            .output()
+            .map_err(|source| CaptionProcessingError::StartCommand {
+                command: self.whisper_command.display().to_string(),
+                source,
+            })?;
+        if !result.status.success() {
+            let _ = fs::remove_file(&output_path);
+            return Err(CaptionProcessingError::CommandFailed {
+                command: self.whisper_command.display().to_string(),
+                message: command_output(&result.stdout, &result.stderr),
+            });
+        }
+        if !output_path.is_file() {
+            return Err(CaptionProcessingError::MissingOutput { path: output_path });
+        }
+
+        let contents = fs::read_to_string(&output_path)
+            .map_err(|source| CaptionProcessingError::ReadOutput { source });
+        let _ = fs::remove_file(&output_path);
+        let contents = contents?;
+        let document: WhisperDocument =
+            serde_json::from_str(&contents).map_err(CaptionProcessingError::ParseTranscription)?;
+
+        Ok(document
+            .transcription
+            .into_iter()
+            .flat_map(|segment| segment.tokens)
+            .filter_map(|token| {
+                let offsets = token.offsets?;
+                let start_seconds = offsets.from as f64 / 1000.0;
+                let end_seconds = offsets.to as f64 / 1000.0;
+                if token.text.trim().is_empty() || end_seconds <= start_seconds {
+                    return None;
+                }
+                Some(CaptionWord {
+                    text: token.text.trim().to_string(),
+                    start_seconds,
+                    end_seconds,
+                    probability: token.probability,
+                })
+            })
+            .collect())
+    }
+
+    pub fn filler_intervals(
+        &self,
+        request: &CaptionTranscriptionRequest,
+        mode: FillerRemovalMode,
+    ) -> Result<Vec<AudioTimeInterval>, CaptionProcessingError> {
+        let clip_start = request.clip_start_seconds.unwrap_or(0.0);
+        let mut words = self.transcribe_words(request)?;
+        if clip_start > 0.0 {
+            for word in &mut words {
+                word.start_seconds = (word.start_seconds - clip_start).max(0.0);
+                word.end_seconds = (word.end_seconds - clip_start).max(0.0);
+            }
+        }
+        Ok(detect_filler_intervals(&words, mode))
+    }
+
+    fn transcription_arguments(
+        &self,
+        request: &CaptionTranscriptionRequest,
+        output_base: &Path,
+    ) -> Vec<OsString> {
+        let mut args = vec![
+            OsString::from("-m"),
+            self.model_path.clone().into_os_string(),
+            OsString::from("-f"),
+            request.input_path.clone().into_os_string(),
+            OsString::from("-of"),
+            output_base.to_path_buf().into_os_string(),
+        ];
+        append_clip_arguments(
+            &mut args,
+            request.clip_start_seconds,
+            request.clip_end_seconds,
+        );
+        args.extend([
+            OsString::from("-oj"),
+            OsString::from("-ojf"),
+            OsString::from("-l"),
+            OsString::from(request.language.trim()),
+            OsString::from("-np"),
+        ]);
+        args
+    }
+
     pub fn process(
         &self,
         request: CaptionProcessingRequest,
@@ -229,6 +365,128 @@ impl CaptionProcessor {
                 .count(),
         })
     }
+}
+
+pub fn detect_filler_intervals(
+    words: &[CaptionWord],
+    mode: FillerRemovalMode,
+) -> Vec<AudioTimeInterval> {
+    let mut intervals: Vec<AudioTimeInterval> = Vec::new();
+    for word in words {
+        let normalized = word
+            .text
+            .trim()
+            .trim_matches(|character: char| !character.is_alphanumeric())
+            .to_ascii_lowercase();
+        let is_filler = match mode {
+            FillerRemovalMode::Normal => {
+                matches!(normalized.as_str(), "um" | "uh" | "er") && word.probability >= 0.28
+            }
+            FillerRemovalMode::Aggressive => {
+                matches!(
+                    normalized.as_str(),
+                    "um" | "uh" | "er" | "erm" | "hmm" | "hm" | "mm"
+                )
+            }
+        };
+        if !is_filler {
+            continue;
+        }
+
+        let start_seconds = round_milliseconds((word.start_seconds - 0.02).max(0.0));
+        let end_seconds = round_milliseconds(word.end_seconds + 0.02);
+        if let Some(previous) = intervals.last_mut()
+            && start_seconds <= previous.end_seconds + 0.15
+        {
+            previous.end_seconds = previous.end_seconds.max(end_seconds);
+        } else {
+            intervals.push(AudioTimeInterval {
+                start_seconds,
+                end_seconds,
+            });
+        }
+    }
+    intervals
+}
+
+fn round_milliseconds(seconds: f64) -> f64 {
+    (seconds * 1000.0).round() / 1000.0
+}
+
+#[derive(Debug, Deserialize)]
+struct WhisperDocument {
+    #[serde(default)]
+    transcription: Vec<WhisperSegment>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WhisperSegment {
+    #[serde(default)]
+    tokens: Vec<WhisperToken>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WhisperToken {
+    text: String,
+    #[serde(default)]
+    offsets: Option<WhisperOffsets>,
+    #[serde(rename = "p", default)]
+    probability: f64,
+}
+
+#[derive(Debug, Deserialize)]
+struct WhisperOffsets {
+    from: u64,
+    to: u64,
+}
+
+fn validate_transcription_request(
+    request: &CaptionTranscriptionRequest,
+) -> Result<(), CaptionProcessingError> {
+    if request.language.trim().is_empty() {
+        return Err(CaptionProcessingError::EmptyLanguage);
+    }
+    let valid_start = request
+        .clip_start_seconds
+        .is_none_or(|value| value.is_finite() && value >= 0.0);
+    let valid_end = request
+        .clip_end_seconds
+        .is_none_or(|value| value.is_finite() && value > 0.0);
+    let valid_order = match (request.clip_start_seconds, request.clip_end_seconds) {
+        (Some(start), Some(end)) => end > start,
+        _ => true,
+    };
+    if !valid_start || !valid_end || !valid_order {
+        return Err(CaptionProcessingError::InvalidClipRange {
+            start: request.clip_start_seconds,
+            end: request.clip_end_seconds,
+        });
+    }
+    Ok(())
+}
+
+fn append_clip_arguments(args: &mut Vec<OsString>, start: Option<f64>, end: Option<f64>) {
+    if let Some(start) = start {
+        args.extend([
+            OsString::from("-ot"),
+            OsString::from(format!("{}", seconds_to_milliseconds(start))),
+        ]);
+    }
+    if let Some(end) = end {
+        let start = start.unwrap_or(0.0);
+        args.extend([
+            OsString::from("-d"),
+            OsString::from(format!("{}", seconds_to_milliseconds(end - start))),
+        ]);
+    }
+}
+
+fn temporary_output_base() -> PathBuf {
+    let suffix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or_default();
+    std::env::temp_dir().join(format!("radsuite-whisper-{}-{suffix}", std::process::id()))
 }
 
 fn seconds_to_milliseconds(seconds: f64) -> u64 {
