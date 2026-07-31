@@ -17,6 +17,10 @@
   } from "./lib/archiveCommands";
   import { exportCourseReferences, exportModuleReadings } from "./lib/exportCommands";
   import {
+    updateRadciteDocument,
+    type UpdateRadciteDocumentInput,
+  } from "./lib/documentCommands";
+  import {
     archiveRadciteProject,
     createRadciteProject,
     listRadciteProjects,
@@ -328,6 +332,27 @@
     } catch (reason: unknown) {
       savedReviewsError = `Could not archive document: ${toErrorMessage(reason)}`;
     }
+  }
+
+  async function handleUpdateDocument(
+    input: UpdateRadciteDocumentInput,
+  ): Promise<SavedRadciteReviewSummary> {
+    const updated = await updateRadciteDocument(input);
+    if (analysisResult?.document_id === input.document_id) {
+      analysisResult = {
+        ...analysisResult,
+        display_name: updated.display_name,
+        doc_variant: updated.doc_variant,
+        doc_number: updated.doc_number,
+        exclude_from_references: updated.exclude_from_references,
+      };
+    }
+    await Promise.all([
+      refreshSavedReviews(),
+      refreshCourseReferences(),
+      refreshRadciteModules(null),
+    ]);
+    return updated;
   }
 
   async function handleRestoreArchiveItem(item: RadciteArchiveItem) {
@@ -863,6 +888,7 @@
         onUseForReadings={(review) => {
           void handleUseSavedReviewForReadings(review);
         }}
+        onUpdateDocument={(input) => handleUpdateDocument(input)}
         onArchiveDocument={(documentId) => {
           void handleArchiveDocument(documentId);
         }}

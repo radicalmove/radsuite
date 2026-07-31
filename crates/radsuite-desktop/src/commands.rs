@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, path::PathBuf, time::Instant};
+use std::{cmp::Ordering, collections::HashSet, path::PathBuf, time::Instant};
 
 use chrono::Utc;
 use radsuite_cite::{
@@ -10,8 +10,8 @@ use radsuite_cite::{
 };
 use radsuite_core::{
     ApaValidationStatus, Citation, CitationId, CourseModule, Document, DocumentFileType,
-    DocumentId, ModuleId, Paragraph, ParagraphId, Project, ProjectId, ReadingCategory,
-    ReferenceEntry, ReferenceEntryId, ReferenceEntryType, UserId,
+    DocumentId, DocumentVariant, ModuleId, Paragraph, ParagraphId, Project, ProjectId,
+    ReadingCategory, ReferenceEntry, ReferenceEntryId, ReferenceEntryType, UserId,
 };
 use radsuite_db::{
     CitationDocumentRepository, CourseModuleRepository, DbError, ProjectRepository,
@@ -189,8 +189,12 @@ pub struct AnalyseDocxReviewResponse {
     pub project_title: String,
     pub document_id: DocumentId,
     pub original_filename: String,
+    pub display_name: String,
     pub source_path: Option<String>,
     pub source_file_type: String,
+    pub doc_variant: String,
+    pub doc_number: Option<i32>,
+    pub exclude_from_references: bool,
     pub summary: AnalyseDocxSummary,
     pub paragraphs: Vec<ReviewParagraph>,
 }
@@ -211,8 +215,12 @@ pub struct SavedRadciteReviewSummary {
     pub document_id: DocumentId,
     pub project_id: ProjectId,
     pub original_filename: String,
+    pub display_name: String,
     pub source_path: Option<String>,
     pub source_file_type: String,
+    pub doc_variant: String,
+    pub doc_number: Option<i32>,
+    pub exclude_from_references: bool,
     pub paragraph_count: usize,
     pub citation_count: usize,
     pub missing_citation_count: usize,
@@ -255,6 +263,17 @@ pub struct ArchiveRadciteDocumentRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
     pub document_id: DocumentId,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct UpdateRadciteDocumentRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub document_id: DocumentId,
+    pub display_name: String,
+    pub doc_number: Option<i32>,
+    pub doc_variant: DocumentVariant,
+    pub exclude_from_references: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -621,6 +640,25 @@ pub enum ReviewActionError {
     #[error("could not load RADcite review document {0}")]
     MissingDocument(DocumentId),
     #[error("could not load project {0} for RADcite review document")]
+    MissingProject(ProjectId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+}
+
+#[derive(Debug, Error)]
+pub enum RadciteDocumentError {
+    #[error("document number must be a positive integer")]
+    InvalidDocumentNumber(i32),
+    #[error("could not load RADcite document {0}")]
+    MissingDocument(DocumentId),
+    #[error("RADcite document {document_id} belongs to a different project")]
+    ProjectMismatch {
+        document_id: DocumentId,
+        project_id: ProjectId,
+    },
+    #[error("cannot edit archived RADcite document {0}")]
+    ArchivedDocument(DocumentId),
+    #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
     #[error(transparent)]
     Database(#[from] DbError),
@@ -1131,7 +1169,7 @@ pub async fn analyse_docx_path(
         project_id: analysed.project.id,
         project_title: analysed.project.title,
         document_id: analysed.document.id,
-        original_filename: analysed.document.original_filename,
+        original_filename: analysed.document.original_filename.clone(),
         source_path: analysed.document.source_path,
         source_file_type: document_file_type_label(analysed.document.file_type).to_string(),
         paragraph_count: summary.paragraph_count,
@@ -1157,9 +1195,13 @@ pub async fn analyse_docx_for_review(
         project_id: analysed.project.id,
         project_title: analysed.project.title,
         document_id: analysed.document.id,
-        original_filename: analysed.document.original_filename,
+        original_filename: analysed.document.original_filename.clone(),
+        display_name: effective_document_display_name(&analysed.document),
         source_path: analysed.document.source_path,
         source_file_type: document_file_type_label(analysed.document.file_type).to_string(),
+        doc_variant: document_variant_label(analysed.document.doc_variant).to_string(),
+        doc_number: analysed.document.doc_number,
+        exclude_from_references: analysed.document.exclude_from_references,
         summary,
         paragraphs,
     })
@@ -1182,9 +1224,13 @@ pub async fn analyse_pdf_for_review(
         project_id: analysed.project.id,
         project_title: analysed.project.title,
         document_id: analysed.document.id,
-        original_filename: analysed.document.original_filename,
+        original_filename: analysed.document.original_filename.clone(),
+        display_name: effective_document_display_name(&analysed.document),
         source_path: analysed.document.source_path,
         source_file_type: document_file_type_label(analysed.document.file_type).to_string(),
+        doc_variant: document_variant_label(analysed.document.doc_variant).to_string(),
+        doc_number: analysed.document.doc_number,
+        exclude_from_references: analysed.document.exclude_from_references,
         summary,
         paragraphs,
     })
@@ -1205,13 +1251,68 @@ pub async fn list_saved_radcite_reviews(
             document_id: document.document_id,
             project_id: document.project_id,
             original_filename: document.original_filename,
+            display_name: document.display_name,
             source_path: document.source_path,
             source_file_type: document_file_type_label(document.file_type).to_string(),
+            doc_variant: document_variant_label(document.doc_variant).to_string(),
+            doc_number: document.doc_number,
+            exclude_from_references: document.exclude_from_references,
             paragraph_count: document.paragraph_count as usize,
             citation_count: document.citation_count as usize,
             missing_citation_count: document.missing_citation_count as usize,
         })
         .collect())
+}
+
+pub async fn update_radcite_document(
+    state: &DesktopState,
+    request: UpdateRadciteDocumentRequest,
+) -> Result<SavedRadciteReviewSummary, RadciteDocumentError> {
+    if let Some(doc_number) = request.doc_number
+        && doc_number < 1
+    {
+        return Err(RadciteDocumentError::InvalidDocumentNumber(doc_number));
+    }
+
+    let document_repo = SqliteCitationDocumentRepository::new(state.database_pool.clone());
+    let mut analysis = document_repo
+        .load_document_analysis(request.document_id)
+        .await?
+        .ok_or(RadciteDocumentError::MissingDocument(request.document_id))?;
+    let project = SqliteProjectRepository::new(state.database_pool.clone())
+        .load_project(analysis.document.project_id)
+        .await?
+        .ok_or(RadciteDocumentError::MissingProject(
+            analysis.document.project_id,
+        ))?;
+
+    if let Some(requested_project_id) = request.project_id
+        && requested_project_id != project.id
+    {
+        return Err(RadciteDocumentError::ProjectMismatch {
+            document_id: request.document_id,
+            project_id: requested_project_id,
+        });
+    }
+
+    if analysis.document.archived_at.is_some() {
+        return Err(RadciteDocumentError::ArchivedDocument(request.document_id));
+    }
+
+    analysis.document.notes = trimmed_optional(Some(request.display_name));
+    analysis.document.doc_number = request.doc_number;
+    analysis.document.doc_variant = request.doc_variant;
+    analysis.document.exclude_from_references = request.exclude_from_references;
+    analysis.document.updated_at = Utc::now();
+    document_repo
+        .update_document_metadata(&analysis.document)
+        .await?;
+
+    Ok(saved_review_summary_from_analysis(
+        &analysis.document,
+        &analysis.paragraphs,
+        &analysis.citations,
+    ))
 }
 
 pub async fn archive_radcite_document(
@@ -1244,9 +1345,13 @@ pub async fn archive_radcite_document(
     Ok(SavedRadciteReviewSummary {
         document_id: analysis.document.id,
         project_id: project.id,
-        original_filename: analysis.document.original_filename,
+        original_filename: analysis.document.original_filename.clone(),
+        display_name: effective_document_display_name(&analysis.document),
         source_path: analysis.document.source_path,
         source_file_type: document_file_type_label(analysis.document.file_type).to_string(),
+        doc_variant: document_variant_label(analysis.document.doc_variant).to_string(),
+        doc_number: analysis.document.doc_number,
+        exclude_from_references: analysis.document.exclude_from_references,
         paragraph_count: analysis.paragraphs.len(),
         citation_count: analysis.citations.len(),
         missing_citation_count: analysis
@@ -1413,9 +1518,7 @@ pub async fn list_course_references(
     request: ListCourseReferencesRequest,
 ) -> Result<Vec<CourseReferenceSummary>, CourseReferenceError> {
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
-    let references = SqliteReferenceEntryRepository::new(state.database_pool.clone())
-        .list_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
-        .await?;
+    let references = load_course_reference_entries(state, project.id).await?;
 
     Ok(references
         .into_iter()
@@ -1984,9 +2087,11 @@ pub async fn export_module_readings(
     let project = SqliteProjectRepository::new(state.database_pool.clone())
         .load_project(module.project_id)
         .await?;
-    let mut readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+    let readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
         .await?;
+    let mut readings =
+        filter_references_by_document_exclusion(state, module.project_id, readings).await?;
     sort_module_reading_entries(&mut readings);
     let reading_count = readings.len();
     let html = format_module_readings_html(&readings, request.for_ako_learn);
@@ -2208,9 +2313,13 @@ async fn load_review_response(
         project_id: project.id,
         project_title: project.title,
         document_id: analysis.document.id,
-        original_filename: analysis.document.original_filename,
+        original_filename: analysis.document.original_filename.clone(),
+        display_name: effective_document_display_name(&analysis.document),
         source_path: analysis.document.source_path,
         source_file_type: document_file_type_label(analysis.document.file_type).to_string(),
+        doc_variant: document_variant_label(analysis.document.doc_variant).to_string(),
+        doc_number: analysis.document.doc_number,
+        exclude_from_references: analysis.document.exclude_from_references,
         summary,
         paragraphs,
     })
@@ -2250,13 +2359,38 @@ async fn load_requested_or_local_radcite_project(
         .ok_or(RadciteProjectLookupError::MissingProject(project_id))
 }
 
+async fn filter_references_by_document_exclusion(
+    state: &DesktopState,
+    project_id: ProjectId,
+    references: Vec<ReferenceEntry>,
+) -> Result<Vec<ReferenceEntry>, DbError> {
+    let excluded_document_ids = SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .list_documents_for_project(project_id)
+        .await?
+        .into_iter()
+        .filter(|document| document.exclude_from_references)
+        .map(|document| document.document_id)
+        .collect::<HashSet<_>>();
+
+    Ok(references
+        .into_iter()
+        .filter(|reference| {
+            reference
+                .document_id
+                .is_none_or(|document_id| !excluded_document_ids.contains(&document_id))
+        })
+        .collect())
+}
+
 async fn load_course_reference_entries(
     state: &DesktopState,
     project_id: ProjectId,
 ) -> Result<Vec<ReferenceEntry>, DbError> {
-    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+    let references = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_project(project_id, ReferenceEntryType::Reference)
-        .await
+        .await?;
+
+    filter_references_by_document_exclusion(state, project_id, references).await
 }
 
 async fn load_course_reference_or_error(
@@ -2456,6 +2590,48 @@ fn document_file_type_label(file_type: DocumentFileType) -> &'static str {
     match file_type {
         DocumentFileType::Docx => "docx",
         DocumentFileType::Pdf => "pdf",
+    }
+}
+
+fn document_variant_label(variant: DocumentVariant) -> &'static str {
+    match variant {
+        DocumentVariant::Content => "content",
+        DocumentVariant::Rise => "rise",
+        DocumentVariant::Other => "other",
+    }
+}
+
+fn effective_document_display_name(document: &Document) -> String {
+    document
+        .notes
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(&document.original_filename)
+        .to_string()
+}
+
+fn saved_review_summary_from_analysis(
+    document: &Document,
+    paragraphs: &[Paragraph],
+    citations: &[Citation],
+) -> SavedRadciteReviewSummary {
+    SavedRadciteReviewSummary {
+        document_id: document.id,
+        project_id: document.project_id,
+        original_filename: document.original_filename.clone(),
+        display_name: effective_document_display_name(document),
+        source_path: document.source_path.clone(),
+        source_file_type: document_file_type_label(document.file_type).to_string(),
+        doc_variant: document_variant_label(document.doc_variant).to_string(),
+        doc_number: document.doc_number,
+        exclude_from_references: document.exclude_from_references,
+        paragraph_count: paragraphs.len(),
+        citation_count: citations.len(),
+        missing_citation_count: paragraphs
+            .iter()
+            .filter(|paragraph| paragraph.needs_citation)
+            .count(),
     }
 }
 
