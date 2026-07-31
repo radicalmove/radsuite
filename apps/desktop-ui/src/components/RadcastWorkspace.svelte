@@ -14,6 +14,7 @@
     RadcastAudioOutput,
     RadcastAudioSource,
     RadcastJobStatus,
+    RadcastProjectSettings,
     RadcastProcessingPhase,
   } from "../types";
 
@@ -45,6 +46,8 @@
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
   let radcastJob = $state<RadcastJobStatus | null>(null);
+  let settingsLoaded = $state(false);
+  let settingsSaveTimer = $state<number | null>(null);
   let captionCapability = $state<RadcastCapabilityStatus>({
     caption_available: false,
     caption_detail: "Checking local caption support.",
@@ -63,6 +66,17 @@
   $effect(() => {
     selectedProjectId;
     void refreshAudio();
+  });
+
+  $effect(() => {
+    const projectId = selectedProjectId;
+    const settings = currentSettings();
+    if (!settingsLoaded || !projectId || processing) return;
+    if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
+    settingsSaveTimer = window.setTimeout(() => {
+      settingsSaveTimer = null;
+      void persistSettings(projectId, settings);
+    }, 500);
   });
 
   function toErrorMessage(reason: unknown): string {
@@ -117,14 +131,54 @@
     radcastJob = null;
   }
 
+  function currentSettings(): RadcastProjectSettings {
+    return {
+      output_format: outputFormat,
+      caption_format: captionFormat,
+      caption_language: captionLanguage,
+      caption_quality_mode: captionQualityMode,
+      caption_glossary: captionGlossary.trim() || null,
+      enhancement_model: enhancementModel,
+      enhancement_quality: enhancementQuality,
+      cleanup_enabled: cleanupEnabled,
+      max_silence_seconds: shortenPauses ? maxSilenceSeconds : null,
+      remove_filler_words: removeFillerWords,
+      filler_removal_mode: fillerRemovalMode,
+    };
+  }
+
+  async function persistSettings(projectId: string, settings: RadcastProjectSettings) {
+    if (!settingsLoaded || processing) return;
+    try {
+      await invoke<RadcastProjectSettings>("save_radcast_settings", {
+        request: { project_id: projectId, settings },
+      });
+    } catch (reason: unknown) {
+      error = `Could not save RADcast settings: ${toErrorMessage(reason)}`;
+    }
+  }
+
   async function refreshAudio() {
     loading = true;
+    settingsLoaded = false;
     error = null;
     try {
       const result = await invoke<RadcastAudioListing>("list_radcast_audio", {
         request: { project_id: selectedProjectId },
       });
       captionCapability = await invoke<RadcastCapabilityStatus>("get_radcast_capabilities");
+      outputFormat = result.settings.output_format;
+      captionFormat = result.settings.caption_format;
+      captionLanguage = result.settings.caption_language;
+      captionQualityMode = result.settings.caption_quality_mode;
+      captionGlossary = result.settings.caption_glossary ?? "";
+      enhancementModel = result.settings.enhancement_model;
+      enhancementQuality = result.settings.enhancement_quality;
+      cleanupEnabled = result.settings.cleanup_enabled;
+      shortenPauses = result.settings.max_silence_seconds !== null;
+      maxSilenceSeconds = result.settings.max_silence_seconds ?? 1.0;
+      removeFillerWords = result.settings.remove_filler_words;
+      fillerRemovalMode = result.settings.filler_removal_mode;
       if (!captionCapability.caption_available) {
         captionFormat = null;
         removeFillerWords = false;
@@ -136,6 +190,7 @@
       selectedSourceId = nextSource?.id ?? null;
       clipStart = 0;
       clipEnd = nextSource?.duration_seconds ?? 0;
+      settingsLoaded = true;
     } catch (reason: unknown) {
       error = `Could not load RADcast audio: ${toErrorMessage(reason)}`;
     } finally {

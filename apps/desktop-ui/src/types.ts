@@ -82,6 +82,21 @@ export type RadcastAudioOutput = {
 export type RadcastAudioListing = {
   sources: RadcastAudioSource[];
   outputs: RadcastAudioOutput[];
+  settings: RadcastProjectSettings;
+};
+
+export type RadcastProjectSettings = {
+  output_format: AudioOutputFormat;
+  caption_format: CaptionFormat | null;
+  caption_language: string;
+  caption_quality_mode: CaptionQualityMode;
+  caption_glossary: string | null;
+  enhancement_model: EnhancementModel;
+  enhancement_quality: EnhancementQuality;
+  cleanup_enabled: boolean;
+  max_silence_seconds: number | null;
+  remove_filler_words: boolean;
+  filler_removal_mode: FillerRemovalMode;
 };
 
 export type RadcastCapabilityStatus = {

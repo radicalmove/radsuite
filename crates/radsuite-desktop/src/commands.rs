@@ -30,7 +30,7 @@ use crate::DesktopState;
 pub use crate::radcast::{
     ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
     RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastProcessingPhase,
-    RadcastStorageError,
+    RadcastProjectSettings, RadcastStorageError,
 };
 pub use radsuite_engines::{AudioOutputFormat, CaptionFormat};
 
@@ -51,6 +51,13 @@ pub struct RadcastCapabilityStatus {
     pub caption_detail: String,
     pub optimized_available: bool,
     pub optimized_detail: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SaveRadcastSettingsRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub settings: RadcastProjectSettings,
 }
 
 pub fn get_radcast_capabilities() -> RadcastCapabilityStatus {
@@ -853,6 +860,19 @@ pub async fn process_radcast_audio(
         CaptionProcessor::default(),
     )
     .await
+}
+
+pub async fn save_radcast_settings(
+    state: &DesktopState,
+    request: SaveRadcastSettingsRequest,
+) -> Result<RadcastProjectSettings, RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::save_settings(&data_dir, project.id, request.settings)
+    })
+    .await?
+    .map_err(Into::into)
 }
 
 pub async fn process_radcast_audio_with_processor(
