@@ -35,6 +35,8 @@ export type CaptionQualityMode = "fast" | "accurate" | "reviewed";
 
 export type FillerRemovalMode = "normal" | "aggressive";
 
+export type EnhancementModel = "none" | "studio_v18";
+
 export type RadcastAudioSource = {
   id: string;
   original_filename: string;
@@ -59,6 +61,7 @@ export type RadcastAudioOutput = {
   caption_format: CaptionFormat | null;
   caption_quality_mode: CaptionQualityMode;
   caption_glossary: string | null;
+  enhancement_model: EnhancementModel;
   caption_segment_count: number;
   remove_filler_words: boolean;
   filler_removal_mode: FillerRemovalMode;
@@ -74,6 +77,8 @@ export type RadcastAudioListing = {
 export type RadcastCapabilityStatus = {
   caption_available: boolean;
   caption_detail: string;
+  optimized_available: boolean;
+  optimized_detail: string;
 };
 
 export type ParagraphFilter =

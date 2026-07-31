@@ -7,7 +7,7 @@ use chrono::Utc;
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
     CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest,
-    FillerRemovalMode,
+    EnhancementModel, EnhancementProcessingRequest, EnhancementProcessor, FillerRemovalMode,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -21,6 +21,10 @@ fn default_filler_removal_mode() -> FillerRemovalMode {
 
 fn default_caption_quality_mode() -> CaptionQualityMode {
     CaptionQualityMode::Reviewed
+}
+
+fn default_enhancement_model() -> EnhancementModel {
+    EnhancementModel::None
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -56,6 +60,8 @@ pub struct ProcessRadcastAudioRequest {
     pub caption_quality_mode: CaptionQualityMode,
     #[serde(default)]
     pub caption_glossary: Option<String>,
+    #[serde(default = "default_enhancement_model")]
+    pub enhancement_model: EnhancementModel,
     #[serde(default)]
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
@@ -93,6 +99,8 @@ pub struct RadcastAudioOutput {
     pub caption_quality_mode: CaptionQualityMode,
     #[serde(default)]
     pub caption_glossary: Option<String>,
+    #[serde(default = "default_enhancement_model")]
+    pub enhancement_model: EnhancementModel,
     #[serde(default)]
     pub caption_segment_count: usize,
     #[serde(default)]
@@ -130,6 +138,8 @@ pub enum RadcastStorageError {
     Processing(#[from] radsuite_engines::AudioProcessingError),
     #[error("failed to generate captions: {0}")]
     CaptionProcessing(#[from] radsuite_engines::CaptionProcessingError),
+    #[error("failed to enhance audio: {0}")]
+    EnhancementProcessing(#[from] radsuite_engines::EnhancementProcessingError),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -218,6 +228,24 @@ pub(crate) fn process_audio_with_processors(
     processor: AudioProcessor,
     caption_processor: CaptionProcessor,
 ) -> Result<RadcastAudioOutput, RadcastStorageError> {
+    process_audio_with_processors_and_enhancement(
+        data_dir,
+        project_id,
+        request,
+        processor,
+        caption_processor,
+        EnhancementProcessor::default(),
+    )
+}
+
+pub(crate) fn process_audio_with_processors_and_enhancement(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: ProcessRadcastAudioRequest,
+    processor: AudioProcessor,
+    caption_processor: CaptionProcessor,
+    enhancement_processor: EnhancementProcessor,
+) -> Result<RadcastAudioOutput, RadcastStorageError> {
     let mut manifest = load_manifest(data_dir, project_id)?;
     let source = manifest
         .sources
@@ -254,16 +282,58 @@ pub(crate) fn process_audio_with_processors(
         Vec::new()
     };
     let removed_filler_count = removal_intervals.len();
-    let result = processor.process(AudioProcessingRequest {
-        input_path: source_path,
+    let mut temporary_paths = Vec::new();
+    let processing_input_path = if request.enhancement_model == EnhancementModel::StudioV18 {
+        let prepared_path = output_path.with_file_name(format!(".{output_id}-prepared.wav"));
+        let enhanced_path = output_path.with_file_name(format!(".{output_id}-enhanced.wav"));
+        if let Err(error) = processor.process(AudioProcessingRequest {
+            input_path: source_path.clone(),
+            output_path: prepared_path.clone(),
+            output_format: AudioOutputFormat::Wav,
+            clip_start_seconds: request.clip_start_seconds,
+            clip_end_seconds: request.clip_end_seconds,
+            max_silence_seconds: None,
+            remove_intervals: Vec::new(),
+            cleanup_enabled: false,
+        }) {
+            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+            return Err(error.into());
+        }
+        if let Err(error) = enhancement_processor.process(EnhancementProcessingRequest {
+            input_path: prepared_path.clone(),
+            output_path: enhanced_path.clone(),
+        }) {
+            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+            return Err(error.into());
+        }
+        temporary_paths.extend([prepared_path, enhanced_path.clone()]);
+        enhanced_path
+    } else {
+        source_path.clone()
+    };
+    let clip_start_seconds = (request.enhancement_model == EnhancementModel::None)
+        .then_some(request.clip_start_seconds)
+        .flatten();
+    let clip_end_seconds = (request.enhancement_model == EnhancementModel::None)
+        .then_some(request.clip_end_seconds)
+        .flatten();
+    let result = match processor.process(AudioProcessingRequest {
+        input_path: processing_input_path,
         output_path: output_path.clone(),
         output_format: request.output_format,
-        clip_start_seconds: request.clip_start_seconds,
-        clip_end_seconds: request.clip_end_seconds,
+        clip_start_seconds,
+        clip_end_seconds,
         max_silence_seconds: request.max_silence_seconds,
         remove_intervals: removal_intervals,
         cleanup_enabled: request.cleanup_enabled,
-    })?;
+    }) {
+        Ok(result) => result,
+        Err(error) => {
+            cleanup_temporary_paths(&temporary_paths);
+            return Err(error.into());
+        }
+    };
+    cleanup_temporary_paths(&temporary_paths);
 
     let (caption_path, caption_format, caption_segment_count) =
         if let Some(format) = request.caption_format {
@@ -289,6 +359,7 @@ pub(crate) fn process_audio_with_processors(
                 Err(error) => {
                     let _ = fs::remove_file(&output_path);
                     let _ = fs::remove_file(path);
+                    cleanup_temporary_paths(&temporary_paths);
                     return Err(error.into());
                 }
             }
@@ -311,6 +382,7 @@ pub(crate) fn process_audio_with_processors(
         caption_format,
         caption_quality_mode: request.caption_quality_mode,
         caption_glossary: request.caption_glossary,
+        enhancement_model: request.enhancement_model,
         caption_segment_count,
         remove_filler_words: request.remove_filler_words,
         filler_removal_mode: request.filler_removal_mode,
@@ -320,12 +392,19 @@ pub(crate) fn process_audio_with_processors(
     manifest.outputs.insert(0, output.clone());
     if let Err(error) = write_manifest(data_dir, project_id, &manifest) {
         let _ = fs::remove_file(output_path);
+        cleanup_temporary_paths(&temporary_paths);
         if let Some(caption_path) = output.caption_path.as_deref() {
             let _ = fs::remove_file(caption_path);
         }
         return Err(error);
     }
     Ok(output)
+}
+
+fn cleanup_temporary_paths(paths: &[PathBuf]) {
+    for path in paths {
+        let _ = fs::remove_file(path);
+    }
 }
 
 fn default_caption_language() -> String {
