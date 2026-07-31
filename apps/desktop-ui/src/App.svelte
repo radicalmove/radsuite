@@ -679,7 +679,11 @@
     }
   }
 
-  async function handleExportCourseReferences(forAkoLearn: boolean, allowIncomplete: boolean) {
+  async function handleExportCourseReferences(
+    forAkoLearn: boolean,
+    allowIncomplete: boolean,
+    useLibraryLinks: boolean,
+  ) {
     referencesExportLoading = true;
     referencesExportError = null;
     try {
@@ -687,6 +691,7 @@
         project_id: selectedProjectCommandId(),
         for_ako_learn: forAkoLearn,
         allow_incomplete: allowIncomplete,
+        use_library_links: useLibraryLinks,
       });
     } catch (reason: unknown) {
       referencesExportError = `Could not export course references: ${toErrorMessage(reason)}`;
@@ -695,13 +700,18 @@
     }
   }
 
-  async function handleExportModuleReadings(moduleId: string, forAkoLearn: boolean) {
+  async function handleExportModuleReadings(
+    moduleId: string,
+    forAkoLearn: boolean,
+    useLibraryLinks: boolean,
+  ) {
     moduleReadingsExportLoading = true;
     moduleReadingsExportError = null;
     try {
       moduleReadingsExport = await exportModuleReadings({
         module_id: moduleId,
         for_ako_learn: forAkoLearn,
+        use_library_links: useLibraryLinks,
       });
     } catch (reason: unknown) {
       moduleReadingsExportError = `Could not export module readings: ${toErrorMessage(reason)}`;
@@ -1006,11 +1016,11 @@
         moduleExportResult={moduleReadingsExport}
         moduleExportLoading={moduleReadingsExportLoading}
         moduleExportError={moduleReadingsExportError}
-        onExportReferences={(forAkoLearn, allowIncomplete) => {
-          void handleExportCourseReferences(forAkoLearn, allowIncomplete);
+        onExportReferences={(forAkoLearn, allowIncomplete, useLibraryLinks) => {
+          void handleExportCourseReferences(forAkoLearn, allowIncomplete, useLibraryLinks);
         }}
-        onExportModuleReadings={(moduleId, forAkoLearn) => {
-          void handleExportModuleReadings(moduleId, forAkoLearn);
+        onExportModuleReadings={(moduleId, forAkoLearn, useLibraryLinks) => {
+          void handleExportModuleReadings(moduleId, forAkoLearn, useLibraryLinks);
         }}
         onRefreshReferences={() => {
           void refreshCourseReferences();

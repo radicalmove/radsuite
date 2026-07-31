@@ -18,6 +18,7 @@ export function exportCourseReferences(
       project_id: trimmedOrNull(request.project_id),
       for_ako_learn: request.for_ako_learn,
       allow_incomplete: request.allow_incomplete,
+      use_library_links: request.use_library_links,
     },
   });
 }

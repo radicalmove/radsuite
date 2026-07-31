@@ -37,6 +37,7 @@ describe("export commands", () => {
         project_id: "project-1",
         for_ako_learn: true,
         allow_incomplete: false,
+        use_library_links: true,
       }),
     ).resolves.toBe(exportResult);
 
@@ -45,6 +46,7 @@ describe("export commands", () => {
         project_id: "project-1",
         for_ako_learn: true,
         allow_incomplete: false,
+        use_library_links: true,
       },
     });
   });
@@ -53,13 +55,18 @@ describe("export commands", () => {
     vi.mocked(invoke).mockResolvedValue(moduleExportResult);
 
     await expect(
-      exportModuleReadings({ module_id: "module-1", for_ako_learn: false }),
+      exportModuleReadings({
+        module_id: "module-1",
+        for_ako_learn: false,
+        use_library_links: false,
+      }),
     ).resolves.toBe(moduleExportResult);
 
     expect(invoke).toHaveBeenCalledWith("export_module_readings", {
       request: {
         module_id: "module-1",
         for_ako_learn: false,
+        use_library_links: false,
       },
     });
   });

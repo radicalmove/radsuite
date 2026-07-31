@@ -393,11 +393,13 @@ export type CourseReferencesExportRequest = {
   project_id?: string | null;
   for_ako_learn: boolean;
   allow_incomplete: boolean;
+  use_library_links: boolean;
 };
 
 export type ModuleReadingsExportRequest = {
   module_id: string;
   for_ako_learn: boolean;
+  use_library_links: boolean;
 };
 
 export type CourseReferencesExport = {

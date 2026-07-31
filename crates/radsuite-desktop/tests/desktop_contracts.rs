@@ -300,6 +300,7 @@ async fn radcite_commands_respect_selected_project_context() {
             project_id: Some(crju201.id),
             for_ako_learn: false,
             allow_incomplete: false,
+            use_library_links: false,
         },
     )
     .await
@@ -863,6 +864,51 @@ async fn local_course_references_are_added_to_the_radcite_project() {
             .expect("list course references after duplicate");
 
     assert_eq!(references_after_duplicate, vec![added]);
+}
+
+#[tokio::test]
+async fn course_reference_export_can_use_uc_library_links() {
+    let state = desktop_state_with_migrated_pool().await;
+    let added = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press."
+                .to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add course reference");
+
+    update_course_reference(
+        &state,
+        UpdateCourseReferenceRequest {
+            reference_id: added.id,
+            apa_citation: added.apa_citation.clone().unwrap_or_default(),
+            notes: None,
+            citation_text: None,
+            url: Some("https://example.org/article?id=42".to_string()),
+        },
+    )
+    .await
+    .expect("add reference source URL");
+
+    let export = export_course_references(
+        &state,
+        ExportCourseReferencesRequest {
+            project_id: None,
+            for_ako_learn: false,
+            allow_incomplete: true,
+            use_library_links: true,
+        },
+    )
+    .await
+    .expect("export course references with UC links");
+
+    assert!(export.html.contains(
+        r#"<a href="https://go.openathens.net/redirector/canterbury.ac.nz?url=https://example.org/article?id=42" target="_blank" rel="noopener noreferrer">https://example.org/article?id=42</a>"#
+    ));
 }
 
 #[tokio::test]
@@ -1480,6 +1526,7 @@ async fn module_readings_are_listed_and_exported_in_natural_lesson_order() {
         ExportModuleReadingsRequest {
             module_id: module.id,
             for_ako_learn: false,
+            use_library_links: false,
         },
     )
     .await
@@ -2846,6 +2893,7 @@ async fn radcite_excluded_document_filtering() {
             project_id: None,
             for_ako_learn: false,
             allow_incomplete: false,
+            use_library_links: false,
         },
     )
     .await
@@ -2863,6 +2911,7 @@ async fn radcite_excluded_document_filtering() {
         ExportModuleReadingsRequest {
             module_id: module.id,
             for_ako_learn: false,
+            use_library_links: false,
         },
     )
     .await
@@ -2909,6 +2958,7 @@ async fn course_references_can_be_exported_as_html() {
             project_id: None,
             for_ako_learn: false,
             allow_incomplete: false,
+            use_library_links: false,
         },
     )
     .await
@@ -2943,6 +2993,7 @@ async fn course_reference_export_blocks_apa_fixes_unless_overridden() {
             project_id: None,
             for_ako_learn: false,
             allow_incomplete: false,
+            use_library_links: false,
         },
     )
     .await
@@ -2955,6 +3006,7 @@ async fn course_reference_export_blocks_apa_fixes_unless_overridden() {
             project_id: None,
             for_ako_learn: false,
             allow_incomplete: true,
+            use_library_links: false,
         },
     )
     .await
@@ -2987,6 +3039,7 @@ async fn course_reference_export_can_omit_generico_tags() {
             project_id: None,
             for_ako_learn: true,
             allow_incomplete: false,
+            use_library_links: false,
         },
     )
     .await
@@ -3058,6 +3111,7 @@ async fn module_readings_can_be_exported_as_html() {
         ExportModuleReadingsRequest {
             module_id: module.id,
             for_ako_learn: false,
+            use_library_links: false,
         },
     )
     .await
@@ -3132,6 +3186,7 @@ async fn module_readings_export_links_stored_doi_when_url_is_blank() {
         ExportModuleReadingsRequest {
             module_id: module.id,
             for_ako_learn: false,
+            use_library_links: false,
         },
     )
     .await
@@ -3139,6 +3194,21 @@ async fn module_readings_export_links_stored_doi_when_url_is_blank() {
 
     assert!(export.html.contains(
         r#"<a href="https://doi.org/10.1234/example.doi" target="_blank" rel="noopener noreferrer">https://doi.org/10.1234/example.doi</a>"#
+    ));
+
+    let library_export = export_module_readings(
+        &state,
+        ExportModuleReadingsRequest {
+            module_id: module.id,
+            for_ako_learn: false,
+            use_library_links: true,
+        },
+    )
+    .await
+    .expect("export module readings with UC links");
+
+    assert!(library_export.html.contains(
+        r#"<a href="https://go.openathens.net/redirector/canterbury.ac.nz?url=https://doi.org/10.1234/example.doi" target="_blank" rel="noopener noreferrer">https://doi.org/10.1234/example.doi</a>"#
     ));
 }
 
@@ -3183,6 +3253,7 @@ async fn module_readings_export_can_emit_ako_html() {
         ExportModuleReadingsRequest {
             module_id: module.id,
             for_ako_learn: true,
+            use_library_links: false,
         },
     )
     .await
@@ -3226,6 +3297,7 @@ async fn module_readings_export_filename_uses_project_title_when_code_is_missing
         ExportModuleReadingsRequest {
             module_id: module.id,
             for_ako_learn: false,
+            use_library_links: false,
         },
     )
     .await
@@ -3247,6 +3319,7 @@ async fn module_readings_export_rejects_missing_module() {
         ExportModuleReadingsRequest {
             module_id: missing_module_id,
             for_ako_learn: false,
+            use_library_links: false,
         },
     )
     .await

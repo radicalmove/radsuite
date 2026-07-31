@@ -266,6 +266,7 @@ for (const needle of [
   "Module readings export",
   "Module selector",
   "AKO | LEARN",
+  "Use UC library links",
   "Generate HTML",
   "Copy HTML",
   "Download HTML",

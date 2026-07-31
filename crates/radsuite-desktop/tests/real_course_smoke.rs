@@ -223,6 +223,7 @@ async fn real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_avail
             project_id: Some(crju201.id),
             for_ako_learn: false,
             allow_incomplete: true,
+            use_library_links: false,
         },
     )
     .await?;
@@ -239,6 +240,7 @@ async fn real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_avail
         ExportModuleReadingsRequest {
             module_id: week_2_module.id,
             for_ako_learn: false,
+            use_library_links: false,
         },
     )
     .await?;
