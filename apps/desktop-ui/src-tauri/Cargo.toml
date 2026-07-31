@@ -11,5 +11,5 @@ tauri-build.workspace = true
 
 [dependencies]
 radsuite-desktop = { path = "../../../crates/radsuite-desktop" }
-tauri.workspace = true
+tauri = { workspace = true, features = ["protocol-asset"] }
 tauri-plugin-dialog.workspace = true

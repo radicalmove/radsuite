@@ -149,7 +149,15 @@
             {/each}
           </div>
 
-          <button class="tool-area-button tool-area-button-root media-tool-button" type="button" disabled>
+          <button
+            class="tool-area-button tool-area-button-root media-tool-button"
+            class:is-active={project.id === selectedProjectId && activeArea === "radcast"}
+            type="button"
+            onclick={() => {
+              onSelectProject(project.id);
+              onSelectArea("radcast");
+            }}
+          >
             <span>Audio cleanup</span>
             <small>RADcast</small>
           </button>

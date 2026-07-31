@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import CitationActionsPanel from "./components/CitationActionsPanel.svelte";
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
+  import RadcastWorkspace from "./components/RadcastWorkspace.svelte";
   import RadciteDocumentsWorkspace from "./components/RadciteDocumentsWorkspace.svelte";
   import RadciteExportsWorkspace from "./components/RadciteExportsWorkspace.svelte";
   import RadciteReferencesWorkspace from "./components/RadciteReferencesWorkspace.svelte";
@@ -758,6 +759,8 @@
           void handleSelectModule(moduleId);
         }}
       />
+    {:else if activeArea === "radcast"}
+      <RadcastWorkspace selectedProjectId={selectedProjectCommandId()} />
     {:else}
       <section class="workspace-placeholder">
         <p class="eyebrow">Coming later</p>
