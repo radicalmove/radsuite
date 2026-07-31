@@ -3,8 +3,11 @@ import type { ReviewParagraph } from "../types";
 import {
   buildCrossrefSearchUrl,
   buildCrossrefWorksApiUrl,
+  buildOpenAlexWorksApiUrl,
   findCitationMatches,
+  searchAcademicWorks,
   searchCrossrefWorks,
+  searchOpenAlexWorks,
   suggestedSourceSearchQuery,
 } from "./sourceSearch";
 
@@ -105,6 +108,12 @@ describe("source search", () => {
     );
   });
 
+  test("builds an OpenAlex works API URL", () => {
+    expect(buildOpenAlexWorksApiUrl(" Smith 2024 ", 3)).toBe(
+      "https://api.openalex.org/works?search=Smith+2024&per-page=3&select=id%2Cdoi%2Ctitle%2Cauthorships%2Cpublication_year%2Cprimary_location%2Chost_venue%2Cabstract_inverted_index",
+    );
+  });
+
   test("finds Crossref results matching a citation author and year", () => {
     const matchingResult = {
       title: "Worked examples in practice",
@@ -179,6 +188,111 @@ describe("source search", () => {
         apaCitation:
           "Smith, J.; Jones, P. (2024). Worked examples in practice. Teaching Journal. https://doi.org/10.1000/example",
       },
+    ]);
+  });
+
+  test("searches OpenAlex works and formats compact results", async () => {
+    const fetcher = async () =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          results: [
+            {
+              id: "https://openalex.org/W123",
+              doi: "https://doi.org/10.1000/example",
+              title: "Worked examples in practice",
+              authorships: [
+                { author: { display_name: "Jane Smith" } },
+                { author: { display_name: "Priya Jones" } },
+              ],
+              publication_year: 2024,
+              host_venue: { display_name: "Teaching Journal" },
+              primary_location: { landing_page_url: "https://example.org/worked" },
+            },
+          ],
+        }),
+      }) as Response;
+
+    await expect(searchOpenAlexWorks("Smith 2024", fetcher)).resolves.toEqual([
+      {
+        title: "Worked examples in practice",
+        authors: "Jane Smith; Priya Jones",
+        year: "2024",
+        source: "Teaching Journal",
+        doi: "10.1000/example",
+        url: "https://doi.org/10.1000/example",
+        apaCitation:
+          "Jane Smith; Priya Jones (2024). Worked examples in practice. Teaching Journal. https://doi.org/10.1000/example",
+      },
+    ]);
+  });
+
+  test("falls back to OpenAlex when Crossref returns no results", async () => {
+    const fetcher = async (input: string) =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () =>
+          input.includes("api.crossref.org")
+            ? { message: { items: [] } }
+            : {
+                results: [
+                  {
+                    id: "https://openalex.org/W123",
+                    title: "Open source result",
+                    authorships: [{ author: { display_name: "Taylor Smith" } }],
+                    publication_year: 2023,
+                  },
+                ],
+              },
+      }) as Response;
+
+    await expect(searchAcademicWorks("Taylor 2023", "hybrid", fetcher)).resolves.toHaveLength(1);
+  });
+
+  test("merges and de-duplicates Crossref and OpenAlex results in hybrid mode", async () => {
+    const fetcher = async (input: string) =>
+      ({
+        ok: true,
+        status: 200,
+        json: async () =>
+          input.includes("api.crossref.org")
+            ? {
+                message: {
+                  items: [
+                    {
+                      DOI: "10.1000/shared",
+                      title: ["Shared result"],
+                      author: [{ family: "Smith", given: "Jane" }],
+                      issued: { "date-parts": [[2024]] },
+                      URL: "https://doi.org/10.1000/shared",
+                    },
+                  ],
+                },
+              }
+            : {
+                results: [
+                  {
+                    id: "https://openalex.org/W123",
+                    doi: "https://doi.org/10.1000/shared",
+                    title: "Shared result",
+                    authorships: [{ author: { display_name: "Jane Smith" } }],
+                    publication_year: 2024,
+                  },
+                  {
+                    id: "https://openalex.org/W456",
+                    title: "OpenAlex-only result",
+                    authorships: [{ author: { display_name: "Taylor Jones" } }],
+                    publication_year: 2023,
+                  },
+                ],
+              },
+      }) as Response;
+
+    await expect(searchAcademicWorks("Smith", "hybrid", fetcher)).resolves.toEqual([
+      expect.objectContaining({ title: "Shared result" }),
+      expect.objectContaining({ title: "OpenAlex-only result" }),
     ]);
   });
 

@@ -120,7 +120,7 @@ for (const needle of [
   "Find sources",
   "Review source matches",
   "Apply selected matches",
-  "searchCrossrefWorks",
+  "searchAcademicWorks",
 ]) {
   if (!readingsWorkspace.includes(needle)) {
     missing.push(`readings workspace includes ${needle}`);
@@ -193,10 +193,10 @@ for (const needle of [
 }
 
 for (const needle of [
-  "Saved locally",
-  "Saving unavailable",
-  "Cloud backup on",
-  "Cloud backup off",
+  "Saved on this Mac",
+  "Local saving unavailable",
+  "Cloud sync on",
+  "Cloud sync not connected",
   "title={",
   "aria-label=",
 ]) {
@@ -210,8 +210,8 @@ for (const obsolete of [
   "Local DB offline",
   "Sync configured",
   "Sync off",
-  "Cloud sync on",
-  "Cloud sync off",
+  "Cloud backup on",
+  "Cloud backup off",
 ]) {
   if (app.includes(obsolete)) {
     missing.push(`app removes obsolete status copy: ${obsolete}`);
@@ -367,7 +367,7 @@ for (const needle of [
   "Search sources",
   "sourceSearchQuery",
   "sourceSearchResults",
-  "searchCrossrefWorks",
+  "searchAcademicWorks",
   "Open Crossref",
   "Crossref results",
   "Open DOI",

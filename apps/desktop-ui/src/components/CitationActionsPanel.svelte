@@ -2,7 +2,7 @@
   import {
     buildCrossrefSearchUrl,
     findCitationMatches,
-    searchCrossrefWorks,
+    searchAcademicWorks,
     suggestedSourceSearchQuery,
     type CrossrefSourceResult,
   } from "../lib/sourceSearch";
@@ -162,7 +162,7 @@
       const unmatchedCitations: string[] = [];
 
       for (const citation of pendingCitations) {
-        const results = await searchCrossrefWorks(citation.text);
+        const results = await searchAcademicWorks(citation.text);
         if (!findCitationMatches(citation.text, results).length) {
           unmatchedCitations.push(citation.text);
         }
@@ -223,7 +223,7 @@
     sourceSearchResults = [];
 
     try {
-      sourceSearchResults = await searchCrossrefWorks(query);
+      sourceSearchResults = await searchAcademicWorks(query);
       sourceSearchResultsQuery = query;
     } catch (reason: unknown) {
       sourceSearchError = reason instanceof Error ? reason.message : String(reason);
