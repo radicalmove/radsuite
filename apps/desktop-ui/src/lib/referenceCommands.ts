@@ -13,6 +13,11 @@ export type UpdateCourseReferenceInput = {
   notes?: string | null;
 };
 
+export type MergeCourseReferencesInput = {
+  primary_reference_id: string;
+  merge_reference_ids: string[];
+};
+
 function trimmedOrNull(value: string | null | undefined): string | null {
   return value?.trim() || null;
 }
@@ -57,6 +62,17 @@ export function archiveCourseReference(
   return invoke<CourseReferenceSummary>("archive_course_reference", {
     request: {
       reference_id: referenceId,
+    },
+  });
+}
+
+export function mergeCourseReferences(
+  input: MergeCourseReferencesInput,
+): Promise<CourseReferenceSummary> {
+  return invoke<CourseReferenceSummary>("merge_course_references", {
+    request: {
+      primary_reference_id: input.primary_reference_id,
+      merge_reference_ids: input.merge_reference_ids,
     },
   });
 }

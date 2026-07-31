@@ -16,8 +16,8 @@ use radsuite_desktop::{
     CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
     ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
     ListModuleReadingsRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
-    ListSavedReviewsRequest, ModuleReadingError, ModuleReadingExportError,
-    ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
+    ListSavedReviewsRequest, MergeCourseReferencesRequest, ModuleReadingError,
+    ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
     RadciteArchiveItemKind, RadciteModuleError, RadciteProjectError,
     RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
@@ -30,7 +30,7 @@ use radsuite_desktop::{
     create_radcite_project, export_course_references, export_module_readings, get_app_status,
     link_citation_to_reference_for_review, list_course_references, list_module_readings,
     list_radcite_archive, list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
-    load_saved_radcite_review, mark_paragraph_resolved_for_review,
+    load_saved_radcite_review, mark_paragraph_resolved_for_review, merge_course_references,
     preview_module_readings_csv_import, preview_module_readings_import,
     preview_module_readings_pdf_import, restore_radcite_archive_item, restore_radcite_project,
     save_module_readings_import, update_course_reference, update_module_reading,
@@ -847,6 +847,87 @@ async fn course_reference_update_commands_validate_input() {
         missing_archive,
         CourseReferenceError::MissingReference(reference_id) if reference_id == missing_reference_id
     ));
+}
+
+#[tokio::test]
+async fn course_references_can_be_merged_without_losing_citation_links() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_minimal_docx("desktop-merge-reference.docx");
+
+    let analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: None,
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("merge-reference.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse docx for review");
+    let citation_id = analysis.paragraphs[0].citations[0].id;
+
+    let primary = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2020). Worked examples. Learning Press.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add primary course reference");
+    let duplicate = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2020). Worked examples. Learning Press, second entry."
+                .to_string(),
+            notes: Some("Imported from the module document".to_string()),
+        },
+    )
+    .await
+    .expect("add duplicate course reference");
+
+    link_citation_to_reference_for_review(
+        &state,
+        LinkCitationReferenceRequest {
+            document_id: analysis.document_id,
+            citation_id,
+            reference_entry_id: duplicate.id,
+        },
+    )
+    .await
+    .expect("link citation to duplicate");
+
+    let merged = merge_course_references(
+        &state,
+        MergeCourseReferencesRequest {
+            primary_reference_id: primary.id,
+            merge_reference_ids: vec![duplicate.id],
+        },
+    )
+    .await
+    .expect("merge course references");
+
+    assert_eq!(merged.id, primary.id);
+    assert_eq!(
+        merged.notes.as_deref(),
+        Some("Imported from the module document")
+    );
+
+    let loaded = load_saved_radcite_review(&state, analysis.document_id)
+        .await
+        .expect("load saved review");
+    assert_eq!(
+        loaded.paragraphs[0].citations[0].reference_entry_id,
+        Some(primary.id)
+    );
+
+    let references = list_course_references(&state, ListCourseReferencesRequest::default())
+        .await
+        .expect("list merged course references");
+    assert_eq!(references.len(), 1);
+    assert_eq!(references[0].id, primary.id);
 }
 
 #[tokio::test]

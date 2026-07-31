@@ -643,6 +643,95 @@ async fn paragraph_citation_can_be_linked_to_reference_entry() {
 }
 
 #[tokio::test]
+async fn course_reference_merge_reassigns_citations_and_archives_duplicates() {
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect("sqlite::memory:")
+        .await
+        .expect("connect");
+    migrate(&pool).await.expect("migrate");
+
+    let project_repo = SqliteProjectRepository::new(pool.clone());
+    let project = Project::new("CRJU150", "Legal Method", UserId::new());
+    project_repo
+        .insert_project(&project)
+        .await
+        .expect("insert project");
+
+    let reference_repo = SqliteReferenceEntryRepository::new(pool.clone());
+    let mut primary = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
+    primary.apa_citation = Some("Smith, J. (2020). Worked examples. Learning Press.".to_string());
+    reference_repo
+        .insert_reference_entry(&primary)
+        .await
+        .expect("insert primary reference");
+
+    let mut duplicate = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
+    duplicate.apa_citation = Some("Smith, J. (2020). Worked examples. Learning Press.".to_string());
+    duplicate.title = Some("Worked examples".to_string());
+    duplicate.notes = Some("Imported from the module document".to_string());
+    reference_repo
+        .insert_reference_entry(&duplicate)
+        .await
+        .expect("insert duplicate reference");
+
+    let document_repo = SqliteCitationDocumentRepository::new(pool);
+    let document = Document::new(project.id, "lesson-1.docx", DocumentFileType::Docx);
+    let paragraph = Paragraph::new(document.id, 0, "Smith (2020) explains worked examples.");
+    let citation = Citation::new(paragraph.id, "Smith (2020)", 0, 12);
+    document_repo
+        .insert_document_analysis(
+            &document,
+            std::slice::from_ref(&paragraph),
+            std::slice::from_ref(&citation),
+        )
+        .await
+        .expect("insert document analysis");
+    document_repo
+        .link_citation_to_reference(citation.id, duplicate.id)
+        .await
+        .expect("link citation to duplicate");
+
+    primary.title = duplicate.title.clone();
+    primary.notes = duplicate.notes.clone();
+    reference_repo
+        .merge_reference_entries(&primary, &[duplicate.id])
+        .await
+        .expect("merge course references");
+
+    let loaded_primary = reference_repo
+        .load_reference_entry(primary.id)
+        .await
+        .expect("load primary reference")
+        .expect("primary reference exists");
+    assert_eq!(loaded_primary.title, Some("Worked examples".to_string()));
+    assert_eq!(
+        loaded_primary.notes,
+        Some("Imported from the module document".to_string())
+    );
+
+    let loaded = document_repo
+        .load_document_analysis(document.id)
+        .await
+        .expect("load document")
+        .expect("document exists");
+    assert_eq!(loaded.citations[0].reference_entry_id, Some(primary.id));
+    assert!(
+        reference_repo
+            .load_reference_entry(duplicate.id)
+            .await
+            .expect("load archived duplicate")
+            .is_none()
+    );
+    let archived = reference_repo
+        .list_archived_reference_entries_for_project(project.id, ReferenceEntryType::Reference)
+        .await
+        .expect("list archived duplicates");
+    assert_eq!(archived.len(), 1);
+    assert_eq!(archived[0].id, duplicate.id);
+}
+
+#[tokio::test]
 async fn radcite_review_actions_are_persisted() {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)

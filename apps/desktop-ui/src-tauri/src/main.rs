@@ -8,15 +8,16 @@ use radsuite_desktop::{
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, ImportRadcastAudioRequest,
     LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
     ListRadcastAudioRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
-    ListSavedReviewsRequest, LoadSavedReviewRequest, ModuleReadingImportCandidateSummary,
-    ModuleReadingSummary, ModuleReadingsExport, ModuleReadingsPdfImportPreview,
-    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
-    PreviewModuleReadingsPdfImportRequest, ProcessRadcastAudioRequest, RadcastAudioListing,
-    RadcastAudioOutput, RadcastAudioSource, RadcastCapabilityStatus, RadcastJobStatus,
-    RadciteArchiveItem, RadciteProjectSummary, RestoreRadciteArchiveItemRequest,
-    RestoreRadciteProjectRequest, SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest,
-    SavedRadciteReviewSummary, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteModuleRequest,
+    ListSavedReviewsRequest, LoadSavedReviewRequest, MergeCourseReferencesRequest,
+    ModuleReadingImportCandidateSummary, ModuleReadingSummary, ModuleReadingsExport,
+    ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
+    PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
+    ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
+    RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem, RadciteProjectSummary,
+    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
+    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -265,6 +266,16 @@ async fn archive_course_reference(
 }
 
 #[tauri::command]
+async fn merge_course_references(
+    state: tauri::State<'_, DesktopState>,
+    request: MergeCourseReferencesRequest,
+) -> Result<CourseReferenceSummary, String> {
+    radsuite_desktop::merge_course_references(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn list_radcite_modules(
     state: tauri::State<'_, DesktopState>,
     request: Option<ListRadciteModulesRequest>,
@@ -478,6 +489,7 @@ fn main() {
             add_course_reference,
             update_course_reference,
             archive_course_reference,
+            merge_course_references,
             list_radcite_modules,
             add_radcite_module,
             update_radcite_module,
