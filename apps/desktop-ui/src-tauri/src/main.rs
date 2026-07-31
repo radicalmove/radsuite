@@ -1,7 +1,7 @@
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
-    AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
+    AnalysePdfRequest, AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
     ArchiveRadciteModuleRequest, CourseModuleSummary, CourseReferenceSummary,
     CourseReferencesExport, CreateRadciteProjectRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, LinkCitationReferenceRequest,
@@ -35,6 +35,16 @@ async fn analyse_docx_for_review(
     request: AnalyseDocxRequest,
 ) -> Result<AnalyseDocxReviewResponse, String> {
     radsuite_desktop::analyse_docx_for_review(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn analyse_pdf_for_review(
+    state: tauri::State<'_, DesktopState>,
+    request: AnalysePdfRequest,
+) -> Result<AnalyseDocxReviewResponse, String> {
+    radsuite_desktop::analyse_pdf_for_review(&state, request)
         .await
         .map_err(|error| error.to_string())
 }
@@ -309,6 +319,7 @@ fn main() {
             get_app_status,
             analyse_docx_path,
             analyse_docx_for_review,
+            analyse_pdf_for_review,
             list_radcite_projects,
             create_radcite_project,
             list_saved_radcite_reviews,

@@ -149,7 +149,9 @@ fn collect_pdf_files(
     Ok(())
 }
 
-fn extract_pdf_text_lines(path: &Path) -> Result<Vec<String>, PdfReadingExtractionError> {
+pub(crate) fn extract_pdf_text_lines(
+    path: &Path,
+) -> Result<Vec<String>, PdfReadingExtractionError> {
     let bytes = fs::read(path)?;
     let mut lines = extract_pdf_literal_text_lines(&bytes);
     for stream in extract_flate_streams(&bytes) {

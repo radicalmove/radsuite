@@ -10,7 +10,7 @@ use radsuite_core::{
 use radsuite_db::{ReferenceEntryRepository, SqliteReferenceEntryRepository, migrate};
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
-    AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AppPaths,
+    AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AnalysePdfRequest, AppPaths,
     ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteModuleRequest,
     CourseReferenceError, CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
     ExportModuleReadingsRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
@@ -21,11 +21,12 @@ use radsuite_desktop::{
     SaveModuleReadingsImportRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
     UpdateParagraphReviewRequest, UpdateRadciteModuleRequest, add_course_reference,
     add_manual_citation_for_review, add_module_reading, add_radcite_module,
-    analyse_docx_for_review, analyse_docx_path, archive_course_reference, archive_module_reading,
-    archive_radcite_module, create_radcite_project, export_course_references,
-    export_module_readings, get_app_status, link_citation_to_reference_for_review,
-    list_course_references, list_module_readings, list_radcite_modules, list_radcite_projects,
-    list_saved_radcite_reviews, load_saved_radcite_review, mark_paragraph_resolved_for_review,
+    analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
+    archive_module_reading, archive_radcite_module, create_radcite_project,
+    export_course_references, export_module_readings, get_app_status,
+    link_citation_to_reference_for_review, list_course_references, list_module_readings,
+    list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
+    load_saved_radcite_review, mark_paragraph_resolved_for_review,
     preview_module_readings_csv_import, preview_module_readings_import,
     preview_module_readings_pdf_import, save_module_readings_import, update_course_reference,
     update_module_reading, update_radcite_module, verify_paragraph_citations_for_review,
@@ -338,6 +339,43 @@ async fn analyse_docx_for_review_returns_ordered_paragraphs_and_citations() {
     assert!(!response.paragraphs[0].needs_citation);
     assert_eq!(response.paragraphs[1].order_index, 1);
     assert!(response.paragraphs[1].needs_citation);
+}
+
+#[tokio::test]
+async fn analyse_pdf_for_review_persists_ordered_paragraphs_and_citations() {
+    let state = desktop_state_with_migrated_pool().await;
+    let path = write_readings_import_pdf(
+        "desktop-review-analysis.pdf",
+        &[
+            "Smith (2020) explains worked examples.",
+            "A 2021 survey reported that 64 percent of respondents changed their study habits.",
+        ],
+    );
+
+    let response = analyse_pdf_for_review(
+        &state,
+        AnalysePdfRequest {
+            project_id: None,
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("review-source.pdf".to_string()),
+        },
+    )
+    .await
+    .expect("analyse PDF for review");
+
+    assert_eq!(response.original_filename, "review-source.pdf");
+    assert_eq!(response.summary.paragraph_count, 2);
+    assert_eq!(response.summary.citation_count, 1);
+    assert_eq!(response.summary.cited_paragraph_count, 1);
+    assert_eq!(response.summary.missing_citation_count, 1);
+    assert_eq!(response.paragraphs.len(), 2);
+    assert_eq!(response.paragraphs[0].citations[0].text, "Smith (2020)");
+
+    let saved = list_saved_radcite_reviews(&state, ListSavedReviewsRequest { project_id: None })
+        .await
+        .expect("list saved PDF review");
+    assert_eq!(saved.len(), 1);
+    assert_eq!(saved[0].original_filename, "review-source.pdf");
 }
 
 #[tokio::test]

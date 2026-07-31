@@ -75,6 +75,7 @@
   let projectsError = $state<string | null>(null);
   let selectedProjectId = $state(fallbackProject.id);
   let activeArea = $state<ToolArea>("documents");
+  let documentSource = $state<"docx" | "pdf">("docx");
   let sharedDocxPath = $state("");
   let analysedDocxPath = $state("");
   let analysisResult = $state<AnalyseDocxReviewResponse | null>(null);
@@ -117,7 +118,7 @@
     analysisResult = result;
     selectedParagraphId = null;
     reviewActionError = null;
-    if (result) {
+    if (result && documentSource === "docx") {
       analysedDocxPath = sharedDocxPath.trim();
     } else {
       analysedDocxPath = "";
@@ -125,6 +126,12 @@
     if (result) {
       void refreshSavedReviews();
     }
+  }
+
+  function handleDocumentSourceChange(source: "docx" | "pdf") {
+    documentSource = source;
+    sharedDocxPath = "";
+    analysedDocxPath = "";
   }
 
   function selectedProjectCommandId(): string | null {
@@ -635,6 +642,7 @@
     {#if activeArea === "documents"}
       <RadciteDocumentsWorkspace
         selectedProjectId={selectedProjectCommandId()}
+        {documentSource}
         docxPath={sharedDocxPath}
         {activeFilter}
         {analysisResult}
@@ -649,6 +657,7 @@
           selectedParagraphId = null;
         }}
         onAnalysisResult={handleAnalysisResult}
+        onDocumentSourceChange={handleDocumentSourceChange}
         onDocxPathChange={(path) => {
           sharedDocxPath = path;
         }}
