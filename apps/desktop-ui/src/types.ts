@@ -139,6 +139,42 @@ export type RadcastJobStatus = {
   error: string | null;
 };
 
+export type RadtTsQuality = "fast" | "high";
+
+export type RadtTsChunkMode = "single" | "sentence";
+
+export type RadtTsOutputFormat = "mp3" | "wav";
+
+export type RadtTsCapabilityStatus = {
+  available: boolean;
+  executable: string | null;
+  detail: string;
+};
+
+export type RadtTsJobState = "starting" | "running" | "completed" | "failed" | "cancelled";
+
+export type RadtTsProcessingPhase = "preparing" | "generating" | "saving_output";
+
+export type RadtTsAudioOutput = {
+  id: string;
+  filename: string;
+  path: string;
+  output_format: RadtTsOutputFormat;
+  caption_paths: string[];
+  duration_seconds: number | null;
+  created_at: string | null;
+};
+
+export type RadtTsJobStatus = {
+  id: string;
+  project_id: string;
+  state: RadtTsJobState;
+  phase: RadtTsProcessingPhase;
+  percent: number | null;
+  output: RadtTsAudioOutput | null;
+  error: string | null;
+};
+
 export type ParagraphFilter =
   | "all"
   | "citation-total"

@@ -8,16 +8,17 @@ use radsuite_desktop::{
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, ImportRadcastAudioRequest,
     LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
     ListRadcastAudioRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
-    ListSavedReviewsRequest, LoadSavedReviewRequest, MergeCourseReferencesRequest,
-    ModuleReadingImportCandidateSummary, ModuleReadingSummary, ModuleReadingsExport,
-    ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
+    ListRadtTsOutputsRequest, ListSavedReviewsRequest, LoadSavedReviewRequest,
+    MergeCourseReferencesRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
+    ModuleReadingsExport, ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
     ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
     RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem, RadciteProjectSummary,
-    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
-    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
-    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
+    RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing, RestoreRadciteArchiveItemRequest,
+    RestoreRadciteProjectRequest, SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest,
+    SavedRadciteReviewSummary, StartRadtTsSynthesisRequest, UpdateCourseReferenceRequest,
+    UpdateModuleReadingRequest, UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest,
+    UpdateRadciteModuleRequest,
 };
 
 #[tauri::command]
@@ -134,6 +135,43 @@ fn get_radcast_audio_job(
 #[tauri::command]
 fn get_radcast_capabilities() -> RadcastCapabilityStatus {
     radsuite_desktop::get_radcast_capabilities()
+}
+
+#[tauri::command]
+fn get_radt_ts_capabilities() -> RadtTsCapabilityStatus {
+    radsuite_desktop::get_radt_ts_capabilities()
+}
+
+#[tauri::command]
+async fn list_radt_ts_outputs(
+    state: tauri::State<'_, DesktopState>,
+    request: ListRadtTsOutputsRequest,
+) -> Result<RadtTsOutputListing, String> {
+    radsuite_desktop::list_radt_ts_outputs(&state, request).await
+}
+
+#[tauri::command]
+async fn start_radt_ts_synthesis(
+    state: tauri::State<'_, DesktopState>,
+    request: StartRadtTsSynthesisRequest,
+) -> Result<RadtTsJobStatus, String> {
+    radsuite_desktop::start_radt_ts_synthesis(&state, request).await
+}
+
+#[tauri::command]
+fn get_radt_ts_job(
+    state: tauri::State<'_, DesktopState>,
+    job_id: String,
+) -> Result<RadtTsJobStatus, String> {
+    radsuite_desktop::get_radt_ts_job(&state, job_id)
+}
+
+#[tauri::command]
+fn cancel_radt_ts_job(
+    state: tauri::State<'_, DesktopState>,
+    job_id: String,
+) -> Result<RadtTsJobStatus, String> {
+    radsuite_desktop::cancel_radt_ts_job(&state, job_id)
 }
 
 #[tauri::command]
@@ -468,6 +506,7 @@ async fn link_radcite_citation_reference(
 fn main() {
     let state = tauri::async_runtime::block_on(DesktopState::for_app("RADsuite"))
         .expect("initialize RADsuite desktop state");
+    let shutdown_state = state.clone();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -486,6 +525,11 @@ fn main() {
             cancel_radcast_audio,
             get_radcast_audio_job,
             get_radcast_capabilities,
+            get_radt_ts_capabilities,
+            list_radt_ts_outputs,
+            start_radt_ts_synthesis,
+            get_radt_ts_job,
+            cancel_radt_ts_job,
             list_radcite_projects,
             create_radcite_project,
             archive_radcite_project,
@@ -520,6 +564,14 @@ fn main() {
             add_radcite_manual_citation,
             link_radcite_citation_reference
         ])
-        .run(tauri::generate_context!())
-        .expect("failed to run RADsuite desktop app");
+        .build(tauri::generate_context!())
+        .expect("failed to build RADsuite desktop app")
+        .run(move |_app, event| {
+            if matches!(
+                event,
+                tauri::RunEvent::ExitRequested { .. } | tauri::RunEvent::Exit
+            ) {
+                radsuite_desktop::shutdown_radt_ts_jobs(&shutdown_state);
+            }
+        });
 }

@@ -15,6 +15,7 @@ use thiserror::Error;
 use crate::AppPaths;
 
 use crate::radcast::{RadcastAudioOutput, RadcastProcessingPhase, RadcastProcessingProgress};
+use crate::radt_ts::{RadtTsChildHandle, RadtTsJobStatus};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -46,6 +47,10 @@ pub struct DesktopState {
     pub database_pool: SqlitePool,
     pub radcast_jobs: Arc<Mutex<HashMap<String, RadcastJobStatus>>>,
     pub radcast_cancel_requests: Arc<Mutex<HashSet<String>>>,
+    pub radt_ts_jobs: Arc<Mutex<HashMap<String, RadtTsJobStatus>>>,
+    pub radt_ts_children: Arc<Mutex<HashMap<String, RadtTsChildHandle>>>,
+    pub radt_ts_cancel_requests: Arc<Mutex<HashSet<String>>>,
+    pub radt_ts_active_projects: Arc<Mutex<HashSet<String>>>,
 }
 
 #[derive(Debug, Error)]
@@ -126,6 +131,10 @@ impl DesktopState {
             database_pool,
             radcast_jobs: Arc::new(Mutex::new(HashMap::new())),
             radcast_cancel_requests: Arc::new(Mutex::new(HashSet::new())),
+            radt_ts_jobs: Arc::new(Mutex::new(HashMap::new())),
+            radt_ts_children: Arc::new(Mutex::new(HashMap::new())),
+            radt_ts_cancel_requests: Arc::new(Mutex::new(HashSet::new())),
+            radt_ts_active_projects: Arc::new(Mutex::new(HashSet::new())),
         }
     }
 }
