@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
@@ -7,7 +8,7 @@ use std::{
 
 use radsuite_db::migrate;
 use radsuite_desktop::radcast::{
-    RadcastProcessingPhase, RadcastProjectSettings,
+    RadcastProcessingPhase, RadcastProjectSettings, RadcastTrimRange,
     process_audio_with_processors_and_enhancement_with_progress,
 };
 use radsuite_desktop::{
@@ -100,6 +101,16 @@ async fn radcast_import_process_and_list_are_project_scoped() {
     .expect("list default project audio");
     assert_eq!(default_audio.sources.len(), 1);
     assert_eq!(default_audio.outputs.len(), 1);
+    assert_eq!(
+        default_audio
+            .settings
+            .trim_ranges_by_source_id
+            .get(&source.id),
+        Some(&RadcastTrimRange {
+            clip_start_seconds: 2.0,
+            clip_end_seconds: 8.0,
+        })
+    );
 
     let other_audio = list_radcast_audio(
         &state,
@@ -348,6 +359,13 @@ async fn radcast_project_settings_are_persisted_in_local_project_storage() {
         max_silence_seconds: Some(1.5),
         remove_filler_words: true,
         filler_removal_mode: FillerRemovalMode::Normal,
+        trim_ranges_by_source_id: HashMap::from([(
+            "source-lecture".to_string(),
+            RadcastTrimRange {
+                clip_start_seconds: 12.5,
+                clip_end_seconds: 98.25,
+            },
+        )]),
     };
 
     save_radcast_settings(

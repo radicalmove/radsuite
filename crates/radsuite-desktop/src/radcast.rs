@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -88,6 +89,12 @@ pub struct ProcessRadcastAudioRequest {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RadcastTrimRange {
+    pub clip_start_seconds: f64,
+    pub clip_end_seconds: f64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RadcastProjectSettings {
     #[serde(default = "default_output_format")]
     pub output_format: AudioOutputFormat,
@@ -111,6 +118,8 @@ pub struct RadcastProjectSettings {
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
     pub filler_removal_mode: FillerRemovalMode,
+    #[serde(default)]
+    pub trim_ranges_by_source_id: HashMap<String, RadcastTrimRange>,
 }
 
 impl Default for RadcastProjectSettings {
@@ -127,6 +136,7 @@ impl Default for RadcastProjectSettings {
             max_silence_seconds: None,
             remove_filler_words: false,
             filler_removal_mode: default_filler_removal_mode(),
+            trim_ranges_by_source_id: HashMap::new(),
         }
     }
 }
@@ -145,6 +155,7 @@ impl RadcastProjectSettings {
             max_silence_seconds: request.max_silence_seconds,
             remove_filler_words: request.remove_filler_words,
             filler_removal_mode: request.filler_removal_mode,
+            trim_ranges_by_source_id: HashMap::new(),
         }
     }
 }
@@ -390,13 +401,25 @@ where
         percent: 5,
     });
     let mut manifest = load_manifest(data_dir, project_id)?;
-    let project_settings = RadcastProjectSettings::from_request(&request);
     let source = manifest
         .sources
         .iter()
         .find(|source| source.id == request.source_id)
         .cloned()
         .ok_or_else(|| RadcastStorageError::MissingSource(request.source_id.clone()))?;
+    let mut project_settings = RadcastProjectSettings::from_request(&request);
+    project_settings.trim_ranges_by_source_id = manifest.settings.trim_ranges_by_source_id.clone();
+    if let (Some(clip_start_seconds), Some(clip_end_seconds)) =
+        (request.clip_start_seconds, request.clip_end_seconds)
+    {
+        project_settings.trim_ranges_by_source_id.insert(
+            request.source_id.clone(),
+            RadcastTrimRange {
+                clip_start_seconds,
+                clip_end_seconds,
+            },
+        );
+    }
     let source_path = PathBuf::from(&source.path);
     if !source_path.is_file() {
         return Err(RadcastStorageError::MissingSource(source.id));
