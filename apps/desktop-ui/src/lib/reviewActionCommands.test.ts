@@ -32,8 +32,12 @@ function analysis(paragraphs: ReviewParagraph[]): AnalyseDocxReviewResponse {
     project_title: "RADcite Functional Testing",
     document_id: "document-1",
     original_filename: "source.docx",
+    display_name: "source.docx",
     source_path: "/app-data/documents/project-1/source.docx",
     source_file_type: "docx",
+    doc_variant: "content",
+    doc_number: null,
+    exclude_from_references: false,
     summary: {
       paragraph_count: paragraphs.length,
       citation_count: paragraphs.reduce((count, item) => count + item.citations.length, 0),

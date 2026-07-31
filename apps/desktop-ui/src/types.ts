@@ -38,6 +38,8 @@ export type ToolArea =
 
 export type DocumentSource = "docx" | "pdf";
 
+export type RadciteDocumentVariant = "content" | "rise" | "other";
+
 export type AudioOutputFormat = "mp3" | "wav";
 
 export type CaptionFormat = "srt" | "vtt";
@@ -189,8 +191,12 @@ export type AnalyseDocxReviewResponse = {
   project_title: string;
   document_id: string;
   original_filename: string;
+  display_name: string;
   source_path: string | null;
   source_file_type: DocumentSource;
+  doc_variant: RadciteDocumentVariant;
+  doc_number: number | null;
+  exclude_from_references: boolean;
   summary: AnalyseDocxSummary;
   paragraphs: ReviewParagraph[];
 };
@@ -199,8 +205,12 @@ export type SavedRadciteReviewSummary = {
   document_id: string;
   project_id: string;
   original_filename: string;
+  display_name: string;
   source_path: string | null;
   source_file_type: DocumentSource;
+  doc_variant: RadciteDocumentVariant;
+  doc_number: number | null;
+  exclude_from_references: boolean;
   paragraph_count: number;
   citation_count: number;
   missing_citation_count: number;

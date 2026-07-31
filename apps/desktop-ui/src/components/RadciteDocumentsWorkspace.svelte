@@ -7,6 +7,14 @@
     hasSuggestedCitation,
     hasUnlinkedCitation,
   } from "../lib/paragraphFilters";
+  import {
+    applyDocumentSave,
+    buildDocumentUpdateInput,
+    createDocumentEditorDraft,
+    retainDocumentEditorDraftAfterFailure,
+    type DocumentEditorDraft,
+  } from "../lib/documentEditorState";
+  import type { UpdateRadciteDocumentInput } from "../lib/documentCommands";
   import { canUseSavedReviewForReadings } from "../lib/savedReviewCommands";
   import type {
     AnalyseDocxReviewResponse,
@@ -36,6 +44,9 @@
     onOpenReadings: () => void | Promise<void>;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
     onUseForReadings: (review: SavedRadciteReviewSummary) => void | Promise<void>;
+    onUpdateDocument: (
+      input: UpdateRadciteDocumentInput,
+    ) => Promise<SavedRadciteReviewSummary>;
     onArchiveDocument: (documentId: string) => void | Promise<void>;
     onRefreshSavedReviews: () => void | Promise<void>;
     onSelectParagraph: (paragraphId: string | null) => void;
@@ -60,6 +71,7 @@
     onOpenReadings,
     onLoadSavedReview,
     onUseForReadings,
+    onUpdateDocument,
     onArchiveDocument,
     onRefreshSavedReviews,
     onSelectParagraph,
@@ -67,6 +79,10 @@
 
   let analysisLoading = $state(false);
   let analysisError = $state<string | null>(null);
+  let editingDocumentId = $state<string | null>(null);
+  let editorDraft = $state<DocumentEditorDraft | null>(null);
+  let editorError = $state<string | null>(null);
+  let editorSaving = $state(false);
   let analysisDisabled = $derived(analysisLoading || docxPath.trim().length === 0);
   let canOpenReadings = $derived(
     documentSource === "docx" && readingsDocxPath.trim().length > 0,
@@ -88,6 +104,43 @@
 
   function reviewStats(review: SavedRadciteReviewSummary): string {
     return `${review.paragraph_count} paragraphs · ${review.citation_count} citations · ${review.missing_citation_count} flagged`;
+  }
+
+  function beginDocumentEdit(review: SavedRadciteReviewSummary) {
+    editingDocumentId = review.document_id;
+    editorDraft = createDocumentEditorDraft(review);
+    editorError = null;
+  }
+
+  function cancelDocumentEdit() {
+    editingDocumentId = null;
+    editorDraft = null;
+    editorError = null;
+  }
+
+  async function saveDocumentEdit(review: SavedRadciteReviewSummary) {
+    const draft = editorDraft;
+    if (!draft || editorSaving) {
+      return;
+    }
+
+    editorSaving = true;
+    editorError = null;
+    try {
+      const saved = await onUpdateDocument(
+        buildDocumentUpdateInput(review, draft, selectedProjectId),
+      );
+      const result = applyDocumentSave(draft, saved);
+      editingDocumentId = null;
+      editorDraft = result.draft;
+      editorError = result.error;
+    } catch (reason: unknown) {
+      const result = retainDocumentEditorDraftAfterFailure(draft, toErrorMessage(reason));
+      editorDraft = result.draft;
+      editorError = result.error;
+    } finally {
+      editorSaving = false;
+    }
   }
 
   function handleDocumentPathInput(event: Event) {
@@ -167,7 +220,10 @@
     </div>
     {#if analysisResult}
       <div class="document-title-block">
-        <strong>{analysisResult.original_filename}</strong>
+        <strong>{analysisResult.display_name}</strong>
+        {#if analysisResult.display_name !== analysisResult.original_filename}
+          <small>{analysisResult.original_filename}</small>
+        {/if}
         <span>{analysisResult.project_title}</span>
         {#if canOpenReadings}
           <button
@@ -268,7 +324,10 @@
               onclick={() => void onLoadSavedReview(review.document_id)}
             >
               <span>
-                <strong>{review.original_filename}</strong>
+                <strong>{review.display_name}</strong>
+                {#if review.display_name !== review.original_filename}
+                  <small class="saved-review-source">{review.original_filename}</small>
+                {/if}
                 <small>{reviewStats(review)}</small>
               </span>
               <span class="saved-review-action">Open</span>
@@ -284,6 +343,14 @@
                 </button>
               {/if}
               <button
+                class="secondary-button compact-button"
+                type="button"
+                aria-label={`Edit ${review.display_name}`}
+                onclick={() => beginDocumentEdit(review)}
+              >
+                Edit
+              </button>
+              <button
                 class="secondary-button compact-button danger-button"
                 type="button"
                 onclick={() => void onArchiveDocument(review.document_id)}
@@ -291,6 +358,89 @@
                 Archive
               </button>
             </div>
+            {#if editingDocumentId === review.document_id && editorDraft}
+              <div class="saved-review-editor" aria-label={`Edit ${review.display_name}`}>
+                <div class="saved-review-editor-grid">
+                  <label>
+                    <span>Display name</span>
+                    <input
+                      type="text"
+                      value={editorDraft.display_name}
+                      oninput={(event) => {
+                        if (editorDraft) {
+                          editorDraft.display_name = (event.currentTarget as HTMLInputElement).value;
+                        }
+                      }}
+                    />
+                  </label>
+                  <label>
+                    <span>Document number</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={editorDraft.doc_number}
+                      oninput={(event) => {
+                        if (editorDraft) {
+                          editorDraft.doc_number = (event.currentTarget as HTMLInputElement).value;
+                        }
+                      }}
+                    />
+                  </label>
+                  <label>
+                    <span>Document type</span>
+                    <select
+                      value={editorDraft.doc_variant}
+                      onchange={(event) => {
+                        if (editorDraft) {
+                          editorDraft.doc_variant = (event.currentTarget as HTMLSelectElement)
+                            .value as DocumentEditorDraft["doc_variant"];
+                        }
+                      }}
+                    >
+                      <option value="content">Content</option>
+                      <option value="rise">RISE</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </label>
+                  <label class="saved-review-exclude">
+                    <input
+                      type="checkbox"
+                      checked={editorDraft.exclude_from_references}
+                      onchange={(event) => {
+                        if (editorDraft) {
+                          editorDraft.exclude_from_references = (
+                            event.currentTarget as HTMLInputElement
+                          ).checked;
+                        }
+                      }}
+                    />
+                    <span>Exclude from reference output</span>
+                  </label>
+                </div>
+                {#if editorError}
+                  <div class="notice saved-review-editor-error">{editorError}</div>
+                {/if}
+                <div class="saved-review-editor-actions">
+                  <button
+                    class="secondary-button compact-button"
+                    type="button"
+                    disabled={editorSaving}
+                    onclick={cancelDocumentEdit}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    class="primary-button compact-button"
+                    type="button"
+                    disabled={editorSaving}
+                    onclick={() => void saveDocumentEdit(review)}
+                  >
+                    {editorSaving ? "Saving" : "Save changes"}
+                  </button>
+                </div>
+              </div>
+            {/if}
           </div>
         {/each}
       </div>
