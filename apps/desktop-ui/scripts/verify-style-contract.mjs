@@ -30,6 +30,14 @@ const readingsWorkspace = readFileSync(
   "utf8",
 );
 
+const userFacingWorkspaces = [
+  ["documents workspace", workspace],
+  ["citation actions", actionsPanel],
+  ["references workspace", referencesWorkspace],
+  ["readings workspace", readingsWorkspace],
+  ["exports workspace", exportsWorkspace],
+];
+
 const checks = [
   ["RADcite red token", "--radcite-red: #ce3e2e"],
   ["RADcite black token", "--radcite-black:"],
@@ -170,6 +178,12 @@ for (const needle of [
 for (const obsolete of ["Local DB ready", "Local DB offline", "Sync configured", "Sync off"]) {
   if (app.includes(obsolete)) {
     missing.push(`app removes obsolete status copy: ${obsolete}`);
+  }
+}
+
+for (const [label, content] of userFacingWorkspaces) {
+  if (content.includes("Local DB")) {
+    missing.push(`${label} removes technical Local DB copy`);
   }
 }
 
