@@ -18,12 +18,19 @@ use radsuite_db::{
     ReferenceEntryRepository, SqliteCitationDocumentRepository, SqliteCourseModuleRepository,
     SqliteProjectRepository, SqliteReferenceEntryRepository,
 };
+use radsuite_engines::AudioProcessor;
 use radsuite_engines::EngineStatus;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::DesktopState;
+
+pub use crate::radcast::{
+    ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
+    RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastStorageError,
+};
+pub use radsuite_engines::AudioOutputFormat;
 
 const LOCAL_RADCITE_PROJECT_CODE: &str = "CRJU150";
 const LOCAL_RADCITE_PROJECT_TITLE: &str = "RADcite Functional Testing";
@@ -438,6 +445,18 @@ pub enum AnalysePdfError {
 }
 
 #[derive(Debug, Error)]
+pub enum RadcastAudioError {
+    #[error("could not load RADcast project {0}")]
+    MissingProject(ProjectId),
+    #[error(transparent)]
+    Database(#[from] DbError),
+    #[error(transparent)]
+    Storage(#[from] RadcastStorageError),
+    #[error("RADcast processing task failed")]
+    ProcessingTask(#[from] tokio::task::JoinError),
+}
+
+#[derive(Debug, Error)]
 pub enum RadciteProjectError {
     #[error("enter a project title before creating it")]
     EmptyTitle,
@@ -561,6 +580,17 @@ impl From<RadciteProjectLookupError> for AnalysePdfError {
     }
 }
 
+impl From<RadciteProjectLookupError> for RadcastAudioError {
+    fn from(error: RadciteProjectLookupError) -> Self {
+        match error {
+            RadciteProjectLookupError::MissingProject(project_id) => {
+                Self::MissingProject(project_id)
+            }
+            RadciteProjectLookupError::Database(error) => Self::Database(error),
+        }
+    }
+}
+
 impl From<RadciteProjectLookupError> for ReviewActionError {
     fn from(error: RadciteProjectLookupError) -> Self {
         match error {
@@ -639,6 +669,59 @@ pub async fn create_radcite_project(
         .await?;
 
     Ok(radcite_project_summary(project))
+}
+
+pub async fn list_radcast_audio(
+    state: &DesktopState,
+    request: ListRadcastAudioRequest,
+) -> Result<RadcastAudioListing, RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    Ok(crate::radcast::list_audio(
+        &state.paths.data_dir,
+        project.id,
+    )?)
+}
+
+pub async fn import_radcast_audio(
+    state: &DesktopState,
+    request: ImportRadcastAudioRequest,
+) -> Result<RadcastAudioSource, RadcastAudioError> {
+    import_radcast_audio_with_processor(state, request, AudioProcessor::default()).await
+}
+
+pub async fn import_radcast_audio_with_processor(
+    state: &DesktopState,
+    request: ImportRadcastAudioRequest,
+    processor: AudioProcessor,
+) -> Result<RadcastAudioSource, RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::import_audio(&data_dir, project.id, request, processor)
+    })
+    .await?
+    .map_err(Into::into)
+}
+
+pub async fn process_radcast_audio(
+    state: &DesktopState,
+    request: ProcessRadcastAudioRequest,
+) -> Result<RadcastAudioOutput, RadcastAudioError> {
+    process_radcast_audio_with_processor(state, request, AudioProcessor::default()).await
+}
+
+pub async fn process_radcast_audio_with_processor(
+    state: &DesktopState,
+    request: ProcessRadcastAudioRequest,
+    processor: AudioProcessor,
+) -> Result<RadcastAudioOutput, RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::process_audio(&data_dir, project.id, request, processor)
+    })
+    .await?
+    .map_err(Into::into)
 }
 
 pub async fn analyse_docx_path(

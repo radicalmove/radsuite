@@ -27,6 +27,35 @@ export type RadciteProjectSummary = {
 
 export type ToolArea = "documents" | "references" | "readings" | "exports" | "radcast" | "radtts";
 
+export type AudioOutputFormat = "mp3" | "wav";
+
+export type RadcastAudioSource = {
+  id: string;
+  original_filename: string;
+  path: string;
+  duration_seconds: number;
+  byte_size: number;
+  created_at: string;
+};
+
+export type RadcastAudioOutput = {
+  id: string;
+  source_id: string;
+  filename: string;
+  path: string;
+  duration_seconds: number;
+  output_format: AudioOutputFormat;
+  cleanup_enabled: boolean;
+  clip_start_seconds: number | null;
+  clip_end_seconds: number | null;
+  created_at: string;
+};
+
+export type RadcastAudioListing = {
+  sources: RadcastAudioSource[];
+  outputs: RadcastAudioOutput[];
+};
+
 export type ParagraphFilter =
   | "all"
   | "citation-total"
