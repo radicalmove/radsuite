@@ -2,8 +2,10 @@ import { describe, expect, test } from "vitest";
 import {
   defaultProjectNavStorageState,
   readProjectNavStorageState,
+  readRadtTsProjectPreferences,
   readThemeStorage,
   writeProjectNavStorageState,
+  writeRadtTsProjectPreferences,
   writeThemeStorage,
   type StorageLike,
 } from "./storage";
@@ -74,5 +76,29 @@ describe("safe local storage helpers", () => {
     expect(readProjectNavStorageState(brokenStorage)).toEqual(defaultProjectNavStorageState);
     expect(() => writeThemeStorage(brokenStorage, "dark")).not.toThrow();
     expect(() => writeProjectNavStorageState(brokenStorage, defaultProjectNavStorageState)).not.toThrow();
+    expect(() => writeRadtTsProjectPreferences(brokenStorage, "project-1", {})).not.toThrow();
+  });
+
+  test("stores RADTTS preferences separately for each project", () => {
+    const storage = memoryStorage();
+    writeRadtTsProjectPreferences(storage, "project-1", {
+      voice: { quality: "high", outputName: "intro" },
+    });
+    writeRadtTsProjectPreferences(storage, "project-2", {
+      transcription: { model: "medium" },
+    });
+
+    expect(readRadtTsProjectPreferences(storage, "project-1")).toEqual({
+      voice: { quality: "high", outputName: "intro" },
+    });
+    expect(readRadtTsProjectPreferences(storage, "project-2")).toEqual({
+      transcription: { model: "medium" },
+    });
+  });
+
+  test("falls back when RADTTS preferences are malformed", () => {
+    const storage = memoryStorage({ radsuiteRadtTsPreferences: "{not-json" });
+    expect(readRadtTsProjectPreferences(storage, "project-1")).toEqual({});
+    expect(readRadtTsProjectPreferences(storage, null)).toEqual({});
   });
 });

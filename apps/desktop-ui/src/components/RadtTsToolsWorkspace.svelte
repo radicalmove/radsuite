@@ -2,6 +2,12 @@
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { open } from "@tauri-apps/plugin-dialog";
+  import {
+    browserStorage,
+    readRadtTsProjectPreferences,
+    writeRadtTsProjectPreferences,
+    type StorageLike,
+  } from "../lib/storage";
   import type {
     RadtTsCapabilityStatus,
     RadtTsMediaJobStatus,
@@ -52,6 +58,9 @@
   let job = $state<RadtTsMediaJobStatus | null>(null);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
+  let preferenceStorage = $state<StorageLike | null>(null);
+  let settingsLoaded = $state(false);
+  let settingsSaveTimer: number | null = null;
 
   let transcriptOutputs = $derived(
     outputs.filter((output) => output.kind === "transcription"),
@@ -63,7 +72,22 @@
 
   $effect(() => {
     selectedProjectId;
+    settingsLoaded = false;
     void refresh();
+  });
+
+  $effect(() => {
+    const projectId = selectedProjectId;
+    if (!settingsLoaded || !projectId || processing) return;
+    const preferences = {
+      transcription: { ...transcription },
+      clip: { ...clip },
+    };
+    if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
+    settingsSaveTimer = window.setTimeout(() => {
+      settingsSaveTimer = null;
+      writeRadtTsProjectPreferences(preferenceStorage, projectId, preferences);
+    }, 500);
   });
 
   function toErrorMessage(reason: unknown): string {
@@ -83,8 +107,13 @@
 
   async function refresh() {
     loading = true;
+    settingsLoaded = false;
     error = null;
     try {
+      preferenceStorage = browserStorage();
+      const preferences = readRadtTsProjectPreferences(preferenceStorage, selectedProjectId);
+      transcription = { ...transcription, ...preferences.transcription };
+      clip = { ...clip, ...preferences.clip };
       capability = await invoke<RadtTsCapabilityStatus>("get_radt_ts_capabilities");
       const listing = await invoke<{ outputs: RadtTsMediaOutput[] }>(
         "list_radt_ts_media_outputs",
@@ -96,6 +125,7 @@
         const segments = latest?.artifacts.find((artifact) => artifact.label === "Timed segments");
         if (segments) clip.segmentsJsonPath = segments.path;
       }
+      settingsLoaded = true;
     } catch (reason: unknown) {
       error = `Could not load transcription tools: ${toErrorMessage(reason)}`;
     } finally {

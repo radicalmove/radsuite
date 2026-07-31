@@ -2,6 +2,12 @@
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { open } from "@tauri-apps/plugin-dialog";
+  import {
+    browserStorage,
+    readRadtTsProjectPreferences,
+    writeRadtTsProjectPreferences,
+    type StorageLike,
+  } from "../lib/storage";
   import type {
     RadtTsAudioOutput,
     RadtTsCapabilityStatus,
@@ -34,6 +40,9 @@
   let cancelling = $state(false);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
+  let preferenceStorage = $state<StorageLike | null>(null);
+  let settingsLoaded = $state(false);
+  let settingsSaveTimer: number | null = null;
   let draft = $state<RadtTsDraft>({
     text: "",
     referenceAudioPath: "",
@@ -52,7 +61,29 @@
 
   $effect(() => {
     selectedProjectId;
+    settingsLoaded = false;
     void refresh();
+  });
+
+  $effect(() => {
+    const projectId = selectedProjectId;
+    if (!settingsLoaded || !projectId || processing) return;
+    const preferences = {
+      voice: {
+        referenceAudioPath: draft.referenceAudioPath,
+        quality: draft.quality,
+        chunkMode: draft.chunkMode,
+        pauseMinSeconds: draft.pauseMinSeconds,
+        pauseMaxSeconds: draft.pauseMaxSeconds,
+        outputFormat: draft.outputFormat,
+        outputName: draft.outputName,
+      },
+    };
+    if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
+    settingsSaveTimer = window.setTimeout(() => {
+      settingsSaveTimer = null;
+      writeRadtTsProjectPreferences(preferenceStorage, projectId, preferences);
+    }, 500);
   });
 
   function toErrorMessage(reason: unknown): string {
@@ -73,13 +104,22 @@
 
   async function refresh() {
     loading = true;
+    settingsLoaded = false;
     error = null;
     try {
+      preferenceStorage = browserStorage();
+      const preferences = readRadtTsProjectPreferences(preferenceStorage, selectedProjectId);
+      draft = {
+        ...draft,
+        ...preferences.voice,
+        acknowledgeVoiceClone: false,
+      };
       capability = await invoke<RadtTsCapabilityStatus>("get_radt_ts_capabilities");
       const listing = await invoke<{ outputs: RadtTsAudioOutput[] }>("list_radt_ts_outputs", {
         request: { project_id: selectedProjectId },
       });
       outputs = listing.outputs;
+      settingsLoaded = true;
     } catch (reason: unknown) {
       error = `Could not load voice generation: ${toErrorMessage(reason)}`;
     } finally {
