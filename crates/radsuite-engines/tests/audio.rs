@@ -7,7 +7,7 @@ use std::{
 
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingError, AudioProcessingRequest, AudioProcessor,
-    AudioTimeInterval,
+    AudioTimeInterval, RADCAST_OPTIMIZED_POSTFILTER,
 };
 
 #[test]
@@ -57,6 +57,26 @@ fn audio_processing_builds_trimmed_cleanup_commands_for_mp3_and_wav() {
     let wav = display_args(&wav);
     assert!(wav.contains(&"pcm_s16le".to_string()));
     assert!(!wav.iter().any(|arg| arg.contains("afftdn")));
+}
+
+#[test]
+fn audio_processing_can_apply_the_radcast_optimized_postfilter() {
+    let args = AudioProcessor::ffmpeg_arguments_with_additional_filter(
+        &request(AudioOutputFormat::Wav),
+        Some(RADCAST_OPTIMIZED_POSTFILTER),
+    )
+    .expect("build RADcast Optimized filter arguments");
+    let args = display_args(&args);
+
+    let filter = args
+        .windows(2)
+        .find(|pair| pair[0] == "-af")
+        .map(|pair| pair[1].as_str())
+        .expect("audio filter");
+    assert!(filter.starts_with("highpass=f=65,equalizer=f=142"));
+    assert!(filter.contains("deesser=i=0.045:m=0.18:f=0.5:s=o"));
+    assert!(filter.contains("loudnorm=I=-20.75:TP=-1.5:LRA=8"));
+    assert!(filter.ends_with("lowpass=f=7550"));
 }
 
 #[test]

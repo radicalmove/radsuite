@@ -9,7 +9,7 @@ use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
     CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest,
     EnhancementModel, EnhancementProcessingRequest, EnhancementProcessor, EnhancementQuality,
-    FillerRemovalMode,
+    FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -553,16 +553,21 @@ where
     let clip_end_seconds = (request.enhancement_model == EnhancementModel::None)
         .then_some(request.clip_end_seconds)
         .flatten();
-    let result = match processor.process(AudioProcessingRequest {
-        input_path: processing_input_path,
-        output_path: output_path.clone(),
-        output_format: request.output_format,
-        clip_start_seconds,
-        clip_end_seconds,
-        max_silence_seconds: request.max_silence_seconds,
-        remove_intervals: removal_intervals,
-        cleanup_enabled: request.cleanup_enabled,
-    }) {
+    let additional_filter = (request.enhancement_model == EnhancementModel::StudioV18)
+        .then_some(RADCAST_OPTIMIZED_POSTFILTER);
+    let result = match processor.process_with_additional_filter(
+        AudioProcessingRequest {
+            input_path: processing_input_path,
+            output_path: output_path.clone(),
+            output_format: request.output_format,
+            clip_start_seconds,
+            clip_end_seconds,
+            max_silence_seconds: request.max_silence_seconds,
+            remove_intervals: removal_intervals,
+            cleanup_enabled: request.cleanup_enabled,
+        },
+        additional_filter,
+    ) {
         Ok(result) => result,
         Err(error) => {
             cleanup_temporary_paths(&temporary_paths);
