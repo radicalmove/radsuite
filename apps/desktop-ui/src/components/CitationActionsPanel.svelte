@@ -6,6 +6,7 @@
     suggestedSourceSearchQuery,
     type CrossrefSourceResult,
   } from "../lib/sourceSearch";
+  import { copyTextToClipboard } from "../lib/clipboard";
   import type {
     CourseReferenceSummary,
     ReviewCitationReferenceSuggestion,
@@ -55,6 +56,8 @@
   let sourceSearchError = $state<string | null>(null);
   let sourceReferenceSavingKey = $state<string | null>(null);
   let sourceReferenceStatus = $state<string | null>(null);
+  let searchQueryCopyStatus = $state<string | null>(null);
+  let searchQueryCopyFailed = $state(false);
   let verificationLoading = $state(false);
   let verificationStatus = $state<string | null>(null);
   let verificationFailed = $state(false);
@@ -117,6 +120,8 @@
       sourceSearchError = null;
       sourceReferenceSavingKey = null;
       sourceReferenceStatus = null;
+      searchQueryCopyStatus = null;
+      searchQueryCopyFailed = false;
       verificationStatus = null;
       verificationFailed = false;
       return;
@@ -229,6 +234,26 @@
       sourceSearchError = reason instanceof Error ? reason.message : String(reason);
     } finally {
       sourceSearchLoading = false;
+    }
+  }
+
+  async function copySearchQuery() {
+    const query = sourceSearchQuery.trim();
+    if (!query) {
+      return;
+    }
+
+    searchQueryCopyStatus = null;
+    searchQueryCopyFailed = false;
+    try {
+      await copyTextToClipboard(query);
+      searchQueryCopyStatus = "Search text copied. Paste it into your library search.";
+    } catch (reason: unknown) {
+      searchQueryCopyFailed = true;
+      searchQueryCopyStatus =
+        reason instanceof Error
+          ? `Could not copy search text: ${reason.message}`
+          : "Could not copy search text. Select it manually.";
     }
   }
 
@@ -426,6 +451,14 @@
             >
               {sourceSearchLoading ? "Searching" : "Find matches"}
             </button>
+            <button
+              class="secondary-button compact-button copy-search-query"
+              type="button"
+              disabled={!sourceSearchQuery.trim()}
+              onclick={() => void copySearchQuery()}
+            >
+              Copy search query
+            </button>
             {#if sourceSearchUrl}
               <a
                 class="secondary-button source-search-link"
@@ -437,6 +470,11 @@
               </a>
             {/if}
           </div>
+          {#if searchQueryCopyStatus}
+            <div class:action-error={searchQueryCopyFailed} class="source-search-status" role="status">
+              {searchQueryCopyStatus}
+            </div>
+          {/if}
           {#if sourceSearchError}
             <div class="notice source-search-notice">{sourceSearchError}</div>
           {/if}
