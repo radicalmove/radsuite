@@ -277,6 +277,12 @@ for (const needle of [
   }
 }
 
+for (const needle of ["Verify citations", "Mark reviewed manually", "Checking sources"]) {
+  if (!actionsPanel.includes(needle)) {
+    missing.push(`citation actions includes ${needle}`);
+  }
+}
+
 for (const needle of [
   "Module readings",
   "Required",
@@ -344,6 +350,7 @@ for (const needle of [
   "onAddManualCitation",
   "onAddCourseReference",
   "onVerifyCitation",
+  "onMarkReviewed",
   "onLinkCitation",
   "reference_entry_id",
   "reference_suggestions",
@@ -359,7 +366,8 @@ for (const needle of [
   "Open DOI",
   "Add reference",
   "Add & link",
-  "Mark citations reviewed",
+  "Verify citations",
+  "Mark reviewed manually",
   "Not required",
   "Reviewed",
 ]) {

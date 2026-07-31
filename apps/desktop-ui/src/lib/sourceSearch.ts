@@ -133,6 +133,25 @@ export function buildCrossrefWorksApiUrl(query: string, rows = 5): string {
   return url.toString();
 }
 
+export function findCitationMatches(
+  citationText: string,
+  results: CrossrefSourceResult[],
+): CrossrefSourceResult[] {
+  const author = citationText
+    .trim()
+    .match(/^(?:[\(\[\{]\s*)?([A-Z][A-Za-z'\u2019\u2010-]+)/)?.[1];
+  const year = citationText.match(/\b(?:19|20)\d{2}\b/)?.[0];
+  if (!author || !year) {
+    return [];
+  }
+
+  const normalizedAuthor = author.toLocaleLowerCase();
+  return results.filter(
+    (result) =>
+      result.year === year && result.authors.toLocaleLowerCase().includes(normalizedAuthor),
+  );
+}
+
 export async function searchCrossrefWorks(
   query: string,
   fetcher: CrossrefFetcher = fetch,
