@@ -28,6 +28,7 @@ use uuid::Uuid;
 use crate::{
     DesktopState,
     document_store::{DocumentStorageError, store_source, validate_source},
+    library_links::build_uc_library_link,
 };
 
 pub use crate::radcast::{
@@ -680,12 +681,16 @@ pub struct ExportCourseReferencesRequest {
     pub for_ako_learn: bool,
     #[serde(default)]
     pub allow_incomplete: bool,
+    #[serde(default)]
+    pub use_library_links: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ExportModuleReadingsRequest {
     pub module_id: ModuleId,
     pub for_ako_learn: bool,
+    #[serde(default)]
+    pub use_library_links: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -2570,7 +2575,11 @@ pub async fn export_course_references(
             count: apa_error_count,
         });
     }
-    let html = format_course_references_html(&references, request.for_ako_learn);
+    let html = format_course_references_html(
+        &references,
+        request.for_ako_learn,
+        request.use_library_links,
+    );
 
     Ok(CourseReferencesExport {
         filename: format!(
@@ -2603,7 +2612,8 @@ pub async fn export_module_readings(
         filter_references_by_document_exclusion(state, module.project_id, readings).await?;
     sort_module_reading_entries(&mut readings);
     let reading_count = readings.len();
-    let html = format_module_readings_html(&readings, request.for_ako_learn);
+    let html =
+        format_module_readings_html(&readings, request.for_ako_learn, request.use_library_links);
     let project_label = project
         .as_ref()
         .map(|project| project.code.as_deref().unwrap_or(&project.title))
@@ -3369,7 +3379,11 @@ fn validation_status_label(status: ApaValidationStatus) -> &'static str {
     }
 }
 
-fn format_course_references_html(references: &[ReferenceEntry], for_ako_learn: bool) -> String {
+fn format_course_references_html(
+    references: &[ReferenceEntry],
+    for_ako_learn: bool,
+    use_library_links: bool,
+) -> String {
     let mut lines = Vec::new();
 
     if !for_ako_learn {
@@ -3379,11 +3393,12 @@ fn format_course_references_html(references: &[ReferenceEntry], for_ako_learn: b
     if references.is_empty() {
         lines.push("<p>No course references recorded yet.</p>".to_string());
     } else {
-        lines.extend(
-            references.iter().map(|reference| {
-                format!("<p>{}</p>", escape_html(&reference_export_text(reference)))
-            }),
-        );
+        lines.extend(references.iter().map(|reference| {
+            format!(
+                "<p>{}</p>",
+                reference_export_html(reference, use_library_links)
+            )
+        }));
     }
 
     if !for_ako_learn {
@@ -3393,8 +3408,12 @@ fn format_course_references_html(references: &[ReferenceEntry], for_ako_learn: b
     lines.join("\n")
 }
 
-fn format_module_readings_html(readings: &[ReferenceEntry], for_ako_learn: bool) -> String {
-    let html = format_module_readings_html_with_generico(readings);
+fn format_module_readings_html(
+    readings: &[ReferenceEntry],
+    for_ako_learn: bool,
+    use_library_links: bool,
+) -> String {
+    let html = format_module_readings_html_with_generico(readings, use_library_links);
     if for_ako_learn {
         apply_ako_module_readings_hanging_indent(&strip_generico_tokens(&html))
     } else {
@@ -3402,7 +3421,10 @@ fn format_module_readings_html(readings: &[ReferenceEntry], for_ako_learn: bool)
     }
 }
 
-fn format_module_readings_html_with_generico(readings: &[ReferenceEntry]) -> String {
+fn format_module_readings_html_with_generico(
+    readings: &[ReferenceEntry],
+    use_library_links: bool,
+) -> String {
     if readings.is_empty() {
         return concat!(
             r#"<p><span style="font-size: 0.9375rem;">"#,
@@ -3431,7 +3453,13 @@ fn format_module_readings_html_with_generico(readings: &[ReferenceEntry]) -> Str
         for (index, reading) in compulsory_readings.iter().enumerate() {
             let has_more_entries =
                 index < compulsory_readings.len() - 1 || !optional_readings.is_empty();
-            render_module_reading_entry(&mut parts, reading, has_more_entries, &mut generico_open);
+            render_module_reading_entry(
+                &mut parts,
+                reading,
+                has_more_entries,
+                &mut generico_open,
+                use_library_links,
+            );
         }
     }
 
@@ -3446,7 +3474,13 @@ fn format_module_readings_html_with_generico(readings: &[ReferenceEntry]) -> Str
         );
         for (index, reading) in optional_readings.iter().enumerate() {
             let has_more_entries = index < optional_readings.len() - 1;
-            render_module_reading_entry(&mut parts, reading, has_more_entries, &mut generico_open);
+            render_module_reading_entry(
+                &mut parts,
+                reading,
+                has_more_entries,
+                &mut generico_open,
+                use_library_links,
+            );
         }
     }
 
@@ -3462,6 +3496,7 @@ fn render_module_reading_entry(
     reading: &ReferenceEntry,
     has_more_entries: bool,
     generico_open: &mut bool,
+    use_library_links: bool,
 ) {
     let lesson_html = trimmed_str(reading.lesson_code.as_deref())
         .map(|lesson_code| format!("<strong>{}&nbsp;</strong>", escape_html(lesson_code)))
@@ -3470,7 +3505,7 @@ fn render_module_reading_entry(
     parts.push(format!(
         r#"<p><span style="font-size: 0.9375rem;">{}{}</span></p>"#,
         lesson_html,
-        reading_export_html(reading)
+        reading_export_html(reading, use_library_links)
     ));
 
     let estimated_time_text = trimmed_str(reading.estimated_reading_time.as_deref());
@@ -3504,17 +3539,20 @@ fn render_module_reading_entry(
     }
 }
 
-fn reading_export_html(reading: &ReferenceEntry) -> String {
-    let source_text = reference_export_text(reading);
+fn reference_export_html(reference: &ReferenceEntry, use_library_links: bool) -> String {
+    let source_text = reference_export_text(reference);
     let mut html = escape_html(&source_text);
 
-    if let Some(url) = reading_export_link_url(reading) {
-        let escaped_url = escape_html(&url);
+    if let Some(visible_url) = reference_export_url(reference)
+        && let Some(href) = reference_export_href(reference, use_library_links)
+    {
+        let escaped_visible_url = escape_html(&visible_url);
+        let escaped_href = escape_html(&href);
         let url_link = format!(
-            r#"<a href="{escaped_url}" target="_blank" rel="noopener noreferrer">{escaped_url}</a>"#
+            r#"<a href="{escaped_href}" target="_blank" rel="noopener noreferrer">{escaped_visible_url}</a>"#
         );
-        if source_text.contains(&url) {
-            html = html.replacen(&escaped_url, &url_link, 1);
+        if source_text.contains(&visible_url) {
+            html = html.replacen(&escaped_visible_url, &url_link, 1);
         } else {
             html = format!("{html} {url_link}");
         }
@@ -3523,12 +3561,25 @@ fn reading_export_html(reading: &ReferenceEntry) -> String {
     html
 }
 
-fn reading_export_link_url(reading: &ReferenceEntry) -> Option<String> {
-    if let Some(url) = trimmed_str(reading.url.as_deref()) {
+fn reading_export_html(reading: &ReferenceEntry, use_library_links: bool) -> String {
+    reference_export_html(reading, use_library_links)
+}
+
+fn reference_export_href(reference: &ReferenceEntry, use_library_links: bool) -> Option<String> {
+    if use_library_links {
+        build_uc_library_link(reference.doi.as_deref(), reference.url.as_deref())
+            .or_else(|| reference_export_url(reference))
+    } else {
+        reference_export_url(reference)
+    }
+}
+
+fn reference_export_url(reference: &ReferenceEntry) -> Option<String> {
+    if let Some(url) = trimmed_str(reference.url.as_deref()) {
         return Some(url.to_string());
     }
 
-    trimmed_str(reading.doi.as_deref()).map(doi_url)
+    trimmed_str(reference.doi.as_deref()).map(doi_url)
 }
 
 fn doi_url(doi: &str) -> String {

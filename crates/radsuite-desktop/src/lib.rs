@@ -1,6 +1,7 @@
 pub mod app_paths;
 pub mod commands;
 pub mod document_store;
+pub mod library_links;
 pub mod radcast;
 pub mod radt_ts;
 pub mod radt_ts_tools;

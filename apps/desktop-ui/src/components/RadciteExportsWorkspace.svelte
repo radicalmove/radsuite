@@ -24,8 +24,16 @@
     moduleExportResult: ModuleReadingsExport | null;
     moduleExportLoading: boolean;
     moduleExportError: string | null;
-    onExportReferences: (forAkoLearn: boolean, allowIncomplete: boolean) => void | Promise<void>;
-    onExportModuleReadings: (moduleId: string, forAkoLearn: boolean) => void | Promise<void>;
+    onExportReferences: (
+      forAkoLearn: boolean,
+      allowIncomplete: boolean,
+      useLibraryLinks: boolean,
+    ) => void | Promise<void>;
+    onExportModuleReadings: (
+      moduleId: string,
+      forAkoLearn: boolean,
+      useLibraryLinks: boolean,
+    ) => void | Promise<void>;
     onRefreshReferences: () => void | Promise<void>;
     onRefreshModules: () => void | Promise<void>;
     onSelectModule: (moduleId: string) => void | Promise<void>;
@@ -55,6 +63,7 @@
   let exportMode = $state<ExportMode>("course-references");
   let forAkoLearn = $state(false);
   let allowIncomplete = $state(false);
+  let useLibraryLinks = $state(true);
   let copyNotice = $state<string | null>(null);
   let copyFailed = $state(false);
 
@@ -126,12 +135,12 @@
     copyNotice = null;
     copyFailed = false;
     if (exportMode === "course-references") {
-      await onExportReferences(forAkoLearn, allowIncomplete);
+      await onExportReferences(forAkoLearn, allowIncomplete, useLibraryLinks);
       return;
     }
 
     if (selectedModule) {
-      await onExportModuleReadings(selectedModule.id, forAkoLearn);
+      await onExportModuleReadings(selectedModule.id, forAkoLearn, useLibraryLinks);
     }
   }
 
@@ -242,6 +251,14 @@
     <label class="checkbox-line">
       <input type="checkbox" bind:checked={forAkoLearn} />
       <span>AKO | LEARN</span>
+    </label>
+
+    <label
+      class="checkbox-line"
+      title="Use University of Canterbury library access links for DOI and publisher URLs."
+    >
+      <input type="checkbox" bind:checked={useLibraryLinks} />
+      <span>Use UC library links</span>
     </label>
 
     {#if exportMode === "course-references" && apaFixCount > 0}
