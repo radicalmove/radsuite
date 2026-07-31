@@ -18,6 +18,11 @@
   import { readingCategoryLabel } from "../lib/readingCategoryLabels";
   import { readingListMetadata } from "../lib/readingDisplay";
   import {
+    incompleteModuleReadings,
+    moduleReadingLookupQuery,
+    moduleReadingUpdateFromCrossref,
+  } from "../lib/readingLookup";
+  import {
     applyAutoModuleToCandidates,
     defaultModuleIdForImportCandidate,
     defaultReadingImportNotes,
@@ -26,6 +31,7 @@
     selectedImportHasUsableModuleAssignments,
     type ImportModuleDraft,
   } from "../lib/readingImportWorkflow";
+  import { searchCrossrefWorks, type CrossrefSourceResult } from "../lib/sourceSearch";
 
   type EditableImportCandidate = Omit<
     ModuleReadingImportCandidate,
@@ -41,6 +47,17 @@
     notes: string;
     reading_notes: string;
     estimated_reading_time: string;
+  };
+
+  type ReadingLookupStatus = "waiting" | "searching" | "matched" | "not-found" | "failed" | "applied";
+
+  type ReadingLookupItem = {
+    reading: ModuleReadingSummary;
+    query: string | null;
+    result: CrossrefSourceResult | null;
+    status: ReadingLookupStatus;
+    selected: boolean;
+    error: string | null;
   };
 
   type Props = {
@@ -61,7 +78,9 @@
     onUpdateModule: (input: UpdateRadciteModuleInput) => void | Promise<void>;
     onArchiveModule: (moduleId: string) => void | Promise<void>;
     onAddReading: (input: AddModuleReadingInput) => void | Promise<void>;
-    onUpdateReading: (input: UpdateModuleReadingInput) => void | Promise<void>;
+    onUpdateReading: (
+      input: UpdateModuleReadingInput,
+    ) => boolean | void | Promise<boolean | void>;
     onArchiveReading: (readingId: string) => void | Promise<void>;
     onPreviewReadingsImport: (
       input: PreviewModuleReadingsImportInput,
@@ -128,6 +147,11 @@
   let notes = $state("");
   let readingNotes = $state("");
   let estimatedReadingTime = $state("");
+  let bulkLookupOpen = $state(false);
+  let bulkLookupLoading = $state(false);
+  let bulkLookupApplying = $state(false);
+  let bulkLookupItems = $state<ReadingLookupItem[]>([]);
+  let bulkLookupError = $state<string | null>(null);
 
   let selectedModule = $derived(
     modules.find((module) => module.id === selectedModuleId) ?? modules[0] ?? null,
@@ -139,6 +163,12 @@
   );
   let optionalReadings = $derived(
     readings.filter((reading) => reading.reading_category === "optional"),
+  );
+  let incompleteReadingCount = $derived(incompleteModuleReadings(readings).length);
+  let selectedBulkLookupCount = $derived(
+    bulkLookupItems.filter(
+      (item) => item.selected && item.result && item.status === "matched",
+    ).length,
   );
   let moduleSubmitDisabled = $derived(modulesLoading || moduleTitle.trim().length === 0);
   let readingSubmitDisabled = $derived(
@@ -200,6 +230,156 @@
 
   function readingText(reading: ModuleReadingSummary): string {
     return reading.apa_citation ?? reading.citation_text ?? reading.title ?? "Untitled reading";
+  }
+
+  function lookupResultMeta(result: CrossrefSourceResult): string {
+    return [result.authors, result.year, result.source].filter(Boolean).join(" · ");
+  }
+
+  function updateBulkLookupItem(
+    readingId: string,
+    update: Partial<ReadingLookupItem>,
+  ) {
+    bulkLookupItems = bulkLookupItems.map((item) =>
+      item.reading.id === readingId ? { ...item, ...update } : item,
+    );
+  }
+
+  function closeBulkLookup() {
+    if (bulkLookupLoading || bulkLookupApplying) {
+      return;
+    }
+    bulkLookupOpen = false;
+    bulkLookupItems = [];
+    bulkLookupError = null;
+  }
+
+  function lookupStatusLabel(item: ReadingLookupItem): string {
+    if (item.status === "searching") {
+      return "Searching";
+    }
+    if (item.status === "matched") {
+      return "Match found";
+    }
+    if (item.status === "applied") {
+      return "Saved";
+    }
+    if (item.status === "not-found") {
+      return "No match found";
+    }
+    if (item.status === "failed") {
+      return "Could not search";
+    }
+    return "Waiting";
+  }
+
+  async function runBulkReadingLookup() {
+    if (!selectedModule || bulkLookupLoading || bulkLookupApplying) {
+      return;
+    }
+
+    const candidates = incompleteModuleReadings(readings).map((reading) => ({
+      reading,
+      query: moduleReadingLookupQuery(reading),
+      result: null,
+      status: "waiting" as const,
+      selected: false,
+      error: null,
+    }));
+
+    bulkLookupOpen = true;
+    bulkLookupLoading = true;
+    bulkLookupError = null;
+    bulkLookupItems = candidates;
+
+    if (!candidates.length) {
+      bulkLookupError = "All readings in this module already have an APA citation and source link.";
+      bulkLookupLoading = false;
+      return;
+    }
+
+    for (const item of candidates) {
+      if (!item.query) {
+        updateBulkLookupItem(item.reading.id, {
+          status: "failed",
+          error: "There is no citation text to search.",
+        });
+        continue;
+      }
+
+      updateBulkLookupItem(item.reading.id, { status: "searching", error: null });
+      try {
+        const results = await searchCrossrefWorks(item.query);
+        const result = results[0] ?? null;
+        updateBulkLookupItem(item.reading.id, {
+          result,
+          status: result ? "matched" : "not-found",
+          selected: Boolean(result),
+          error: result ? null : "Crossref returned no matching source.",
+        });
+      } catch (reason: unknown) {
+        updateBulkLookupItem(item.reading.id, {
+          status: "failed",
+          error: reason instanceof Error ? reason.message : String(reason),
+        });
+      }
+    }
+
+    bulkLookupLoading = false;
+  }
+
+  async function applySelectedBulkLookup() {
+    if (bulkLookupApplying) {
+      return;
+    }
+
+    const selectedItems = bulkLookupItems.filter(
+      (item) => item.selected && item.result && item.status === "matched",
+    );
+    if (!selectedItems.length) {
+      bulkLookupError = "Select at least one Crossref match before applying results.";
+      return;
+    }
+
+    bulkLookupApplying = true;
+    bulkLookupError = null;
+    let savedCount = 0;
+    let failedCount = 0;
+
+    for (const item of selectedItems) {
+      const result = item.result;
+      if (!result) {
+        continue;
+      }
+
+      try {
+        const saved = await onUpdateReading(moduleReadingUpdateFromCrossref(item.reading, result));
+        if (saved === false) {
+          failedCount += 1;
+          updateBulkLookupItem(item.reading.id, {
+            status: "failed",
+            error: "The match could not be saved.",
+          });
+        } else {
+          savedCount += 1;
+          updateBulkLookupItem(item.reading.id, {
+            status: "applied",
+            selected: false,
+          });
+        }
+      } catch (reason: unknown) {
+        failedCount += 1;
+        updateBulkLookupItem(item.reading.id, {
+          status: "failed",
+          error: reason instanceof Error ? reason.message : String(reason),
+        });
+      }
+    }
+
+    bulkLookupApplying = false;
+    if (failedCount) {
+      bulkLookupError = `${savedCount} match${savedCount === 1 ? "" : "es"} saved. ${failedCount} could not be saved.`;
+    }
   }
 
   function toErrorMessage(reason: unknown): string {
@@ -1008,10 +1188,102 @@
         <p class="eyebrow">Saved locally</p>
         <strong>{readings.length} readings</strong>
       </div>
-      {#if readingsLoading}
-        <span class="reading-loading">Loading</span>
-      {/if}
+      <div class="reading-list-tools">
+        {#if incompleteReadingCount > 0 && selectedModule}
+          <button
+            class="secondary-button compact-button"
+            type="button"
+            disabled={readingsLoading || bulkLookupLoading || bulkLookupApplying}
+            onclick={() => void runBulkReadingLookup()}
+          >
+            {bulkLookupLoading ? "Finding sources" : "Find sources"}
+          </button>
+        {/if}
+        {#if readingsLoading}
+          <span class="reading-loading">Loading</span>
+        {/if}
+      </div>
     </div>
+
+    {#if bulkLookupOpen}
+      <section class="reading-lookup-panel" aria-labelledby="reading-lookup-heading">
+        <div class="reading-lookup-heading">
+          <div>
+            <p class="eyebrow">Crossref</p>
+            <strong id="reading-lookup-heading">Review source matches</strong>
+            <span>Only selected matches will update your saved readings.</span>
+          </div>
+          <button
+            class="secondary-button compact-button"
+            type="button"
+            disabled={bulkLookupLoading || bulkLookupApplying}
+            onclick={closeBulkLookup}
+          >
+            Close
+          </button>
+        </div>
+
+        {#if bulkLookupError}
+          <div class="notice reading-lookup-notice">{bulkLookupError}</div>
+        {/if}
+
+        <div class="reading-lookup-results">
+          {#each bulkLookupItems as item (item.reading.id)}
+            <article class="reading-lookup-item" class:is-failed={item.status === "failed"}>
+              <div class="reading-lookup-item-heading">
+                <div>
+                  {#if item.reading.lesson_code}
+                    <span class="reading-lesson">{item.reading.lesson_code}</span>
+                  {/if}
+                  <strong>{readingText(item.reading)}</strong>
+                </div>
+                <span class="reading-lookup-status">{lookupStatusLabel(item)}</span>
+              </div>
+
+              {#if item.query}
+                <span class="reading-lookup-query">Search: {item.query}</span>
+              {/if}
+
+              {#if item.result}
+                <div class="reading-lookup-match">
+                  <label class="reading-lookup-select">
+                    <input
+                      type="checkbox"
+                      bind:checked={item.selected}
+                      disabled={bulkLookupApplying || item.status !== "matched"}
+                    />
+                    <span>Use this match</span>
+                  </label>
+                  <strong>{item.result.apaCitation}</strong>
+                  <span>{lookupResultMeta(item.result)}</span>
+                  {#if item.result.url}
+                    <a href={item.result.url} target="_blank" rel="noreferrer">Open source</a>
+                  {/if}
+                </div>
+              {:else if item.status === "searching"}
+                <span class="reading-lookup-message">Searching Crossref...</span>
+              {:else if item.error}
+                <span class="reading-lookup-message">{item.error}</span>
+              {/if}
+            </article>
+          {/each}
+        </div>
+
+        {#if bulkLookupItems.length}
+          <div class="reference-form-actions reading-lookup-actions">
+            <span>{selectedBulkLookupCount} match{selectedBulkLookupCount === 1 ? "" : "es"} selected</span>
+            <button
+              class="primary-button"
+              type="button"
+              disabled={bulkLookupLoading || bulkLookupApplying || selectedBulkLookupCount === 0}
+              onclick={() => void applySelectedBulkLookup()}
+            >
+              {bulkLookupApplying ? "Applying matches" : "Apply selected matches"}
+            </button>
+          </div>
+        {/if}
+      </section>
+    {/if}
 
     {#if !selectedModule}
       <div class="references-empty">Create or select a module to add readings.</div>

@@ -85,6 +85,8 @@ const checks = [
   ["reference primary selector styling", ".reference-primary-select"],
   ["reference lookup panel styling", ".reference-lookup-panel"],
   ["reference lookup result styling", ".reference-lookup-result"],
+  ["reading lookup panel styling", ".reading-lookup-panel"],
+  ["reading lookup result styling", ".reading-lookup-item"],
 ];
 
 const missing = checks
@@ -111,6 +113,17 @@ for (const needle of [
 ]) {
   if (!sidebar.includes(needle)) {
     missing.push(`sidebar includes ${needle}`);
+  }
+}
+
+for (const needle of [
+  "Find sources",
+  "Review source matches",
+  "Apply selected matches",
+  "searchCrossrefWorks",
+]) {
+  if (!readingsWorkspace.includes(needle)) {
+    missing.push(`readings workspace includes ${needle}`);
   }
 }
 
