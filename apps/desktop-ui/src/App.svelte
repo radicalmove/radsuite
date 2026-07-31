@@ -855,25 +855,25 @@
           class="status-chip"
           class:is-ready={status.database_ready}
           title={status.database_ready
-            ? "Your work is saved on this computer and remains available offline."
-            : "RADsuite cannot currently save your work locally."}
+            ? "Your work is saved on this Mac and remains available offline."
+            : "RADsuite cannot currently save your work on this Mac."}
           aria-label={status.database_ready
-            ? "Saved locally"
-            : "Saving unavailable"}
+            ? "Saved on this Mac"
+            : "Local saving unavailable"}
         >
           <span class="status-dot"></span>
-          <span>{status.database_ready ? "Saved locally" : "Saving unavailable"}</span>
+          <span>{status.database_ready ? "Saved on this Mac" : "Local saving unavailable"}</span>
         </span>
         <span
           class="status-chip"
           class:is-ready={status.sync_configured}
           title={status.sync_configured
-            ? "Cloud backup is connected."
-            : "Cloud backup is off; your work remains saved on this computer and is not copied to another device."}
-          aria-label={status.sync_configured ? "Cloud backup on" : "Cloud backup off"}
+            ? "Cloud sync is connected."
+            : "Cloud sync is not connected; your work remains saved on this Mac and is not copied to another device."}
+          aria-label={status.sync_configured ? "Cloud sync on" : "Cloud sync not connected"}
         >
           <span class="status-dot"></span>
-          <span>{status.sync_configured ? "Cloud backup on" : "Cloud backup off"}</span>
+          <span>{status.sync_configured ? "Cloud sync on" : "Cloud sync not connected"}</span>
         </span>
         <button
           class="theme-toggle"

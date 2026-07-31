@@ -15,7 +15,9 @@ export type CrossrefSourceResult = {
   apaCitation: string;
 };
 
-type CrossrefFetcher = (input: string) => Promise<Pick<Response, "ok" | "status" | "json">>;
+export type AcademicSearchProvider = "crossref" | "openalex" | "hybrid";
+
+type SearchFetcher = (input: string) => Promise<Pick<Response, "ok" | "status" | "json">>;
 
 type CrossrefAuthor = {
   given?: unknown;
@@ -31,6 +33,16 @@ type CrossrefWork = {
   "published-online"?: unknown;
   "container-title"?: unknown;
   URL?: unknown;
+};
+
+type OpenAlexWork = {
+  id?: unknown;
+  doi?: unknown;
+  title?: unknown;
+  authorships?: unknown;
+  publication_year?: unknown;
+  host_venue?: unknown;
+  primary_location?: unknown;
 };
 
 const stopWords = new Set([
@@ -133,6 +145,17 @@ export function buildCrossrefWorksApiUrl(query: string, rows = 5): string {
   return url.toString();
 }
 
+export function buildOpenAlexWorksApiUrl(query: string, rows = 5): string {
+  const url = new URL("https://api.openalex.org/works");
+  url.searchParams.set("search", query.trim());
+  url.searchParams.set("per-page", rows.toString());
+  url.searchParams.set(
+    "select",
+    "id,doi,title,authorships,publication_year,primary_location,host_venue,abstract_inverted_index",
+  );
+  return url.toString();
+}
+
 export function findCitationMatches(
   citationText: string,
   results: CrossrefSourceResult[],
@@ -154,7 +177,7 @@ export function findCitationMatches(
 
 export async function searchCrossrefWorks(
   query: string,
-  fetcher: CrossrefFetcher = fetch,
+  fetcher: SearchFetcher = fetch,
 ): Promise<CrossrefSourceResult[]> {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) {
@@ -176,6 +199,88 @@ export async function searchCrossrefWorks(
   return items
     .map(parseCrossrefWork)
     .filter((result): result is CrossrefSourceResult => Boolean(result));
+}
+
+export async function searchOpenAlexWorks(
+  query: string,
+  fetcher: SearchFetcher = fetch,
+): Promise<CrossrefSourceResult[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return [];
+  }
+
+  const response = await fetcher(buildOpenAlexWorksApiUrl(trimmedQuery));
+  if (!response.ok) {
+    throw new Error(`OpenAlex search failed with status ${response.status}`);
+  }
+
+  const payload = (await response.json()) as { results?: unknown };
+  const items = Array.isArray(payload.results) ? payload.results : [];
+
+  return items
+    .map(parseOpenAlexWork)
+    .filter((result): result is CrossrefSourceResult => Boolean(result));
+}
+
+export async function searchAcademicWorks(
+  query: string,
+  provider: AcademicSearchProvider = "hybrid",
+  fetcher: SearchFetcher = fetch,
+): Promise<CrossrefSourceResult[]> {
+  if (provider === "crossref") {
+    return searchCrossrefWorks(query, fetcher);
+  }
+  if (provider === "openalex") {
+    return searchOpenAlexWorks(query, fetcher);
+  }
+
+  let crossrefResults: CrossrefSourceResult[] = [];
+  try {
+    crossrefResults = await searchCrossrefWorks(query, fetcher);
+  } catch {
+    // OpenAlex remains available when Crossref is unavailable or empty.
+  }
+
+  try {
+    const openAlexResults = await searchOpenAlexWorks(query, fetcher);
+    return mergeAcademicResults(crossrefResults, openAlexResults);
+  } catch (reason: unknown) {
+    if (crossrefResults.length) {
+      return crossrefResults;
+    }
+    throw reason;
+  }
+}
+
+function mergeAcademicResults(
+  primary: CrossrefSourceResult[],
+  secondary: CrossrefSourceResult[],
+): CrossrefSourceResult[] {
+  const merged: CrossrefSourceResult[] = [];
+  const seen = new Set<string>();
+
+  for (const result of [...primary, ...secondary]) {
+    const key = academicResultKey(result);
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    merged.push(result);
+    if (merged.length === 5) {
+      break;
+    }
+  }
+
+  return merged;
+}
+
+function academicResultKey(result: CrossrefSourceResult): string {
+  return (
+    result.doi?.toLocaleLowerCase() ||
+    result.url?.toLocaleLowerCase() ||
+    `${result.title}|${result.year}|${result.authors}`.toLocaleLowerCase()
+  );
 }
 
 function paragraphKeywordQuery(text: string): string | null {
@@ -239,6 +344,36 @@ function parseCrossrefWork(item: unknown): CrossrefSourceResult | null {
   };
 }
 
+function parseOpenAlexWork(item: unknown): CrossrefSourceResult | null {
+  const work = isRecord(item) ? (item as OpenAlexWork) : {};
+  const doi = normaliseDoi(work.doi);
+  const title = plainString(work.title);
+  if (!title && !doi && !plainString(work.id)) {
+    return null;
+  }
+
+  const authors = formatOpenAlexAuthors(work.authorships);
+  const year = plainYear(work.publication_year);
+  const source = openAlexSource(work);
+  const url = doi ? `https://doi.org/${doi}` : openAlexLandingUrl(work);
+
+  return {
+    title: title ?? "Untitled source",
+    authors,
+    year,
+    source,
+    doi,
+    url,
+    apaCitation: crossrefCitationText({
+      title: title ?? "Untitled source",
+      authors,
+      year,
+      source,
+      url,
+    }),
+  };
+}
+
 function crossrefCitationText(
   result: Pick<CrossrefSourceResult, "title" | "authors" | "year" | "source" | "url">,
 ): string {
@@ -259,6 +394,28 @@ function formatCrossrefAuthors(value: unknown): string {
 
   const authors = value
     .map(formatCrossrefAuthor)
+    .filter((author): author is string => Boolean(author))
+    .slice(0, 3);
+
+  if (!authors.length) {
+    return "Unknown author";
+  }
+
+  return value.length > 3 ? `${authors.join("; ")}; et al.` : authors.join("; ");
+}
+
+function formatOpenAlexAuthors(value: unknown): string {
+  if (!Array.isArray(value)) {
+    return "Unknown author";
+  }
+
+  const authors = value
+    .map((item) => {
+      if (!isRecord(item) || !isRecord(item.author)) {
+        return null;
+      }
+      return plainString(item.author.display_name);
+    })
     .filter((author): author is string => Boolean(author))
     .slice(0, 3);
 
@@ -310,6 +467,37 @@ function yearFromDateParts(value: unknown): string | null {
 
   const year = dateParts[0][0];
   return typeof year === "number" || typeof year === "string" ? year.toString() : null;
+}
+
+function plainYear(value: unknown): string | null {
+  return typeof value === "number" || typeof value === "string" ? value.toString() : null;
+}
+
+function normaliseDoi(value: unknown): string | null {
+  const doi = plainString(value);
+  if (!doi) {
+    return null;
+  }
+
+  const marker = "doi.org/";
+  const markerIndex = doi.toLocaleLowerCase().indexOf(marker);
+  if (markerIndex >= 0) {
+    return doi.slice(markerIndex + marker.length).trim() || null;
+  }
+
+  return doi.replace(/^doi:\s*/i, "").trim() || null;
+}
+
+function openAlexSource(work: OpenAlexWork): string | null {
+  const hostVenue = isRecord(work.host_venue) ? work.host_venue : null;
+  const primaryLocation = isRecord(work.primary_location) ? work.primary_location : null;
+  const source = primaryLocation && isRecord(primaryLocation.source) ? primaryLocation.source : null;
+  return plainString(hostVenue?.display_name) ?? plainString(source?.display_name);
+}
+
+function openAlexLandingUrl(work: OpenAlexWork): string | null {
+  const primaryLocation = isRecord(work.primary_location) ? work.primary_location : null;
+  return plainString(primaryLocation?.landing_page_url) ?? plainString(work.id);
 }
 
 function firstPlainString(value: unknown): string | null {

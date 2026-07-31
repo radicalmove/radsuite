@@ -31,7 +31,7 @@
     selectedImportHasUsableModuleAssignments,
     type ImportModuleDraft,
   } from "../lib/readingImportWorkflow";
-  import { searchCrossrefWorks, type CrossrefSourceResult } from "../lib/sourceSearch";
+  import { searchAcademicWorks, type CrossrefSourceResult } from "../lib/sourceSearch";
 
   type EditableImportCandidate = Omit<
     ModuleReadingImportCandidate,
@@ -323,7 +323,7 @@
 
       updateBulkLookupItem(item.reading.id, { status: "searching", error: null });
       try {
-        const results = await searchCrossrefWorks(item.query);
+        const results = await searchAcademicWorks(item.query);
         const result = results[0] ?? null;
         updateBulkLookupItem(item.reading.id, {
           result,

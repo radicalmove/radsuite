@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    searchCrossrefWorks,
+    searchAcademicWorks,
     type CrossrefSourceResult,
   } from "../lib/sourceSearch";
   import type { UpdateCourseReferenceInput } from "../lib/referenceCommands";
@@ -128,7 +128,7 @@
     lookupError = null;
     lookupResults = [];
     try {
-      lookupResults = await searchCrossrefWorks(query);
+      lookupResults = await searchAcademicWorks(query);
     } catch (reason: unknown) {
       lookupError = reason instanceof Error ? reason.message : String(reason);
     } finally {
