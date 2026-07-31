@@ -1,4 +1,8 @@
 <script lang="ts">
+  import {
+    searchCrossrefWorks,
+    type CrossrefSourceResult,
+  } from "../lib/sourceSearch";
   import type { UpdateCourseReferenceInput } from "../lib/referenceCommands";
   import type { CourseReferenceSummary } from "../types";
 
@@ -10,7 +14,9 @@
       apaCitation: string,
       notes: string | null,
     ) => CourseReferenceSummary | null | void | Promise<CourseReferenceSummary | null | void>;
-    onUpdateReference: (input: UpdateCourseReferenceInput) => void | Promise<void>;
+    onUpdateReference: (
+      input: UpdateCourseReferenceInput,
+    ) => boolean | void | Promise<boolean | void>;
     onArchiveReference: (referenceId: string) => void | Promise<void>;
     onMergeReferences: (primaryReferenceId: string, mergeReferenceIds: string[]) => Promise<boolean>;
     onRefreshReferences: () => void | Promise<void>;
@@ -32,6 +38,13 @@
   let notes = $state("");
   let selectedReferenceIds = $state<string[]>([]);
   let primaryReferenceId = $state("");
+  let lookupReferenceId = $state<string | null>(null);
+  let lookupQuery = $state("");
+  let lookupResults = $state<CrossrefSourceResult[]>([]);
+  let lookupLoading = $state(false);
+  let lookupHasSearched = $state(false);
+  let lookupError = $state<string | null>(null);
+  let lookupSavingKey = $state<string | null>(null);
   let editingReference = $derived(
     references.find((reference) => reference.id === editingReferenceId) ?? null,
   );
@@ -69,6 +82,81 @@
     editingReferenceId = reference.id;
     apaCitation = reference.apa_citation ?? reference.citation_text ?? "";
     notes = reference.notes ?? "";
+  }
+
+  function lookupResultKey(result: CrossrefSourceResult): string {
+    return result.doi ?? result.url ?? result.title;
+  }
+
+  function lookupResultMeta(result: CrossrefSourceResult): string {
+    return [result.authors, result.year, result.source].filter(Boolean).join(" · ");
+  }
+
+  function closeReferenceLookup() {
+    lookupReferenceId = null;
+    lookupQuery = "";
+    lookupResults = [];
+    lookupLoading = false;
+    lookupHasSearched = false;
+    lookupError = null;
+    lookupSavingKey = null;
+  }
+
+  function openReferenceLookup(reference: CourseReferenceSummary) {
+    if (lookupReferenceId === reference.id) {
+      closeReferenceLookup();
+      return;
+    }
+
+    lookupReferenceId = reference.id;
+    lookupQuery = referenceText(reference);
+    lookupResults = [];
+    lookupLoading = false;
+    lookupHasSearched = false;
+    lookupError = null;
+    lookupSavingKey = null;
+  }
+
+  async function searchReferenceSources() {
+    const query = lookupQuery.trim();
+    if (!query) {
+      return;
+    }
+
+    lookupLoading = true;
+    lookupHasSearched = true;
+    lookupError = null;
+    lookupResults = [];
+    try {
+      lookupResults = await searchCrossrefWorks(query);
+    } catch (reason: unknown) {
+      lookupError = reason instanceof Error ? reason.message : String(reason);
+    } finally {
+      lookupLoading = false;
+    }
+  }
+
+  async function applyReferenceLookup(reference: CourseReferenceSummary, result: CrossrefSourceResult) {
+    const resultKey = lookupResultKey(result);
+    lookupSavingKey = resultKey;
+    lookupError = null;
+    const saved = await onUpdateReference({
+      reference_id: reference.id,
+      apa_citation: result.apaCitation,
+      notes: result.doi
+        ? `Imported from Crossref search. DOI: ${result.doi}`
+        : "Imported from Crossref search.",
+      citation_text: result.apaCitation,
+      url: result.url,
+    });
+    lookupSavingKey = null;
+    if (saved === false) {
+      lookupError = "Could not save this Crossref result.";
+      return;
+    }
+
+    await onRefreshReferences();
+    closeReferenceLookup();
   }
 
   function toggleReferenceSelection(referenceId: string, selected: boolean) {
@@ -269,6 +357,13 @@
                 <button
                   class="secondary-button compact-button"
                   type="button"
+                  onclick={() => openReferenceLookup(reference)}
+                >
+                  {lookupReferenceId === reference.id ? "Close source search" : "Find source"}
+                </button>
+                <button
+                  class="secondary-button compact-button"
+                  type="button"
                   onclick={() => beginEditReference(reference)}
                 >
                   Edit reference
@@ -288,6 +383,81 @@
                 <span>{reference.notes}</span>
               {/if}
             </div>
+            {#if lookupReferenceId === reference.id}
+              <div class="reference-lookup-panel">
+                <div class="reference-lookup-heading">
+                  <div>
+                    <p class="eyebrow">Crossref</p>
+                    <strong>Find a better source match</strong>
+                  </div>
+                  <button
+                    class="secondary-button compact-button"
+                    type="button"
+                    disabled={lookupLoading || lookupSavingKey !== null}
+                    onclick={closeReferenceLookup}
+                  >
+                    Close
+                  </button>
+                </div>
+                <div class="reference-lookup-search">
+                  <label class="field-label" for={`reference-lookup-${reference.id}`}>
+                    Search text
+                  </label>
+                  <input
+                    id={`reference-lookup-${reference.id}`}
+                    class="path-input"
+                    type="search"
+                    bind:value={lookupQuery}
+                    onkeydown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void searchReferenceSources();
+                      }
+                    }}
+                  />
+                  <button
+                    class="primary-button compact-button"
+                    type="button"
+                    disabled={lookupLoading || lookupQuery.trim().length === 0}
+                    onclick={() => void searchReferenceSources()}
+                  >
+                    Search Crossref
+                  </button>
+                </div>
+
+                {#if lookupError}
+                  <div class="notice reference-lookup-notice">{lookupError}</div>
+                {:else if lookupLoading}
+                  <div class="references-empty">Searching Crossref...</div>
+                {:else if lookupHasSearched && lookupResults.length === 0}
+                  <div class="references-empty">No matching sources found.</div>
+                {:else if lookupResults.length}
+                  <div class="reference-lookup-results">
+                    {#each lookupResults as result (lookupResultKey(result))}
+                      <article class="reference-lookup-result">
+                        <div>
+                          <strong>{result.apaCitation}</strong>
+                          <span>{lookupResultMeta(result)}</span>
+                        </div>
+                        {#if result.url}
+                          <a href={result.url} target="_blank" rel="noreferrer">Open source</a>
+                        {/if}
+                        <button
+                          class="secondary-button compact-button"
+                          type="button"
+                          disabled={lookupSavingKey !== null}
+                          onclick={() => void applyReferenceLookup(reference, result)}
+                        >
+                          {lookupSavingKey === lookupResultKey(result)
+                            ? "Saving..."
+                            : "Use this result"}
+                        </button>
+                      </article>
+                    {/each}
+                  </div>
+                {/if}
+              </div>
+            {/if}
           </article>
         {/each}
       </div>

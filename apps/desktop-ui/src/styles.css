@@ -1388,6 +1388,93 @@ button:disabled {
   font-weight: 650;
 }
 
+.reference-lookup-panel {
+  display: grid;
+  gap: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line-soft);
+}
+
+.reference-lookup-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.reference-lookup-heading strong {
+  color: var(--fg-1);
+  font-size: 0.84rem;
+}
+
+.reference-lookup-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: var(--s-2);
+}
+
+.reference-lookup-search .field-label {
+  grid-column: 1 / -1;
+}
+
+.reference-lookup-search .path-input {
+  min-width: 0;
+}
+
+.reference-lookup-results {
+  display: grid;
+  gap: var(--s-2);
+}
+
+.reference-lookup-result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+
+.reference-lookup-result > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.reference-lookup-result strong,
+.reference-lookup-result span {
+  overflow-wrap: anywhere;
+}
+
+.reference-lookup-result strong {
+  color: var(--fg-1);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.reference-lookup-result span,
+.reference-lookup-result a {
+  color: var(--fg-3);
+  font-size: 0.72rem;
+}
+
+.reference-lookup-result a {
+  color: var(--radcite-red-deep);
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.reference-lookup-result a:hover {
+  text-decoration: underline;
+}
+
+.reference-lookup-notice {
+  margin-top: 0;
+}
+
 .references-empty {
   color: var(--fg-3);
   font-size: 0.84rem;
@@ -2271,6 +2358,8 @@ button:disabled {
 
   .workspace-topbar,
   .workspace-header,
+  .reference-lookup-search,
+  .reference-lookup-result,
   .saved-review-row,
   .radcast-grid,
   .path-row,

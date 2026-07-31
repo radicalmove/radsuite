@@ -11,6 +11,8 @@ export type UpdateCourseReferenceInput = {
   reference_id: string;
   apa_citation: string;
   notes?: string | null;
+  citation_text?: string | null;
+  url?: string | null;
 };
 
 export type MergeCourseReferencesInput = {
@@ -47,12 +49,20 @@ export function addCourseReference(
 export function updateCourseReference(
   input: UpdateCourseReferenceInput,
 ): Promise<CourseReferenceSummary> {
+  const request: Record<string, unknown> = {
+    reference_id: input.reference_id,
+    apa_citation: input.apa_citation.trim(),
+    notes: trimmedOrNull(input.notes),
+  };
+  if (input.citation_text !== undefined) {
+    request.citation_text = trimmedOrNull(input.citation_text);
+  }
+  if (input.url !== undefined) {
+    request.url = trimmedOrNull(input.url);
+  }
+
   return invoke<CourseReferenceSummary>("update_course_reference", {
-    request: {
-      reference_id: input.reference_id,
-      apa_citation: input.apa_citation.trim(),
-      notes: trimmedOrNull(input.notes),
-    },
+    request,
   });
 }
 

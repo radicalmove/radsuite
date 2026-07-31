@@ -580,14 +580,16 @@
     }
   }
 
-  async function handleUpdateCourseReference(input: UpdateCourseReferenceInput) {
+  async function handleUpdateCourseReference(input: UpdateCourseReferenceInput): Promise<boolean> {
     courseReferencesError = null;
     try {
       await updateCourseReference(input);
       referencesExport = null;
       await refreshCourseReferences();
+      return true;
     } catch (reason: unknown) {
       courseReferencesError = `Could not update course reference: ${toErrorMessage(reason)}`;
+      return false;
     }
   }
 
