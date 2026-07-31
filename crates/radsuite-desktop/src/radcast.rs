@@ -10,6 +10,7 @@ use radsuite_engines::{
     CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionQualitySummary,
     CaptionTranscriptionRequest, EnhancementModel, EnhancementProcessingRequest,
     EnhancementProcessor, EnhancementQuality, FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
+    RADCAST_STANDARD_POSTFILTER, RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -575,23 +576,32 @@ where
     }
     let removed_filler_count = removal_intervals.len();
     let mut temporary_paths = Vec::new();
-    let processing_input_path = if request.enhancement_model == EnhancementModel::StudioV18 {
+    let processing_input_path = if request.enhancement_model != EnhancementModel::None {
         report_progress(RadcastProcessingProgress {
             phase: RadcastProcessingPhase::PreparingEnhancement,
             percent: 20,
         });
         let prepared_path = output_path.with_file_name(format!(".{output_id}-prepared.wav"));
         let enhanced_path = output_path.with_file_name(format!(".{output_id}-enhanced.wav"));
-        if let Err(error) = processor.process(AudioProcessingRequest {
-            input_path: source_path.clone(),
-            output_path: prepared_path.clone(),
-            output_format: AudioOutputFormat::Wav,
-            clip_start_seconds: request.clip_start_seconds,
-            clip_end_seconds: request.clip_end_seconds,
-            max_silence_seconds: None,
-            remove_intervals: Vec::new(),
-            cleanup_enabled: false,
-        }) {
+        let preparation_filter = match request.enhancement_model {
+            EnhancementModel::Resemble
+            | EnhancementModel::DeepFilterNet
+            | EnhancementModel::Studio => Some(RADCAST_STANDARD_PREFILTER),
+            EnhancementModel::StudioV18 | EnhancementModel::None => None,
+        };
+        if let Err(error) = processor.process_with_additional_filter(
+            AudioProcessingRequest {
+                input_path: source_path.clone(),
+                output_path: prepared_path.clone(),
+                output_format: AudioOutputFormat::Wav,
+                clip_start_seconds: request.clip_start_seconds,
+                clip_end_seconds: request.clip_end_seconds,
+                max_silence_seconds: None,
+                remove_intervals: Vec::new(),
+                cleanup_enabled: false,
+            },
+            preparation_filter,
+        ) {
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
             return Err(error.into());
         }
@@ -603,11 +613,12 @@ where
             phase: RadcastProcessingPhase::EnhancingAudio,
             percent: 35,
         });
-        if let Err(error) = enhancement_processor.process_with_quality(
+        if let Err(error) = enhancement_processor.process_model_with_quality(
             EnhancementProcessingRequest {
                 input_path: prepared_path.clone(),
                 output_path: enhanced_path.clone(),
             },
+            request.enhancement_model,
             request.enhancement_quality,
         ) {
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
@@ -624,7 +635,7 @@ where
     };
     report_progress(RadcastProcessingProgress {
         phase: RadcastProcessingPhase::RenderingAudio,
-        percent: if request.enhancement_model == EnhancementModel::StudioV18 {
+        percent: if request.enhancement_model != EnhancementModel::None {
             78
         } else {
             35
@@ -636,8 +647,14 @@ where
     let clip_end_seconds = (request.enhancement_model == EnhancementModel::None)
         .then_some(request.clip_end_seconds)
         .flatten();
-    let additional_filter = (request.enhancement_model == EnhancementModel::StudioV18)
-        .then_some(RADCAST_OPTIMIZED_POSTFILTER);
+    let additional_filter = match request.enhancement_model {
+        EnhancementModel::Resemble | EnhancementModel::DeepFilterNet => {
+            Some(RADCAST_STANDARD_POSTFILTER)
+        }
+        EnhancementModel::Studio => Some(RADCAST_STUDIO_POSTFILTER),
+        EnhancementModel::StudioV18 => Some(RADCAST_OPTIMIZED_POSTFILTER),
+        EnhancementModel::None => None,
+    };
     let result = match processor.process_with_additional_filter(
         AudioProcessingRequest {
             input_path: processing_input_path,

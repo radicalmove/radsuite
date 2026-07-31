@@ -535,6 +535,73 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
 }
 
 #[tokio::test]
+async fn radcast_real_audio_fixture_can_process_with_each_legacy_profile_when_available() {
+    let Ok(raw_path) = env::var("RADSUITE_REAL_RADCAST_LEGACY_AUDIO") else {
+        eprintln!(
+            "skipping real RADcast legacy profile smoke test: RADSUITE_REAL_RADCAST_LEGACY_AUDIO is not set"
+        );
+        return;
+    };
+    let source_path = PathBuf::from(raw_path);
+    assert!(
+        source_path.is_file(),
+        "missing RADcast legacy profile fixture"
+    );
+
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let dir = test_dir("legacy-profiles");
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("legacy-profile-fixture.wav".to_string()),
+        },
+        AudioProcessor::default(),
+    )
+    .await
+    .expect("import legacy profile fixture");
+
+    for model in [
+        EnhancementModel::Resemble,
+        EnhancementModel::DeepFilterNet,
+        EnhancementModel::Studio,
+    ] {
+        let output = process_radcast_audio_with_processors_and_enhancement(
+            &state,
+            ProcessRadcastAudioRequest {
+                project_id: Some(projects[0].id),
+                source_id: source.id.clone(),
+                output_format: AudioOutputFormat::Wav,
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+                cleanup_enabled: false,
+                max_silence_seconds: None,
+                caption_format: None,
+                caption_language: "en".to_string(),
+                caption_quality_mode: CaptionQualityMode::Reviewed,
+                caption_glossary: None,
+                enhancement_model: model,
+                enhancement_quality: EnhancementQuality::Fast,
+                remove_filler_words: false,
+                filler_removal_mode: FillerRemovalMode::Aggressive,
+            },
+            AudioProcessor::default(),
+            CaptionProcessor::default(),
+            EnhancementProcessor::default(),
+        )
+        .await
+        .unwrap_or_else(|error| panic!("{model:?} profile failed: {error}"));
+
+        assert_eq!(output.enhancement_model, model);
+        assert!(Path::new(&output.path).is_file());
+    }
+
+    remove_dir(dir);
+}
+
+#[tokio::test]
 async fn radcast_processing_reports_ordered_local_progress_phases() {
     let state = desktop_state_with_migrated_pool().await;
     let projects = list_radcite_projects(&state).await.expect("list projects");
@@ -660,6 +727,13 @@ fn radcast_capabilities_report_caption_model_readiness() {
     assert!(both_ready.optimized_available);
     assert!(both_ready.optimized_detail.contains("local"));
     assert!(both_ready.optimized_detail.contains("server"));
+    assert_eq!(both_ready.enhancement_models.len(), 5);
+    assert!(
+        both_ready
+            .enhancement_models
+            .iter()
+            .any(|model| model.id == EnhancementModel::StudioV18 && model.available)
+    );
 
     let unavailable = get_radcast_capabilities_with_processor(CaptionProcessor::from_commands(
         whisper,
@@ -667,6 +741,35 @@ fn radcast_capabilities_report_caption_model_readiness() {
     ));
     assert!(!unavailable.caption_available);
     assert!(unavailable.caption_detail.contains("model"));
+    remove_dir(dir);
+}
+
+#[test]
+fn radcast_capabilities_explain_each_local_enhancement_backend() {
+    let dir = test_dir("backend-capabilities");
+    let resemble = write_executable(&dir, "resemble.sh", "#!/bin/sh\nexit 0\n");
+    let deepfilternet = write_executable(&dir, "deepfilter.sh", "#!/bin/sh\nexit 0\n");
+    let studio = write_executable(&dir, "studio.sh", "#!/bin/sh\nexit 0\n");
+    let optimized = write_executable(&dir, "optimized.sh", "#!/bin/sh\nexit 0\n");
+    let processor = EnhancementProcessor::from_commands(resemble, deepfilternet, studio, optimized);
+
+    let capabilities = get_radcast_capabilities_with_processors(
+        CaptionProcessor::from_commands(dir.join("missing-whisper"), dir.join("missing-model")),
+        processor,
+    );
+
+    assert!(
+        capabilities
+            .enhancement_models
+            .iter()
+            .all(|model| model.available || model.id == EnhancementModel::None)
+    );
+    assert!(
+        capabilities
+            .enhancement_models
+            .iter()
+            .all(|model| !model.detail.trim().is_empty())
+    );
     remove_dir(dir);
 }
 

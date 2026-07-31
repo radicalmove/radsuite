@@ -19,7 +19,7 @@ use radsuite_db::{
     SqliteProjectRepository, SqliteReferenceEntryRepository,
 };
 use radsuite_engines::EngineStatus;
-use radsuite_engines::{AudioProcessor, CaptionProcessor, EnhancementProcessor};
+use radsuite_engines::{AudioProcessor, CaptionProcessor, EnhancementModel, EnhancementProcessor};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -63,6 +63,16 @@ pub struct RadcastCapabilityStatus {
     pub caption_detail: String,
     pub optimized_available: bool,
     pub optimized_detail: String,
+    pub enhancement_models: Vec<RadcastEnhancementCapability>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RadcastEnhancementCapability {
+    pub id: EnhancementModel,
+    pub label: String,
+    pub description: String,
+    pub available: bool,
+    pub detail: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -114,11 +124,48 @@ pub fn get_radcast_capabilities_with_processors(
             ),
         )
     };
+    let enhancement_models = EnhancementModel::all()
+        .into_iter()
+        .map(|model| {
+            let available = enhancement_processor.is_model_available(model);
+            let detail = if available {
+                if model == EnhancementModel::None {
+                    "Available without an additional model.".to_string()
+                } else {
+                    format!(
+                        "Installed local helper: {}.",
+                        enhancement_processor
+                            .command_path_for(model)
+                            .map(|path| path.display().to_string())
+                            .unwrap_or_else(|| "built-in processing".to_string())
+                    )
+                }
+            } else {
+                format!(
+                    "Install the local helper for {}. Expected command: {}.",
+                    model.label(),
+                    enhancement_processor
+                        .command_path_for(model)
+                        .map(|path| path.display().to_string())
+                        .unwrap_or_else(|| "not configured".to_string())
+                )
+            };
+            RadcastEnhancementCapability {
+                id: model,
+                label: model.label().to_string(),
+                description: model.description().to_string(),
+                available,
+                detail,
+            }
+        })
+        .collect();
+
     RadcastCapabilityStatus {
         caption_available,
         caption_detail,
         optimized_available,
         optimized_detail,
+        enhancement_models,
     }
 }
 
