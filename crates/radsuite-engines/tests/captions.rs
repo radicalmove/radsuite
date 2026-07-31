@@ -240,6 +240,7 @@ fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
     file.write_all(contents.as_bytes())
         .expect("write fake tool");
     file.sync_all().expect("sync fake tool");
+    drop(file);
     let mut permissions = fs::metadata(&temporary_path)
         .expect("read fake tool metadata")
         .permissions();
