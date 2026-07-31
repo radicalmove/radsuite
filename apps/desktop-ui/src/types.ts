@@ -371,6 +371,7 @@ export type ModuleReadingsPdfImportPreview = {
 export type CourseReferencesExportRequest = {
   project_id?: string | null;
   for_ako_learn: boolean;
+  allow_incomplete: boolean;
 };
 
 export type ModuleReadingsExportRequest = {
@@ -383,6 +384,8 @@ export type CourseReferencesExport = {
   content_type: string;
   html: string;
   reference_count: number;
+  apa_error_count: number;
+  apa_warning_count: number;
 };
 
 export type ModuleReadingsExport = {

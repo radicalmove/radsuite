@@ -654,13 +654,14 @@
     }
   }
 
-  async function handleExportCourseReferences(forAkoLearn: boolean) {
+  async function handleExportCourseReferences(forAkoLearn: boolean, allowIncomplete: boolean) {
     referencesExportLoading = true;
     referencesExportError = null;
     try {
       referencesExport = await exportCourseReferences({
         project_id: selectedProjectCommandId(),
         for_ako_learn: forAkoLearn,
+        allow_incomplete: allowIncomplete,
       });
     } catch (reason: unknown) {
       referencesExportError = `Could not export course references: ${toErrorMessage(reason)}`;
@@ -978,8 +979,8 @@
         moduleExportResult={moduleReadingsExport}
         moduleExportLoading={moduleReadingsExportLoading}
         moduleExportError={moduleReadingsExportError}
-        onExportReferences={(forAkoLearn) => {
-          void handleExportCourseReferences(forAkoLearn);
+        onExportReferences={(forAkoLearn, allowIncomplete) => {
+          void handleExportCourseReferences(forAkoLearn, allowIncomplete);
         }}
         onExportModuleReadings={(moduleId, forAkoLearn) => {
           void handleExportModuleReadings(moduleId, forAkoLearn);
