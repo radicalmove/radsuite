@@ -1503,8 +1503,7 @@ pub async fn merge_course_references(
     }
     if request
         .merge_reference_ids
-        .iter()
-        .any(|reference_id| *reference_id == request.primary_reference_id)
+        .contains(&request.primary_reference_id)
     {
         return Err(CourseReferenceError::InvalidMerge(
             "the primary reference must be different from the references being merged".to_string(),
