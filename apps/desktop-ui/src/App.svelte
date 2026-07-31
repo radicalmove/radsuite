@@ -38,6 +38,7 @@
     addRadciteModule,
     archiveModuleReading,
     archiveRadciteModule,
+    importDocumentReadings,
     listModuleReadings,
     listRadciteModules,
     previewModuleReadingsCsvImport,
@@ -424,6 +425,22 @@
     activeArea = "readings";
     selectedParagraphId = null;
     await refreshRadciteModules();
+  }
+
+  async function handleImportDetectedReadings() {
+    const path = analysedReadingsPath.trim() || sharedDocxPath.trim();
+    const sourceFileType = analysedReadingsSource ?? documentSource;
+    if (!path) {
+      throw new Error("Analyse a document before importing detected readings.");
+    }
+
+    const result = await importDocumentReadings({
+      project_id: selectedProjectCommandId(),
+      path,
+      source_file_type: sourceFileType,
+    });
+    await refreshRadciteModules();
+    return result;
   }
 
   async function refreshCourseReferences() {
@@ -893,6 +910,7 @@
         onOpenReadings={() => {
           void handleOpenReadingsFromDocument();
         }}
+        onImportDetectedReadings={() => handleImportDetectedReadings()}
         onLoadSavedReview={(documentId) => {
           void handleLoadSavedReview(documentId);
         }}

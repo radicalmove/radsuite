@@ -368,6 +368,14 @@ export type ModuleReadingsPdfImportPreview = {
   failures: ModuleReadingsPdfImportFailure[];
 };
 
+export type ImportDocumentReadingsResponse = {
+  candidate_count: number;
+  saved_count: number;
+  created_module_count: number;
+  unassigned_count: number;
+  failed_file_count: number;
+};
+
 export type CourseReferencesExportRequest = {
   project_id?: string | null;
   for_ako_learn: boolean;

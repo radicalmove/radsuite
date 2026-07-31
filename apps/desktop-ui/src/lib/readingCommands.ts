@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   CourseModuleSummary,
+  ImportDocumentReadingsResponse,
   ModuleReadingImportCandidate,
   ModuleReadingSummary,
   ModuleReadingsPdfImportPreview,
@@ -42,6 +43,12 @@ export type PreviewModuleReadingsImportInput = {
 
 export type PreviewModuleReadingsPdfImportInput = {
   paths: string[];
+};
+
+export type ImportDocumentReadingsInput = {
+  project_id?: string | null;
+  path: string;
+  source_file_type: "docx" | "pdf";
 };
 
 export type SaveModuleReadingsImportInput = {
@@ -161,6 +168,18 @@ export function previewModuleReadingsPdfImport(
   return invoke<ModuleReadingsPdfImportPreview>("preview_module_readings_pdf_import", {
     request: {
       paths: input.paths.map((path) => path.trim()).filter(Boolean),
+    },
+  });
+}
+
+export function importDocumentReadings(
+  input: ImportDocumentReadingsInput,
+): Promise<ImportDocumentReadingsResponse> {
+  return invoke<ImportDocumentReadingsResponse>("import_document_readings", {
+    request: {
+      project_id: trimmedOrNull(input.project_id),
+      path: input.path.trim(),
+      source_file_type: input.source_file_type,
     },
   });
 }

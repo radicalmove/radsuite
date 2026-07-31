@@ -6,6 +6,7 @@ import {
   addRadciteModule,
   archiveModuleReading,
   archiveRadciteModule,
+  importDocumentReadings,
   listModuleReadings,
   listRadciteModules,
   previewModuleReadingsCsvImport,
@@ -309,6 +310,33 @@ describe("reading commands", () => {
     expect(invoke).toHaveBeenCalledWith("preview_module_readings_pdf_import", {
       request: {
         paths: ["/tmp/module-6-a.pdf", "/tmp/module-6-b.pdf"],
+      },
+    });
+  });
+
+  test("imports trimmed document readings into the selected project", async () => {
+    const result = {
+      candidate_count: 4,
+      saved_count: 4,
+      created_module_count: 1,
+      unassigned_count: 0,
+      failed_file_count: 0,
+    };
+    vi.mocked(invoke).mockResolvedValue(result);
+
+    await expect(
+      importDocumentReadings({
+        project_id: " project-1 ",
+        path: " /tmp/module-6.pdf ",
+        source_file_type: "pdf",
+      }),
+    ).resolves.toBe(result);
+
+    expect(invoke).toHaveBeenCalledWith("import_document_readings", {
+      request: {
+        project_id: "project-1",
+        path: "/tmp/module-6.pdf",
+        source_file_type: "pdf",
       },
     });
   });

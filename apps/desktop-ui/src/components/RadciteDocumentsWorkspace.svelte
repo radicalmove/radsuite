@@ -18,6 +18,7 @@
   import { canUseSavedReviewForReadings } from "../lib/savedReviewCommands";
   import type {
     AnalyseDocxReviewResponse,
+    ImportDocumentReadingsResponse,
     ParagraphFilter,
     ReviewParagraph,
     SavedRadciteReviewSummary,
@@ -42,6 +43,7 @@
     onDocumentSourceChange: (source: DocumentSource) => void;
     onDocxPathChange: (path: string) => void;
     onOpenReadings: () => void | Promise<void>;
+    onImportDetectedReadings: () => Promise<ImportDocumentReadingsResponse>;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
     onUseForReadings: (review: SavedRadciteReviewSummary) => void | Promise<void>;
     onUpdateDocument: (
@@ -69,6 +71,7 @@
     onDocumentSourceChange,
     onDocxPathChange,
     onOpenReadings,
+    onImportDetectedReadings,
     onLoadSavedReview,
     onUseForReadings,
     onUpdateDocument,
@@ -79,6 +82,9 @@
 
   let analysisLoading = $state(false);
   let analysisError = $state<string | null>(null);
+  let readingsImportLoading = $state(false);
+  let readingsImportError = $state<string | null>(null);
+  let readingsImportStatus = $state<string | null>(null);
   let editingDocumentId = $state<string | null>(null);
   let editorDraft = $state<DocumentEditorDraft | null>(null);
   let editorError = $state<string | null>(null);
@@ -150,6 +156,8 @@
   function selectDocumentSource(source: DocumentSource) {
     if (source !== documentSource) {
       analysisError = null;
+      readingsImportError = null;
+      readingsImportStatus = null;
       onAnalysisResult(null);
       onSelectParagraph(null);
       onDocumentSourceChange(source);
@@ -190,6 +198,8 @@
 
     analysisLoading = true;
     analysisError = null;
+    readingsImportError = null;
+    readingsImportStatus = null;
     onAnalysisResult(null);
     onSelectParagraph(null);
 
@@ -210,6 +220,48 @@
       analysisLoading = false;
     }
   }
+
+  async function importDetectedReadings() {
+    if (!canOpenReadings || readingsImportLoading) {
+      return;
+    }
+
+    readingsImportLoading = true;
+    readingsImportError = null;
+    readingsImportStatus = null;
+    try {
+      const result = await onImportDetectedReadings();
+      if (result.candidate_count === 0) {
+        readingsImportStatus =
+          result.failed_file_count > 0
+            ? `${result.failed_file_count} source ${result.failed_file_count === 1 ? "file could not" : "files could not"} be read.`
+            : "No readings were detected in this document.";
+        return;
+      }
+
+      const parts = [`Processed ${result.saved_count} of ${result.candidate_count} detected readings.`];
+      if (result.created_module_count > 0) {
+        parts.push(
+          `Created ${result.created_module_count} ${result.created_module_count === 1 ? "module" : "modules"}.`,
+        );
+      }
+      if (result.unassigned_count > 0) {
+        parts.push(
+          `${result.unassigned_count} ${result.unassigned_count === 1 ? "reading needs" : "readings need"} a module assignment.`,
+        );
+      }
+      if (result.failed_file_count > 0) {
+        parts.push(
+          `${result.failed_file_count} source ${result.failed_file_count === 1 ? "file was" : "files were"} not readable.`,
+        );
+      }
+      readingsImportStatus = parts.join(" ");
+    } catch (reason: unknown) {
+      readingsImportError = toErrorMessage(reason);
+    } finally {
+      readingsImportLoading = false;
+    }
+  }
 </script>
 
 <section class="documents-workspace" aria-labelledby="documents-heading">
@@ -226,6 +278,14 @@
         {/if}
         <span>{analysisResult.project_title}</span>
         {#if canOpenReadings}
+          <button
+            class="primary-button compact-button"
+            type="button"
+            disabled={readingsImportLoading}
+            onclick={() => void importDetectedReadings()}
+          >
+            {readingsImportLoading ? "Importing" : "Import detected readings"}
+          </button>
           <button
             class="secondary-button compact-button"
             type="button"
@@ -292,6 +352,11 @@
 
   {#if analysisError}
     <div class="notice analysis-notice">{analysisError}</div>
+  {/if}
+  {#if readingsImportError}
+    <div class="notice analysis-notice">{readingsImportError}</div>
+  {:else if readingsImportStatus}
+    <div class="notice analysis-notice">{readingsImportStatus}</div>
   {/if}
 
   <section class="saved-reviews" aria-labelledby="saved-reviews-heading">
