@@ -12,6 +12,8 @@ const exportResult: CourseReferencesExport = {
   content_type: "text/html; charset=utf-8",
   html: "<p>Smith, J. (2020). Worked examples in practice. Learning Press.</p>",
   reference_count: 1,
+  apa_error_count: 0,
+  apa_warning_count: 0,
 };
 
 const moduleExportResult: ModuleReadingsExport = {
@@ -31,13 +33,18 @@ describe("export commands", () => {
     vi.mocked(invoke).mockResolvedValue(exportResult);
 
     await expect(
-      exportCourseReferences({ project_id: "project-1", for_ako_learn: true }),
+      exportCourseReferences({
+        project_id: "project-1",
+        for_ako_learn: true,
+        allow_incomplete: false,
+      }),
     ).resolves.toBe(exportResult);
 
     expect(invoke).toHaveBeenCalledWith("export_course_references", {
       request: {
         project_id: "project-1",
         for_ako_learn: true,
+        allow_incomplete: false,
       },
     });
   });

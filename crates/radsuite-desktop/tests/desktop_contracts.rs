@@ -297,6 +297,7 @@ async fn radcite_commands_respect_selected_project_context() {
         ExportCourseReferencesRequest {
             project_id: Some(crju201.id),
             for_ako_learn: false,
+            allow_incomplete: false,
         },
     )
     .await
@@ -2523,6 +2524,7 @@ async fn radcite_excluded_document_filtering() {
         ExportCourseReferencesRequest {
             project_id: None,
             for_ako_learn: false,
+            allow_incomplete: false,
         },
     )
     .await
@@ -2585,6 +2587,7 @@ async fn course_references_can_be_exported_as_html() {
         ExportCourseReferencesRequest {
             project_id: None,
             for_ako_learn: false,
+            allow_incomplete: false,
         },
     )
     .await
@@ -2596,6 +2599,49 @@ async fn course_references_can_be_exported_as_html() {
     assert!(export.html.contains(r#"{GENERICO:type="references"}"#));
     assert!(export.html.contains("Worked examples &amp; practice."));
     assert!(export.html.contains("Assessment rubrics &lt;revised&gt;."));
+}
+
+#[tokio::test]
+async fn course_reference_export_blocks_apa_fixes_unless_overridden() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith (2024)".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add reference needing APA fixes");
+
+    let error = export_course_references(
+        &state,
+        ExportCourseReferencesRequest {
+            project_id: None,
+            for_ako_learn: false,
+            allow_incomplete: false,
+        },
+    )
+    .await
+    .expect_err("block export while APA fixes are pending");
+    assert!(error.to_string().contains("APA fixes"));
+
+    let export = export_course_references(
+        &state,
+        ExportCourseReferencesRequest {
+            project_id: None,
+            for_ako_learn: false,
+            allow_incomplete: true,
+        },
+    )
+    .await
+    .expect("allow export with explicit override");
+
+    assert_eq!(export.reference_count, 1);
+    assert_eq!(export.apa_error_count, 1);
+    assert_eq!(export.apa_warning_count, 0);
 }
 
 #[tokio::test]
@@ -2619,6 +2665,7 @@ async fn course_reference_export_can_omit_generico_tags() {
         ExportCourseReferencesRequest {
             project_id: None,
             for_ako_learn: true,
+            allow_incomplete: false,
         },
     )
     .await

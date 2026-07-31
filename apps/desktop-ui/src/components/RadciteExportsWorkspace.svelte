@@ -24,7 +24,7 @@
     moduleExportResult: ModuleReadingsExport | null;
     moduleExportLoading: boolean;
     moduleExportError: string | null;
-    onExportReferences: (forAkoLearn: boolean) => void | Promise<void>;
+    onExportReferences: (forAkoLearn: boolean, allowIncomplete: boolean) => void | Promise<void>;
     onExportModuleReadings: (moduleId: string, forAkoLearn: boolean) => void | Promise<void>;
     onRefreshReferences: () => void | Promise<void>;
     onRefreshModules: () => void | Promise<void>;
@@ -54,6 +54,7 @@
 
   let exportMode = $state<ExportMode>("course-references");
   let forAkoLearn = $state(false);
+  let allowIncomplete = $state(false);
   let copyNotice = $state<string | null>(null);
   let copyFailed = $state(false);
 
@@ -72,8 +73,17 @@
   let sourceLoading = $derived(
     exportMode === "course-references" ? referencesLoading : modulesLoading || readingsLoading,
   );
+  let apaFixCount = $derived(
+    references.filter((reference) => reference.validation_status === "needs_fix").length,
+  );
+  let apaWarningCount = $derived(
+    references.filter((reference) => reference.validation_status === "unknown").length,
+  );
   let exportDisabled = $derived(
-    activeExportLoading || sourceLoading || (exportMode === "module-readings" && !selectedModule),
+    activeExportLoading ||
+      sourceLoading ||
+      (exportMode === "module-readings" && !selectedModule) ||
+      (exportMode === "course-references" && apaFixCount > 0 && !allowIncomplete),
   );
   let resultActionDisabled = $derived(activeExportLoading || !activeExportResult);
 
@@ -90,6 +100,7 @@
 
   function setExportMode(mode: ExportMode) {
     exportMode = mode;
+    allowIncomplete = false;
     copyNotice = null;
     copyFailed = false;
   }
@@ -108,7 +119,7 @@
     copyNotice = null;
     copyFailed = false;
     if (exportMode === "course-references") {
-      await onExportReferences(forAkoLearn);
+      await onExportReferences(forAkoLearn, allowIncomplete);
       return;
     }
 
@@ -226,6 +237,21 @@
       <span>AKO | LEARN</span>
     </label>
 
+    {#if exportMode === "course-references" && apaFixCount > 0}
+      <div class="notice export-notice" role="status">
+        <strong>{apaFixCount} course reference{apaFixCount === 1 ? "" : "s"} need APA fixes.</strong>
+        <span>Fix them before exporting, or explicitly allow an incomplete export.</span>
+        <label class="checkbox-line">
+          <input type="checkbox" bind:checked={allowIncomplete} />
+          <span>Export with APA fixes pending</span>
+        </label>
+      </div>
+    {:else if exportMode === "course-references" && apaWarningCount > 0}
+      <div class="notice export-notice" role="status">
+        {apaWarningCount} course reference{apaWarningCount === 1 ? " has" : "s have"} not been checked for APA issues.
+      </div>
+    {/if}
+
     <div class="export-actions">
       <button class="primary-button" type="button" disabled={exportDisabled} onclick={generateExport}>
         {activeExportLoading ? "Generating" : "Generate HTML"}
@@ -252,6 +278,19 @@
       <p class="eyebrow">HTML preview</p>
       {#if activeExportResult}
         <strong>{exportCount(activeExportResult)} exported</strong>
+        {#if
+          exportMode === "course-references" &&
+          "apa_error_count" in activeExportResult &&
+          activeExportResult.apa_error_count > 0
+        }
+          <span>{activeExportResult.apa_error_count} exported with APA fixes pending</span>
+        {:else if
+          exportMode === "course-references" &&
+          "apa_warning_count" in activeExportResult &&
+          activeExportResult.apa_warning_count > 0
+        }
+          <span>{activeExportResult.apa_warning_count} not checked for APA issues</span>
+        {/if}
       {:else}
         <strong>No export generated</strong>
       {/if}

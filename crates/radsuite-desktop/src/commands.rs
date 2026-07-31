@@ -659,6 +659,8 @@ pub struct ExportCourseReferencesRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
     pub for_ako_learn: bool,
+    #[serde(default)]
+    pub allow_incomplete: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -673,6 +675,8 @@ pub struct CourseReferencesExport {
     pub content_type: String,
     pub html: String,
     pub reference_count: usize,
+    pub apa_error_count: usize,
+    pub apa_warning_count: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -865,6 +869,10 @@ pub enum ModuleReadingImportError {
 pub enum CourseReferenceExportError {
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
+    #[error(
+        "{count} course reference(s) need APA fixes before export; enable export with fixes pending to continue"
+    )]
+    ApaValidation { count: usize },
     #[error(transparent)]
     Database(#[from] DbError),
 }
@@ -2170,6 +2178,19 @@ pub async fn export_course_references(
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let references = load_course_reference_entries(state, project.id).await?;
     let reference_count = references.len();
+    let apa_error_count = references
+        .iter()
+        .filter(|reference| reference.apa_validation_status == ApaValidationStatus::NeedsFix)
+        .count();
+    let apa_warning_count = references
+        .iter()
+        .filter(|reference| reference.apa_validation_status == ApaValidationStatus::Unknown)
+        .count();
+    if apa_error_count > 0 && !request.allow_incomplete {
+        return Err(CourseReferenceExportError::ApaValidation {
+            count: apa_error_count,
+        });
+    }
     let html = format_course_references_html(&references, request.for_ako_learn);
 
     Ok(CourseReferencesExport {
@@ -2180,6 +2201,8 @@ pub async fn export_course_references(
         content_type: "text/html; charset=utf-8".to_string(),
         html,
         reference_count,
+        apa_error_count,
+        apa_warning_count,
     })
 }
 
