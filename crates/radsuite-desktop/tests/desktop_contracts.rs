@@ -20,20 +20,19 @@ use radsuite_desktop::{
     ListSavedReviewsRequest, MergeCourseReferencesRequest, ModuleReadingError,
     ModuleReadingExportError, ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    RadciteArchiveItemKind, RadciteModuleError, RadciteProjectError,
-    RadciteDocumentError,
+    RadciteArchiveItemKind, RadciteDocumentError, RadciteModuleError, RadciteProjectError,
     RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
     SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
     UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
     UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, add_course_reference,
-    add_manual_citation_for_review,
-    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
-    analyse_pdf_for_review, archive_course_reference, archive_module_reading,
-    archive_radcite_document, archive_radcite_module, archive_radcite_project,
-    create_radcite_project, export_course_references, export_module_readings, get_app_status,
-    link_citation_to_reference_for_review, list_course_references, list_module_readings,
-    list_radcite_archive, list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
-    load_saved_radcite_review, mark_paragraph_resolved_for_review, merge_course_references,
+    add_manual_citation_for_review, add_module_reading, add_radcite_module,
+    analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
+    archive_module_reading, archive_radcite_document, archive_radcite_module,
+    archive_radcite_project, create_radcite_project, export_course_references,
+    export_module_readings, get_app_status, link_citation_to_reference_for_review,
+    list_course_references, list_module_readings, list_radcite_archive, list_radcite_modules,
+    list_radcite_projects, list_saved_radcite_reviews, load_saved_radcite_review,
+    mark_paragraph_resolved_for_review, merge_course_references,
     preview_module_readings_csv_import, preview_module_readings_import,
     preview_module_readings_pdf_import, restore_radcite_archive_item, restore_radcite_project,
     save_module_readings_import, update_course_reference, update_module_reading,
@@ -2433,21 +2432,21 @@ async fn radcite_excluded_document_filtering() {
     .expect("analyse document");
 
     let reference_repo = SqliteReferenceEntryRepository::new(state.database_pool.clone());
-    let mut linked_reference = ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reference);
+    let mut linked_reference =
+        ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reference);
     linked_reference.document_id = Some(analysis.document_id);
     linked_reference.apa_citation = Some(
-        "Smith, J. (2020). Linked reference from an excluded document. Learning Press."
-            .to_string(),
+        "Smith, J. (2020). Linked reference from an excluded document. Learning Press.".to_string(),
     );
     reference_repo
         .insert_reference_entry(&linked_reference)
         .await
         .expect("insert linked course reference");
 
-    let mut unlinked_reference = ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reference);
-    unlinked_reference.apa_citation = Some(
-        "Jones, A. (2024). Unlinked course reference. Teaching Press.".to_string(),
-    );
+    let mut unlinked_reference =
+        ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reference);
+    unlinked_reference.apa_citation =
+        Some("Jones, A. (2024). Unlinked course reference. Teaching Press.".to_string());
     reference_repo
         .insert_reference_entry(&unlinked_reference)
         .await
@@ -2470,20 +2469,19 @@ async fn radcite_excluded_document_filtering() {
     linked_reading.document_id = Some(analysis.document_id);
     linked_reading.reading_category = Some(ReadingCategory::Compulsory);
     linked_reading.apa_citation = Some(
-        "Smith, J. (2020). Linked reading from an excluded document. Learning Press."
-            .to_string(),
+        "Smith, J. (2020). Linked reading from an excluded document. Learning Press.".to_string(),
     );
     reference_repo
         .insert_reference_entry(&linked_reading)
         .await
         .expect("insert linked module reading");
 
-    let mut unlinked_reading = ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reading);
+    let mut unlinked_reading =
+        ReferenceEntry::new(analysis.project_id, ReferenceEntryType::Reading);
     unlinked_reading.module_id = Some(module.id);
     unlinked_reading.reading_category = Some(ReadingCategory::Optional);
-    unlinked_reading.apa_citation = Some(
-        "Jones, A. (2024). Unlinked module reading. Teaching Press.".to_string(),
-    );
+    unlinked_reading.apa_citation =
+        Some("Jones, A. (2024). Unlinked module reading. Teaching Press.".to_string());
     reference_repo
         .insert_reference_entry(&unlinked_reading)
         .await
@@ -2530,7 +2528,11 @@ async fn radcite_excluded_document_filtering() {
     .await
     .expect("export filtered course references");
     assert_eq!(course_export.reference_count, 1);
-    assert!(!course_export.html.contains("Linked reference from an excluded document"));
+    assert!(
+        !course_export
+            .html
+            .contains("Linked reference from an excluded document")
+    );
     assert!(course_export.html.contains("Unlinked course reference"));
 
     let module_export = export_module_readings(
@@ -2543,7 +2545,11 @@ async fn radcite_excluded_document_filtering() {
     .await
     .expect("export filtered module readings");
     assert_eq!(module_export.reading_count, 1);
-    assert!(!module_export.html.contains("Linked reading from an excluded document"));
+    assert!(
+        !module_export
+            .html
+            .contains("Linked reading from an excluded document")
+    );
     assert!(module_export.html.contains("Unlinked module reading"));
 }
 

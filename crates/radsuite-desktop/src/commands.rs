@@ -2090,8 +2090,8 @@ pub async fn export_module_readings(
     let readings = SqliteReferenceEntryRepository::new(state.database_pool.clone())
         .list_reference_entries_for_module(module.id, ReferenceEntryType::Reading)
         .await?;
-    let mut readings = filter_references_by_document_exclusion(state, module.project_id, readings)
-        .await?;
+    let mut readings =
+        filter_references_by_document_exclusion(state, module.project_id, readings).await?;
     sort_module_reading_entries(&mut readings);
     let reading_count = readings.len();
     let html = format_module_readings_html(&readings, request.for_ako_learn);
