@@ -21,7 +21,14 @@ use crate::DesktopState;
 
 pub type RadtTsChildHandle = Arc<Mutex<Option<Child>>>;
 pub type RadtTsTempFileSet = (PathBuf, Option<PathBuf>);
-pub type RadtTsTempFileRegistry = Arc<Mutex<HashMap<String, RadtTsTempFileSet>>>;
+
+#[derive(Debug, Default)]
+pub struct RadtTsLifecycleState {
+    pub shutting_down: bool,
+    pub temp_files: HashMap<String, RadtTsTempFileSet>,
+}
+
+pub type RadtTsLifecycleRegistry = Arc<Mutex<RadtTsLifecycleState>>;
 
 const MAX_REFERENCE_AUDIO_BYTES: u64 = 250 * 1024 * 1024;
 const MAX_OUTPUT_NAME_LENGTH: usize = 80;
@@ -340,6 +347,21 @@ pub async fn start_radt_ts_synthesis(
         output: None,
         error: None,
     };
+    let lifecycle = state.radt_ts_lifecycle.clone();
+    let mut lifecycle_guard = lifecycle
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if lifecycle_guard.shutting_down {
+        drop(lifecycle_guard);
+        request_process_termination(&child_handle, true);
+        remove_temp_text_files(&text_path, reference_text_path.as_deref());
+        state
+            .radt_ts_active_projects
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&request.project_id.to_string());
+        return Err(RadtTsError::Cancelled);
+    }
     state
         .radt_ts_jobs
         .lock()
@@ -355,20 +377,17 @@ pub async fn start_radt_ts_synthesis(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&job_id);
-    state
-        .radt_ts_temp_files
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .insert(
-            job_id.clone(),
-            (text_path.clone(), reference_text_path.clone()),
-        );
+    lifecycle_guard.temp_files.insert(
+        job_id.clone(),
+        (text_path.clone(), reference_text_path.clone()),
+    );
+    drop(lifecycle_guard);
 
     let jobs = state.radt_ts_jobs.clone();
     let children = state.radt_ts_children.clone();
     let cancellations = state.radt_ts_cancel_requests.clone();
     let active_projects = state.radt_ts_active_projects.clone();
-    let temp_files = state.radt_ts_temp_files.clone();
+    let lifecycle = state.radt_ts_lifecycle.clone();
     let context = RadtTsJobContext {
         request,
         project_root,
@@ -377,7 +396,7 @@ pub async fn start_radt_ts_synthesis(
         children,
         cancellations,
         active_projects,
-        temp_files,
+        lifecycle,
     };
     tokio::spawn(async move { run_radt_ts_job(job_id, context).await });
 
@@ -457,6 +476,11 @@ pub fn list_radt_ts_outputs_for_project(
 }
 
 pub fn shutdown_radt_ts_jobs(state: &DesktopState) {
+    let mut lifecycle_guard = state
+        .radt_ts_lifecycle
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    lifecycle_guard.shutting_down = true;
     let handles = state
         .radt_ts_children
         .lock()
@@ -487,13 +511,12 @@ pub fn shutdown_radt_ts_jobs(state: &DesktopState) {
     for (_, handle) in handles {
         request_process_termination(&handle, true);
     }
-    let temp_files = state
-        .radt_ts_temp_files
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
+    let temp_files = lifecycle_guard
+        .temp_files
         .drain()
         .map(|(_, paths)| paths)
         .collect::<Vec<_>>();
+    drop(lifecycle_guard);
     for (text_path, reference_text_path) in temp_files {
         remove_temp_text_files(&text_path, reference_text_path.as_deref());
     }
@@ -507,7 +530,7 @@ struct RadtTsJobContext {
     children: Arc<Mutex<HashMap<String, RadtTsChildHandle>>>,
     cancellations: Arc<Mutex<std::collections::HashSet<String>>>,
     active_projects: Arc<Mutex<std::collections::HashSet<String>>>,
-    temp_files: RadtTsTempFileRegistry,
+    lifecycle: RadtTsLifecycleRegistry,
 }
 
 async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
@@ -519,7 +542,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
         children,
         cancellations,
         active_projects,
-        temp_files,
+        lifecycle,
     } = context;
     update_job(&jobs, &job_id, |job| {
         job.state = RadtTsJobState::Running;
@@ -543,7 +566,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
                         "process handle disappeared".to_string(),
                     )),
                 );
-                cleanup_registered_radt_ts_temp_files(&temp_files, &job_id);
+                cleanup_registered_radt_ts_temp_files(&lifecycle, &job_id);
                 return;
             }
         };
@@ -637,7 +660,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
             }
         }
     }
-    cleanup_registered_radt_ts_temp_files(&temp_files, &job_id);
+    cleanup_registered_radt_ts_temp_files(&lifecycle, &job_id);
 }
 
 async fn read_limited<R>(reader: Option<R>) -> Vec<u8>
@@ -821,10 +844,11 @@ fn remove_temp_text_files(text_path: &Path, reference_text_path: Option<&Path>) 
     }
 }
 
-fn cleanup_registered_radt_ts_temp_files(temp_files: &RadtTsTempFileRegistry, job_id: &str) {
-    let paths = temp_files
+fn cleanup_registered_radt_ts_temp_files(lifecycle: &RadtTsLifecycleRegistry, job_id: &str) {
+    let paths = lifecycle
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .temp_files
         .remove(job_id);
     if let Some((text_path, reference_text_path)) = paths {
         remove_temp_text_files(&text_path, reference_text_path.as_deref());
@@ -1191,7 +1215,7 @@ mod tests {
         let reference = root.join("reference.txt");
         fs::write(&script, "script").expect("create script file");
         fs::write(&reference, "reference").expect("create reference file");
-        state.radt_ts_temp_files.lock().unwrap().insert(
+        state.radt_ts_lifecycle.lock().unwrap().temp_files.insert(
             "job-1".to_string(),
             (script.clone(), Some(reference.clone())),
         );
@@ -1201,6 +1225,15 @@ mod tests {
         assert!(!script.exists());
         assert!(!reference.exists());
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[tokio::test]
+    async fn shutdown_marks_radt_ts_lifecycle_closed() {
+        let state = DesktopState::for_tests();
+
+        shutdown_radt_ts_jobs(&state);
+
+        assert!(state.radt_ts_lifecycle.lock().unwrap().shutting_down);
     }
 
     #[test]
