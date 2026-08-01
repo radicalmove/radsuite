@@ -32,6 +32,13 @@ pub type RadtTsLifecycleRegistry = Arc<Mutex<RadtTsLifecycleState>>;
 
 const MAX_REFERENCE_AUDIO_BYTES: u64 = 250 * 1024 * 1024;
 const MAX_OUTPUT_NAME_LENGTH: usize = 80;
+const DEFAULT_MAX_NEW_TOKENS: u32 = 1200;
+const MIN_MAX_NEW_TOKENS: u32 = 64;
+const MAX_MAX_NEW_TOKENS: u32 = 8192;
+
+fn default_max_new_tokens() -> u32 {
+    DEFAULT_MAX_NEW_TOKENS
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -92,6 +99,7 @@ pub struct RadtTsSynthesisRequest {
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
     pub pause_max_seconds: f64,
+    pub max_new_tokens: u32,
     pub output_format: RadtTsOutputFormat,
     pub output_name: String,
     pub acknowledge_voice_clone: bool,
@@ -162,6 +170,8 @@ pub struct StartRadtTsSynthesisRequest {
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
     pub pause_max_seconds: f64,
+    #[serde(default = "default_max_new_tokens")]
+    pub max_new_tokens: u32,
     pub output_format: RadtTsOutputFormat,
     pub output_name: String,
     pub acknowledge_voice_clone: bool,
@@ -184,6 +194,8 @@ pub enum RadtTsError {
     MissingVoiceCloneAuthorization,
     #[error("pause maximum must be greater than or equal to pause minimum")]
     InvalidPauseBounds,
+    #[error("maximum new tokens must be between 64 and 8192")]
+    InvalidMaxNewTokens,
     #[error("invalid output name: {0}")]
     InvalidOutputName(String),
     #[error("invalid reference audio: {0}")]
@@ -988,6 +1000,9 @@ pub fn build_synthesis_args(
     if request.pause_min_seconds <= 0.0 || request.pause_max_seconds < request.pause_min_seconds {
         return Err(RadtTsError::InvalidPauseBounds);
     }
+    if !(MIN_MAX_NEW_TOKENS..=MAX_MAX_NEW_TOKENS).contains(&request.max_new_tokens) {
+        return Err(RadtTsError::InvalidMaxNewTokens);
+    }
     validate_output_name(&request.output_name)?;
     let reference_audio_path = validate_reference_audio(&request.reference_audio_path)?;
     let mut args = vec![
@@ -1002,6 +1017,8 @@ pub fn build_synthesis_args(
         reference_audio_path.display().to_string(),
         "--mode".to_string(),
         request.quality.as_cli_value().to_string(),
+        "--max-new-tokens".to_string(),
+        request.max_new_tokens.to_string(),
         "--chunk-mode".to_string(),
         request.chunk_mode.as_cli_value().to_string(),
         "--pause-min".to_string(),
@@ -1107,6 +1124,7 @@ mod tests {
             chunk_mode: RadtTsChunkMode::Single,
             pause_min_seconds: 0.25,
             pause_max_seconds: 0.75,
+            max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Wav,
             output_name: "intro_v2".to_string(),
             acknowledge_voice_clone: true,
@@ -1136,6 +1154,8 @@ mod tests {
         );
         assert!(args.contains(&"--mode".to_string()));
         assert!(args.contains(&"quality".to_string()));
+        assert!(args.contains(&"--max-new-tokens".to_string()));
+        assert!(args.contains(&"1200".to_string()));
         assert!(args.contains(&"--ack-voice-clone".to_string()));
         fs::remove_dir_all(root).expect("remove test directory");
     }
@@ -1155,6 +1175,7 @@ mod tests {
             chunk_mode: RadtTsChunkMode::Sentence,
             pause_min_seconds: 0.25,
             pause_max_seconds: 0.75,
+            max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
             output_name: "intro".to_string(),
             acknowledge_voice_clone: true,
@@ -1168,6 +1189,76 @@ mod tests {
         )
         .expect("valid request should build");
         assert!(!args.contains(&"--reference-text-file".to_string()));
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn rejects_generation_budgets_outside_the_supported_range() {
+        let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&root).expect("create test directory");
+        let reference_audio_path = root.join("reference.wav");
+        fs::write(&reference_audio_path, [0_u8; 8]).expect("create test audio");
+        let request = RadtTsSynthesisRequest {
+            project_id: ProjectId::new(),
+            text: "A short script.".to_string(),
+            reference_audio_path,
+            reference_text: None,
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Sentence,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.75,
+            max_new_tokens: 63,
+            output_format: RadtTsOutputFormat::Mp3,
+            output_name: "intro".to_string(),
+            acknowledge_voice_clone: true,
+        };
+
+        let error = build_synthesis_args(
+            &request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+        )
+        .expect_err("too-small generation budget should be rejected");
+        assert!(error.to_string().contains("between 64 and 8192"));
+
+        let lower_request = RadtTsSynthesisRequest {
+            max_new_tokens: 64,
+            ..request.clone()
+        };
+        let lower_args = build_synthesis_args(
+            &lower_request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+        )
+        .expect("the lower generation budget boundary should be accepted");
+        assert!(lower_args.contains(&"64".to_string()));
+
+        let upper_request = RadtTsSynthesisRequest {
+            max_new_tokens: 8192,
+            ..request.clone()
+        };
+        let upper_args = build_synthesis_args(
+            &upper_request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+        )
+        .expect("the upper generation budget boundary should be accepted");
+        assert!(upper_args.contains(&"8192".to_string()));
+
+        let error = build_synthesis_args(
+            &RadtTsSynthesisRequest {
+                max_new_tokens: 8193,
+                ..request
+            },
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+        )
+        .expect_err("too-large generation budget should be rejected");
+        assert!(error.to_string().contains("between 64 and 8192"));
         fs::remove_dir_all(root).expect("remove test directory");
     }
 
@@ -1188,6 +1279,7 @@ mod tests {
         )
         .expect("legacy request should deserialize");
         assert_eq!(request.reference_text, None);
+        assert_eq!(request.max_new_tokens, 1200);
     }
 
     #[test]

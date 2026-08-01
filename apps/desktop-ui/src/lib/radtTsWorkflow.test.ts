@@ -3,7 +3,9 @@ import type { RadtTsCapabilityStatus } from "../types";
 import {
   buildRadtTsRequest,
   canStartRadtTs,
+  clampRadtTsMaxNewTokens,
   createDefaultRadtTsDraft,
+  formatRadtTsMaxNewTokens,
   mergeRadtTsVoicePreferences,
   type RadtTsDraft,
 } from "./radtTsWorkflow";
@@ -22,6 +24,7 @@ const draft: RadtTsDraft = {
   chunkMode: "sentence",
   pauseMinSeconds: 0.45,
   pauseMaxSeconds: 1.1,
+  maxNewTokens: 1200,
   outputFormat: "mp3",
   outputName: "lesson-intro",
   acknowledgeVoiceClone: true,
@@ -38,6 +41,7 @@ describe("RAD TTS workflow", () => {
       chunk_mode: "sentence",
       pause_min_seconds: 0.45,
       pause_max_seconds: 1.1,
+      max_new_tokens: 1200,
       output_format: "mp3",
       output_name: "lesson-intro",
       acknowledge_voice_clone: true,
@@ -61,6 +65,24 @@ describe("RAD TTS workflow", () => {
         referenceText: "Saved project transcript.",
       }).referenceText,
     ).toBe("Saved project transcript.");
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, { quality: "fast" }).maxNewTokens,
+    ).toBe(1200);
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, { maxNewTokens: 9000 }).maxNewTokens,
+    ).toBe(8192);
+  });
+
+  it("defaults and formats the generation budget", () => {
+    expect(createDefaultRadtTsDraft().maxNewTokens).toBe(1200);
+    expect(formatRadtTsMaxNewTokens(1200)).toBe("1,200 tokens");
+    expect(formatRadtTsMaxNewTokens(64)).toBe("64 tokens");
+  });
+
+  it("clamps generation budgets to the supported RADTTS range", () => {
+    expect(clampRadtTsMaxNewTokens(63)).toBe(64);
+    expect(clampRadtTsMaxNewTokens(8193)).toBe(8192);
+    expect(clampRadtTsMaxNewTokens("not-a-number")).toBe(1200);
   });
 
   it("requires local runtime, script, reference audio, authorization, and valid pauses", () => {

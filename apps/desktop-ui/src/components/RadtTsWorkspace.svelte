@@ -19,7 +19,9 @@
   import {
     buildRadtTsRequest,
     canStartRadtTs,
+    clampRadtTsMaxNewTokens,
     createDefaultRadtTsDraft,
+    formatRadtTsMaxNewTokens,
     mergeRadtTsVoicePreferences,
     type RadtTsDraft,
   } from "../lib/radtTsWorkflow";
@@ -69,6 +71,7 @@
         chunkMode: draft.chunkMode,
         pauseMinSeconds: draft.pauseMinSeconds,
         pauseMaxSeconds: draft.pauseMaxSeconds,
+        maxNewTokens: draft.maxNewTokens,
         outputFormat: draft.outputFormat,
         outputName: draft.outputName,
       },
@@ -303,6 +306,26 @@
           <span>Longest pause</span>
           <input type="number" min="0.1" step="0.05" bind:value={draft.pauseMaxSeconds} />
         </label>
+      </div>
+      <div class="settings-compact-field radtts-range-row">
+        <div class="radtts-range-label">
+          <span>Generation budget</span>
+          <strong>{formatRadtTsMaxNewTokens(draft.maxNewTokens)}</strong>
+        </div>
+        <input
+          type="range"
+          min="64"
+          max="8192"
+          step="1"
+          value={draft.maxNewTokens}
+          aria-label="Generation budget"
+          oninput={(event) => {
+            draft.maxNewTokens = clampRadtTsMaxNewTokens(
+              (event.currentTarget as HTMLInputElement).value,
+            );
+          }}
+        />
+        <small class="field-note">A larger budget supports longer scripts but may take longer to generate locally.</small>
       </div>
       <label class="stack">
         <span>Output format</span>

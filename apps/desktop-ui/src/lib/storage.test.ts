@@ -84,6 +84,7 @@ describe("safe local storage helpers", () => {
     writeRadtTsProjectPreferences(storage, "project-1", {
       voice: {
         quality: "high",
+        maxNewTokens: 1400,
         outputName: "intro",
         referenceText: "Reference voice transcript.",
       },
@@ -95,6 +96,7 @@ describe("safe local storage helpers", () => {
     expect(readRadtTsProjectPreferences(storage, "project-1")).toEqual({
       voice: {
         quality: "high",
+        maxNewTokens: 1400,
         outputName: "intro",
         referenceText: "Reference voice transcript.",
       },
