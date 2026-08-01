@@ -200,6 +200,7 @@ pub async fn start_radt_ts_synthesis(
         chunk_mode: request.chunk_mode,
         pause_min_seconds: request.pause_min_seconds,
         pause_max_seconds: request.pause_max_seconds,
+        pause_seed: request.pause_seed,
         max_new_tokens: request.max_new_tokens,
         output_format: request.output_format,
         output_name: request.output_name,

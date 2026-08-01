@@ -12,6 +12,7 @@ export type RadtTsDraft = {
   chunkMode: RadtTsChunkMode;
   pauseMinSeconds: number;
   pauseMaxSeconds: number;
+  pauseSeed: string;
   maxNewTokens: number;
   outputFormat: RadtTsOutputFormat;
   outputName: string;
@@ -27,6 +28,7 @@ export type RadtTsVoicePreferences = Partial<
     | "chunkMode"
     | "pauseMinSeconds"
     | "pauseMaxSeconds"
+    | "pauseSeed"
     | "maxNewTokens"
     | "outputFormat"
     | "outputName"
@@ -42,6 +44,7 @@ export function createDefaultRadtTsDraft(): RadtTsDraft {
     chunkMode: "sentence",
     pauseMinSeconds: 0.45,
     pauseMaxSeconds: 1.1,
+    pauseSeed: "",
     maxNewTokens: RADTTS_DEFAULT_NEW_TOKENS,
     outputFormat: "mp3",
     outputName: "voice-generation",
@@ -56,6 +59,9 @@ export function mergeRadtTsVoicePreferences(
   return {
     ...draft,
     ...preferences,
+    pauseSeed: preferences?.pauseSeed === undefined
+      ? draft.pauseSeed
+      : normalizeRadtTsPauseSeedText(preferences.pauseSeed),
     maxNewTokens: clampRadtTsMaxNewTokens(
       preferences?.maxNewTokens ?? draft.maxNewTokens,
     ),
@@ -72,6 +78,7 @@ export type RadtTsRequest = {
   chunk_mode: RadtTsChunkMode;
   pause_min_seconds: number;
   pause_max_seconds: number;
+  pause_seed: number | null;
   max_new_tokens: number;
   output_format: RadtTsOutputFormat;
   output_name: string;
@@ -105,6 +112,20 @@ export function clampRadtTsMaxNewTokens(value: unknown): number {
 export function formatRadtTsMaxNewTokens(value: unknown): string {
   return `${clampRadtTsMaxNewTokens(value).toLocaleString("en-US")} tokens`;
 }
+
+export function parseRadtTsPauseSeed(value: unknown): number | null {
+  if (typeof value !== "number" && typeof value !== "string") return null;
+  const text = typeof value === "string" ? value.trim() : String(value);
+  if (!text) return null;
+  const numeric = Number(text);
+  return Number.isSafeInteger(numeric) ? numeric : null;
+}
+
+function normalizeRadtTsPauseSeedText(value: unknown): string {
+  if (parseRadtTsPauseSeed(value) === null) return "";
+  return String(value).trim();
+}
+
 export function buildRadtTsRequest(
   draft: RadtTsDraft,
   projectId: string | null,
@@ -118,6 +139,7 @@ export function buildRadtTsRequest(
     chunk_mode: draft.chunkMode,
     pause_min_seconds: draft.pauseMinSeconds,
     pause_max_seconds: draft.pauseMaxSeconds,
+    pause_seed: parseRadtTsPauseSeed(draft.pauseSeed),
     max_new_tokens: clampRadtTsMaxNewTokens(draft.maxNewTokens),
     output_format: draft.outputFormat,
     output_name: draft.outputName.trim(),

@@ -99,6 +99,7 @@ pub struct RadtTsSynthesisRequest {
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
     pub pause_max_seconds: f64,
+    pub pause_seed: Option<i64>,
     pub max_new_tokens: u32,
     pub output_format: RadtTsOutputFormat,
     pub output_name: String,
@@ -170,6 +171,8 @@ pub struct StartRadtTsSynthesisRequest {
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
     pub pause_max_seconds: f64,
+    #[serde(default)]
+    pub pause_seed: Option<i64>,
     #[serde(default = "default_max_new_tokens")]
     pub max_new_tokens: u32,
     pub output_format: RadtTsOutputFormat,
@@ -1031,6 +1034,9 @@ pub fn build_synthesis_args(
         request.output_name.clone(),
         "--ack-voice-clone".to_string(),
     ];
+    if let Some(pause_seed) = request.pause_seed {
+        args.extend(["--pause-seed".to_string(), pause_seed.to_string()]);
+    }
     if let Some(reference_text_file) = reference_text_file {
         args.extend([
             "--reference-text-file".to_string(),
@@ -1124,6 +1130,7 @@ mod tests {
             chunk_mode: RadtTsChunkMode::Single,
             pause_min_seconds: 0.25,
             pause_max_seconds: 0.75,
+            pause_seed: Some(42),
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Wav,
             output_name: "intro_v2".to_string(),
@@ -1156,6 +1163,8 @@ mod tests {
         assert!(args.contains(&"quality".to_string()));
         assert!(args.contains(&"--max-new-tokens".to_string()));
         assert!(args.contains(&"1200".to_string()));
+        assert!(args.contains(&"--pause-seed".to_string()));
+        assert!(args.contains(&"42".to_string()));
         assert!(args.contains(&"--ack-voice-clone".to_string()));
         fs::remove_dir_all(root).expect("remove test directory");
     }
@@ -1175,6 +1184,7 @@ mod tests {
             chunk_mode: RadtTsChunkMode::Sentence,
             pause_min_seconds: 0.25,
             pause_max_seconds: 0.75,
+            pause_seed: None,
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
             output_name: "intro".to_string(),
@@ -1189,6 +1199,7 @@ mod tests {
         )
         .expect("valid request should build");
         assert!(!args.contains(&"--reference-text-file".to_string()));
+        assert!(!args.contains(&"--pause-seed".to_string()));
         fs::remove_dir_all(root).expect("remove test directory");
     }
 
@@ -1207,6 +1218,7 @@ mod tests {
             chunk_mode: RadtTsChunkMode::Sentence,
             pause_min_seconds: 0.25,
             pause_max_seconds: 0.75,
+            pause_seed: None,
             max_new_tokens: 63,
             output_format: RadtTsOutputFormat::Mp3,
             output_name: "intro".to_string(),
@@ -1279,6 +1291,7 @@ mod tests {
         )
         .expect("legacy request should deserialize");
         assert_eq!(request.reference_text, None);
+        assert_eq!(request.pause_seed, None);
         assert_eq!(request.max_new_tokens, 1200);
     }
 

@@ -7,6 +7,7 @@ import {
   createDefaultRadtTsDraft,
   formatRadtTsMaxNewTokens,
   mergeRadtTsVoicePreferences,
+  parseRadtTsPauseSeed,
   type RadtTsDraft,
 } from "./radtTsWorkflow";
 
@@ -24,6 +25,7 @@ const draft: RadtTsDraft = {
   chunkMode: "sentence",
   pauseMinSeconds: 0.45,
   pauseMaxSeconds: 1.1,
+  pauseSeed: "",
   maxNewTokens: 1200,
   outputFormat: "mp3",
   outputName: "lesson-intro",
@@ -41,6 +43,7 @@ describe("RAD TTS workflow", () => {
       chunk_mode: "sentence",
       pause_min_seconds: 0.45,
       pause_max_seconds: 1.1,
+      pause_seed: null,
       max_new_tokens: 1200,
       output_format: "mp3",
       output_name: "lesson-intro",
@@ -68,6 +71,18 @@ describe("RAD TTS workflow", () => {
     expect(
       mergeRadtTsVoicePreferences(freshDraft, { quality: "fast" }).maxNewTokens,
     ).toBe(1200);
+    expect(mergeRadtTsVoicePreferences(freshDraft, undefined).pauseSeed).toBe("");
+    const unsavedDraft = { ...freshDraft, pauseSeed: "42" };
+    expect(
+      mergeRadtTsVoicePreferences(createDefaultRadtTsDraft(), undefined).pauseSeed,
+    ).toBe("");
+    expect(unsavedDraft.pauseSeed).toBe("42");
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, { pauseSeed: " 42 " }).pauseSeed,
+    ).toBe("42");
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, { pauseSeed: "not-an-integer" }).pauseSeed,
+    ).toBe("");
     expect(
       mergeRadtTsVoicePreferences(freshDraft, { maxNewTokens: 9000 }).maxNewTokens,
     ).toBe(8192);
@@ -83,6 +98,17 @@ describe("RAD TTS workflow", () => {
     expect(clampRadtTsMaxNewTokens(63)).toBe(64);
     expect(clampRadtTsMaxNewTokens(8193)).toBe(8192);
     expect(clampRadtTsMaxNewTokens("not-a-number")).toBe(1200);
+  });
+
+  it("normalizes optional pause seeds and forwards only safe integers", () => {
+    expect(parseRadtTsPauseSeed("")).toBeNull();
+    expect(parseRadtTsPauseSeed("  ")).toBeNull();
+    expect(parseRadtTsPauseSeed("42")).toBe(42);
+    expect(parseRadtTsPauseSeed("-7")).toBe(-7);
+    expect(parseRadtTsPauseSeed("1.5")).toBeNull();
+    expect(parseRadtTsPauseSeed("9007199254740992")).toBeNull();
+    expect(parseRadtTsPauseSeed("not-a-number")).toBeNull();
+    expect(buildRadtTsRequest({ ...draft, pauseSeed: "42" }, "project-1").pause_seed).toBe(42);
   });
 
   it("requires local runtime, script, reference audio, authorization, and valid pauses", () => {
