@@ -96,6 +96,7 @@ export type RadcastAudioOutput = {
   remove_filler_words: boolean;
   filler_removal_mode: FillerRemovalMode;
   removed_filler_count: number;
+  removed_pause_count: number;
   created_at: string;
 };
 

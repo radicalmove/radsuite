@@ -956,6 +956,15 @@ button:disabled {
   line-height: 1.4;
 }
 
+.radcast-speech-note {
+  padding: var(--s-3);
+  border-left: 3px solid var(--radcite-red);
+  color: var(--fg-2);
+  background: color-mix(in srgb, var(--radcite-red) 8%, var(--bg));
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
 .radcast-range-row {
   gap: var(--s-2);
   padding: var(--s-2) 0;

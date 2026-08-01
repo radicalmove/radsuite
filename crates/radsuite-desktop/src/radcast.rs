@@ -12,6 +12,7 @@ use radsuite_engines::{
     CaptionTranscriptionRequest, EnhancementModel, EnhancementProcessingRequest,
     EnhancementProcessor, EnhancementQuality, FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
     RADCAST_STANDARD_POSTFILTER, RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER,
+    SpeechCleanupError,
 };
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
@@ -232,6 +233,8 @@ pub struct RadcastAudioOutput {
     pub filler_removal_mode: FillerRemovalMode,
     #[serde(default)]
     pub removed_filler_count: usize,
+    #[serde(default)]
+    pub removed_pause_count: usize,
     pub created_at: String,
 }
 
@@ -308,6 +311,8 @@ pub enum RadcastStorageError {
     Processing(#[from] radsuite_engines::AudioProcessingError),
     #[error("failed to generate captions: {0}")]
     CaptionProcessing(#[from] radsuite_engines::CaptionProcessingError),
+    #[error("failed to plan speech-aware cleanup: {0}")]
+    SpeechCleanup(#[from] SpeechCleanupError),
     #[error("failed to enhance audio: {0}")]
     EnhancementProcessing(#[from] radsuite_engines::EnhancementProcessingError),
     #[error("local RADcast processing was cancelled")]
@@ -596,27 +601,44 @@ where
     let output_path = project_root(data_dir, project_id)
         .join("outputs")
         .join(&output_filename);
-    let removal_intervals = if request.remove_filler_words {
+    let cleanup_plan = if request.max_silence_seconds.is_some() || request.remove_filler_words {
         report_progress(RadcastProcessingProgress {
             phase: RadcastProcessingPhase::RemovingFillerWords,
             percent: 12,
         });
-        caption_processor.filler_intervals(
+        let clip_start_seconds = request.clip_start_seconds.unwrap_or(0.0);
+        let clip_end_seconds = request.clip_end_seconds.unwrap_or(source.duration_seconds);
+        let clip_duration_seconds = clip_end_seconds - clip_start_seconds;
+        Some(caption_processor.speech_cleanup_plan(
             &CaptionTranscriptionRequest {
                 input_path: source_path.clone(),
                 language: request.caption_language.trim().to_string(),
                 clip_start_seconds: request.clip_start_seconds,
                 clip_end_seconds: request.clip_end_seconds,
             },
+            clip_duration_seconds,
+            request.max_silence_seconds,
+            request.remove_filler_words,
             request.filler_removal_mode,
-        )?
+        )?)
     } else {
-        Vec::new()
+        None
     };
     if is_cancelled() {
         return Err(RadcastStorageError::Cancelled);
     }
-    let removed_filler_count = removal_intervals.len();
+    let removal_intervals = cleanup_plan
+        .as_ref()
+        .map(|plan| plan.removal_intervals.clone())
+        .unwrap_or_default();
+    let removed_pause_count = cleanup_plan
+        .as_ref()
+        .map(|plan| plan.removed_pause_count)
+        .unwrap_or_default();
+    let removed_filler_count = cleanup_plan
+        .as_ref()
+        .map(|plan| plan.removed_filler_count)
+        .unwrap_or_default();
     let mut temporary_paths = Vec::new();
     let processing_input_path = if request.enhancement_model != EnhancementModel::None {
         report_progress(RadcastProcessingProgress {
@@ -704,7 +726,7 @@ where
             output_format: request.output_format,
             clip_start_seconds,
             clip_end_seconds,
-            max_silence_seconds: request.max_silence_seconds,
+            max_silence_seconds: None,
             remove_intervals: removal_intervals,
             cleanup_enabled: request.cleanup_enabled,
         },
@@ -804,6 +826,7 @@ where
         remove_filler_words: request.remove_filler_words,
         filler_removal_mode: request.filler_removal_mode,
         removed_filler_count,
+        removed_pause_count,
         created_at: Utc::now().to_rfc3339(),
     };
     manifest.outputs.insert(0, output.clone());

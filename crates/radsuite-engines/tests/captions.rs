@@ -9,7 +9,7 @@ use std::{
 use radsuite_engines::{
     AudioTimeInterval, CaptionFormat, CaptionProcessingError, CaptionProcessingRequest,
     CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest, CaptionWord,
-    FillerRemovalMode, detect_filler_intervals,
+    FillerRemovalMode, SpeechCleanupPlanningError, detect_filler_intervals, plan_speech_cleanup,
 };
 
 #[test]
@@ -315,6 +315,175 @@ fn filler_intervals_are_relative_to_the_selected_clip() {
 
     assert_eq!(intervals, vec![interval(0.23, 0.47)]);
     remove_dir(dir);
+}
+
+#[test]
+fn caption_processor_builds_cleanup_plan_from_one_transcription() {
+    let dir = test_dir("speech-cleanup-processor");
+    let count_path = dir.join("transcription-count");
+    let whisper_script = format!(
+        "#!/bin/sh\ncount_file='{}'\ncount=0\nif [ -f \"$count_file\" ]; then count=$(cat \"$count_file\"); fi\ncount=$((count + 1))\nprintf '%s' \"$count\" > \"$count_file\"\noutput=''\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  previous=\"$arg\"\ndone\nprintf '{{\"transcription\":[{{\"tokens\":[{{\"text\":\" first\",\"offsets\":{{\"from\":2250,\"to\":2450}},\"p\":0.9}},{{\"text\":\" second\",\"offsets\":{{\"from\":3500,\"to\":3800}},\"p\":0.9}}]}}]}}' > \"$output.json\"\n",
+        count_path.display()
+    );
+    let whisper = write_executable(&dir, "whisper-cleanup.sh", &whisper_script);
+    let model = dir.join("model.bin");
+    fs::write(&model, b"model").expect("write model");
+    let input = dir.join("source.wav");
+    fs::write(&input, b"source audio").expect("write source");
+
+    let plan = CaptionProcessor::from_commands(whisper, model)
+        .speech_cleanup_plan(
+            &CaptionTranscriptionRequest {
+                input_path: input,
+                language: "en".to_string(),
+                clip_start_seconds: Some(2.0),
+                clip_end_seconds: Some(4.0),
+            },
+            2.0,
+            Some(0.1),
+            false,
+            FillerRemovalMode::Normal,
+        )
+        .expect("build cleanup plan from transcription");
+
+    assert_eq!(plan.removal_intervals.len(), 1);
+    assert!((plan.removal_intervals[0].start_seconds - 0.55).abs() < 1e-9);
+    assert_eq!(plan.removal_intervals[0].end_seconds, 1.5);
+    assert_eq!(plan.removed_pause_count, 1);
+    assert_eq!(
+        fs::read_to_string(count_path).expect("read transcription count"),
+        "1"
+    );
+    remove_dir(dir);
+}
+
+#[test]
+fn speech_cleanup_shortens_leading_inter_word_and_trailing_pauses() {
+    let plan = plan_speech_cleanup(
+        &[word("hello", 1.0, 1.2, 0.9), word("world", 2.0, 2.2, 0.9)],
+        3.0,
+        Some(0.4),
+        false,
+        FillerRemovalMode::Normal,
+    )
+    .expect("build speech cleanup plan");
+
+    assert_eq!(
+        plan.removal_intervals,
+        vec![interval(0.4, 1.0), interval(1.6, 2.0), interval(2.6, 3.0)]
+    );
+    assert_eq!(plan.removed_pause_count, 3);
+    assert_eq!(plan.removed_filler_count, 0);
+}
+
+#[test]
+fn speech_cleanup_keeps_gaps_at_or_below_the_original_threshold() {
+    let plan = plan_speech_cleanup(
+        &[
+            word("first", 0.0, 0.2, 0.9),
+            word("second", 0.55, 0.75, 0.9),
+        ],
+        0.75,
+        Some(0.0),
+        false,
+        FillerRemovalMode::Normal,
+    )
+    .expect("build speech cleanup plan");
+
+    assert!(plan.removal_intervals.is_empty());
+    assert_eq!(plan.removed_pause_count, 0);
+}
+
+#[test]
+fn speech_cleanup_excludes_fillers_from_pause_timeline_and_merges_overlaps() {
+    let plan = plan_speech_cleanup(
+        &[
+            word("hello", 0.0, 0.2, 0.9),
+            word("um", 0.3, 0.5, 0.9),
+            word("world", 0.6, 0.8, 0.9),
+        ],
+        0.8,
+        Some(0.0),
+        true,
+        FillerRemovalMode::Normal,
+    )
+    .expect("build speech cleanup plan");
+
+    assert_eq!(plan.removal_intervals, vec![interval(0.2, 0.6)]);
+    assert_eq!(plan.removed_pause_count, 1);
+    assert_eq!(plan.removed_filler_count, 1);
+
+    let filler_only = plan_speech_cleanup(
+        &[
+            word("hello", 0.0, 0.2, 0.9),
+            word("um", 0.3, 0.5, 0.9),
+            word("world", 0.6, 0.8, 0.9),
+        ],
+        0.8,
+        None,
+        true,
+        FillerRemovalMode::Normal,
+    )
+    .expect("build filler-only cleanup plan");
+
+    assert_eq!(filler_only.removal_intervals, vec![interval(0.28, 0.52)]);
+    assert_eq!(filler_only.removed_pause_count, 0);
+    assert_eq!(filler_only.removed_filler_count, 1);
+}
+
+#[test]
+fn speech_cleanup_rejects_invalid_timing_inputs() {
+    let error = plan_speech_cleanup(
+        &[word("broken", -0.1, 0.2, 0.9)],
+        1.0,
+        Some(0.5),
+        false,
+        FillerRemovalMode::Normal,
+    )
+    .expect_err("negative word timing must fail");
+    assert!(matches!(
+        error,
+        SpeechCleanupPlanningError::InvalidWordTiming { index: 0, .. }
+    ));
+
+    let error = plan_speech_cleanup(
+        &[word("broken", 0.8, 0.7, 0.9)],
+        1.0,
+        Some(0.5),
+        false,
+        FillerRemovalMode::Normal,
+    )
+    .expect_err("out-of-range word timing must fail");
+    assert!(matches!(
+        error,
+        SpeechCleanupPlanningError::InvalidWordTiming { index: 0, .. }
+    ));
+
+    let error = plan_speech_cleanup(&[], 1.0, Some(f64::NAN), false, FillerRemovalMode::Normal)
+        .expect_err("non-finite pause duration must fail");
+    assert!(matches!(
+        error,
+        SpeechCleanupPlanningError::InvalidMaxSilence { .. }
+    ));
+}
+
+#[test]
+fn speech_cleanup_clamps_transcription_overshoot_at_clip_boundary() {
+    let plan = plan_speech_cleanup(
+        &[
+            word("first", 0.0, 0.2, 0.9),
+            word("last", 0.8, 1.2, 0.9),
+            word("outside", 1.1, 1.3, 0.9),
+        ],
+        1.0,
+        Some(0.0),
+        false,
+        FillerRemovalMode::Normal,
+    )
+    .expect("clamp transcription overshoot");
+
+    assert_eq!(plan.removal_intervals, vec![interval(0.2, 0.8)]);
+    assert_eq!(plan.removed_pause_count, 1);
 }
 
 fn word(text: &str, start_seconds: f64, end_seconds: f64, probability: f64) -> CaptionWord {
