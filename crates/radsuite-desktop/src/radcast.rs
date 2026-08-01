@@ -996,7 +996,7 @@ fn response_filename(response: &Response, source_url: &Url) -> String {
         .filter(|value| !value.is_empty());
     let url_filename = source_url
         .path_segments()
-        .and_then(|segments| segments.last())
+        .and_then(|mut segments| segments.next_back())
         .map(str::trim)
         .filter(|value| !value.is_empty() && !value.contains(":/"))
         .map(|value| value.to_string());
