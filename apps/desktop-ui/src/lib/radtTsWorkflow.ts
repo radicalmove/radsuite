@@ -1,4 +1,10 @@
-import type { RadtTsCapabilityStatus, RadtTsChunkMode, RadtTsOutputFormat, RadtTsQuality } from "../types";
+import type {
+  RadtTsCapabilityStatus,
+  RadtTsChunkMode,
+  RadtTsOutputFormat,
+  RadtTsQuality,
+  RadtTsVoiceSource,
+} from "../types";
 
 export const RADTTS_MIN_NEW_TOKENS = 64;
 export const RADTTS_MAX_NEW_TOKENS = 8192;
@@ -6,8 +12,11 @@ export const RADTTS_DEFAULT_NEW_TOKENS = 1200;
 
 export type RadtTsDraft = {
   text: string;
+  voiceSource: RadtTsVoiceSource;
   referenceAudioPath: string;
   referenceText: string;
+  builtInSpeaker: string;
+  builtInInstruct: string;
   quality: RadtTsQuality;
   chunkMode: RadtTsChunkMode;
   pauseMinSeconds: number;
@@ -24,6 +33,9 @@ export type RadtTsVoicePreferences = Partial<
     RadtTsDraft,
     | "referenceAudioPath"
     | "referenceText"
+    | "voiceSource"
+    | "builtInSpeaker"
+    | "builtInInstruct"
     | "quality"
     | "chunkMode"
     | "pauseMinSeconds"
@@ -38,8 +50,11 @@ export type RadtTsVoicePreferences = Partial<
 export function createDefaultRadtTsDraft(): RadtTsDraft {
   return {
     text: "",
+    voiceSource: "reference",
     referenceAudioPath: "",
     referenceText: "",
+    builtInSpeaker: "Vivian",
+    builtInInstruct: "",
     quality: "high",
     chunkMode: "sentence",
     pauseMinSeconds: 0.45,
@@ -72,8 +87,11 @@ export function mergeRadtTsVoicePreferences(
 export type RadtTsRequest = {
   project_id: string | null;
   text: string;
-  reference_audio_path: string;
+  voice_source: RadtTsVoiceSource;
+  reference_audio_path: string | null;
   reference_text: string | null;
+  built_in_speaker: string | null;
+  built_in_instruct: string | null;
   quality: RadtTsQuality;
   chunk_mode: RadtTsChunkMode;
   pause_min_seconds: number;
@@ -92,11 +110,12 @@ export function canStartRadtTs(
   return (
     capability.available &&
     draft.text.trim().length > 0 &&
-    draft.referenceAudioPath.trim().length > 0 &&
     draft.outputName.trim().length > 0 &&
     draft.pauseMinSeconds > 0 &&
     draft.pauseMaxSeconds >= draft.pauseMinSeconds &&
-    draft.acknowledgeVoiceClone
+    (draft.voiceSource === "builtin"
+      ? draft.builtInSpeaker.trim().length > 0
+      : draft.referenceAudioPath.trim().length > 0 && draft.acknowledgeVoiceClone)
   );
 }
 
@@ -133,8 +152,11 @@ export function buildRadtTsRequest(
   return {
     project_id: projectId,
     text: draft.text.trim(),
-    reference_audio_path: draft.referenceAudioPath.trim(),
-    reference_text: draft.referenceText.trim() || null,
+    voice_source: draft.voiceSource,
+    reference_audio_path: draft.voiceSource === "reference" ? draft.referenceAudioPath.trim() || null : null,
+    reference_text: draft.voiceSource === "reference" ? draft.referenceText.trim() || null : null,
+    built_in_speaker: draft.voiceSource === "builtin" ? draft.builtInSpeaker.trim() || null : null,
+    built_in_instruct: draft.voiceSource === "builtin" ? draft.builtInInstruct.trim() || null : null,
     quality: draft.quality,
     chunk_mode: draft.chunkMode,
     pause_min_seconds: draft.pauseMinSeconds,

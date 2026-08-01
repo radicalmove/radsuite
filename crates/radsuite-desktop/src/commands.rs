@@ -194,8 +194,11 @@ pub async fn start_radt_ts_synthesis(
     let request = crate::radt_ts::RadtTsSynthesisRequest {
         project_id: project.id,
         text: request.text,
-        reference_audio_path: PathBuf::from(request.reference_audio_path),
+        voice_source: request.voice_source,
+        reference_audio_path: request.reference_audio_path.map(PathBuf::from),
         reference_text: request.reference_text,
+        built_in_speaker: request.built_in_speaker,
+        built_in_instruct: request.built_in_instruct,
         quality: request.quality,
         chunk_mode: request.chunk_mode,
         pause_min_seconds: request.pause_min_seconds,
