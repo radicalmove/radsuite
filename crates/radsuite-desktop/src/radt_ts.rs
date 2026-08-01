@@ -77,6 +77,8 @@ pub struct RadtTsSynthesisRequest {
     pub project_id: ProjectId,
     pub text: String,
     pub reference_audio_path: PathBuf,
+    #[serde(default)]
+    pub reference_text: Option<String>,
     pub quality: RadtTsQuality,
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
@@ -145,6 +147,8 @@ pub struct StartRadtTsSynthesisRequest {
     pub project_id: Option<ProjectId>,
     pub text: String,
     pub reference_audio_path: String,
+    #[serde(default)]
+    pub reference_text: Option<String>,
     pub quality: RadtTsQuality,
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
@@ -241,6 +245,7 @@ pub async fn start_radt_ts_synthesis(
         &request,
         projects_root.clone(),
         state.paths.cache_dir.join("pending.txt"),
+        None,
     )?;
 
     {
@@ -264,10 +269,36 @@ pub async fn start_radt_ts_synthesis(
             return Err(error);
         }
     };
-    let args = match build_synthesis_args(&request, projects_root, text_path.clone()) {
+    let reference_text_path = match request
+        .reference_text
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        Some(reference_text) => match create_temp_text_file(&state.paths.cache_dir, reference_text)
+        {
+            Ok(path) => Some(path),
+            Err(error) => {
+                let _ = fs::remove_file(&text_path);
+                state
+                    .radt_ts_active_projects
+                    .lock()
+                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                    .remove(&request.project_id.to_string());
+                return Err(error);
+            }
+        },
+        None => None,
+    };
+    let args = match build_synthesis_args(
+        &request,
+        projects_root,
+        text_path.clone(),
+        reference_text_path.clone(),
+    ) {
         Ok(args) => args,
         Err(error) => {
-            let _ = fs::remove_file(&text_path);
+            remove_temp_text_files(&text_path, reference_text_path.as_deref());
             state
                 .radt_ts_active_projects
                 .lock()
@@ -287,7 +318,7 @@ pub async fn start_radt_ts_synthesis(
     let child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
-            let _ = fs::remove_file(&text_path);
+            remove_temp_text_files(&text_path, reference_text_path.as_deref());
             state
                 .radt_ts_active_projects
                 .lock()
@@ -331,6 +362,7 @@ pub async fn start_radt_ts_synthesis(
         request,
         project_root,
         text_path,
+        reference_text_path,
         child_handle,
         jobs,
         children,
@@ -451,6 +483,7 @@ struct RadtTsJobContext {
     request: RadtTsSynthesisRequest,
     project_root: PathBuf,
     text_path: PathBuf,
+    reference_text_path: Option<PathBuf>,
     child_handle: RadtTsChildHandle,
     jobs: Arc<Mutex<HashMap<String, RadtTsJobStatus>>>,
     children: Arc<Mutex<HashMap<String, RadtTsChildHandle>>>,
@@ -463,6 +496,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
         request,
         project_root,
         text_path,
+        reference_text_path,
         child_handle,
         jobs,
         children,
@@ -491,7 +525,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
                         "process handle disappeared".to_string(),
                     )),
                 );
-                let _ = fs::remove_file(&text_path);
+                remove_temp_text_files(&text_path, reference_text_path.as_deref());
                 return;
             }
         };
@@ -585,7 +619,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
             }
         }
     }
-    let _ = fs::remove_file(text_path);
+    remove_temp_text_files(&text_path, reference_text_path.as_deref());
 }
 
 async fn read_limited<R>(reader: Option<R>) -> Vec<u8>
@@ -746,7 +780,10 @@ fn create_temp_text_file(cache_dir: &Path, text: &str) -> Result<PathBuf, RadtTs
         }
         match options.open(&path) {
             Ok(mut file) => {
-                file.write_all(text.as_bytes())?;
+                if let Err(error) = file.write_all(text.as_bytes()) {
+                    let _ = fs::remove_file(&path);
+                    return Err(RadtTsError::Io(error));
+                }
                 return Ok(path);
             }
             Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => continue,
@@ -757,6 +794,13 @@ fn create_temp_text_file(cache_dir: &Path, text: &str) -> Result<PathBuf, RadtTs
         std::io::ErrorKind::AlreadyExists,
         "could not create a unique RADTTS text file",
     )))
+}
+
+fn remove_temp_text_files(text_path: &Path, reference_text_path: Option<&Path>) {
+    let _ = fs::remove_file(text_path);
+    if let Some(path) = reference_text_path {
+        let _ = fs::remove_file(path);
+    }
 }
 
 fn output_from_cli_result(
@@ -881,6 +925,7 @@ pub fn build_synthesis_args(
     request: &RadtTsSynthesisRequest,
     projects_root: PathBuf,
     text_file: PathBuf,
+    reference_text_file: Option<PathBuf>,
 ) -> Result<Vec<String>, RadtTsError> {
     if request.text.trim().is_empty() {
         return Err(RadtTsError::EmptyText);
@@ -893,7 +938,7 @@ pub fn build_synthesis_args(
     }
     validate_output_name(&request.output_name)?;
     let reference_audio_path = validate_reference_audio(&request.reference_audio_path)?;
-    Ok(vec![
+    let mut args = vec![
         "--projects-root".to_string(),
         projects_root.display().to_string(),
         "synthesize".to_string(),
@@ -916,7 +961,14 @@ pub fn build_synthesis_args(
         "--output-name".to_string(),
         request.output_name.clone(),
         "--ack-voice-clone".to_string(),
-    ])
+    ];
+    if let Some(reference_text_file) = reference_text_file {
+        args.extend([
+            "--reference-text-file".to_string(),
+            reference_text_file.display().to_string(),
+        ]);
+    }
+    Ok(args)
 }
 
 pub(crate) fn parse_cli_result(stdout: &[u8]) -> Result<RadtTsCliResult, RadtTsError> {
@@ -973,8 +1025,8 @@ mod tests {
 
     use super::{
         RadtTsChunkMode, RadtTsOutputFormat, RadtTsQuality, RadtTsSynthesisRequest,
-        build_synthesis_args, contained_file, parse_cli_result, validate_output_name,
-        validate_reference_audio,
+        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, parse_cli_result,
+        remove_temp_text_files, validate_output_name, validate_reference_audio,
     };
 
     #[test]
@@ -996,6 +1048,7 @@ mod tests {
             project_id: ProjectId::new(),
             text: "A short script.".to_string(),
             reference_audio_path: reference_audio_path.clone(),
+            reference_text: Some("Reference voice transcript.".to_string()),
             quality: RadtTsQuality::High,
             chunk_mode: RadtTsChunkMode::Single,
             pause_min_seconds: 0.25,
@@ -1009,12 +1062,15 @@ mod tests {
             &request,
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
+            Some(PathBuf::from("/tmp/reference.txt")),
         )
         .expect("valid request should build");
         assert_eq!(args[0], "--projects-root");
         assert!(args.contains(&"synthesize".to_string()));
         assert!(args.contains(&"--text-file".to_string()));
         assert!(args.contains(&"--reference-audio".to_string()));
+        assert!(args.contains(&"--reference-text-file".to_string()));
+        assert!(args.contains(&"/tmp/reference.txt".to_string()));
         assert!(
             args.contains(
                 &reference_audio_path
@@ -1027,6 +1083,72 @@ mod tests {
         assert!(args.contains(&"--mode".to_string()));
         assert!(args.contains(&"quality".to_string()));
         assert!(args.contains(&"--ack-voice-clone".to_string()));
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn omits_reference_transcript_cli_arguments_when_not_supplied() {
+        let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&root).expect("create test directory");
+        let reference_audio_path = root.join("reference.wav");
+        fs::write(&reference_audio_path, [0_u8; 8]).expect("create test audio");
+        let request = RadtTsSynthesisRequest {
+            project_id: ProjectId::new(),
+            text: "A short script.".to_string(),
+            reference_audio_path,
+            reference_text: None,
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Sentence,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.75,
+            output_format: RadtTsOutputFormat::Mp3,
+            output_name: "intro".to_string(),
+            acknowledge_voice_clone: true,
+        };
+
+        let args = build_synthesis_args(
+            &request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+        )
+        .expect("valid request should build");
+        assert!(!args.contains(&"--reference-text-file".to_string()));
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn accepts_legacy_synthesis_requests_without_reference_text() {
+        let request: StartRadtTsSynthesisRequest = serde_json::from_str(
+            r#"{
+              "text": "A short script.",
+              "reference_audio_path": "/tmp/reference.wav",
+              "quality": "high",
+              "chunk_mode": "sentence",
+              "pause_min_seconds": 0.25,
+              "pause_max_seconds": 0.75,
+              "output_format": "mp3",
+              "output_name": "intro",
+              "acknowledge_voice_clone": true
+            }"#,
+        )
+        .expect("legacy request should deserialize");
+        assert_eq!(request.reference_text, None);
+    }
+
+    #[test]
+    fn removes_script_and_optional_reference_text_files_together() {
+        let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&root).expect("create test directory");
+        let script = root.join("script.txt");
+        let reference = root.join("reference.txt");
+        fs::write(&script, "script").expect("create script file");
+        fs::write(&reference, "reference").expect("create reference file");
+
+        remove_temp_text_files(&script, Some(&reference));
+
+        assert!(!script.exists());
+        assert!(!reference.exists());
         fs::remove_dir_all(root).expect("remove test directory");
     }
 

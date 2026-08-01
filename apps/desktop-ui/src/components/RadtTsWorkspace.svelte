@@ -46,6 +46,7 @@
   let draft = $state<RadtTsDraft>({
     text: "",
     referenceAudioPath: "",
+    referenceText: "",
     quality: "high",
     chunkMode: "sentence",
     pauseMinSeconds: 0.45,
@@ -71,6 +72,7 @@
     const preferences = {
       voice: {
         referenceAudioPath: draft.referenceAudioPath,
+        referenceText: draft.referenceText,
         quality: draft.quality,
         chunkMode: draft.chunkMode,
         pauseMinSeconds: draft.pauseMinSeconds,
@@ -269,6 +271,15 @@
           </button>
         </div>
         <small class="field-note">Use a clear sample of the voice you are authorised to reproduce.</small>
+      </label>
+      <label class="stack">
+        <span>Reference transcript (optional)</span>
+        <textarea
+          rows="3"
+          bind:value={draft.referenceText}
+          placeholder="Type the words spoken in the reference audio"
+        ></textarea>
+        <small class="field-note">This can improve pronunciation and timing when the voice sample contains a known script.</small>
       </label>
       <label class="radtts-check">
         <input type="checkbox" bind:checked={draft.acknowledgeVoiceClone} />

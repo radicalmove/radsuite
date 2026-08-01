@@ -195,6 +195,7 @@ pub async fn start_radt_ts_synthesis(
         project_id: project.id,
         text: request.text,
         reference_audio_path: PathBuf::from(request.reference_audio_path),
+        reference_text: request.reference_text,
         quality: request.quality,
         chunk_mode: request.chunk_mode,
         pause_min_seconds: request.pause_min_seconds,

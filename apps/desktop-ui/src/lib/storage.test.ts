@@ -82,14 +82,22 @@ describe("safe local storage helpers", () => {
   test("stores RADTTS preferences separately for each project", () => {
     const storage = memoryStorage();
     writeRadtTsProjectPreferences(storage, "project-1", {
-      voice: { quality: "high", outputName: "intro" },
+      voice: {
+        quality: "high",
+        outputName: "intro",
+        referenceText: "Reference voice transcript.",
+      },
     });
     writeRadtTsProjectPreferences(storage, "project-2", {
       transcription: { model: "medium" },
     });
 
     expect(readRadtTsProjectPreferences(storage, "project-1")).toEqual({
-      voice: { quality: "high", outputName: "intro" },
+      voice: {
+        quality: "high",
+        outputName: "intro",
+        referenceText: "Reference voice transcript.",
+      },
     });
     expect(readRadtTsProjectPreferences(storage, "project-2")).toEqual({
       transcription: { model: "medium" },

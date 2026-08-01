@@ -3,6 +3,7 @@ import type { RadtTsCapabilityStatus, RadtTsChunkMode, RadtTsOutputFormat, RadtT
 export type RadtTsDraft = {
   text: string;
   referenceAudioPath: string;
+  referenceText: string;
   quality: RadtTsQuality;
   chunkMode: RadtTsChunkMode;
   pauseMinSeconds: number;
@@ -16,6 +17,7 @@ export type RadtTsRequest = {
   project_id: string | null;
   text: string;
   reference_audio_path: string;
+  reference_text: string | null;
   quality: RadtTsQuality;
   chunk_mode: RadtTsChunkMode;
   pause_min_seconds: number;
@@ -47,6 +49,7 @@ export function buildRadtTsRequest(
     project_id: projectId,
     text: draft.text.trim(),
     reference_audio_path: draft.referenceAudioPath.trim(),
+    reference_text: draft.referenceText.trim() || null,
     quality: draft.quality,
     chunk_mode: draft.chunkMode,
     pause_min_seconds: draft.pauseMinSeconds,
