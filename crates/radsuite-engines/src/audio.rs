@@ -129,7 +129,7 @@ impl AudioProcessor {
 
         let valid_max_silence = request
             .max_silence_seconds
-            .is_none_or(|value| value.is_finite() && value > 0.0);
+            .is_none_or(|value| value.is_finite() && value >= 0.0);
 
         if !valid_start || !valid_end || !valid_order {
             return Err(AudioProcessingError::InvalidClipRange {
