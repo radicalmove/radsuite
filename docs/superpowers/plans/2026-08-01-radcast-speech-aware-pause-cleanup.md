@@ -18,7 +18,7 @@
 
 - [ ] **Step 1: Write failing planner tests**
 
-Add tests covering: merged speech words; inter-word gaps longer than 350 ms keeping exactly the configured duration; leading and trailing gaps; gaps at or below 350 ms remaining untouched; filler words excluded from the speech timeline; pause and filler intervals merged; and non-finite/negative timing inputs being rejected or ignored safely.
+Add tests covering: merged speech words; inter-word gaps longer than 350 ms keeping exactly the configured duration; leading and trailing gaps; gaps at or below 350 ms remaining untouched; filler words excluded from the speech timeline; pause and filler intervals merged; and non-finite/negative timing inputs returning the typed planning error.
 
 - [ ] **Step 2: Run the focused tests and confirm the expected failure**
 
@@ -28,7 +28,7 @@ Expected: FAIL because the planner contract does not yet exist.
 
 - [ ] **Step 3: Implement the minimal planner contract**
 
-Add `SpeechCleanupPlan` and `plan_speech_cleanup(words, total_duration, max_silence_seconds, remove_filler_words, filler_mode)`. Reuse `detect_filler_intervals`, merge speech intervals with a 60 ms tolerance, apply the 350 ms compaction threshold, clamp intervals to the supplied duration, and return merged removal intervals with separate pause and filler counts. Keep the planner deterministic and independent of filesystem or process execution.
+Add `SpeechCleanupPlan`, `SpeechCleanupPlanningError`, and `plan_speech_cleanup(words, total_duration, max_silence_seconds, remove_filler_words, filler_mode) -> Result<SpeechCleanupPlan, SpeechCleanupPlanningError>`. Reuse `detect_filler_intervals`, merge speech intervals with a 60 ms tolerance, apply the strict `gap > 350 ms` compaction threshold, validate and clamp intervals to the supplied duration, and return merged removal intervals with separate pause and filler counts. Keep the planner deterministic and independent of filesystem or process execution.
 
 - [ ] **Step 4: Run the focused planner tests**
 
@@ -58,7 +58,7 @@ Expected: FAIL because the processor method is not yet available.
 
 - [ ] **Step 3: Implement the processor adapter**
 
-Add a `CaptionProcessor::speech_cleanup_plan` method that validates the transcription request, transcribes words using the fast profile, converts timings to the selected clip's coordinate system, and calls the pure planner. Preserve existing `filler_intervals` behavior for other callers.
+Add a `CaptionProcessor::speech_cleanup_plan` method that accepts an explicit clip-relative `total_duration_seconds`, validates the transcription request, transcribes words using the fast profile, converts timings to the selected clip's coordinate system, and calls the pure planner. Preserve existing `filler_intervals` behavior for other callers.
 
 - [ ] **Step 4: Run caption tests**
 
@@ -89,7 +89,7 @@ Expected: FAIL because desktop processing currently sends `max_silence_seconds` 
 
 - [ ] **Step 3: Add output metadata and use the shared plan**
 
-Add `removed_pause_count` with a zero serde default to `RadcastAudioOutput`. In the processing pipeline, request one cleanup plan when either pause reduction or filler removal is enabled, pass its merged intervals with `max_silence_seconds: None` to `AudioProcessor`, and persist both counts. Keep cancellation and temporary-file cleanup around the new transcription stage.
+Add `removed_pause_count` with a zero serde default to `RadcastAudioOutput`. In the processing pipeline, derive the explicit clip duration from `source.duration_seconds` and the request trim bounds, request one cleanup plan when either pause reduction or filler removal is enabled, pass its merged intervals with `max_silence_seconds: None` to `AudioProcessor`, and persist both counts. Keep cancellation and temporary-file cleanup around the new transcription stage.
 
 - [ ] **Step 4: Run focused desktop tests**
 
@@ -112,7 +112,7 @@ Run: `git add crates/radsuite-desktop/src/radcast.rs crates/radsuite-desktop/src
 
 - [ ] **Step 1: Add a failing frontend contract test**
 
-Test the pure settings/capability helper for disabling pause and filler cleanup when caption support is unavailable, and test that a zero pause count is displayed correctly rather than being hidden by truthiness.
+Test the existing `apps/desktop-ui/src/lib/radcastSettings.ts` settings/capability helper for disabling pause and filler cleanup when caption support is unavailable, and test that a zero pause count is displayed correctly rather than being hidden by truthiness.
 
 - [ ] **Step 2: Run the focused frontend test and confirm it fails**
 
@@ -122,7 +122,7 @@ Expected: FAIL because the capability helper and pause-count display behavior do
 
 - [ ] **Step 3: Implement the UI contract**
 
-Add `removed_pause_count` to the TypeScript output type, disable pause/filler controls when caption support is unavailable with a clear local-runtime note, and show pause reductions in completion status and output metadata using explicit null checks. Keep the existing range slider and settings persistence intact.
+Add `removed_pause_count` to the TypeScript output type, disable pause/filler controls when caption support is unavailable with a clear local-runtime note, and make both settings persistence and processing requests ignore those controls when the capability is unavailable. Show pause reductions in completion status and output metadata using explicit null checks. Keep the existing range slider and settings persistence intact.
 
 - [ ] **Step 4: Run frontend verification**
 

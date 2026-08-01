@@ -18,7 +18,7 @@ Make RADsuite's pause reduction behave like the original RADcast workflow while 
 
 ### Shared cleanup plan
 
-Add a pure cleanup-planning boundary in `radsuite-engines` that accepts timestamped `CaptionWord` values, total duration, the selected maximum pause duration, and filler-removal mode. It returns merged removal intervals plus separate pause and filler counts.
+Add a pure cleanup-planning boundary in `radsuite-engines` that accepts timestamped `CaptionWord` values, an explicit clip-relative total duration, the selected maximum pause duration, and filler-removal mode. It returns merged removal intervals plus separate pause and filler counts through a typed `Result` contract.
 
 The planner will:
 
@@ -26,15 +26,15 @@ The planner will:
 - exclude recognized filler words from the speech timeline when filler removal is enabled;
 - remove only the portion of a gap after the configured keep duration;
 - apply the same rule to leading and trailing gaps;
-- treat gaps shorter than 350 ms as non-compaction candidates, matching the original minimum;
+- treat gaps of 350 ms or less as non-compaction candidates, matching the original strict `>` comparison;
 - merge pause and filler intervals before rendering;
-- clamp and reject non-finite or negative timing values rather than generating unsafe FFmpeg arguments.
+- reject non-finite, negative, or out-of-range timing values with a typed planning error rather than generating unsafe FFmpeg arguments.
 
 The existing filler heuristics remain the source of truth for filler interval detection. A single transcription pass will supply words for both pause and filler planning when either feature is enabled.
 
 ### Desktop processing
 
-When pause reduction or filler removal is requested, `radsuite-desktop` will ask `CaptionProcessor` for fast word timestamps, build the shared cleanup plan, and pass the merged intervals to `AudioProcessor`. The generic `silenceremove` filter will not be used for this speech-aware path. Enhancement preparation remains unchanged, and pause/filler planning will happen against the selected clip before enhancement output is rendered.
+When pause reduction or filler removal is requested, `radsuite-desktop` will derive an explicit clip-relative duration from the saved source duration and requested trim bounds, ask `CaptionProcessor` for fast word timestamps, build the shared cleanup plan, and pass the merged intervals to `AudioProcessor`. The generic `silenceremove` filter will not be used for this speech-aware path. Enhancement preparation remains unchanged, and pause/filler planning will happen against the selected clip before enhancement output is rendered.
 
 The output manifest will record the number of shortened pauses in addition to the existing filler count. Existing manifests deserialize with a zero default. If local caption support is unavailable, the UI will explain that speech-aware pause and filler cleanup require the local transcription runtime.
 
@@ -45,8 +45,9 @@ FFmpeg remains responsible for output format conversion, trimming, and concatena
 ## Error handling
 
 - Missing Whisper runtime or model returns the existing local-caption capability error before rendering begins.
-- Invalid timestamps produce a typed cleanup-planning error or an empty safe plan, never invalid FFmpeg intervals.
+- Invalid timestamps produce a typed cleanup-planning error, never invalid FFmpeg intervals.
 - A failed cleanup transcription removes temporary files and does not add a completed output manifest entry.
+- Persisted pause/filler settings are ignored and cannot be submitted when local caption support is unavailable.
 - Existing cancellation checks remain active before transcription, after planning, and before final manifest persistence.
 
 ## Testing
