@@ -965,32 +965,37 @@ button:disabled {
   line-height: 1.45;
 }
 
-.radcast-range-row {
+.radcast-range-row,
+.radtts-range-row {
   gap: var(--s-2);
   padding: var(--s-2) 0;
 }
 
-.radcast-range-label {
+.radcast-range-label,
+.radtts-range-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s-3);
 }
 
-.radcast-range-label span {
+.radcast-range-label span,
+.radtts-range-label span {
   color: var(--fg-2);
   font-size: 0.76rem;
   font-weight: 650;
 }
 
-.radcast-range-label strong {
+.radcast-range-label strong,
+.radtts-range-label strong {
   color: var(--radcite-red);
   font-size: 0.76rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.radcast-range-row input[type="range"] {
+.radcast-range-row input[type="range"],
+.radtts-range-row input[type="range"] {
   width: 100%;
   accent-color: var(--radcite-red);
 }

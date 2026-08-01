@@ -24,6 +24,7 @@ export type RadtTsProjectPreferences = {
     chunkMode?: "single" | "sentence";
     pauseMinSeconds?: number;
     pauseMaxSeconds?: number;
+    maxNewTokens?: number;
     outputFormat?: "mp3" | "wav";
     outputName?: string;
   };
