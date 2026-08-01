@@ -518,6 +518,76 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
 }
 
 #[tokio::test]
+async fn radcast_speech_aware_pause_cleanup_uses_intervals_and_records_pause_count() {
+    let state = desktop_state_with_migrated_pool().await;
+    let projects = list_radcite_projects(&state).await.expect("list projects");
+    let dir = test_dir("speech-aware-pauses");
+    let source_path = dir.join("lecture.wav");
+    fs::write(&source_path, b"source audio").expect("write source");
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("pause-lecture.wav".to_string()),
+        },
+        fake_processor(&dir),
+    )
+    .await
+    .expect("import source");
+
+    let ffmpeg_log = dir.join("ffmpeg-args.log");
+    let ffmpeg_script = format!(
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{}'\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nmkdir -p \"$(dirname \"$output\")\"\nprintf 'fake audio' > \"$output\"\n",
+        ffmpeg_log.display()
+    );
+    let ffmpeg = write_executable(&dir, "ffmpeg-log.sh", &ffmpeg_script);
+    let ffprobe = write_executable(&dir, "ffprobe-log.sh", "#!/bin/sh\nprintf '3.0\\n'");
+    let whisper = write_executable(
+        &dir,
+        "whisper-pause.sh",
+        "#!/bin/sh\noutput=''\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  previous=\"$arg\"\ndone\nprintf '{\"transcription\":[{\"tokens\":[{\"text\":\" first\",\"offsets\":{\"from\":1000,\"to\":1200},\"p\":0.9},{\"text\":\" second\",\"offsets\":{\"from\":2000,\"to\":2200},\"p\":0.9}]}]}' > \"$output.json\"\n",
+    );
+    let model = dir.join("caption-model.bin");
+    fs::write(&model, b"model").expect("write caption model");
+
+    let output = process_radcast_audio_with_processors(
+        &state,
+        ProcessRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+            source_id: source.id,
+            output_format: AudioOutputFormat::Mp3,
+            clip_start_seconds: Some(0.0),
+            clip_end_seconds: Some(3.0),
+            cleanup_enabled: false,
+            max_silence_seconds: Some(0.4),
+            caption_format: None,
+            caption_language: "en".to_string(),
+            caption_quality_mode: CaptionQualityMode::Fast,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::None,
+            enhancement_quality: EnhancementQuality::Standard,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Normal,
+        },
+        AudioProcessor::from_commands(ffmpeg, ffprobe),
+        CaptionProcessor::from_commands(whisper, model),
+    )
+    .await
+    .expect("process speech-aware cleanup");
+
+    let ffmpeg_args = fs::read_to_string(ffmpeg_log).expect("read ffmpeg arguments");
+    assert!(ffmpeg_args.contains("-filter_complex"));
+    assert!(ffmpeg_args.contains("concat="));
+    assert!(ffmpeg_args.contains("end=0.400"));
+    assert!(ffmpeg_args.contains("end=1.600"));
+    assert!(!ffmpeg_args.contains("silenceremove"));
+    assert_eq!(output.removed_pause_count, 3);
+    assert_eq!(output.removed_filler_count, 0);
+    remove_dir(dir);
+}
+
+#[tokio::test]
 async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() {
     let state = desktop_state_with_migrated_pool().await;
     let projects = list_radcite_projects(&state).await.expect("list projects");
