@@ -2,6 +2,7 @@ use std::{
     collections::HashMap,
     fs,
     path::{Path, PathBuf},
+    time::Duration,
 };
 
 use chrono::Utc;
@@ -12,8 +13,11 @@ use radsuite_engines::{
     EnhancementProcessor, EnhancementQuality, FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
     RADCAST_STANDARD_POSTFILTER, RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER,
 };
+use reqwest::blocking::{Client, Response};
+use reqwest::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use url::Url;
 use uuid::Uuid;
 
 const RADCAST_ROOT: &str = "radcast";
@@ -52,6 +56,13 @@ pub struct ImportRadcastAudioRequest {
     pub project_id: Option<radsuite_core::ProjectId>,
     pub path: String,
     pub original_filename: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImportRadcastAudioLinkRequest {
+    #[serde(default)]
+    pub project_id: Option<radsuite_core::ProjectId>,
+    pub url: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -253,6 +264,16 @@ pub struct RadcastProcessingProgress {
 pub enum RadcastStorageError {
     #[error("choose an audio file before importing it")]
     EmptyPath,
+    #[error("paste a OneDrive or SharePoint sharing link before importing it")]
+    EmptyLink,
+    #[error("only OneDrive or SharePoint sharing links are supported")]
+    UnsupportedLink,
+    #[error(
+        "this OneDrive link needs Microsoft sign-in or access permission. Open it in OneDrive, download the audio file, and choose it from RADcast instead"
+    )]
+    LinkRequiresSignIn,
+    #[error("could not download the OneDrive audio: {0}")]
+    LinkDownload(String),
     #[error("could not determine the audio filename")]
     MissingFilename,
     #[error("audio source does not exist: {path}")]
@@ -432,6 +453,27 @@ pub(crate) fn import_audio(
         return Err(error);
     }
     Ok(source)
+}
+
+pub(crate) fn import_audio_from_link(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: ImportRadcastAudioLinkRequest,
+    processor: AudioProcessor,
+) -> Result<RadcastAudioSource, RadcastStorageError> {
+    let (download_path, filename) = download_audio_link(&request.url)?;
+    let import_result = import_audio(
+        data_dir,
+        project_id,
+        ImportRadcastAudioRequest {
+            project_id: Some(project_id),
+            path: download_path.to_string_lossy().into_owned(),
+            original_filename: Some(filename),
+        },
+        processor,
+    );
+    let _ = fs::remove_file(&download_path);
+    import_result
 }
 
 pub(crate) fn process_audio_with_processors(
@@ -857,10 +899,119 @@ fn is_cloud_storage_path(path: &Path) -> bool {
         .any(|component| component.as_os_str().to_string_lossy() == "CloudStorage")
 }
 
+fn download_audio_link(raw_url: &str) -> Result<(PathBuf, String), RadcastStorageError> {
+    let raw_url = raw_url.trim();
+    if raw_url.is_empty() {
+        return Err(RadcastStorageError::EmptyLink);
+    }
+    let url = Url::parse(raw_url).map_err(|_| RadcastStorageError::UnsupportedLink)?;
+    if !is_supported_link(&url) {
+        return Err(RadcastStorageError::UnsupportedLink);
+    }
+
+    let mut download_url = url.clone();
+    if !download_url
+        .query_pairs()
+        .any(|(key, _value)| key.eq_ignore_ascii_case("download"))
+    {
+        download_url.query_pairs_mut().append_pair("download", "1");
+    }
+
+    let client = Client::builder()
+        .user_agent("RADsuite RADcast local importer")
+        .redirect(reqwest::redirect::Policy::limited(10))
+        .timeout(Duration::from_secs(120))
+        .build()
+        .map_err(|error| RadcastStorageError::LinkDownload(error.to_string()))?;
+    let mut response = client
+        .get(download_url)
+        .send()
+        .map_err(|error| RadcastStorageError::LinkDownload(error.to_string()))?;
+    if response.status() == reqwest::StatusCode::UNAUTHORIZED
+        || response.status() == reqwest::StatusCode::FORBIDDEN
+    {
+        return Err(RadcastStorageError::LinkRequiresSignIn);
+    }
+    if !response.status().is_success() {
+        return Err(RadcastStorageError::LinkDownload(format!(
+            "OneDrive returned HTTP {}",
+            response.status()
+        )));
+    }
+    if response
+        .headers()
+        .get(CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value.to_ascii_lowercase().starts_with("text/html"))
+    {
+        return Err(RadcastStorageError::LinkRequiresSignIn);
+    }
+
+    let filename = response_filename(&response, &url);
+    let temporary_path = std::env::temp_dir().join(format!(
+        "radsuite-radcast-link-{}-{}",
+        Uuid::new_v4(),
+        safe_filename(&filename)
+    ));
+    let mut output = fs::File::create(&temporary_path).map_err(|error| {
+        RadcastStorageError::LinkDownload(format!("could not create a temporary download: {error}"))
+    })?;
+    if let Err(error) = response.copy_to(&mut output) {
+        let _ = fs::remove_file(&temporary_path);
+        return Err(RadcastStorageError::LinkDownload(error.to_string()));
+    }
+    Ok((temporary_path, filename))
+}
+
+fn is_supported_link(url: &Url) -> bool {
+    if url.scheme() != "https" {
+        return false;
+    }
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+    host.eq_ignore_ascii_case("1drv.ms")
+        || host.eq_ignore_ascii_case("onedrive.live.com")
+        || host.ends_with(".onedrive.live.com")
+        || host.ends_with(".sharepoint.com")
+}
+
+fn response_filename(response: &Response, source_url: &Url) -> String {
+    let header_filename = response
+        .headers()
+        .get(CONTENT_DISPOSITION)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| {
+            value.split(';').find_map(|part| {
+                let (key, filename) = part.trim().split_once('=')?;
+                key.trim().eq_ignore_ascii_case("filename").then(|| {
+                    filename
+                        .trim()
+                        .trim_matches('"')
+                        .trim_matches('\'')
+                        .to_string()
+                })
+            })
+        })
+        .filter(|value| !value.is_empty());
+    let url_filename = source_url
+        .path_segments()
+        .and_then(|segments| segments.last())
+        .map(str::trim)
+        .filter(|value| !value.is_empty() && !value.contains(":/"))
+        .map(|value| value.to_string());
+    safe_filename(
+        &header_filename
+            .or(url_filename)
+            .unwrap_or_else(|| "onedrive-audio".to_string()),
+    )
+}
+
 #[cfg(test)]
 mod tests {
-    use super::is_cloud_storage_path;
+    use super::{is_cloud_storage_path, is_supported_link};
     use std::path::Path;
+    use url::Url;
 
     #[test]
     fn identifies_macos_cloud_storage_paths() {
@@ -870,5 +1021,22 @@ mod tests {
         assert!(!is_cloud_storage_path(Path::new(
             "/Users/example/Documents/audio.wav"
         )));
+    }
+
+    #[test]
+    fn accepts_onedrive_and_sharepoint_https_links_only() {
+        assert!(is_supported_link(
+            &Url::parse("https://1drv.ms/u/s!example").expect("parse OneDrive link")
+        ));
+        assert!(is_supported_link(
+            &Url::parse("https://university.sharepoint.com/:u:/g/example")
+                .expect("parse SharePoint link")
+        ));
+        assert!(!is_supported_link(
+            &Url::parse("http://1drv.ms/u/s!example").expect("parse HTTP link")
+        ));
+        assert!(!is_supported_link(
+            &Url::parse("https://example.com/audio.wav").expect("parse unrelated link")
+        ));
     }
 }

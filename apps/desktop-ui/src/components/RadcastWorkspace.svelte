@@ -28,6 +28,7 @@
   let sources = $state<RadcastAudioSource[]>([]);
   let outputs = $state<RadcastAudioOutput[]>([]);
   let selectedSourceId = $state<string | null>(null);
+  let sourceLink = $state("");
   let clipStart = $state(0);
   let clipEnd = $state(0);
   let outputFormat = $state<AudioOutputFormat>("mp3");
@@ -321,6 +322,32 @@
     }
   }
 
+  async function importSourceFromLink() {
+    const url = sourceLink.trim();
+    if (!url) {
+      error = "Paste a OneDrive or SharePoint sharing link first.";
+      return;
+    }
+    error = null;
+    try {
+      loading = true;
+      const source = await invoke<RadcastAudioSource>("import_radcast_audio_from_link", {
+        request: {
+          project_id: selectedProjectId,
+          url,
+        },
+      });
+      sources = [source, ...sources];
+      sourceLink = "";
+      setSelectedSource(source.id);
+      status = "Audio downloaded from OneDrive and saved locally";
+    } catch (reason: unknown) {
+      error = `Could not import audio link: ${toErrorMessage(reason)}`;
+    } finally {
+      loading = false;
+    }
+  }
+
   async function processAudio() {
     if (processDisabled || !selectedSource) return;
     processing = true;
@@ -490,6 +517,28 @@
       {:else}
         <div class="radcast-empty">No audio has been added to this project.</div>
       {/if}
+
+      <div class="radcast-link-import">
+        <label class="stack" for="radcast-source-link">
+          <span>OneDrive or SharePoint link</span>
+          <input
+            id="radcast-source-link"
+            type="url"
+            bind:value={sourceLink}
+            placeholder="Paste a sharing link"
+            disabled={loading || processing}
+          />
+        </label>
+        <button
+          class="secondary-button compact-button"
+          type="button"
+          disabled={loading || processing || !sourceLink.trim()}
+          onclick={() => void importSourceFromLink()}
+        >
+          Import link
+        </button>
+        <small class="field-note">RADsuite downloads an accessible file, then keeps processing local.</small>
+      </div>
 
       {#if selectedSource && sourceAudioUrl}
         <div class="radcast-source-meta">

@@ -32,9 +32,9 @@ use crate::{
 };
 
 pub use crate::radcast::{
-    DeleteRadcastAudioRequest, ImportRadcastAudioRequest, ListRadcastAudioRequest,
-    ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
-    RadcastProcessingPhase, RadcastProjectSettings, RadcastStorageError,
+    DeleteRadcastAudioRequest, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
+    ListRadcastAudioRequest, ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput,
+    RadcastAudioSource, RadcastProcessingPhase, RadcastProjectSettings, RadcastStorageError,
 };
 pub use crate::radt_ts::{
     ListRadtTsOutputsRequest, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing,
@@ -1251,6 +1251,27 @@ pub async fn import_radcast_audio(
     request: ImportRadcastAudioRequest,
 ) -> Result<RadcastAudioSource, RadcastAudioError> {
     import_radcast_audio_with_processor(state, request, AudioProcessor::default()).await
+}
+
+pub async fn import_radcast_audio_from_link(
+    state: &DesktopState,
+    request: ImportRadcastAudioLinkRequest,
+) -> Result<RadcastAudioSource, RadcastAudioError> {
+    import_radcast_audio_from_link_with_processor(state, request, AudioProcessor::default()).await
+}
+
+pub async fn import_radcast_audio_from_link_with_processor(
+    state: &DesktopState,
+    request: ImportRadcastAudioLinkRequest,
+    processor: AudioProcessor,
+) -> Result<RadcastAudioSource, RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::import_audio_from_link(&data_dir, project.id, request, processor)
+    })
+    .await?
+    .map_err(Into::into)
 }
 
 pub async fn import_radcast_audio_with_processor(
