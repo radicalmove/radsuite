@@ -58,6 +58,41 @@ pub struct CaptionWord {
     pub probability: f64,
 }
 
+const MIN_COMPACTABLE_GAP_SECONDS: f64 = 0.35;
+const SPEECH_INTERVAL_MERGE_TOLERANCE_SECONDS: f64 = 0.06;
+const TIMING_EPSILON_SECONDS: f64 = 1e-9;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SpeechCleanupPlan {
+    pub removal_intervals: Vec<AudioTimeInterval>,
+    pub removed_pause_count: usize,
+    pub removed_filler_count: usize,
+}
+
+#[derive(Debug, Error)]
+pub enum SpeechCleanupPlanningError {
+    #[error("cleanup duration must be finite and greater than zero")]
+    InvalidDuration,
+    #[error("maximum pause duration must be finite and non-negative: {seconds:?}")]
+    InvalidMaxSilence { seconds: f64 },
+    #[error(
+        "cleanup word timing is invalid at index {index}: start {start_seconds}, end {end_seconds}"
+    )]
+    InvalidWordTiming {
+        index: usize,
+        start_seconds: f64,
+        end_seconds: f64,
+    },
+}
+
+#[derive(Debug, Error)]
+pub enum SpeechCleanupError {
+    #[error(transparent)]
+    Caption(#[from] CaptionProcessingError),
+    #[error(transparent)]
+    Planning(#[from] SpeechCleanupPlanningError),
+}
+
 impl CaptionFormat {
     pub const fn extension(self) -> &'static str {
         match self {
@@ -349,6 +384,31 @@ impl CaptionProcessor {
         Ok(detect_filler_intervals(&words, mode))
     }
 
+    pub fn speech_cleanup_plan(
+        &self,
+        request: &CaptionTranscriptionRequest,
+        total_duration_seconds: f64,
+        max_silence_seconds: Option<f64>,
+        remove_filler_words: bool,
+        filler_mode: FillerRemovalMode,
+    ) -> Result<SpeechCleanupPlan, SpeechCleanupError> {
+        let clip_start = request.clip_start_seconds.unwrap_or(0.0);
+        let mut words = self.transcribe_words(request)?;
+        if clip_start > 0.0 {
+            for word in &mut words {
+                word.start_seconds = (word.start_seconds - clip_start).max(0.0);
+                word.end_seconds = (word.end_seconds - clip_start).max(0.0);
+            }
+        }
+        Ok(plan_speech_cleanup(
+            &words,
+            total_duration_seconds,
+            max_silence_seconds,
+            remove_filler_words,
+            filler_mode,
+        )?)
+    }
+
     fn transcription_arguments(
         &self,
         request: &CaptionTranscriptionRequest,
@@ -528,23 +588,7 @@ pub fn detect_filler_intervals(
 ) -> Vec<AudioTimeInterval> {
     let mut intervals: Vec<AudioTimeInterval> = Vec::new();
     for word in words {
-        let normalized = word
-            .text
-            .trim()
-            .trim_matches(|character: char| !character.is_alphanumeric())
-            .to_ascii_lowercase();
-        let is_filler = match mode {
-            FillerRemovalMode::Normal => {
-                matches!(normalized.as_str(), "um" | "uh" | "er") && word.probability >= 0.28
-            }
-            FillerRemovalMode::Aggressive => {
-                matches!(
-                    normalized.as_str(),
-                    "um" | "uh" | "er" | "erm" | "hmm" | "hm" | "mm"
-                )
-            }
-        };
-        if !is_filler {
+        if !is_filler_word(word, mode) {
             continue;
         }
 
@@ -562,6 +606,193 @@ pub fn detect_filler_intervals(
         }
     }
     intervals
+}
+
+pub fn plan_speech_cleanup(
+    words: &[CaptionWord],
+    total_duration_seconds: f64,
+    max_silence_seconds: Option<f64>,
+    remove_filler_words: bool,
+    filler_mode: FillerRemovalMode,
+) -> Result<SpeechCleanupPlan, SpeechCleanupPlanningError> {
+    if !total_duration_seconds.is_finite() || total_duration_seconds <= 0.0 {
+        return Err(SpeechCleanupPlanningError::InvalidDuration);
+    }
+    if let Some(seconds) = max_silence_seconds
+        && (!seconds.is_finite() || seconds < 0.0)
+    {
+        return Err(SpeechCleanupPlanningError::InvalidMaxSilence { seconds });
+    }
+
+    let mut ordered_words = words.to_vec();
+    for (index, word) in ordered_words.iter().enumerate() {
+        let valid_timing = word.start_seconds.is_finite()
+            && word.end_seconds.is_finite()
+            && word.start_seconds >= 0.0
+            && word.end_seconds > word.start_seconds
+            && word.end_seconds <= total_duration_seconds;
+        if !valid_timing {
+            return Err(SpeechCleanupPlanningError::InvalidWordTiming {
+                index,
+                start_seconds: word.start_seconds,
+                end_seconds: word.end_seconds,
+            });
+        }
+    }
+    ordered_words.sort_by(|left, right| {
+        left.start_seconds.total_cmp(&right.start_seconds).then_with(|| {
+            left.end_seconds.total_cmp(&right.end_seconds)
+        })
+    });
+
+    let filler_intervals = if remove_filler_words {
+        detect_filler_intervals(&ordered_words, filler_mode)
+            .into_iter()
+            .filter_map(|interval| clamp_interval(interval, total_duration_seconds))
+            .collect::<Vec<_>>()
+    } else {
+        Vec::new()
+    };
+    let speech_intervals = merge_speech_intervals(
+        ordered_words
+            .iter()
+            .filter(|word| !remove_filler_words || !is_filler_word(word, filler_mode))
+            .map(|word| AudioTimeInterval {
+                start_seconds: word.start_seconds,
+                end_seconds: word.end_seconds,
+            }),
+    );
+
+    let (pause_intervals, removed_pause_count) = max_silence_seconds
+        .map(|keep_seconds| {
+            compact_pause_intervals(&speech_intervals, total_duration_seconds, keep_seconds)
+        })
+        .unwrap_or_default();
+    let removal_intervals = merge_removal_intervals(
+        pause_intervals
+            .iter()
+            .chain(filler_intervals.iter())
+            .cloned(),
+    );
+
+    Ok(SpeechCleanupPlan {
+        removal_intervals,
+        removed_pause_count,
+        removed_filler_count: filler_intervals.len(),
+    })
+}
+
+fn is_filler_word(word: &CaptionWord, mode: FillerRemovalMode) -> bool {
+    let normalized = word
+        .text
+        .trim()
+        .trim_matches(|character: char| !character.is_alphanumeric())
+        .to_ascii_lowercase();
+    match mode {
+        FillerRemovalMode::Normal => {
+            matches!(normalized.as_str(), "um" | "uh" | "er") && word.probability >= 0.28
+        }
+        FillerRemovalMode::Aggressive => {
+            matches!(
+                normalized.as_str(),
+                "um" | "uh" | "er" | "erm" | "hmm" | "hm" | "mm"
+            )
+        }
+    }
+}
+
+fn merge_speech_intervals<I>(intervals: I) -> Vec<AudioTimeInterval>
+where
+    I: IntoIterator<Item = AudioTimeInterval>,
+{
+    let mut merged: Vec<AudioTimeInterval> = Vec::new();
+    for interval in intervals {
+        if let Some(previous) = merged.last_mut()
+            && interval.start_seconds
+                <= previous.end_seconds + SPEECH_INTERVAL_MERGE_TOLERANCE_SECONDS
+        {
+            previous.end_seconds = previous.end_seconds.max(interval.end_seconds);
+        } else {
+            merged.push(interval);
+        }
+    }
+    merged
+}
+
+fn compact_pause_intervals(
+    speech_intervals: &[AudioTimeInterval],
+    total_duration_seconds: f64,
+    keep_seconds: f64,
+) -> (Vec<AudioTimeInterval>, usize) {
+    if speech_intervals.is_empty() {
+        return (Vec::new(), 0);
+    }
+
+    let trigger_seconds = MIN_COMPACTABLE_GAP_SECONDS.max(keep_seconds);
+    let mut cursor: f64 = 0.0;
+    let mut intervals = Vec::new();
+    let mut count = 0;
+    for speech in speech_intervals {
+        let gap_end = cursor.max(speech.start_seconds);
+        if gap_end - cursor > trigger_seconds + TIMING_EPSILON_SECONDS {
+            let trim_start = (cursor + keep_seconds).min(gap_end);
+            if trim_start < gap_end {
+                intervals.push(AudioTimeInterval {
+                    start_seconds: trim_start,
+                    end_seconds: gap_end,
+                });
+                count += 1;
+            }
+        }
+        cursor = cursor.max(speech.end_seconds);
+    }
+
+    if total_duration_seconds - cursor > trigger_seconds + TIMING_EPSILON_SECONDS {
+        let trim_start = (cursor + keep_seconds).min(total_duration_seconds);
+        if trim_start < total_duration_seconds {
+            intervals.push(AudioTimeInterval {
+                start_seconds: trim_start,
+                end_seconds: total_duration_seconds,
+            });
+            count += 1;
+        }
+    }
+    (intervals, count)
+}
+
+fn merge_removal_intervals<I>(intervals: I) -> Vec<AudioTimeInterval>
+where
+    I: IntoIterator<Item = AudioTimeInterval>,
+{
+    let mut intervals = intervals.into_iter().collect::<Vec<_>>();
+    intervals.sort_by(|left, right| {
+        left.start_seconds
+            .total_cmp(&right.start_seconds)
+            .then_with(|| left.end_seconds.total_cmp(&right.end_seconds))
+    });
+    let mut merged: Vec<AudioTimeInterval> = Vec::new();
+    for interval in intervals {
+        if let Some(previous) = merged.last_mut()
+            && interval.start_seconds <= previous.end_seconds
+        {
+            previous.end_seconds = previous.end_seconds.max(interval.end_seconds);
+        } else {
+            merged.push(interval);
+        }
+    }
+    merged
+}
+
+fn clamp_interval(
+    interval: AudioTimeInterval,
+    total_duration_seconds: f64,
+) -> Option<AudioTimeInterval> {
+    let start_seconds = interval.start_seconds.clamp(0.0, total_duration_seconds);
+    let end_seconds = interval.end_seconds.clamp(0.0, total_duration_seconds);
+    (end_seconds > start_seconds).then_some(AudioTimeInterval {
+        start_seconds,
+        end_seconds,
+    })
 }
 
 fn round_milliseconds(seconds: f64) -> f64 {

@@ -28,7 +28,7 @@ Expected: FAIL because the planner contract does not yet exist.
 
 - [ ] **Step 3: Implement the minimal planner contract**
 
-Add `SpeechCleanupPlan`, `SpeechCleanupPlanningError`, and `plan_speech_cleanup(words, total_duration, max_silence_seconds, remove_filler_words, filler_mode) -> Result<SpeechCleanupPlan, SpeechCleanupPlanningError>`. Reuse `detect_filler_intervals`, merge speech intervals with a 60 ms tolerance, apply the strict `gap > 350 ms` compaction threshold, validate and clamp intervals to the supplied duration, and return merged removal intervals with separate pause and filler counts. Keep the planner deterministic and independent of filesystem or process execution.
+Add `SpeechCleanupPlan`, `SpeechCleanupPlanningError`, and `plan_speech_cleanup(words, total_duration, max_silence_seconds: Option<f64>, remove_filler_words, filler_mode) -> Result<SpeechCleanupPlan, SpeechCleanupPlanningError>`. `None` must skip pause compaction for filler-only cleanup. Reuse `detect_filler_intervals`, merge speech intervals with a 60 ms tolerance, apply the strict `gap > 350 ms` compaction threshold, validate and clamp intervals to the supplied duration, and return merged removal intervals with separate pause and filler counts. Keep the planner deterministic and independent of filesystem or process execution.
 
 - [ ] **Step 4: Run the focused planner tests**
 
@@ -89,7 +89,7 @@ Expected: FAIL because desktop processing currently sends `max_silence_seconds` 
 
 - [ ] **Step 3: Add output metadata and use the shared plan**
 
-Add `removed_pause_count` with a zero serde default to `RadcastAudioOutput`. In the processing pipeline, derive the explicit clip duration from `source.duration_seconds` and the request trim bounds, request one cleanup plan when either pause reduction or filler removal is enabled, pass its merged intervals with `max_silence_seconds: None` to `AudioProcessor`, and persist both counts. Keep cancellation and temporary-file cleanup around the new transcription stage.
+Add `removed_pause_count` with a zero serde default to `RadcastAudioOutput`. Add a `SpeechCleanupPlanning` conversion variant to `RadcastStorageError`. In the processing pipeline, derive the explicit clip duration from `source.duration_seconds` and the request trim bounds, request one cleanup plan when either pause reduction or filler removal is enabled, pass its merged intervals with `max_silence_seconds: None` to `AudioProcessor`, and persist both counts. Keep cancellation and temporary-file cleanup around the new transcription stage.
 
 - [ ] **Step 4: Run focused desktop tests**
 
@@ -132,7 +132,7 @@ Expected: all frontend tests, diagnostics, style checks, and build pass.
 
 - [ ] **Step 5: Commit the UI slice**
 
-Run: `git add crates/radsuite-desktop/src/commands.rs apps/desktop-ui/src/types.ts apps/desktop-ui/src/components/RadcastWorkspace.svelte apps/desktop-ui/src/styles.css apps/desktop-ui/src/lib/radcastSettings.test.ts && git commit -m "feat: explain and report speech-aware RADcast cleanup"`
+Run: `git add crates/radsuite-desktop/src/commands.rs apps/desktop-ui/src/types.ts apps/desktop-ui/src/components/RadcastWorkspace.svelte apps/desktop-ui/src/styles.css apps/desktop-ui/src/lib/radcastSettings.ts apps/desktop-ui/src/lib/radcastSettings.test.ts && git commit -m "feat: explain and report speech-aware RADcast cleanup"`
 
 ### Task 5: Full verification and integration
 

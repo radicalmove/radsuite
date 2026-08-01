@@ -18,7 +18,7 @@ Make RADsuite's pause reduction behave like the original RADcast workflow while 
 
 ### Shared cleanup plan
 
-Add a pure cleanup-planning boundary in `radsuite-engines` that accepts timestamped `CaptionWord` values, an explicit clip-relative total duration, the selected maximum pause duration, and filler-removal mode. It returns merged removal intervals plus separate pause and filler counts through a typed `Result` contract.
+Add a pure cleanup-planning boundary in `radsuite-engines` that accepts timestamped `CaptionWord` values, an explicit clip-relative total duration, an optional maximum pause duration, and filler-removal mode. `None` means filler-only cleanup and must not compact pauses. It returns merged removal intervals plus separate pause and filler counts through a typed `Result` contract.
 
 The planner will:
 
@@ -34,7 +34,7 @@ The existing filler heuristics remain the source of truth for filler interval de
 
 ### Desktop processing
 
-When pause reduction or filler removal is requested, `radsuite-desktop` will derive an explicit clip-relative duration from the saved source duration and requested trim bounds, ask `CaptionProcessor` for fast word timestamps, build the shared cleanup plan, and pass the merged intervals to `AudioProcessor`. The generic `silenceremove` filter will not be used for this speech-aware path. Enhancement preparation remains unchanged, and pause/filler planning will happen against the selected clip before enhancement output is rendered.
+When pause reduction or filler removal is requested, `radsuite-desktop` will derive an explicit clip-relative duration from the saved source duration and requested trim bounds, ask `CaptionProcessor` for fast word timestamps, build the shared cleanup plan, and pass the merged intervals to `AudioProcessor`. `None` is passed when only filler removal is enabled, so no pauses are compacted in that mode. The generic `silenceremove` filter will not be used for this speech-aware path. Enhancement preparation remains unchanged, and pause/filler planning will happen against the selected clip before enhancement output is rendered.
 
 The output manifest will record the number of shortened pauses in addition to the existing filler count. Existing manifests deserialize with a zero default. If local caption support is unavailable, the UI will explain that speech-aware pause and filler cleanup require the local transcription runtime.
 
