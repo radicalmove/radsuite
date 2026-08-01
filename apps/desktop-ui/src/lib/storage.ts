@@ -18,8 +18,11 @@ const radtTsPreferencesStorageKey = "radsuiteRadtTsPreferences";
 
 export type RadtTsProjectPreferences = {
   voice?: {
+    voiceSource?: "reference" | "builtin";
     referenceAudioPath?: string;
     referenceText?: string;
+    builtInSpeaker?: string;
+    builtInInstruct?: string;
     quality?: "fast" | "high";
     chunkMode?: "single" | "sentence";
     pauseMinSeconds?: number;

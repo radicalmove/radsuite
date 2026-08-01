@@ -58,6 +58,28 @@ impl RadtTsQuality {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+pub enum RadtTsVoiceSource {
+    Reference,
+    Builtin,
+}
+
+impl Default for RadtTsVoiceSource {
+    fn default() -> Self {
+        Self::Reference
+    }
+}
+
+impl RadtTsVoiceSource {
+    fn as_cli_value(self) -> &'static str {
+        match self {
+            Self::Reference => "reference",
+            Self::Builtin => "builtin",
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RadtTsChunkMode {
     Single,
     Sentence,
@@ -92,9 +114,14 @@ impl RadtTsOutputFormat {
 pub struct RadtTsSynthesisRequest {
     pub project_id: ProjectId,
     pub text: String,
-    pub reference_audio_path: PathBuf,
+    pub voice_source: RadtTsVoiceSource,
+    pub reference_audio_path: Option<PathBuf>,
     #[serde(default)]
     pub reference_text: Option<String>,
+    #[serde(default)]
+    pub built_in_speaker: Option<String>,
+    #[serde(default)]
+    pub built_in_instruct: Option<String>,
     pub quality: RadtTsQuality,
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
@@ -164,9 +191,16 @@ pub struct StartRadtTsSynthesisRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
     pub text: String,
-    pub reference_audio_path: String,
+    #[serde(default)]
+    pub voice_source: RadtTsVoiceSource,
+    #[serde(default)]
+    pub reference_audio_path: Option<String>,
     #[serde(default)]
     pub reference_text: Option<String>,
+    #[serde(default)]
+    pub built_in_speaker: Option<String>,
+    #[serde(default)]
+    pub built_in_instruct: Option<String>,
     pub quality: RadtTsQuality,
     pub chunk_mode: RadtTsChunkMode,
     pub pause_min_seconds: f64,
@@ -195,6 +229,8 @@ pub enum RadtTsError {
     EmptyText,
     #[error("voice-clone authorization is required before using reference audio")]
     MissingVoiceCloneAuthorization,
+    #[error("a built-in speaker is required for built-in voice generation")]
+    MissingBuiltInSpeaker,
     #[error("pause maximum must be greater than or equal to pause minimum")]
     InvalidPauseBounds,
     #[error("maximum new tokens must be between 64 and 8192")]
@@ -293,26 +329,31 @@ pub async fn start_radt_ts_synthesis(
             return Err(error);
         }
     };
-    let reference_text_path = match request
-        .reference_text
-        .as_deref()
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-    {
-        Some(reference_text) => match create_temp_text_file(&state.paths.cache_dir, reference_text)
+    let reference_text_path = if request.voice_source == RadtTsVoiceSource::Reference {
+        match request
+            .reference_text
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
         {
-            Ok(path) => Some(path),
-            Err(error) => {
-                let _ = fs::remove_file(&text_path);
-                state
-                    .radt_ts_active_projects
-                    .lock()
-                    .unwrap_or_else(|poisoned| poisoned.into_inner())
-                    .remove(&request.project_id.to_string());
-                return Err(error);
+            Some(reference_text) => {
+                match create_temp_text_file(&state.paths.cache_dir, reference_text) {
+                    Ok(path) => Some(path),
+                    Err(error) => {
+                        let _ = fs::remove_file(&text_path);
+                        state
+                            .radt_ts_active_projects
+                            .lock()
+                            .unwrap_or_else(|poisoned| poisoned.into_inner())
+                            .remove(&request.project_id.to_string());
+                        return Err(error);
+                    }
+                }
             }
-        },
-        None => None,
+            None => None,
+        }
+    } else {
+        None
     };
     let args = match build_synthesis_args(
         &request,
@@ -997,7 +1038,7 @@ pub fn build_synthesis_args(
     if request.text.trim().is_empty() {
         return Err(RadtTsError::EmptyText);
     }
-    if !request.acknowledge_voice_clone {
+    if request.voice_source == RadtTsVoiceSource::Reference && !request.acknowledge_voice_clone {
         return Err(RadtTsError::MissingVoiceCloneAuthorization);
     }
     if request.pause_min_seconds <= 0.0 || request.pause_max_seconds < request.pause_min_seconds {
@@ -1007,7 +1048,6 @@ pub fn build_synthesis_args(
         return Err(RadtTsError::InvalidMaxNewTokens);
     }
     validate_output_name(&request.output_name)?;
-    let reference_audio_path = validate_reference_audio(&request.reference_audio_path)?;
     let mut args = vec![
         "--projects-root".to_string(),
         projects_root.display().to_string(),
@@ -1016,8 +1056,8 @@ pub fn build_synthesis_args(
         request.project_id.to_string(),
         "--text-file".to_string(),
         text_file.display().to_string(),
-        "--reference-audio".to_string(),
-        reference_audio_path.display().to_string(),
+        "--voice-source".to_string(),
+        request.voice_source.as_cli_value().to_string(),
         "--mode".to_string(),
         request.quality.as_cli_value().to_string(),
         "--max-new-tokens".to_string(),
@@ -1032,16 +1072,48 @@ pub fn build_synthesis_args(
         request.output_format.as_cli_value().to_string(),
         "--output-name".to_string(),
         request.output_name.clone(),
-        "--ack-voice-clone".to_string(),
     ];
+    match request.voice_source {
+        RadtTsVoiceSource::Reference => {
+            let reference_audio_path =
+                request.reference_audio_path.as_deref().ok_or_else(|| {
+                    RadtTsError::InvalidReferenceAudio("reference audio is required".to_string())
+                })?;
+            let reference_audio_path = validate_reference_audio(reference_audio_path)?;
+            args.extend([
+                "--reference-audio".to_string(),
+                reference_audio_path.display().to_string(),
+                "--ack-voice-clone".to_string(),
+            ]);
+        }
+        RadtTsVoiceSource::Builtin => {
+            let speaker = request
+                .built_in_speaker
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .ok_or(RadtTsError::MissingBuiltInSpeaker)?;
+            args.extend(["--built-in-speaker".to_string(), speaker.to_string()]);
+            if let Some(instruct) = request
+                .built_in_instruct
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+            {
+                args.extend(["--built-in-instruct".to_string(), instruct.to_string()]);
+            }
+        }
+    }
     if let Some(pause_seed) = request.pause_seed {
         args.extend(["--pause-seed".to_string(), pause_seed.to_string()]);
     }
-    if let Some(reference_text_file) = reference_text_file {
-        args.extend([
-            "--reference-text-file".to_string(),
-            reference_text_file.display().to_string(),
-        ]);
+    if request.voice_source == RadtTsVoiceSource::Reference {
+        if let Some(reference_text_file) = reference_text_file {
+            args.extend([
+                "--reference-text-file".to_string(),
+                reference_text_file.display().to_string(),
+            ]);
+        }
     }
     Ok(args)
 }
@@ -1100,8 +1172,8 @@ mod tests {
 
     use super::{
         RadtTsChunkMode, RadtTsOutputFormat, RadtTsQuality, RadtTsSynthesisRequest,
-        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, parse_cli_result,
-        remove_temp_text_files, shutdown_radt_ts_jobs, validate_output_name,
+        RadtTsVoiceSource, StartRadtTsSynthesisRequest, build_synthesis_args, contained_file,
+        parse_cli_result, remove_temp_text_files, shutdown_radt_ts_jobs, validate_output_name,
         validate_reference_audio,
     };
     use crate::state::DesktopState;
@@ -1124,8 +1196,11 @@ mod tests {
         let request = RadtTsSynthesisRequest {
             project_id: ProjectId::new(),
             text: "A short script.".to_string(),
-            reference_audio_path: reference_audio_path.clone(),
+            voice_source: RadtTsVoiceSource::Reference,
+            reference_audio_path: Some(reference_audio_path.clone()),
             reference_text: Some("Reference voice transcript.".to_string()),
+            built_in_speaker: None,
+            built_in_instruct: None,
             quality: RadtTsQuality::High,
             chunk_mode: RadtTsChunkMode::Single,
             pause_min_seconds: 0.25,
@@ -1178,8 +1253,11 @@ mod tests {
         let request = RadtTsSynthesisRequest {
             project_id: ProjectId::new(),
             text: "A short script.".to_string(),
-            reference_audio_path,
+            voice_source: RadtTsVoiceSource::Reference,
+            reference_audio_path: Some(reference_audio_path),
             reference_text: None,
+            built_in_speaker: None,
+            built_in_instruct: None,
             quality: RadtTsQuality::Fast,
             chunk_mode: RadtTsChunkMode::Sentence,
             pause_min_seconds: 0.25,
@@ -1204,6 +1282,82 @@ mod tests {
     }
 
     #[test]
+    fn builds_builtin_voice_cli_arguments_without_reference_audio() {
+        let request = RadtTsSynthesisRequest {
+            project_id: ProjectId::new(),
+            text: "A short script.".to_string(),
+            voice_source: RadtTsVoiceSource::Builtin,
+            reference_audio_path: None,
+            reference_text: None,
+            built_in_speaker: Some("Vivian".to_string()),
+            built_in_instruct: Some("Warm and clear".to_string()),
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Sentence,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.75,
+            pause_seed: None,
+            max_new_tokens: 1200,
+            output_format: RadtTsOutputFormat::Mp3,
+            output_name: "intro".to_string(),
+            acknowledge_voice_clone: false,
+        };
+
+        let args = build_synthesis_args(
+            &request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+        )
+        .expect("valid built-in request should build");
+
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["--voice-source", "builtin"])
+        );
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["--built-in-speaker", "Vivian"])
+        );
+        assert!(
+            args.windows(2)
+                .any(|pair| pair == ["--built-in-instruct", "Warm and clear"])
+        );
+        assert!(!args.contains(&"--reference-audio".to_string()));
+        assert!(args.contains(&"fast".to_string()));
+    }
+
+    #[test]
+    fn rejects_builtin_voice_requests_without_a_speaker() {
+        let request = RadtTsSynthesisRequest {
+            project_id: ProjectId::new(),
+            text: "A short script.".to_string(),
+            voice_source: RadtTsVoiceSource::Builtin,
+            reference_audio_path: None,
+            reference_text: None,
+            built_in_speaker: None,
+            built_in_instruct: None,
+            quality: RadtTsQuality::High,
+            chunk_mode: RadtTsChunkMode::Single,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.75,
+            pause_seed: None,
+            max_new_tokens: 1200,
+            output_format: RadtTsOutputFormat::Mp3,
+            output_name: "intro".to_string(),
+            acknowledge_voice_clone: false,
+        };
+
+        let error = build_synthesis_args(
+            &request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+        )
+        .expect_err("a built-in speaker is required");
+        assert!(error.to_string().contains("built-in speaker"));
+    }
+
+    #[test]
     fn rejects_generation_budgets_outside_the_supported_range() {
         let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&root).expect("create test directory");
@@ -1212,8 +1366,11 @@ mod tests {
         let request = RadtTsSynthesisRequest {
             project_id: ProjectId::new(),
             text: "A short script.".to_string(),
-            reference_audio_path,
+            voice_source: RadtTsVoiceSource::Reference,
+            reference_audio_path: Some(reference_audio_path),
             reference_text: None,
+            built_in_speaker: None,
+            built_in_instruct: None,
             quality: RadtTsQuality::Fast,
             chunk_mode: RadtTsChunkMode::Sentence,
             pause_min_seconds: 0.25,

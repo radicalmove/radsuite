@@ -19,8 +19,11 @@ const capability: RadtTsCapabilityStatus = {
 
 const draft: RadtTsDraft = {
   text: "A short script.",
+  voiceSource: "reference",
   referenceAudioPath: "/tmp/reference.wav",
   referenceText: "Reference voice transcript.",
+  builtInSpeaker: "Vivian",
+  builtInInstruct: "Warm and clear",
   quality: "high",
   chunkMode: "sentence",
   pauseMinSeconds: 0.45,
@@ -37,8 +40,11 @@ describe("RAD TTS workflow", () => {
     expect(buildRadtTsRequest({ ...draft, text: "  A short script.  ", outputName: "  lesson-intro  " }, "project-1")).toEqual({
       project_id: "project-1",
       text: "A short script.",
+      voice_source: "reference",
       reference_audio_path: "/tmp/reference.wav",
       reference_text: "Reference voice transcript.",
+      built_in_speaker: null,
+      built_in_instruct: null,
       quality: "high",
       chunk_mode: "sentence",
       pause_min_seconds: 0.45,
@@ -88,6 +94,28 @@ describe("RAD TTS workflow", () => {
     ).toBe(8192);
   });
 
+  it("builds a built-in voice request without reference audio or clone authorization", () => {
+    const builtinDraft = {
+      ...draft,
+      voiceSource: "builtin" as const,
+      referenceAudioPath: "",
+      referenceText: "",
+      builtInSpeaker: "Vivian",
+      builtInInstruct: "Warm and clear",
+      acknowledgeVoiceClone: false,
+    };
+    expect(buildRadtTsRequest(builtinDraft, "project-1")).toMatchObject({
+      voice_source: "builtin",
+      reference_audio_path: null,
+      reference_text: null,
+      built_in_speaker: "Vivian",
+      built_in_instruct: "Warm and clear",
+      acknowledge_voice_clone: false,
+    });
+    expect(canStartRadtTs(builtinDraft, capability)).toBe(true);
+    expect(canStartRadtTs({ ...builtinDraft, builtInSpeaker: "" }, capability)).toBe(false);
+  });
+
   it("defaults and formats the generation budget", () => {
     expect(createDefaultRadtTsDraft().maxNewTokens).toBe(1200);
     expect(formatRadtTsMaxNewTokens(1200)).toBe("1,200 tokens");
@@ -111,11 +139,12 @@ describe("RAD TTS workflow", () => {
     expect(buildRadtTsRequest({ ...draft, pauseSeed: "42" }, "project-1").pause_seed).toBe(42);
   });
 
-  it("requires local runtime, script, reference audio, authorization, and valid pauses", () => {
+  it("requires local runtime, the selected voice source, authorization when cloning, and valid pauses", () => {
     expect(canStartRadtTs(draft, capability)).toBe(true);
     expect(canStartRadtTs({ ...draft, text: "" }, capability)).toBe(false);
     expect(canStartRadtTs({ ...draft, referenceAudioPath: "" }, capability)).toBe(false);
     expect(canStartRadtTs({ ...draft, acknowledgeVoiceClone: false }, capability)).toBe(false);
+    expect(canStartRadtTs({ ...draft, voiceSource: "builtin", referenceAudioPath: "", builtInSpeaker: "", acknowledgeVoiceClone: false }, capability)).toBe(false);
     expect(canStartRadtTs({ ...draft, pauseMaxSeconds: 0.2 }, capability)).toBe(false);
     expect(canStartRadtTs(draft, { ...capability, available: false })).toBe(false);
   });

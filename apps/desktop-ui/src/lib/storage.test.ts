@@ -83,6 +83,9 @@ describe("safe local storage helpers", () => {
     const storage = memoryStorage();
     writeRadtTsProjectPreferences(storage, "project-1", {
       voice: {
+        voiceSource: "builtin",
+        builtInSpeaker: "Vivian",
+        builtInInstruct: "Warm and clear",
         quality: "high",
         pauseSeed: "42",
         maxNewTokens: 1400,
@@ -96,6 +99,9 @@ describe("safe local storage helpers", () => {
 
     expect(readRadtTsProjectPreferences(storage, "project-1")).toEqual({
       voice: {
+        voiceSource: "builtin",
+        builtInSpeaker: "Vivian",
+        builtInInstruct: "Warm and clear",
         quality: "high",
         pauseSeed: "42",
         maxNewTokens: 1400,

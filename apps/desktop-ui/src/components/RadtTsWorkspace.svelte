@@ -49,6 +49,17 @@
   let loadedProjectId = $state<string | null>(null);
   let settingsSaveTimer: number | null = null;
   let draft = $state<RadtTsDraft>(createDefaultRadtTsDraft());
+  const builtinSpeakers: Array<{ id: string; label: string; language: string }> = [
+    { id: "Aiden", label: "Aiden", language: "English" },
+    { id: "Dylan", label: "Dylan", language: "Chinese" },
+    { id: "Eric", label: "Eric", language: "Chinese" },
+    { id: "Ono_Anna", label: "Ono Anna", language: "Japanese" },
+    { id: "Ryan", label: "Ryan", language: "English" },
+    { id: "Serena", label: "Serena", language: "Chinese" },
+    { id: "Sohee", label: "Sohee", language: "Korean" },
+    { id: "Uncle_Fu", label: "Uncle Fu", language: "Chinese" },
+    { id: "Vivian", label: "Vivian", language: "Chinese" },
+  ];
 
   let startDisabled = $derived(
     processing || !canStartRadtTs(draft, capability),
@@ -65,8 +76,11 @@
     if (!settingsLoaded || !projectId || processing) return;
     const preferences = {
       voice: {
+        voiceSource: draft.voiceSource,
         referenceAudioPath: draft.referenceAudioPath,
         referenceText: draft.referenceText,
+        builtInSpeaker: draft.builtInSpeaker,
+        builtInInstruct: draft.builtInInstruct,
         quality: draft.quality,
         chunkMode: draft.chunkMode,
         pauseMinSeconds: draft.pauseMinSeconds,
@@ -147,7 +161,9 @@
 
   async function synthesize() {
     if (startDisabled) {
-      error = "Enter a script, choose reference audio, authorize voice cloning, and check the pause range.";
+      error = draft.voiceSource === "builtin"
+        ? "Enter a script, choose a built-in speaker, and check the pause range."
+        : "Enter a script, choose reference audio, authorize voice cloning, and check the pause range.";
       return;
     }
 
@@ -259,31 +275,59 @@
         </div>
       </div>
       <label class="stack">
-        <span>Reference voice audio</span>
-        <div class="radtts-reference-row">
-          <input type="text" bind:value={draft.referenceAudioPath} placeholder="Choose a clear voice sample" />
-          <button class="secondary-button compact-button" type="button" disabled={processing} onclick={() => void chooseReferenceAudio()}>
-            Choose audio
-          </button>
-        </div>
-        <small class="field-note">Use a clear sample of the voice you are authorised to reproduce.</small>
+        <span>Voice source</span>
+        <select bind:value={draft.voiceSource}>
+          <option value="reference">Authorised reference voice</option>
+          <option value="builtin">Built-in voice</option>
+        </select>
       </label>
-      <label class="stack">
-        <span>Reference transcript (optional)</span>
-        <textarea
-          rows="3"
-          bind:value={draft.referenceText}
-          placeholder="Type the words spoken in the reference audio"
-        ></textarea>
-        <small class="field-note">This can improve pronunciation and timing when the voice sample contains a known script.</small>
-      </label>
-      <label class="radtts-check">
-        <input type="checkbox" bind:checked={draft.acknowledgeVoiceClone} />
-        <span>
-          <strong>I have permission to use this voice</strong>
-          <small>Required before reference-voice synthesis can start.</small>
-        </span>
-      </label>
+      {#if draft.voiceSource === "reference"}
+        <label class="stack">
+          <span>Reference voice audio</span>
+          <div class="radtts-reference-row">
+            <input type="text" bind:value={draft.referenceAudioPath} placeholder="Choose a clear voice sample" />
+            <button class="secondary-button compact-button" type="button" disabled={processing} onclick={() => void chooseReferenceAudio()}>
+              Choose audio
+            </button>
+          </div>
+          <small class="field-note">Use a clear sample of the voice you are authorised to reproduce.</small>
+        </label>
+        <label class="stack">
+          <span>Reference transcript (optional)</span>
+          <textarea
+            rows="3"
+            bind:value={draft.referenceText}
+            placeholder="Type the words spoken in the reference audio"
+          ></textarea>
+          <small class="field-note">This can improve pronunciation and timing when the voice sample contains a known script.</small>
+        </label>
+        <label class="radtts-check">
+          <input type="checkbox" bind:checked={draft.acknowledgeVoiceClone} />
+          <span>
+            <strong>I have permission to use this voice</strong>
+            <small>Required before reference-voice synthesis can start.</small>
+          </span>
+        </label>
+      {:else}
+        <label class="stack">
+          <span>Built-in speaker</span>
+          <select bind:value={draft.builtInSpeaker}>
+            {#each builtinSpeakers as speaker (speaker.id)}
+              <option value={speaker.id}>{speaker.label} · {speaker.language}</option>
+            {/each}
+          </select>
+          <small class="field-note">Uses RADTTS CustomVoice models. No reference recording or voice-clone permission is required.</small>
+        </label>
+        <label class="stack">
+          <span>Voice instruction (optional)</span>
+          <textarea
+            rows="3"
+            bind:value={draft.builtInInstruct}
+            placeholder="For example: warm, clear, and measured"
+          ></textarea>
+          <small class="field-note">Describe the delivery style you want the built-in speaker to use.</small>
+        </label>
+      {/if}
       <label class="stack">
         <span>Quality</span>
         <select bind:value={draft.quality}>

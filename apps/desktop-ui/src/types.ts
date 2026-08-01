@@ -160,6 +160,8 @@ export type RadcastJobStatus = {
 
 export type RadtTsQuality = "fast" | "high";
 
+export type RadtTsVoiceSource = "reference" | "builtin";
+
 export type RadtTsChunkMode = "single" | "sentence";
 
 export type RadtTsOutputFormat = "mp3" | "wav";
