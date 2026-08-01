@@ -23,6 +23,9 @@
     clampRadcastSilenceSeconds,
     formatRadcastPauseRemovalCount,
     formatRadcastSilenceSeconds,
+    formatRadcastTrimSeconds,
+    isRadcastFullTrimRange,
+    normalizeRadcastTrimRange,
   } from "../lib/radcastSettings";
 
   type Props = {
@@ -50,6 +53,7 @@
   let removeFillerWords = $state(false);
   let fillerRemovalMode = $state<FillerRemovalMode>("aggressive");
   let trimRangesBySourceId = $state<Record<string, RadcastTrimRange>>({});
+  let sourceAudioElement = $state<HTMLAudioElement | null>(null);
   let loading = $state(false);
   let deletingSource = $state(false);
   let processing = $state(false);
@@ -108,6 +112,29 @@
   );
   let selectedEnhancementCapability = $derived(
     captionCapability.enhancement_models.find((model) => model.id === enhancementModel) ?? null,
+  );
+  let activeTrimRange = $derived(
+    selectedSource
+      ? normalizeRadcastTrimRange(clipStart, clipEnd, selectedSource.duration_seconds)
+      : null,
+  );
+  let trimStartPercent = $derived(
+    selectedSource && activeTrimRange
+      ? (activeTrimRange.clip_start_seconds / selectedSource.duration_seconds) * 100
+      : 0,
+  );
+  let trimEndPercent = $derived(
+    selectedSource && activeTrimRange
+      ? (activeTrimRange.clip_end_seconds / selectedSource.duration_seconds) * 100
+      : 100,
+  );
+  let trimOutputSeconds = $derived(
+    activeTrimRange
+      ? Math.max(0, activeTrimRange.clip_end_seconds - activeTrimRange.clip_start_seconds)
+      : 0,
+  );
+  let hasTrimOverride = $derived(
+    Boolean(selectedSource && !isRadcastFullTrimRange(activeTrimRange, selectedSource.duration_seconds)),
   );
   let sourceAudioUrl = $derived(selectedSource ? convertFileSrc(selectedSource.path) : null);
   let processDisabled = $derived(
@@ -197,14 +224,41 @@
     if (!selectedSourceId) return;
     const source = sources.find((item) => item.id === selectedSourceId);
     if (!source || !Number.isFinite(clipStart) || !Number.isFinite(clipEnd)) return;
-    if (clipStart < 0 || clipEnd <= clipStart || clipEnd > source.duration_seconds) return;
-    trimRangesBySourceId = {
-      ...trimRangesBySourceId,
-      [selectedSourceId]: {
-        clip_start_seconds: clipStart,
-        clip_end_seconds: clipEnd,
-      },
-    };
+    const nextRange = normalizeRadcastTrimRange(clipStart, clipEnd, source.duration_seconds);
+    if (!nextRange) return;
+    const nextRanges = { ...trimRangesBySourceId };
+    if (isRadcastFullTrimRange(nextRange, source.duration_seconds)) {
+      delete nextRanges[selectedSourceId];
+    } else {
+      nextRanges[selectedSourceId] = nextRange;
+    }
+    trimRangesBySourceId = nextRanges;
+  }
+
+  function setTrimRange(startValue: unknown, endValue: unknown) {
+    if (!selectedSource) return;
+    const nextRange = normalizeRadcastTrimRange(
+      startValue,
+      endValue,
+      selectedSource.duration_seconds,
+    );
+    if (!nextRange) return;
+    clipStart = nextRange.clip_start_seconds;
+    clipEnd = nextRange.clip_end_seconds;
+  }
+
+  function resetTrimRange() {
+    if (!selectedSource) return;
+    setTrimRange(0, selectedSource.duration_seconds);
+  }
+
+  function previewTrimRail(event: MouseEvent) {
+    if (!selectedSource || !sourceAudioElement || event.target instanceof HTMLInputElement) return;
+    const rail = event.currentTarget as HTMLElement;
+    const bounds = rail.getBoundingClientRect();
+    if (bounds.width <= 0) return;
+    const ratio = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
+    sourceAudioElement.currentTime = selectedSource.duration_seconds * ratio;
   }
 
   function currentSettings(): RadcastProjectSettings {
@@ -218,10 +272,12 @@
       clipEnd > clipStart &&
       clipEnd <= selectedSource.duration_seconds
     ) {
-      trimRanges[selectedSourceId] = {
-        clip_start_seconds: clipStart,
-        clip_end_seconds: clipEnd,
-      };
+      const nextRange = normalizeRadcastTrimRange(clipStart, clipEnd, selectedSource.duration_seconds);
+      if (nextRange && !isRadcastFullTrimRange(nextRange, selectedSource.duration_seconds)) {
+        trimRanges[selectedSourceId] = nextRange;
+      } else {
+        delete trimRanges[selectedSourceId];
+      }
     }
     return {
       output_format: outputFormat,
@@ -560,7 +616,7 @@
           <strong>{selectedSource.original_filename}</strong>
           <span>{formatDuration(selectedSource.duration_seconds)} · {formatBytes(selectedSource.byte_size)}</span>
         </div>
-        <audio class="radcast-audio-player" controls src={sourceAudioUrl}>
+        <audio bind:this={sourceAudioElement} class="radcast-audio-player" controls src={sourceAudioUrl}>
           Your browser does not support audio playback.
         </audio>
 
@@ -570,16 +626,84 @@
               <p class="eyebrow">Working range</p>
               <h4 id="radcast-trim-heading">Trim without changing the source</h4>
             </div>
-            <span>{formatDuration(Math.max(0, clipEnd - clipStart))}</span>
+            <div class="radcast-trim-actions">
+              <span>{formatDuration(trimOutputSeconds)}</span>
+              <button
+                class="secondary-button compact-button"
+                type="button"
+                disabled={!hasTrimOverride || processing}
+                onclick={resetTrimRange}
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+          <div
+            class="radcast-trim-rail"
+            role="group"
+            aria-label="Trim recording"
+          >
+            <div class="radcast-trim-rail-track"></div>
+            <div
+              class="radcast-trim-selection"
+              style={`left: ${trimStartPercent}%; width: ${Math.max(0, trimEndPercent - trimStartPercent)}%;`}
+            ></div>
+            <button
+              class="radcast-trim-rail-seek"
+              type="button"
+              aria-label="Preview at this point in the recording"
+              onclick={previewTrimRail}
+            ></button>
+            <input
+              class="radcast-trim-range radcast-trim-range-start"
+              type="range"
+              min="0"
+              max={selectedSource.duration_seconds}
+              step="0.1"
+              value={clipStart}
+              aria-label="Trim start"
+              aria-valuetext={formatRadcastTrimSeconds(clipStart)}
+              oninput={(event) => setTrimRange((event.currentTarget as HTMLInputElement).value, clipEnd)}
+            />
+            <input
+              class="radcast-trim-range radcast-trim-range-end"
+              type="range"
+              min="0"
+              max={selectedSource.duration_seconds}
+              step="0.1"
+              value={clipEnd}
+              aria-label="Trim end"
+              aria-valuetext={formatRadcastTrimSeconds(clipEnd)}
+              oninput={(event) => setTrimRange(clipStart, (event.currentTarget as HTMLInputElement).value)}
+            />
+          </div>
+          <div class="radcast-trim-metrics" aria-live="polite">
+            <span>Start <strong>{formatRadcastTrimSeconds(clipStart)}</strong></span>
+            <span>End <strong>{formatRadcastTrimSeconds(clipEnd)}</strong></span>
+            <span>Output <strong>{formatRadcastTrimSeconds(trimOutputSeconds)}</strong></span>
           </div>
           <div class="radcast-trim-fields">
             <label>
               <span>Start (seconds)</span>
-              <input type="number" min="0" max={selectedSource.duration_seconds} step="0.1" bind:value={clipStart} />
+              <input
+                type="number"
+                min="0"
+                max={selectedSource.duration_seconds}
+                step="0.1"
+                value={clipStart}
+                oninput={(event) => setTrimRange((event.currentTarget as HTMLInputElement).value, clipEnd)}
+              />
             </label>
             <label>
               <span>End (seconds)</span>
-              <input type="number" min="0" max={selectedSource.duration_seconds} step="0.1" bind:value={clipEnd} />
+              <input
+                type="number"
+                min="0"
+                max={selectedSource.duration_seconds}
+                step="0.1"
+                value={clipEnd}
+                oninput={(event) => setTrimRange(clipStart, (event.currentTarget as HTMLInputElement).value)}
+              />
             </label>
           </div>
         </div>

@@ -906,6 +906,122 @@ button:disabled {
   border-top: 1px solid var(--line-soft);
 }
 
+.radcast-trim-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.radcast-trim-rail {
+  position: relative;
+  height: 34px;
+  margin: 0 8px;
+  cursor: pointer;
+}
+
+.radcast-trim-rail-track,
+.radcast-trim-selection {
+  position: absolute;
+  top: 14px;
+  height: 6px;
+  border-radius: 999px;
+}
+
+.radcast-trim-rail-track {
+  right: 0;
+  left: 0;
+  background: var(--line-soft);
+}
+
+.radcast-trim-selection {
+  background: color-mix(in srgb, var(--radcite-red) 78%, var(--bg-panel));
+  pointer-events: none;
+}
+
+.radcast-trim-rail-seek {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.radcast-trim-range {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 34px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  pointer-events: none;
+}
+
+.radcast-trim-range-start {
+  z-index: 2;
+}
+
+.radcast-trim-range-end {
+  z-index: 3;
+}
+
+.radcast-trim-range::-webkit-slider-runnable-track {
+  height: 6px;
+  background: transparent;
+}
+
+.radcast-trim-range::-moz-range-track {
+  height: 6px;
+  background: transparent;
+}
+
+.radcast-trim-range::-webkit-slider-thumb {
+  width: 16px;
+  height: 28px;
+  margin-top: -11px;
+  border: 2px solid var(--bg-panel);
+  border-radius: 3px;
+  background: var(--radcite-red);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 24%);
+  appearance: none;
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+.radcast-trim-range::-moz-range-thumb {
+  width: 12px;
+  height: 24px;
+  border: 2px solid var(--bg-panel);
+  border-radius: 3px;
+  background: var(--radcite-red);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 24%);
+  cursor: ew-resize;
+  pointer-events: auto;
+}
+
+.radcast-trim-range:focus-visible {
+  outline: 2px solid var(--radcite-red);
+  outline-offset: 4px;
+}
+
+.radcast-trim-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--s-2) var(--s-4);
+  color: var(--fg-3);
+  font-size: 0.74rem;
+}
+
+.radcast-trim-metrics strong {
+  color: var(--fg-1);
+  font-weight: 700;
+}
+
 .radcast-trim-fields {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
