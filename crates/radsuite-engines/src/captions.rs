@@ -624,13 +624,12 @@ pub fn plan_speech_cleanup(
         return Err(SpeechCleanupPlanningError::InvalidMaxSilence { seconds });
     }
 
-    let mut ordered_words = words.to_vec();
-    for (index, word) in ordered_words.iter().enumerate() {
+    let mut ordered_words = Vec::with_capacity(words.len());
+    for (index, word) in words.iter().enumerate() {
         let valid_timing = word.start_seconds.is_finite()
             && word.end_seconds.is_finite()
             && word.start_seconds >= 0.0
-            && word.end_seconds > word.start_seconds
-            && word.end_seconds <= total_duration_seconds;
+            && word.end_seconds > word.start_seconds;
         if !valid_timing {
             return Err(SpeechCleanupPlanningError::InvalidWordTiming {
                 index,
@@ -638,11 +637,21 @@ pub fn plan_speech_cleanup(
                 end_seconds: word.end_seconds,
             });
         }
+        if word.start_seconds >= total_duration_seconds {
+            continue;
+        }
+        let end_seconds = word.end_seconds.min(total_duration_seconds);
+        if end_seconds > word.start_seconds {
+            ordered_words.push(CaptionWord {
+                end_seconds,
+                ..word.clone()
+            });
+        }
     }
     ordered_words.sort_by(|left, right| {
-        left.start_seconds.total_cmp(&right.start_seconds).then_with(|| {
-            left.end_seconds.total_cmp(&right.end_seconds)
-        })
+        left.start_seconds
+            .total_cmp(&right.start_seconds)
+            .then_with(|| left.end_seconds.total_cmp(&right.end_seconds))
     });
 
     let filler_intervals = if remove_filler_words {

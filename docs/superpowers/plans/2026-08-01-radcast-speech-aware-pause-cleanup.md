@@ -28,7 +28,7 @@ Expected: FAIL because the planner contract does not yet exist.
 
 - [ ] **Step 3: Implement the minimal planner contract**
 
-Add `SpeechCleanupPlan`, `SpeechCleanupPlanningError`, and `plan_speech_cleanup(words, total_duration, max_silence_seconds: Option<f64>, remove_filler_words, filler_mode) -> Result<SpeechCleanupPlan, SpeechCleanupPlanningError>`. `None` must skip pause compaction for filler-only cleanup. Reuse `detect_filler_intervals`, merge speech intervals with a 60 ms tolerance, apply the strict `gap > 350 ms` compaction threshold, validate and clamp intervals to the supplied duration, and return merged removal intervals with separate pause and filler counts. Keep the planner deterministic and independent of filesystem or process execution.
+Add `SpeechCleanupPlan`, `SpeechCleanupPlanningError`, and `plan_speech_cleanup(words, total_duration, max_silence_seconds: Option<f64>, remove_filler_words, filler_mode) -> Result<SpeechCleanupPlan, SpeechCleanupPlanningError>`. `None` must skip pause compaction for filler-only cleanup. Reuse `detect_filler_intervals`, merge speech intervals with a 60 ms tolerance, apply the strict `gap > 350 ms` compaction threshold, reject non-finite, negative, or reversed word timings, clamp word ends to the supplied duration, ignore words wholly beyond the clip, and return merged removal intervals with separate pause and filler counts. Keep the planner deterministic and independent of filesystem or process execution.
 
 - [ ] **Step 4: Run the focused planner tests**
 

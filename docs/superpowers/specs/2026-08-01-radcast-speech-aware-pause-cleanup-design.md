@@ -28,7 +28,7 @@ The planner will:
 - apply the same rule to leading and trailing gaps;
 - treat gaps of 350 ms or less as non-compaction candidates, matching the original strict `>` comparison;
 - merge pause and filler intervals before rendering;
-- reject non-finite, negative, or out-of-range timing values with a typed planning error rather than generating unsafe FFmpeg arguments.
+- reject non-finite, negative, or reversed timing values with a typed planning error; clamp a word end to the clip boundary and ignore words wholly beyond the selected clip rather than generating unsafe FFmpeg arguments.
 
 The existing filler heuristics remain the source of truth for filler interval detection. A single transcription pass will supply words for both pause and filler planning when either feature is enabled.
 
@@ -45,7 +45,7 @@ FFmpeg remains responsible for output format conversion, trimming, and concatena
 ## Error handling
 
 - Missing Whisper runtime or model returns the existing local-caption capability error before rendering begins.
-- Invalid timestamps produce a typed cleanup-planning error, never invalid FFmpeg intervals.
+- Invalid timestamps produce a typed cleanup-planning error, never invalid FFmpeg intervals. Whisper word ends that slightly overshoot the requested clip are clamped to the clip boundary.
 - A failed cleanup transcription removes temporary files and does not add a completed output manifest entry.
 - Persisted pause/filler settings are ignored and cannot be submitted when local caption support is unavailable.
 - Existing cancellation checks remain active before transcription, after planning, and before final manifest persistence.

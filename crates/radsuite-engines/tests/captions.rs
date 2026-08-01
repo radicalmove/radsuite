@@ -9,8 +9,7 @@ use std::{
 use radsuite_engines::{
     AudioTimeInterval, CaptionFormat, CaptionProcessingError, CaptionProcessingRequest,
     CaptionProcessor, CaptionQualityMode, CaptionTranscriptionRequest, CaptionWord,
-    FillerRemovalMode, SpeechCleanupPlanningError, detect_filler_intervals,
-    plan_speech_cleanup,
+    FillerRemovalMode, SpeechCleanupPlanningError, detect_filler_intervals, plan_speech_cleanup,
 };
 
 #[test]
@@ -351,17 +350,17 @@ fn caption_processor_builds_cleanup_plan_from_one_transcription() {
     assert!((plan.removal_intervals[0].start_seconds - 0.55).abs() < 1e-9);
     assert_eq!(plan.removal_intervals[0].end_seconds, 1.5);
     assert_eq!(plan.removed_pause_count, 1);
-    assert_eq!(fs::read_to_string(count_path).expect("read transcription count"), "1");
+    assert_eq!(
+        fs::read_to_string(count_path).expect("read transcription count"),
+        "1"
+    );
     remove_dir(dir);
 }
 
 #[test]
 fn speech_cleanup_shortens_leading_inter_word_and_trailing_pauses() {
     let plan = plan_speech_cleanup(
-        &[
-            word("hello", 1.0, 1.2, 0.9),
-            word("world", 2.0, 2.2, 0.9),
-        ],
+        &[word("hello", 1.0, 1.2, 0.9), word("world", 2.0, 2.2, 0.9)],
         3.0,
         Some(0.4),
         false,
@@ -448,7 +447,7 @@ fn speech_cleanup_rejects_invalid_timing_inputs() {
     ));
 
     let error = plan_speech_cleanup(
-        &[word("broken", 0.1, 1.1, 0.9)],
+        &[word("broken", 0.8, 0.7, 0.9)],
         1.0,
         Some(0.5),
         false,
@@ -460,18 +459,31 @@ fn speech_cleanup_rejects_invalid_timing_inputs() {
         SpeechCleanupPlanningError::InvalidWordTiming { index: 0, .. }
     ));
 
-    let error = plan_speech_cleanup(
-        &[],
-        1.0,
-        Some(f64::NAN),
-        false,
-        FillerRemovalMode::Normal,
-    )
-    .expect_err("non-finite pause duration must fail");
+    let error = plan_speech_cleanup(&[], 1.0, Some(f64::NAN), false, FillerRemovalMode::Normal)
+        .expect_err("non-finite pause duration must fail");
     assert!(matches!(
         error,
         SpeechCleanupPlanningError::InvalidMaxSilence { .. }
     ));
+}
+
+#[test]
+fn speech_cleanup_clamps_transcription_overshoot_at_clip_boundary() {
+    let plan = plan_speech_cleanup(
+        &[
+            word("first", 0.0, 0.2, 0.9),
+            word("last", 0.8, 1.2, 0.9),
+            word("outside", 1.1, 1.3, 0.9),
+        ],
+        1.0,
+        Some(0.0),
+        false,
+        FillerRemovalMode::Normal,
+    )
+    .expect("clamp transcription overshoot");
+
+    assert_eq!(plan.removal_intervals, vec![interval(0.2, 0.8)]);
+    assert_eq!(plan.removed_pause_count, 1);
 }
 
 fn word(text: &str, start_seconds: f64, end_seconds: f64, probability: f64) -> CaptionWord {

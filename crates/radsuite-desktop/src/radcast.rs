@@ -607,9 +607,7 @@ where
             percent: 12,
         });
         let clip_start_seconds = request.clip_start_seconds.unwrap_or(0.0);
-        let clip_end_seconds = request
-            .clip_end_seconds
-            .unwrap_or(source.duration_seconds);
+        let clip_end_seconds = request.clip_end_seconds.unwrap_or(source.duration_seconds);
         let clip_duration_seconds = clip_end_seconds - clip_start_seconds;
         Some(caption_processor.speech_cleanup_plan(
             &CaptionTranscriptionRequest {
