@@ -1,6 +1,8 @@
 import { describe, expect, test } from "vitest";
 import {
+  canUseRadcastSpeechCleanup,
   clampRadcastSilenceSeconds,
+  formatRadcastPauseRemovalCount,
   formatRadcastSilenceSeconds,
 } from "./radcastSettings";
 
@@ -17,5 +19,18 @@ describe("RADcast pause settings", () => {
     expect(formatRadcastSilenceSeconds(0.25)).toBe("0.25 seconds");
     expect(formatRadcastSilenceSeconds(1)).toBe("1 second");
     expect(formatRadcastSilenceSeconds(4)).toBe("4 seconds");
+  });
+
+  test("blocks speech cleanup when local caption support is unavailable", () => {
+    expect(canUseRadcastSpeechCleanup(false, true, false)).toBe(false);
+    expect(canUseRadcastSpeechCleanup(false, false, true)).toBe(false);
+    expect(canUseRadcastSpeechCleanup(false, false, false)).toBe(true);
+    expect(canUseRadcastSpeechCleanup(true, true, true)).toBe(true);
+  });
+
+  test("formats zero and singular pause counts explicitly", () => {
+    expect(formatRadcastPauseRemovalCount(0)).toBe("0 pauses shortened");
+    expect(formatRadcastPauseRemovalCount(1)).toBe("1 pause shortened");
+    expect(formatRadcastPauseRemovalCount(2)).toBe("2 pauses shortened");
   });
 });

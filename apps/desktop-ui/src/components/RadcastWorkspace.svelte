@@ -19,7 +19,9 @@
     RadcastTrimRange,
   } from "../types";
   import {
+    canUseRadcastSpeechCleanup,
     clampRadcastSilenceSeconds,
+    formatRadcastPauseRemovalCount,
     formatRadcastSilenceSeconds,
   } from "../lib/radcastSettings";
 
@@ -113,7 +115,8 @@
     !selectedSource ||
     clipEnd <= clipStart ||
     clipEnd > selectedSource.duration_seconds ||
-    (settingsLoaded && selectedEnhancementCapability !== null && !selectedEnhancementCapability.available),
+    (settingsLoaded && selectedEnhancementCapability !== null && !selectedEnhancementCapability.available) ||
+    (settingsLoaded && !canUseRadcastSpeechCleanup(captionCapability.caption_available, shortenPauses, removeFillerWords)),
   );
 
   $effect(() => {
@@ -229,8 +232,10 @@
       enhancement_model: enhancementModel,
       enhancement_quality: enhancementQuality,
       cleanup_enabled: cleanupEnabled,
-      max_silence_seconds: shortenPauses ? clampRadcastSilenceSeconds(maxSilenceSeconds) : null,
-      remove_filler_words: removeFillerWords,
+      max_silence_seconds: captionCapability.caption_available && shortenPauses
+        ? clampRadcastSilenceSeconds(maxSilenceSeconds)
+        : null,
+      remove_filler_words: captionCapability.caption_available && removeFillerWords,
       filler_removal_mode: fillerRemovalMode,
       trim_ranges_by_source_id: trimRanges,
     };
@@ -272,6 +277,7 @@
       trimRangesBySourceId = result.settings.trim_ranges_by_source_id ?? {};
       if (!captionCapability.caption_available) {
         captionFormat = null;
+        shortenPauses = false;
         removeFillerWords = false;
       }
       if (!capabilities.enhancement_models.some((model) => model.id === enhancementModel && model.available)) {
@@ -366,14 +372,16 @@
           clip_start_seconds: clipStart,
           clip_end_seconds: clipEnd,
           cleanup_enabled: cleanupEnabled,
-          max_silence_seconds: shortenPauses ? clampRadcastSilenceSeconds(maxSilenceSeconds) : null,
+          max_silence_seconds: captionCapability.caption_available && shortenPauses
+            ? clampRadcastSilenceSeconds(maxSilenceSeconds)
+            : null,
           caption_format: captionFormat,
           caption_language: captionLanguage,
           caption_quality_mode: captionQualityMode,
           caption_glossary: captionGlossary.trim() || null,
           enhancement_model: enhancementModel,
           enhancement_quality: enhancementQuality,
-          remove_filler_words: removeFillerWords,
+          remove_filler_words: captionCapability.caption_available && removeFillerWords,
           filler_removal_mode: fillerRemovalMode,
         },
       });
@@ -403,7 +411,10 @@
       const fillerDetail = output.removed_filler_count > 0
         ? ` and removed ${output.removed_filler_count} filler word${output.removed_filler_count === 1 ? "" : "s"}`
         : "";
-      status = `Audio processing complete${captionDetail}${captionReviewDetail}${fillerDetail}`;
+      const pauseDetail = output.max_silence_seconds !== null
+        ? `; ${formatRadcastPauseRemovalCount(output.removed_pause_count)}`
+        : "";
+      status = `Audio processing complete${captionDetail}${captionReviewDetail}${fillerDetail}${pauseDetail}`;
       radcastJob = null;
     } catch (reason: unknown) {
       status = null;
@@ -655,8 +666,13 @@
           <small>Noise reduction and speech-focused loudness balancing.</small>
         </span>
       </label>
+      {#if !captionCapability.caption_available}
+        <div class="radcast-speech-note">
+          Pause reduction and filler removal need local speech transcription support. Closed captions, pause cleanup, and filler removal are unavailable until it is installed.
+        </div>
+      {/if}
       <label class="radcast-check">
-        <input type="checkbox" bind:checked={shortenPauses} />
+        <input type="checkbox" bind:checked={shortenPauses} disabled={!captionCapability.caption_available} />
         <span>
           <strong>Shorten long pauses</strong>
           <small>Keep a controlled amount of silence between spoken sections.</small>
@@ -674,6 +690,7 @@
             max="4"
             step="0.25"
             value={maxSilenceSeconds}
+            disabled={!captionCapability.caption_available}
             aria-label="Keep each pause up to"
             oninput={(event) => {
               maxSilenceSeconds = clampRadcastSilenceSeconds(
@@ -723,7 +740,7 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model !== "none" ? ` · ${enhancementModelLabel(output.enhancement_model)} · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds ? ` · Pauses ≤ ${output.max_silence_seconds}s` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
+              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model !== "none" ? ` · ${enhancementModelLabel(output.enhancement_model)} · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds !== null ? ` · Keep pauses ≤ ${output.max_silence_seconds}s · ${formatRadcastPauseRemovalCount(output.removed_pause_count)}` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
             </div>
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.
