@@ -71,6 +71,7 @@
         chunkMode: draft.chunkMode,
         pauseMinSeconds: draft.pauseMinSeconds,
         pauseMaxSeconds: draft.pauseMaxSeconds,
+        pauseSeed: draft.pauseSeed,
         maxNewTokens: draft.maxNewTokens,
         outputFormat: draft.outputFormat,
         outputName: draft.outputName,
@@ -307,6 +308,19 @@
           <input type="number" min="0.1" step="0.05" bind:value={draft.pauseMaxSeconds} />
         </label>
       </div>
+      <label class="stack">
+        <span>Pause pattern seed</span>
+        <input
+          type="number"
+          step="1"
+          value={draft.pauseSeed}
+          placeholder="Random each time"
+          oninput={(event) => {
+            draft.pauseSeed = (event.currentTarget as HTMLInputElement).value;
+          }}
+        />
+        <small class="field-note">Optional. Enter an integer to repeat the same sentence-pause pattern.</small>
+      </label>
       <div class="settings-compact-field radtts-range-row">
         <div class="radtts-range-label">
           <span>Generation budget</span>
