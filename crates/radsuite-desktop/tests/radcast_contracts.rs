@@ -611,6 +611,17 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
         "studio.sh",
         "#!/bin/sh\nmkdir -p \"$2\"\nprintf '%s' enhanced > \"$2/input.wav\"\n",
     );
+    let ffmpeg_log = dir.join("enhancement-ffmpeg-args.log");
+    let ffmpeg_script = format!(
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> '{}'\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nmkdir -p \"$(dirname \"$output\")\"\nprintf 'fake audio' > \"$output\"\n",
+        ffmpeg_log.display()
+    );
+    let ffmpeg = write_executable(&dir, "enhancement-ffmpeg.sh", &ffmpeg_script);
+    let ffprobe = write_executable(
+        &dir,
+        "enhancement-ffprobe.sh",
+        "#!/bin/sh\nprintf '12.5\\n'",
+    );
     let output = process_radcast_audio_with_processors_and_enhancement(
         &state,
         ProcessRadcastAudioRequest {
@@ -630,7 +641,7 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
             remove_filler_words: false,
             filler_removal_mode: FillerRemovalMode::Aggressive,
         },
-        fake_processor(&dir),
+        AudioProcessor::from_commands(ffmpeg, ffprobe),
         CaptionProcessor::default(),
         EnhancementProcessor::from_command(helper),
     )
@@ -639,7 +650,20 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
 
     assert_eq!(output.enhancement_model, EnhancementModel::StudioV18);
     assert_eq!(output.enhancement_quality, EnhancementQuality::Fast);
+    assert!(!output.cleanup_enabled);
     assert!(Path::new(&output.path).is_file());
+    let ffmpeg_args = fs::read_to_string(ffmpeg_log).expect("read enhancement ffmpeg arguments");
+    assert!(ffmpeg_args.contains("loudnorm=I=-20.75"));
+    assert!(!ffmpeg_args.contains("afftdn"));
+    let listing = list_radcast_audio(
+        &state,
+        ListRadcastAudioRequest {
+            project_id: Some(projects[0].id),
+        },
+    )
+    .await
+    .expect("list enhanced project audio");
+    assert!(listing.settings.cleanup_enabled);
     remove_dir(dir);
 }
 

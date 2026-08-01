@@ -2,12 +2,24 @@ import { describe, expect, test } from "vitest";
 import {
   canUseRadcastSpeechCleanup,
   clampRadcastSilenceSeconds,
+  effectiveRadcastCleanupEnabled,
   formatRadcastPauseRemovalCount,
   formatRadcastSilenceSeconds,
   formatRadcastTrimSeconds,
   isRadcastFullTrimRange,
   normalizeRadcastTrimRange,
 } from "./radcastSettings";
+
+describe("RADcast cleanup policy", () => {
+  test("uses generic cleanup only for standard processing", () => {
+    expect(effectiveRadcastCleanupEnabled("none", true)).toBe(true);
+    expect(effectiveRadcastCleanupEnabled("none", false)).toBe(false);
+    expect(effectiveRadcastCleanupEnabled("resemble", true)).toBe(false);
+    expect(effectiveRadcastCleanupEnabled("deepfilternet", true)).toBe(false);
+    expect(effectiveRadcastCleanupEnabled("studio", true)).toBe(false);
+    expect(effectiveRadcastCleanupEnabled("studio_v18", true)).toBe(false);
+  });
+});
 
 describe("RADcast pause settings", () => {
   test("clamps pause limits to quarter-second steps in the supported range", () => {

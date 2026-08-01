@@ -51,6 +51,10 @@ fn default_cleanup_enabled() -> bool {
     true
 }
 
+fn effective_cleanup_enabled(enhancement_model: EnhancementModel, cleanup_enabled: bool) -> bool {
+    enhancement_model == EnhancementModel::None && cleanup_enabled
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImportRadcastAudioRequest {
     #[serde(default)]
@@ -719,6 +723,8 @@ where
         EnhancementModel::StudioV18 => Some(RADCAST_OPTIMIZED_POSTFILTER),
         EnhancementModel::None => None,
     };
+    let cleanup_enabled =
+        effective_cleanup_enabled(request.enhancement_model, request.cleanup_enabled);
     let result = match processor.process_with_additional_filter(
         AudioProcessingRequest {
             input_path: processing_input_path,
@@ -728,7 +734,7 @@ where
             clip_end_seconds,
             max_silence_seconds: None,
             remove_intervals: removal_intervals,
-            cleanup_enabled: request.cleanup_enabled,
+            cleanup_enabled,
         },
         additional_filter,
     ) {
@@ -804,7 +810,7 @@ where
         path: result.output_path.to_string_lossy().into_owned(),
         duration_seconds: result.duration_seconds,
         output_format: result.output_format,
-        cleanup_enabled: request.cleanup_enabled,
+        cleanup_enabled,
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,
         max_silence_seconds: request.max_silence_seconds,
@@ -1032,7 +1038,8 @@ fn response_filename(response: &Response, source_url: &Url) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_cloud_storage_path, is_supported_link};
+    use super::{effective_cleanup_enabled, is_cloud_storage_path, is_supported_link};
+    use radsuite_engines::EnhancementModel;
     use std::path::Path;
     use url::Url;
 
@@ -1061,5 +1068,23 @@ mod tests {
         assert!(!is_supported_link(
             &Url::parse("https://example.com/audio.wav").expect("parse unrelated link")
         ));
+    }
+
+    #[test]
+    fn enhanced_profiles_do_not_receive_generic_cleanup() {
+        for model in [
+            EnhancementModel::Resemble,
+            EnhancementModel::DeepFilterNet,
+            EnhancementModel::Studio,
+            EnhancementModel::StudioV18,
+        ] {
+            assert!(!effective_cleanup_enabled(model, true));
+        }
+    }
+
+    #[test]
+    fn standard_processing_keeps_requested_generic_cleanup() {
+        assert!(effective_cleanup_enabled(EnhancementModel::None, true));
+        assert!(!effective_cleanup_enabled(EnhancementModel::None, false));
     }
 }
