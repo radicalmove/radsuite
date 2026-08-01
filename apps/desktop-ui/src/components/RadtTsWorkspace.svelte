@@ -19,6 +19,8 @@
   import {
     buildRadtTsRequest,
     canStartRadtTs,
+    createDefaultRadtTsDraft,
+    mergeRadtTsVoicePreferences,
     type RadtTsDraft,
   } from "../lib/radtTsWorkflow";
 
@@ -42,18 +44,9 @@
   let status = $state<string | null>(null);
   let preferenceStorage = $state<StorageLike | null>(null);
   let settingsLoaded = $state(false);
+  let loadedProjectId = $state<string | null>(null);
   let settingsSaveTimer: number | null = null;
-  let draft = $state<RadtTsDraft>({
-    text: "",
-    referenceAudioPath: "",
-    quality: "high",
-    chunkMode: "sentence",
-    pauseMinSeconds: 0.45,
-    pauseMaxSeconds: 1.1,
-    outputFormat: "mp3",
-    outputName: "voice-generation",
-    acknowledgeVoiceClone: false,
-  });
+  let draft = $state<RadtTsDraft>(createDefaultRadtTsDraft());
 
   let startDisabled = $derived(
     processing || !canStartRadtTs(draft, capability),
@@ -71,6 +64,7 @@
     const preferences = {
       voice: {
         referenceAudioPath: draft.referenceAudioPath,
+        referenceText: draft.referenceText,
         quality: draft.quality,
         chunkMode: draft.chunkMode,
         pauseMinSeconds: draft.pauseMinSeconds,
@@ -109,11 +103,11 @@
     try {
       preferenceStorage = browserStorage();
       const preferences = readRadtTsProjectPreferences(preferenceStorage, selectedProjectId);
-      draft = {
-        ...draft,
-        ...preferences.voice,
-        acknowledgeVoiceClone: false,
-      };
+      const baseDraft = loadedProjectId === selectedProjectId
+        ? draft
+        : createDefaultRadtTsDraft();
+      draft = mergeRadtTsVoicePreferences(baseDraft, preferences.voice);
+      loadedProjectId = selectedProjectId;
       capability = await invoke<RadtTsCapabilityStatus>("get_radt_ts_capabilities");
       const listing = await invoke<{ outputs: RadtTsAudioOutput[] }>("list_radt_ts_outputs", {
         request: { project_id: selectedProjectId },
@@ -269,6 +263,15 @@
           </button>
         </div>
         <small class="field-note">Use a clear sample of the voice you are authorised to reproduce.</small>
+      </label>
+      <label class="stack">
+        <span>Reference transcript (optional)</span>
+        <textarea
+          rows="3"
+          bind:value={draft.referenceText}
+          placeholder="Type the words spoken in the reference audio"
+        ></textarea>
+        <small class="field-note">This can improve pronunciation and timing when the voice sample contains a known script.</small>
       </label>
       <label class="radtts-check">
         <input type="checkbox" bind:checked={draft.acknowledgeVoiceClone} />

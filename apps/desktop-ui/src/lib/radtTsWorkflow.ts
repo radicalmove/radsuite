@@ -3,6 +3,7 @@ import type { RadtTsCapabilityStatus, RadtTsChunkMode, RadtTsOutputFormat, RadtT
 export type RadtTsDraft = {
   text: string;
   referenceAudioPath: string;
+  referenceText: string;
   quality: RadtTsQuality;
   chunkMode: RadtTsChunkMode;
   pauseMinSeconds: number;
@@ -12,10 +13,51 @@ export type RadtTsDraft = {
   acknowledgeVoiceClone: boolean;
 };
 
+export type RadtTsVoicePreferences = Partial<
+  Pick<
+    RadtTsDraft,
+    | "referenceAudioPath"
+    | "referenceText"
+    | "quality"
+    | "chunkMode"
+    | "pauseMinSeconds"
+    | "pauseMaxSeconds"
+    | "outputFormat"
+    | "outputName"
+  >
+>;
+
+export function createDefaultRadtTsDraft(): RadtTsDraft {
+  return {
+    text: "",
+    referenceAudioPath: "",
+    referenceText: "",
+    quality: "high",
+    chunkMode: "sentence",
+    pauseMinSeconds: 0.45,
+    pauseMaxSeconds: 1.1,
+    outputFormat: "mp3",
+    outputName: "voice-generation",
+    acknowledgeVoiceClone: false,
+  };
+}
+
+export function mergeRadtTsVoicePreferences(
+  draft: RadtTsDraft,
+  preferences: RadtTsVoicePreferences | undefined,
+): RadtTsDraft {
+  return {
+    ...draft,
+    ...preferences,
+    acknowledgeVoiceClone: false,
+  };
+}
+
 export type RadtTsRequest = {
   project_id: string | null;
   text: string;
   reference_audio_path: string;
+  reference_text: string | null;
   quality: RadtTsQuality;
   chunk_mode: RadtTsChunkMode;
   pause_min_seconds: number;
@@ -47,6 +89,7 @@ export function buildRadtTsRequest(
     project_id: projectId,
     text: draft.text.trim(),
     reference_audio_path: draft.referenceAudioPath.trim(),
+    reference_text: draft.referenceText.trim() || null,
     quality: draft.quality,
     chunk_mode: draft.chunkMode,
     pause_min_seconds: draft.pauseMinSeconds,

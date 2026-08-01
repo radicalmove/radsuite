@@ -19,6 +19,7 @@ const radtTsPreferencesStorageKey = "radsuiteRadtTsPreferences";
 export type RadtTsProjectPreferences = {
   voice?: {
     referenceAudioPath?: string;
+    referenceText?: string;
     quality?: "fast" | "high";
     chunkMode?: "single" | "sentence";
     pauseMinSeconds?: number;

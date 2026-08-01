@@ -3,6 +3,8 @@ import type { RadtTsCapabilityStatus } from "../types";
 import {
   buildRadtTsRequest,
   canStartRadtTs,
+  createDefaultRadtTsDraft,
+  mergeRadtTsVoicePreferences,
   type RadtTsDraft,
 } from "./radtTsWorkflow";
 
@@ -15,6 +17,7 @@ const capability: RadtTsCapabilityStatus = {
 const draft: RadtTsDraft = {
   text: "A short script.",
   referenceAudioPath: "/tmp/reference.wav",
+  referenceText: "Reference voice transcript.",
   quality: "high",
   chunkMode: "sentence",
   pauseMinSeconds: 0.45,
@@ -30,6 +33,7 @@ describe("RAD TTS workflow", () => {
       project_id: "project-1",
       text: "A short script.",
       reference_audio_path: "/tmp/reference.wav",
+      reference_text: "Reference voice transcript.",
       quality: "high",
       chunk_mode: "sentence",
       pause_min_seconds: 0.45,
@@ -38,6 +42,25 @@ describe("RAD TTS workflow", () => {
       output_name: "lesson-intro",
       acknowledge_voice_clone: true,
     });
+  });
+
+  it("trims an optional reference transcript and sends null when blank", () => {
+    expect(buildRadtTsRequest({ ...draft, referenceText: "  Hello there.  " }, "project-1").reference_text).toBe(
+      "Hello there.",
+    );
+    expect(buildRadtTsRequest({ ...draft, referenceText: "   " }, "project-1").reference_text).toBeNull();
+  });
+
+  it("starts a new project from blank voice settings instead of carrying prior text", () => {
+    const freshDraft = createDefaultRadtTsDraft();
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, undefined).referenceText,
+    ).toBe("");
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, {
+        referenceText: "Saved project transcript.",
+      }).referenceText,
+    ).toBe("Saved project transcript.");
   });
 
   it("requires local runtime, script, reference audio, authorization, and valid pauses", () => {
