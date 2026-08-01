@@ -56,17 +56,12 @@ impl RadtTsQuality {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RadtTsVoiceSource {
+    #[default]
     Reference,
     Builtin,
-}
-
-impl Default for RadtTsVoiceSource {
-    fn default() -> Self {
-        Self::Reference
-    }
 }
 
 impl RadtTsVoiceSource {
@@ -1107,13 +1102,13 @@ pub fn build_synthesis_args(
     if let Some(pause_seed) = request.pause_seed {
         args.extend(["--pause-seed".to_string(), pause_seed.to_string()]);
     }
-    if request.voice_source == RadtTsVoiceSource::Reference {
-        if let Some(reference_text_file) = reference_text_file {
-            args.extend([
-                "--reference-text-file".to_string(),
-                reference_text_file.display().to_string(),
-            ]);
-        }
+    if request.voice_source == RadtTsVoiceSource::Reference
+        && let Some(reference_text_file) = reference_text_file
+    {
+        args.extend([
+            "--reference-text-file".to_string(),
+            reference_text_file.display().to_string(),
+        ]);
     }
     Ok(args)
 }
