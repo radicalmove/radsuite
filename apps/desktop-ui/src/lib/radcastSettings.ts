@@ -1,10 +1,17 @@
-import type { RadcastTrimRange } from "../types";
+import type { EnhancementModel, RadcastTrimRange } from "../types";
 
 const SILENCE_MIN_SECONDS = 0;
 const SILENCE_MAX_SECONDS = 4;
 const SILENCE_STEP_SECONDS = 0.25;
 const DEFAULT_SILENCE_SECONDS = 1;
 const MIN_TRIM_OUTPUT_SECONDS = 0.5;
+
+export function effectiveRadcastCleanupEnabled(
+  enhancementModel: EnhancementModel,
+  cleanupEnabled: boolean,
+): boolean {
+  return enhancementModel === "none" && cleanupEnabled;
+}
 
 export function canUseRadcastSpeechCleanup(
   captionAvailable: boolean,

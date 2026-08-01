@@ -21,6 +21,7 @@
   import {
     canUseRadcastSpeechCleanup,
     clampRadcastSilenceSeconds,
+    effectiveRadcastCleanupEnabled,
     formatRadcastPauseRemovalCount,
     formatRadcastSilenceSeconds,
     formatRadcastTrimSeconds,
@@ -48,6 +49,9 @@
   let enhancementModel = $state<EnhancementModel>("studio_v18");
   let enhancementQuality = $state<EnhancementQuality>("high");
   let cleanupEnabled = $state(true);
+  let enhancementIncludesCleanup = $derived(
+    !effectiveRadcastCleanupEnabled(enhancementModel, true),
+  );
   let shortenPauses = $state(false);
   let maxSilenceSeconds = $state(1.0);
   let removeFillerWords = $state(false);
@@ -783,13 +787,22 @@
           <small class="field-note">Optional terms passed to the transcription model as phrase guidance.</small>
         </label>
       {/if}
-      <label class="radcast-check">
-        <input type="checkbox" bind:checked={cleanupEnabled} />
-        <span>
-          <strong>Clean up audio</strong>
-          <small>Noise reduction and speech-focused loudness balancing.</small>
-        </span>
-      </label>
+      {#if !enhancementIncludesCleanup}
+        <label class="radcast-check">
+          <input type="checkbox" bind:checked={cleanupEnabled} />
+          <span>
+            <strong>Clean up audio</strong>
+            <small>Noise reduction and speech-focused loudness balancing.</small>
+          </span>
+        </label>
+      {:else}
+        <div class="radcast-check">
+          <span>
+            <strong>Cleanup included</strong>
+            <small>{enhancementModelLabel(enhancementModel)} applies its own tuned noise reduction, speech enhancement, and loudness balancing.</small>
+          </span>
+        </div>
+      {/if}
       {#if !captionCapability.caption_available}
         <div class="radcast-speech-note">
           Pause reduction and filler removal need local speech transcription support. Closed captions, pause cleanup, and filler removal are unavailable until it is installed.
