@@ -956,6 +956,36 @@ button:disabled {
   line-height: 1.4;
 }
 
+.radcast-range-row {
+  gap: var(--s-2);
+  padding: var(--s-2) 0;
+}
+
+.radcast-range-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+}
+
+.radcast-range-label span {
+  color: var(--fg-2);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.radcast-range-label strong {
+  color: var(--radcite-red);
+  font-size: 0.76rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.radcast-range-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--radcite-red);
+}
+
 .radcast-processing-note {
   display: flex;
   align-items: center;

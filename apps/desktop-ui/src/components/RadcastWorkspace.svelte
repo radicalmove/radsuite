@@ -18,6 +18,10 @@
     RadcastProcessingPhase,
     RadcastTrimRange,
   } from "../types";
+  import {
+    clampRadcastSilenceSeconds,
+    formatRadcastSilenceSeconds,
+  } from "../lib/radcastSettings";
 
   type Props = {
     selectedProjectId: string | null;
@@ -225,7 +229,7 @@
       enhancement_model: enhancementModel,
       enhancement_quality: enhancementQuality,
       cleanup_enabled: cleanupEnabled,
-      max_silence_seconds: shortenPauses ? maxSilenceSeconds : null,
+      max_silence_seconds: shortenPauses ? clampRadcastSilenceSeconds(maxSilenceSeconds) : null,
       remove_filler_words: removeFillerWords,
       filler_removal_mode: fillerRemovalMode,
       trim_ranges_by_source_id: trimRanges,
@@ -262,7 +266,7 @@
       enhancementQuality = result.settings.enhancement_quality;
       cleanupEnabled = result.settings.cleanup_enabled;
       shortenPauses = result.settings.max_silence_seconds !== null;
-      maxSilenceSeconds = result.settings.max_silence_seconds ?? 1.0;
+      maxSilenceSeconds = clampRadcastSilenceSeconds(result.settings.max_silence_seconds ?? 1.0);
       removeFillerWords = result.settings.remove_filler_words;
       fillerRemovalMode = result.settings.filler_removal_mode;
       trimRangesBySourceId = result.settings.trim_ranges_by_source_id ?? {};
@@ -362,7 +366,7 @@
           clip_start_seconds: clipStart,
           clip_end_seconds: clipEnd,
           cleanup_enabled: cleanupEnabled,
-          max_silence_seconds: shortenPauses ? maxSilenceSeconds : null,
+          max_silence_seconds: shortenPauses ? clampRadcastSilenceSeconds(maxSilenceSeconds) : null,
           caption_format: captionFormat,
           caption_language: captionLanguage,
           caption_quality_mode: captionQualityMode,
@@ -659,15 +663,25 @@
         </span>
       </label>
       {#if shortenPauses}
-        <label class="stack settings-compact-field">
-          <span>Keep each pause up to</span>
-          <select bind:value={maxSilenceSeconds}>
-            <option value={0.5}>0.5 seconds</option>
-            <option value={1}>1 second</option>
-            <option value={1.5}>1.5 seconds</option>
-            <option value={2}>2 seconds</option>
-          </select>
-        </label>
+        <div class="settings-compact-field radcast-range-row">
+          <div class="radcast-range-label">
+            <span>Keep each pause up to</span>
+            <strong>{formatRadcastSilenceSeconds(maxSilenceSeconds)}</strong>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="4"
+            step="0.25"
+            value={maxSilenceSeconds}
+            aria-label="Keep each pause up to"
+            oninput={(event) => {
+              maxSilenceSeconds = clampRadcastSilenceSeconds(
+                (event.currentTarget as HTMLInputElement).value,
+              );
+            }}
+          />
+        </div>
       {/if}
       <label class="radcast-check">
         <input type="checkbox" bind:checked={removeFillerWords} disabled={!captionCapability.caption_available} />

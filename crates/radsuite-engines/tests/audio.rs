@@ -99,6 +99,24 @@ fn audio_processing_keeps_only_the_configured_length_of_long_silences() {
 }
 
 #[test]
+fn audio_processing_accepts_zero_seconds_for_pause_limit() {
+    let args = AudioProcessor::ffmpeg_arguments(&AudioProcessingRequest {
+        max_silence_seconds: Some(0.0),
+        ..request(AudioOutputFormat::Mp3)
+    })
+    .expect("zero-second pause limit is a supported slider value");
+    let args = display_args(&args);
+
+    let filter = args
+        .windows(2)
+        .find(|pair| pair[0] == "-af")
+        .map(|pair| pair[1].clone())
+        .expect("audio filter");
+    assert!(filter.contains("stop_duration=0.000"));
+    assert!(filter.contains("stop_silence=0.000"));
+}
+
+#[test]
 fn audio_processing_builds_a_concat_graph_for_filler_intervals() {
     let args = AudioProcessor::ffmpeg_arguments(&AudioProcessingRequest {
         remove_intervals: vec![AudioTimeInterval {
