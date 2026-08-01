@@ -14,13 +14,14 @@ use radsuite_desktop::radcast::{
 };
 use radsuite_desktop::{
     CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
-    ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
-    RadcastAudioError, RadcastJobStatus, RadcastStorageError, SaveRadcastSettingsRequest,
-    cancel_radcast_audio, create_radcite_project, delete_radcast_audio,
+    ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest, ListRadcastAudioRequest,
+    ProcessRadcastAudioRequest, RadcastAudioError, RadcastJobStatus, RadcastStorageError,
+    SaveRadcastSettingsRequest, cancel_radcast_audio, create_radcite_project, delete_radcast_audio,
     get_radcast_capabilities_with_processor, get_radcast_capabilities_with_processors,
-    import_radcast_audio_with_processor, list_radcast_audio, list_radcite_projects,
-    process_radcast_audio_with_processor, process_radcast_audio_with_processors,
-    process_radcast_audio_with_processors_and_enhancement, save_radcast_settings,
+    import_radcast_audio_from_link_with_processor, import_radcast_audio_with_processor,
+    list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
+    process_radcast_audio_with_processors, process_radcast_audio_with_processors_and_enhancement,
+    save_radcast_settings,
 };
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
@@ -155,6 +156,44 @@ async fn radcast_import_process_and_list_are_project_scoped() {
     assert!(!Path::new(&source_path).exists());
     assert!(Path::new(&output.path).is_file());
 
+    remove_dir(dir);
+}
+
+#[tokio::test]
+async fn radcast_link_import_rejects_non_onedrive_urls_before_network_access() {
+    let state = desktop_state_with_migrated_pool().await;
+    let dir = test_dir("link-validation");
+    let error = import_radcast_audio_from_link_with_processor(
+        &state,
+        ImportRadcastAudioLinkRequest {
+            project_id: None,
+            url: "https://example.com/lecture.wav".to_string(),
+        },
+        fake_processor(&dir),
+    )
+    .await
+    .expect_err("non-OneDrive links must be rejected");
+
+    assert!(error.to_string().contains("OneDrive or SharePoint"));
+    remove_dir(dir);
+}
+
+#[tokio::test]
+async fn radcast_link_import_rejects_an_empty_url_before_network_access() {
+    let state = desktop_state_with_migrated_pool().await;
+    let dir = test_dir("empty-link");
+    let error = import_radcast_audio_from_link_with_processor(
+        &state,
+        ImportRadcastAudioLinkRequest {
+            project_id: None,
+            url: "  ".to_string(),
+        },
+        fake_processor(&dir),
+    )
+    .await
+    .expect_err("empty links must be rejected");
+
+    assert!(error.to_string().contains("paste a OneDrive or SharePoint"));
     remove_dir(dir);
 }
 

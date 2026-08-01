@@ -864,6 +864,17 @@ button:disabled {
   gap: var(--s-2);
 }
 
+.radcast-link-import {
+  display: grid;
+  gap: var(--s-2);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line-soft);
+}
+
+.radcast-link-import > .compact-button {
+  justify-self: start;
+}
+
 .radcast-source-meta {
   display: grid;
   gap: 3px;
