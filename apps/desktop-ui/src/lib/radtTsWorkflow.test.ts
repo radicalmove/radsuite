@@ -3,6 +3,8 @@ import type { RadtTsCapabilityStatus } from "../types";
 import {
   buildRadtTsRequest,
   canStartRadtTs,
+  createDefaultRadtTsDraft,
+  mergeRadtTsVoicePreferences,
   type RadtTsDraft,
 } from "./radtTsWorkflow";
 
@@ -47,6 +49,18 @@ describe("RAD TTS workflow", () => {
       "Hello there.",
     );
     expect(buildRadtTsRequest({ ...draft, referenceText: "   " }, "project-1").reference_text).toBeNull();
+  });
+
+  it("starts a new project from blank voice settings instead of carrying prior text", () => {
+    const freshDraft = createDefaultRadtTsDraft();
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, undefined).referenceText,
+    ).toBe("");
+    expect(
+      mergeRadtTsVoicePreferences(freshDraft, {
+        referenceText: "Saved project transcript.",
+      }).referenceText,
+    ).toBe("Saved project transcript.");
   });
 
   it("requires local runtime, script, reference audio, authorization, and valid pauses", () => {

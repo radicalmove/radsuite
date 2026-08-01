@@ -16,13 +16,15 @@ The existing permission acknowledgement, quality, chunking, pause, and output co
 2. The Tauri command deserializes the optional field with a default so older callers remain compatible.
 3. The Rust bridge writes non-empty transcript text to a uniquely named file in the RADTTS cache directory.
 4. The child process receives `--reference-text-file <path>` alongside the existing `--reference-audio` and `--text-file` arguments.
-5. The bridge removes both temporary text files after successful completion, failure, cancellation, spawn failure, or validation failure.
+5. The bridge removes both temporary text files after successful completion, failure, cancellation, spawn failure, or validation failure. The active-job registry also records their paths so application shutdown can remove them synchronously after terminating the child process.
 
 Reference transcript content is never persisted in the project manifest or passed as a command-line value. Existing reference audio path validation and project output containment remain unchanged.
 
 ## Error handling
 
 Failure to create either temporary file returns the existing I/O error and removes any earlier temporary file. Failure to spawn or finish a job follows the current RADTTS job-state behavior and removes the transcript file before releasing the project's active-job lock. Blank transcript input skips temporary-file creation and the CLI flag entirely.
+
+When a project changes, unsaved voice settings from the previous project are not used as the new project's defaults. A project with no saved transcript therefore starts blank rather than inheriting another project's transcript.
 
 ## Testing
 

@@ -19,6 +19,8 @@
   import {
     buildRadtTsRequest,
     canStartRadtTs,
+    createDefaultRadtTsDraft,
+    mergeRadtTsVoicePreferences,
     type RadtTsDraft,
   } from "../lib/radtTsWorkflow";
 
@@ -42,19 +44,9 @@
   let status = $state<string | null>(null);
   let preferenceStorage = $state<StorageLike | null>(null);
   let settingsLoaded = $state(false);
+  let loadedProjectId = $state<string | null>(null);
   let settingsSaveTimer: number | null = null;
-  let draft = $state<RadtTsDraft>({
-    text: "",
-    referenceAudioPath: "",
-    referenceText: "",
-    quality: "high",
-    chunkMode: "sentence",
-    pauseMinSeconds: 0.45,
-    pauseMaxSeconds: 1.1,
-    outputFormat: "mp3",
-    outputName: "voice-generation",
-    acknowledgeVoiceClone: false,
-  });
+  let draft = $state<RadtTsDraft>(createDefaultRadtTsDraft());
 
   let startDisabled = $derived(
     processing || !canStartRadtTs(draft, capability),
@@ -111,11 +103,11 @@
     try {
       preferenceStorage = browserStorage();
       const preferences = readRadtTsProjectPreferences(preferenceStorage, selectedProjectId);
-      draft = {
-        ...draft,
-        ...preferences.voice,
-        acknowledgeVoiceClone: false,
-      };
+      const baseDraft = loadedProjectId === selectedProjectId
+        ? draft
+        : createDefaultRadtTsDraft();
+      draft = mergeRadtTsVoicePreferences(baseDraft, preferences.voice);
+      loadedProjectId = selectedProjectId;
       capability = await invoke<RadtTsCapabilityStatus>("get_radt_ts_capabilities");
       const listing = await invoke<{ outputs: RadtTsAudioOutput[] }>("list_radt_ts_outputs", {
         request: { project_id: selectedProjectId },

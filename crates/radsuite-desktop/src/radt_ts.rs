@@ -20,6 +20,8 @@ use uuid::Uuid;
 use crate::DesktopState;
 
 pub type RadtTsChildHandle = Arc<Mutex<Option<Child>>>;
+pub type RadtTsTempFileSet = (PathBuf, Option<PathBuf>);
+pub type RadtTsTempFileRegistry = Arc<Mutex<HashMap<String, RadtTsTempFileSet>>>;
 
 const MAX_REFERENCE_AUDIO_BYTES: u64 = 250 * 1024 * 1024;
 const MAX_OUTPUT_NAME_LENGTH: usize = 80;
@@ -353,21 +355,29 @@ pub async fn start_radt_ts_synthesis(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
         .remove(&job_id);
+    state
+        .radt_ts_temp_files
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .insert(
+            job_id.clone(),
+            (text_path.clone(), reference_text_path.clone()),
+        );
 
     let jobs = state.radt_ts_jobs.clone();
     let children = state.radt_ts_children.clone();
     let cancellations = state.radt_ts_cancel_requests.clone();
     let active_projects = state.radt_ts_active_projects.clone();
+    let temp_files = state.radt_ts_temp_files.clone();
     let context = RadtTsJobContext {
         request,
         project_root,
-        text_path,
-        reference_text_path,
         child_handle,
         jobs,
         children,
         cancellations,
         active_projects,
+        temp_files,
     };
     tokio::spawn(async move { run_radt_ts_job(job_id, context).await });
 
@@ -477,31 +487,39 @@ pub fn shutdown_radt_ts_jobs(state: &DesktopState) {
     for (_, handle) in handles {
         request_process_termination(&handle, true);
     }
+    let temp_files = state
+        .radt_ts_temp_files
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .drain()
+        .map(|(_, paths)| paths)
+        .collect::<Vec<_>>();
+    for (text_path, reference_text_path) in temp_files {
+        remove_temp_text_files(&text_path, reference_text_path.as_deref());
+    }
 }
 
 struct RadtTsJobContext {
     request: RadtTsSynthesisRequest,
     project_root: PathBuf,
-    text_path: PathBuf,
-    reference_text_path: Option<PathBuf>,
     child_handle: RadtTsChildHandle,
     jobs: Arc<Mutex<HashMap<String, RadtTsJobStatus>>>,
     children: Arc<Mutex<HashMap<String, RadtTsChildHandle>>>,
     cancellations: Arc<Mutex<std::collections::HashSet<String>>>,
     active_projects: Arc<Mutex<std::collections::HashSet<String>>>,
+    temp_files: RadtTsTempFileRegistry,
 }
 
 async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
     let RadtTsJobContext {
         request,
         project_root,
-        text_path,
-        reference_text_path,
         child_handle,
         jobs,
         children,
         cancellations,
         active_projects,
+        temp_files,
     } = context;
     update_job(&jobs, &job_id, |job| {
         job.state = RadtTsJobState::Running;
@@ -525,7 +543,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
                         "process handle disappeared".to_string(),
                     )),
                 );
-                remove_temp_text_files(&text_path, reference_text_path.as_deref());
+                cleanup_registered_radt_ts_temp_files(&temp_files, &job_id);
                 return;
             }
         };
@@ -619,7 +637,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
             }
         }
     }
-    remove_temp_text_files(&text_path, reference_text_path.as_deref());
+    cleanup_registered_radt_ts_temp_files(&temp_files, &job_id);
 }
 
 async fn read_limited<R>(reader: Option<R>) -> Vec<u8>
@@ -800,6 +818,16 @@ fn remove_temp_text_files(text_path: &Path, reference_text_path: Option<&Path>) 
     let _ = fs::remove_file(text_path);
     if let Some(path) = reference_text_path {
         let _ = fs::remove_file(path);
+    }
+}
+
+fn cleanup_registered_radt_ts_temp_files(temp_files: &RadtTsTempFileRegistry, job_id: &str) {
+    let paths = temp_files
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
+        .remove(job_id);
+    if let Some((text_path, reference_text_path)) = paths {
+        remove_temp_text_files(&text_path, reference_text_path.as_deref());
     }
 }
 
@@ -1026,8 +1054,10 @@ mod tests {
     use super::{
         RadtTsChunkMode, RadtTsOutputFormat, RadtTsQuality, RadtTsSynthesisRequest,
         StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, parse_cli_result,
-        remove_temp_text_files, validate_output_name, validate_reference_audio,
+        remove_temp_text_files, shutdown_radt_ts_jobs, validate_output_name,
+        validate_reference_audio,
     };
+    use crate::state::DesktopState;
 
     #[test]
     fn rejects_path_like_output_names() {
@@ -1146,6 +1176,27 @@ mod tests {
         fs::write(&reference, "reference").expect("create reference file");
 
         remove_temp_text_files(&script, Some(&reference));
+
+        assert!(!script.exists());
+        assert!(!reference.exists());
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[tokio::test]
+    async fn shutdown_removes_registered_radt_ts_temp_files() {
+        let state = DesktopState::for_tests();
+        let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&root).expect("create test directory");
+        let script = root.join("script.txt");
+        let reference = root.join("reference.txt");
+        fs::write(&script, "script").expect("create script file");
+        fs::write(&reference, "reference").expect("create reference file");
+        state.radt_ts_temp_files.lock().unwrap().insert(
+            "job-1".to_string(),
+            (script.clone(), Some(reference.clone())),
+        );
+
+        shutdown_radt_ts_jobs(&state);
 
         assert!(!script.exists());
         assert!(!reference.exists());
