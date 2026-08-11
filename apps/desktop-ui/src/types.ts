@@ -30,6 +30,18 @@ export type RadciteProjectSummary = {
   archived_at: string | null;
 };
 
+export type LegacyRadciteImportResult = {
+  source_path: string;
+  projects_imported: number;
+  modules_imported: number;
+  documents_imported: number;
+  paragraphs_imported: number;
+  references_imported: number;
+  readings_imported: number;
+  citations_imported: number;
+  warnings: string[];
+};
+
 export type ToolArea =
   | "documents"
   | "references"

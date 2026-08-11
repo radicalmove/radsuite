@@ -26,6 +26,7 @@
   import {
     archiveRadciteProject,
     createRadciteProject,
+    importLegacyRadciteDatabase,
     listRadciteProjects,
     restoreRadciteProject,
     updateRadciteProject,
@@ -255,6 +256,19 @@
       await refreshArchive();
     } catch (reason: unknown) {
       projectsError = `Could not create project: ${toErrorMessage(reason)}`;
+      throw reason;
+    }
+  }
+
+  async function handleImportLegacyDatabase(path: string) {
+    projectsError = null;
+    try {
+      const result = await importLegacyRadciteDatabase(path);
+      await refreshProjects();
+      await refreshProjectScopedData();
+      return result;
+    } catch (reason: unknown) {
+      projectsError = `Could not import old RADcite data: ${toErrorMessage(reason)}`;
       throw reason;
     }
   }
@@ -877,6 +891,9 @@
     }}
     onRestoreProject={(projectId) => {
       void handleRestoreProject(projectId);
+    }}
+    onImportLegacyDatabase={(path) => {
+      return handleImportLegacyDatabase(path);
     }}
     onUpdateProject={(projectId, input) => {
       void handleUpdateProject(projectId, input);

@@ -16,22 +16,23 @@ use radsuite_desktop::{
     ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest, AssignCourseReferenceModuleRequest,
     CourseReferenceError, CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
     ExportModuleReadingsRequest, ExportRadciteReviewReportRequest, ImportDocumentReadingsRequest,
-    LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
-    ListRadciteArchiveRequest, ListRadciteModulesRequest, ListSavedReviewsRequest,
-    MergeCourseReferencesRequest, ModuleReadingError, ModuleReadingExportError,
-    ModuleReadingImportError, PreviewModuleReadingsCsvImportRequest,
-    PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    RadciteArchiveItemKind, RadciteDocumentError, RadciteModuleError, RadciteProjectError,
-    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
-    SaveModuleReadingsImportCandidate, SaveModuleReadingsImportRequest,
-    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
-    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, UpdateRadciteProjectRequest,
-    add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
-    analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
-    archive_module_reading, archive_radcite_document, archive_radcite_module,
-    archive_radcite_project, assign_course_reference_module, create_radcite_project,
-    export_course_references, export_module_readings, export_radcite_review_report, get_app_status,
-    import_document_readings, link_citation_to_reference_for_review, list_course_references,
+    LegacyRadciteImportError, LegacyRadciteImportRequest, LinkCitationReferenceRequest,
+    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadciteArchiveRequest,
+    ListRadciteModulesRequest, ListSavedReviewsRequest, MergeCourseReferencesRequest,
+    ModuleReadingError, ModuleReadingExportError, ModuleReadingImportError,
+    PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
+    PreviewModuleReadingsPdfImportRequest, RadciteArchiveItemKind, RadciteDocumentError,
+    RadciteModuleError, RadciteProjectError, RestoreRadciteArchiveItemRequest,
+    RestoreRadciteProjectRequest, SaveModuleReadingsImportCandidate,
+    SaveModuleReadingsImportRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
+    UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
+    UpdateRadciteProjectRequest, add_course_reference, add_manual_citation_for_review,
+    add_module_reading, add_radcite_module, analyse_docx_for_review, analyse_docx_path,
+    analyse_pdf_for_review, archive_course_reference, archive_module_reading,
+    archive_radcite_document, archive_radcite_module, archive_radcite_project,
+    assign_course_reference_module, create_radcite_project, export_course_references,
+    export_module_readings, export_radcite_review_report, get_app_status, import_document_readings,
+    import_legacy_radcite_database, link_citation_to_reference_for_review, list_course_references,
     list_module_readings, list_radcite_archive, list_radcite_modules, list_radcite_projects,
     list_saved_radcite_reviews, load_saved_radcite_review, mark_paragraph_resolved_for_review,
     merge_course_references, preview_module_readings_csv_import, preview_module_readings_import,
@@ -41,7 +42,7 @@ use radsuite_desktop::{
     verify_paragraph_citations_for_review,
 };
 use serde_json::Value;
-use sqlx::sqlite::SqlitePoolOptions;
+use sqlx::sqlite::{SqliteConnectOptions, SqlitePoolOptions};
 use zip::{ZipWriter, write::SimpleFileOptions};
 
 #[test]
@@ -62,6 +63,155 @@ async fn app_status_exposes_database_sync_and_engine_state() {
     assert!(status.database_ready);
     assert!(!status.sync_configured);
     assert_eq!(status.engines.len(), 4);
+}
+
+#[tokio::test]
+async fn legacy_radcite_import_rejects_an_empty_path() {
+    let state = desktop_state_with_migrated_pool().await;
+
+    let error = import_legacy_radcite_database(
+        &state,
+        LegacyRadciteImportRequest {
+            path: "  ".to_string(),
+        },
+    )
+    .await
+    .expect_err("empty legacy database paths should be rejected");
+
+    assert!(matches!(error, LegacyRadciteImportError::EmptyPath));
+}
+
+#[tokio::test]
+async fn legacy_radcite_import_preserves_course_structure_and_review_links() {
+    let state = desktop_state_with_migrated_pool().await;
+    let source_path = std::env::temp_dir().join(format!(
+        "radsuite-legacy-import-{}.sqlite3",
+        uuid::Uuid::new_v4()
+    ));
+    let source_pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect_with(
+            SqliteConnectOptions::new()
+                .filename(&source_path)
+                .create_if_missing(true),
+        )
+        .await
+        .expect("create legacy source database");
+
+    for statement in [
+        "CREATE TABLE courses (id INTEGER PRIMARY KEY, code TEXT, title TEXT NOT NULL, description TEXT, structure_mode TEXT)",
+        "CREATE TABLE modules (id INTEGER PRIMARY KEY, course_id INTEGER NOT NULL, code TEXT, title TEXT NOT NULL, order_index INTEGER, description TEXT)",
+        "CREATE TABLE documents (id INTEGER PRIMARY KEY, course_id INTEGER NOT NULL, module_id INTEGER, original_filename TEXT NOT NULL, stored_filename TEXT, file_type TEXT NOT NULL, doc_variant TEXT, doc_number INTEGER, notes TEXT, exclude_from_references INTEGER NOT NULL DEFAULT 0)",
+        "CREATE TABLE paragraphs (id INTEGER PRIMARY KEY, document_id INTEGER NOT NULL, order_index INTEGER NOT NULL, page INTEGER, text TEXT NOT NULL, formatted_text TEXT, is_table INTEGER NOT NULL DEFAULT 0, needs_citation INTEGER NOT NULL DEFAULT 0)",
+        "CREATE TABLE reference_entries (id INTEGER PRIMARY KEY, module_id INTEGER, document_id INTEGER, paragraph_id INTEGER, reference_type TEXT NOT NULL, display_order INTEGER, lesson_code TEXT, reading_category TEXT, citation_text TEXT, apa_citation TEXT, title TEXT, authors_json TEXT, publication_year TEXT, source TEXT, doi TEXT, url TEXT, notes TEXT, reading_notes TEXT, estimated_reading_time TEXT, apa_validation_status TEXT, apa_validation_report TEXT)",
+        "CREATE TABLE paragraph_citations (id INTEGER PRIMARY KEY, paragraph_id INTEGER NOT NULL, reference_entry_id INTEGER, citation_text TEXT NOT NULL, position_start INTEGER, position_end INTEGER, verified INTEGER NOT NULL DEFAULT 0)",
+    ] {
+        sqlx::query(statement)
+            .execute(&source_pool)
+            .await
+            .expect("create legacy schema table");
+    }
+    sqlx::query("INSERT INTO courses (id, code, title, description, structure_mode) VALUES (1, 'CRJU201', 'Crime and Justice', 'Imported course', 'weeks')")
+        .execute(&source_pool)
+        .await
+        .expect("insert legacy course");
+    sqlx::query("INSERT INTO modules (id, course_id, code, title, order_index, description) VALUES (11, 1, 'M01', 'Foundations', 1, 'Module description')")
+        .execute(&source_pool)
+        .await
+        .expect("insert legacy module");
+    sqlx::query("INSERT INTO documents (id, course_id, module_id, original_filename, stored_filename, file_type, doc_variant, doc_number, notes, exclude_from_references) VALUES (21, 1, 11, 'module-01.docx', NULL, 'docx', 'rise', 1, 'Module 1 document', 0)")
+        .execute(&source_pool)
+        .await
+        .expect("insert legacy document");
+    sqlx::query("INSERT INTO paragraphs (id, document_id, order_index, page, text, formatted_text, is_table, needs_citation) VALUES (31, 21, 1, 2, 'Smith (2020) describes the evidence.', NULL, 0, 0), (32, 21, 2, 2, 'This paragraph needs a citation.', NULL, 0, 1)")
+        .execute(&source_pool)
+        .await
+        .expect("insert legacy paragraphs");
+    sqlx::query("INSERT INTO reference_entries (id, module_id, document_id, paragraph_id, reference_type, display_order, lesson_code, reading_category, citation_text, apa_citation, title, authors_json, publication_year, source, doi, url, notes, reading_notes, estimated_reading_time, apa_validation_status, apa_validation_report) VALUES (41, 11, 21, 31, 'reference', 1, NULL, NULL, 'Smith (2020)', 'Smith, A. (2020). Evidence.', 'Evidence', '[\"Smith, A.\"]', '2020', 'Journal', NULL, 'https://example.com/evidence', NULL, NULL, NULL, 'valid', NULL), (42, 11, NULL, NULL, 'reading', 1, '1.1', 'required', NULL, 'Jones, B. (2021). Practice.', 'Practice', '[\"Jones, B.\"]', '2021', 'Book', NULL, 'https://example.com/practice', NULL, 'Read chapter 1', '20 minutes', 'unknown', NULL)")
+        .execute(&source_pool)
+        .await
+        .expect("insert legacy references");
+    sqlx::query("INSERT INTO paragraph_citations (id, paragraph_id, reference_entry_id, citation_text, position_start, position_end, verified) VALUES (51, 31, 41, 'Smith (2020)', 0, 11, 1)")
+        .execute(&source_pool)
+        .await
+        .expect("insert legacy citation");
+    source_pool.close().await;
+
+    let result = import_legacy_radcite_database(
+        &state,
+        LegacyRadciteImportRequest {
+            path: source_path.to_string_lossy().into_owned(),
+        },
+    )
+    .await
+    .expect("import legacy RADcite database");
+
+    assert_eq!(result.projects_imported, 1);
+    assert_eq!(result.modules_imported, 1);
+    assert_eq!(result.documents_imported, 1);
+    assert_eq!(result.paragraphs_imported, 2);
+    assert_eq!(result.references_imported, 2);
+    assert_eq!(result.readings_imported, 1);
+    assert_eq!(result.citations_imported, 1);
+    assert!(result.warnings.is_empty());
+
+    let project = list_radcite_projects(&state)
+        .await
+        .expect("list imported project")
+        .into_iter()
+        .find(|project| project.code.as_deref() == Some("CRJU201"))
+        .expect("imported project");
+    assert_eq!(project.structure_mode, "weeks");
+    let modules = list_radcite_modules(
+        &state,
+        ListRadciteModulesRequest {
+            project_id: Some(project.id),
+        },
+    )
+    .await
+    .expect("list imported module");
+    assert_eq!(modules.len(), 1);
+    assert_eq!(modules[0].title, "Foundations");
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: modules[0].id,
+        },
+    )
+    .await
+    .expect("list imported reading");
+    assert_eq!(readings.len(), 1);
+    assert_eq!(readings[0].reading_category, "compulsory");
+    assert_eq!(readings[0].lesson_code.as_deref(), Some("1.1"));
+
+    let references = list_course_references(
+        &state,
+        ListCourseReferencesRequest {
+            project_id: Some(project.id),
+        },
+    )
+    .await
+    .expect("list imported reference");
+    assert_eq!(references.len(), 1);
+    assert_eq!(
+        references[0].apa_citation.as_deref(),
+        Some("Smith, A. (2020). Evidence.")
+    );
+
+    let reviews = list_saved_radcite_reviews(
+        &state,
+        ListSavedReviewsRequest {
+            project_id: Some(project.id),
+        },
+    )
+    .await
+    .expect("list imported review");
+    assert_eq!(reviews.len(), 1);
+    assert_eq!(reviews[0].paragraph_count, 2);
+    assert_eq!(reviews[0].citation_count, 1);
+
+    let _ = fs::remove_file(source_path);
 }
 
 #[tokio::test]
