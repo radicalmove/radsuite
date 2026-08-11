@@ -1,6 +1,7 @@
 <script lang="ts">
+  import { open } from "@tauri-apps/plugin-dialog";
   import { onMount } from "svelte";
-  import type { ProjectNavItem, ToolArea } from "../types";
+  import type { LegacyRadciteImportResult, ProjectNavItem, ToolArea } from "../types";
   import type {
     CreateRadciteProjectInput,
     UpdateRadciteProjectInput,
@@ -25,6 +26,7 @@
     onUpdateProject: (projectId: string, input: UpdateRadciteProjectInput) => void | Promise<void>;
     onArchiveProject: (projectId: string) => void | Promise<void>;
     onRestoreProject: (projectId: string) => void | Promise<void>;
+    onImportLegacyDatabase: (path: string) => void | Promise<LegacyRadciteImportResult>;
     onSelectArea: (area: ToolArea) => void;
   };
 
@@ -39,6 +41,7 @@
     onUpdateProject,
     onArchiveProject,
     onRestoreProject,
+    onImportLegacyDatabase,
     onSelectArea,
   }: Props = $props();
 
@@ -58,6 +61,10 @@
   let projectStorage = $state<StorageLike | null>(null);
   let storageReady = $state(false);
   let autoExpandedSelectionKey = $state<string | null>(null);
+  let legacyImporting = $state(false);
+  let legacyImportError = $state<string | null>(null);
+  let legacyImportStatus = $state<string | null>(null);
+  let legacyImportWarnings = $state<string[]>([]);
 
   const radciteAreas: Array<{ id: ToolArea; label: string; disabled?: boolean }> = [
     { id: "documents", label: "Documents" },
@@ -168,6 +175,38 @@
       createOpen = false;
     } finally {
       createSubmitting = false;
+    }
+  }
+
+  async function chooseLegacyDatabase() {
+    legacyImportError = null;
+    legacyImportStatus = null;
+    legacyImportWarnings = [];
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [
+          {
+            name: "SQLite databases",
+            extensions: ["db", "sqlite", "sqlite3"],
+          },
+        ],
+      });
+      if (typeof selected !== "string") {
+        return;
+      }
+
+      legacyImporting = true;
+      const result = await onImportLegacyDatabase(selected);
+      legacyImportStatus = result
+        ? `Imported ${result.projects_imported} project(s), ${result.modules_imported} module(s), ${result.documents_imported} document(s), and ${result.references_imported} reference/reading item(s).`
+        : "Legacy RADcite data imported into new local projects.";
+      legacyImportWarnings = result?.warnings ?? [];
+    } catch (reason: unknown) {
+      legacyImportError = reason instanceof Error ? reason.message : String(reason);
+    } finally {
+      legacyImporting = false;
     }
   }
 
@@ -451,5 +490,33 @@
         </div>
       {/if}
     </details>
+  </div>
+
+  <div class="sidebar-data-actions">
+    <button
+      class="project-action-button sidebar-data-button"
+      type="button"
+      disabled={legacyImporting}
+      aria-busy={legacyImporting}
+      onclick={() => void chooseLegacyDatabase()}
+    >
+      {legacyImporting ? "Importing old RADcite" : "Import old RADcite data"}
+    </button>
+    <small>Courses, readings, references, and saved reviews are copied locally.</small>
+    {#if legacyImportError}
+      <div class="sidebar-notice sidebar-data-notice">{legacyImportError}</div>
+    {:else if legacyImportStatus}
+      <div class="sidebar-success">{legacyImportStatus}</div>
+    {/if}
+    {#if legacyImportWarnings.length}
+      <details class="sidebar-import-warnings">
+        <summary>{legacyImportWarnings.length} import warning(s)</summary>
+        <ul>
+          {#each legacyImportWarnings as warning}
+            <li>{warning}</li>
+          {/each}
+        </ul>
+      </details>
+    {/if}
   </div>
 </aside>

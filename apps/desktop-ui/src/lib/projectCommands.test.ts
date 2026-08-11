@@ -4,6 +4,7 @@ import type { RadciteProjectSummary } from "../types";
 import {
   archiveRadciteProject,
   createRadciteProject,
+  importLegacyRadciteDatabase,
   listRadciteProjects,
   restoreRadciteProject,
   updateRadciteProject,
@@ -33,6 +34,27 @@ describe("project commands", () => {
     await expect(listRadciteProjects()).resolves.toEqual([project]);
 
     expect(invoke).toHaveBeenCalledWith("list_radcite_projects");
+  });
+
+  test("imports a trimmed legacy RADcite database path", async () => {
+    const result = {
+      source_path: "/tmp/citation_checker.db",
+      projects_imported: 1,
+      modules_imported: 2,
+      documents_imported: 3,
+      paragraphs_imported: 4,
+      references_imported: 5,
+      readings_imported: 2,
+      citations_imported: 6,
+      warnings: [],
+    };
+    vi.mocked(invoke).mockResolvedValue(result);
+
+    await expect(importLegacyRadciteDatabase(" /tmp/citation_checker.db ")).resolves.toBe(result);
+
+    expect(invoke).toHaveBeenCalledWith("import_legacy_radcite_database", {
+      request: { path: "/tmp/citation_checker.db" },
+    });
   });
 
   test("creates a trimmed RADcite project", async () => {

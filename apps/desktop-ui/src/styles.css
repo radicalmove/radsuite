@@ -509,6 +509,55 @@ button:disabled {
   line-height: 1.35;
 }
 
+.sidebar-data-actions {
+  display: grid;
+  gap: var(--s-1);
+  padding-top: var(--s-3);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-data-button {
+  width: 100%;
+  text-align: center;
+}
+
+.sidebar-data-actions small {
+  padding: 0 var(--s-1);
+  color: var(--fg-on-dark-dim);
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.sidebar-data-notice {
+  margin: var(--s-1) 0 0;
+}
+
+.sidebar-success {
+  padding: var(--s-1);
+  border-left: 3px solid #7abf55;
+  color: #c4e7b1;
+  background: rgba(122, 191, 85, 0.12);
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.sidebar-import-warnings {
+  color: #ffd7a3;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
+.sidebar-import-warnings summary {
+  cursor: pointer;
+}
+
+.sidebar-import-warnings ul {
+  display: grid;
+  gap: 3px;
+  margin: var(--s-1) 0 0;
+  padding-left: 18px;
+}
+
 .archived-projects-section {
   margin-top: var(--s-2);
   border-top: 1px solid rgba(255, 255, 255, 0.1);

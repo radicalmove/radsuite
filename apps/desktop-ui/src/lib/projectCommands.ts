@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { RadciteProjectSummary } from "../types";
+import type { LegacyRadciteImportResult, RadciteProjectSummary } from "../types";
 
 export type CreateRadciteProjectInput = {
   code?: string | null;
@@ -23,6 +23,16 @@ function trimmedOrNull(value: string | null | undefined): string | null {
 
 export function listRadciteProjects(): Promise<RadciteProjectSummary[]> {
   return invoke<RadciteProjectSummary[]>("list_radcite_projects");
+}
+
+export function importLegacyRadciteDatabase(path: string): Promise<LegacyRadciteImportResult> {
+  const normalizedPath = path.trim();
+  if (!normalizedPath) {
+    throw new Error("legacy RADcite database path is required");
+  }
+  return invoke<LegacyRadciteImportResult>("import_legacy_radcite_database", {
+    request: { path: normalizedPath },
+  });
 }
 
 export function createRadciteProject(
