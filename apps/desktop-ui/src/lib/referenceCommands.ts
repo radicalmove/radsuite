@@ -66,6 +66,22 @@ export function updateCourseReference(
   });
 }
 
+export type AssignCourseReferenceModuleInput = {
+  reference_id: string;
+  module_id: string | null;
+};
+
+export function assignCourseReferenceModule(
+  input: AssignCourseReferenceModuleInput,
+): Promise<CourseReferenceSummary> {
+  return invoke<CourseReferenceSummary>("assign_course_reference_module", {
+    request: {
+      reference_id: input.reference_id,
+      module_id: trimmedOrNull(input.module_id),
+    },
+  });
+}
+
 export function archiveCourseReference(
   referenceId: string,
 ): Promise<CourseReferenceSummary> {

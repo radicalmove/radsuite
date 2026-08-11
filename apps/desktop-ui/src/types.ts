@@ -332,6 +332,7 @@ export type RadciteArchiveItem = {
 export type CourseReferenceSummary = {
   id: string;
   project_id: string;
+  module_id: string | null;
   reference_type: "reference" | "reading";
   apa_citation: string | null;
   citation_text: string | null;

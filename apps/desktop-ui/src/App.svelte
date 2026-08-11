@@ -53,6 +53,7 @@
   } from "./lib/readingCommands";
   import {
     addCourseReference,
+    assignCourseReferenceModule,
     archiveCourseReference,
     listCourseReferences,
     mergeCourseReferences,
@@ -674,6 +675,25 @@
     }
   }
 
+  async function handleAssignCourseReferenceModule(
+    referenceId: string,
+    moduleId: string | null,
+  ): Promise<boolean> {
+    courseReferencesError = null;
+    try {
+      await assignCourseReferenceModule({
+        reference_id: referenceId,
+        module_id: moduleId,
+      });
+      referencesExport = null;
+      await refreshCourseReferences();
+      return true;
+    } catch (reason: unknown) {
+      courseReferencesError = `Could not assign course reference module: ${toErrorMessage(reason)}`;
+      return false;
+    }
+  }
+
   async function handleArchiveCourseReference(referenceId: string) {
     courseReferencesError = null;
     try {
@@ -993,11 +1013,13 @@
       />
     {:else if activeArea === "references"}
       <RadciteReferencesWorkspace
+        modules={radciteModules}
         references={courseReferences}
         referencesLoading={courseReferencesLoading}
         referencesError={courseReferencesError}
         onAddReference={handleAddCourseReference}
         onUpdateReference={handleUpdateCourseReference}
+        onAssignReferenceModule={handleAssignCourseReferenceModule}
         onArchiveReference={handleArchiveCourseReference}
         onMergeReferences={handleMergeCourseReferences}
         onRefreshReferences={() => {

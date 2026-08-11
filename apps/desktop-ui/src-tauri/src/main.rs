@@ -5,8 +5,8 @@ use radsuite_desktop::{
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
     AnalysePdfRequest, AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
     ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest,
-    CourseModuleSummary, CourseReferenceSummary, CourseReferencesExport,
-    CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
+    AssignCourseReferenceModuleRequest, CourseModuleSummary, CourseReferenceSummary,
+    CourseReferencesExport, CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, ExportRadciteReviewReportRequest,
     ImportDocumentReadingsRequest, ImportDocumentReadingsResponse, ImportRadcastAudioLinkRequest,
     ImportRadcastAudioRequest, LinkCitationReferenceRequest, ListCourseReferencesRequest,
@@ -391,6 +391,16 @@ async fn update_course_reference(
 }
 
 #[tauri::command]
+async fn assign_course_reference_module(
+    state: tauri::State<'_, DesktopState>,
+    request: AssignCourseReferenceModuleRequest,
+) -> Result<CourseReferenceSummary, String> {
+    radsuite_desktop::assign_course_reference_module(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 async fn archive_course_reference(
     state: tauri::State<'_, DesktopState>,
     request: ArchiveCourseReferenceRequest,
@@ -650,6 +660,7 @@ fn main() {
             list_course_references,
             add_course_reference,
             update_course_reference,
+            assign_course_reference_module,
             archive_course_reference,
             merge_course_references,
             list_radcite_modules,

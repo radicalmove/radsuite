@@ -16,6 +16,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 const reference: CourseReferenceSummary = {
   id: "reference-1",
   project_id: "project-1",
+  module_id: null,
   reference_type: "reference",
   apa_citation: "Smith, J. (2020). Worked examples in practice. Learning Press.",
   citation_text: null,
@@ -67,6 +68,23 @@ describe("reference commands", () => {
     });
   });
 
+  test("assigns a course reference to a module", async () => {
+    vi.mocked(invoke).mockResolvedValue(reference);
+
+    const { assignCourseReferenceModule } = await import("./referenceCommands");
+    await assignCourseReferenceModule({
+      reference_id: "reference-1",
+      module_id: "module-1",
+    });
+
+    expect(invoke).toHaveBeenCalledWith("assign_course_reference_module", {
+      request: {
+        reference_id: "reference-1",
+        module_id: "module-1",
+      },
+    });
+  });
+
   test("updates a trimmed course reference", async () => {
     vi.mocked(invoke).mockResolvedValue(reference);
 
@@ -87,6 +105,23 @@ describe("reference commands", () => {
         notes: "Updated note",
         citation_text: "Smith, J. (2020). Worked examples in practice.",
         url: "https://doi.org/10.1234/example",
+      },
+    });
+  });
+
+  test("can unassign a course reference from its module", async () => {
+    vi.mocked(invoke).mockResolvedValue(reference);
+
+    const { assignCourseReferenceModule } = await import("./referenceCommands");
+    await assignCourseReferenceModule({
+      reference_id: "reference-1",
+      module_id: null,
+    });
+
+    expect(invoke).toHaveBeenCalledWith("assign_course_reference_module", {
+      request: {
+        reference_id: "reference-1",
+        module_id: null,
       },
     });
   });

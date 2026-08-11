@@ -13,8 +13,8 @@ use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AnalysePdfRequest, AppPaths,
     ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest, ArchiveRadciteDocumentRequest,
-    ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest, CourseReferenceError,
-    CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
+    ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest, AssignCourseReferenceModuleRequest,
+    CourseReferenceError, CreateRadciteProjectRequest, DesktopState, ExportCourseReferencesRequest,
     ExportModuleReadingsRequest, ExportRadciteReviewReportRequest, ImportDocumentReadingsRequest,
     LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
     ListRadciteArchiveRequest, ListRadciteModulesRequest, ListSavedReviewsRequest,
@@ -29,12 +29,12 @@ use radsuite_desktop::{
     add_course_reference, add_manual_citation_for_review, add_module_reading, add_radcite_module,
     analyse_docx_for_review, analyse_docx_path, analyse_pdf_for_review, archive_course_reference,
     archive_module_reading, archive_radcite_document, archive_radcite_module,
-    archive_radcite_project, create_radcite_project, export_course_references,
-    export_module_readings, export_radcite_review_report, get_app_status, import_document_readings,
-    link_citation_to_reference_for_review, list_course_references, list_module_readings,
-    list_radcite_archive, list_radcite_modules, list_radcite_projects, list_saved_radcite_reviews,
-    load_saved_radcite_review, mark_paragraph_resolved_for_review, merge_course_references,
-    preview_module_readings_csv_import, preview_module_readings_import,
+    archive_radcite_project, assign_course_reference_module, create_radcite_project,
+    export_course_references, export_module_readings, export_radcite_review_report, get_app_status,
+    import_document_readings, link_citation_to_reference_for_review, list_course_references,
+    list_module_readings, list_radcite_archive, list_radcite_modules, list_radcite_projects,
+    list_saved_radcite_reviews, load_saved_radcite_review, mark_paragraph_resolved_for_review,
+    merge_course_references, preview_module_readings_csv_import, preview_module_readings_import,
     preview_module_readings_pdf_import, restore_radcite_archive_item, restore_radcite_project,
     save_module_readings_import, update_course_reference, update_module_reading,
     update_radcite_document, update_radcite_module, update_radcite_project,
@@ -957,6 +957,72 @@ async fn local_course_references_are_added_to_the_radcite_project() {
             .expect("list course references after duplicate");
 
     assert_eq!(references_after_duplicate, vec![added]);
+}
+
+#[tokio::test]
+async fn course_references_can_be_assigned_and_moved_between_modules() {
+    let state = desktop_state_with_migrated_pool().await;
+    let first_module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 1".to_string(),
+            code: Some("1".to_string()),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("add first module");
+    let second_module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 2".to_string(),
+            code: Some("2".to_string()),
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("add second module");
+
+    let added = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2024). Module reference. Learning Press.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add module reference");
+
+    let added = assign_course_reference_module(
+        &state,
+        AssignCourseReferenceModuleRequest {
+            reference_id: added.id,
+            module_id: Some(first_module.id),
+        },
+    )
+    .await
+    .expect("assign course reference to first module");
+
+    let added_json = serde_json::to_value(&added).expect("serialise assigned reference");
+    assert_eq!(added_json["module_id"], first_module.id.0.to_string());
+
+    let moved = assign_course_reference_module(
+        &state,
+        AssignCourseReferenceModuleRequest {
+            reference_id: added.id,
+            module_id: Some(second_module.id),
+        },
+    )
+    .await
+    .expect("move course reference");
+
+    let moved_json = serde_json::to_value(&moved).expect("serialise moved reference");
+    assert_eq!(moved_json["module_id"], second_module.id.0.to_string());
 }
 
 #[tokio::test]
