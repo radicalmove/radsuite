@@ -937,12 +937,12 @@
           class="status-chip"
           class:is-ready={status.sync_configured}
           title={status.sync_configured
-            ? "Cloud sync is connected."
-            : "Cloud sync is not connected; your work remains saved on this Mac and is not copied to another device."}
-          aria-label={status.sync_configured ? "Cloud sync on" : "Cloud sync not connected"}
+            ? "Cloud backup is connected."
+            : "Cloud backup is off; your work remains saved on this Mac and is not copied to another device."}
+          aria-label={status.sync_configured ? "Cloud backup on" : "Cloud backup off"}
         >
           <span class="status-dot"></span>
-          <span>{status.sync_configured ? "Cloud sync on" : "Cloud sync not connected"}</span>
+          <span>{status.sync_configured ? "Cloud backup on" : "Cloud backup off"}</span>
         </span>
         <button
           class="help-button"
