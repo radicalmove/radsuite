@@ -202,8 +202,8 @@ for (const needle of [
 for (const needle of [
   "Saved on this Mac",
   "Local saving unavailable",
-  "Cloud sync on",
-  "Cloud sync not connected",
+  "Cloud backup on",
+  "Cloud backup off",
   "title={",
   "aria-label=",
 ]) {
@@ -235,8 +235,8 @@ for (const obsolete of [
   "Local DB offline",
   "Sync configured",
   "Sync off",
-  "Cloud backup on",
-  "Cloud backup off",
+  "Cloud sync on",
+  "Cloud sync not connected",
 ]) {
   if (app.includes(obsolete)) {
     missing.push(`app removes obsolete status copy: ${obsolete}`);
