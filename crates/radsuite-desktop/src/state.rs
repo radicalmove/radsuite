@@ -3,6 +3,7 @@ use std::{
     fs,
     path::PathBuf,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use radsuite_engines::EngineRegistry;
@@ -36,6 +37,8 @@ pub struct RadcastJobStatus {
     pub phase: RadcastProcessingPhase,
     pub percent: u8,
     pub elapsed_seconds: f64,
+    #[serde(skip)]
+    pub(crate) started_at: Option<Instant>,
     pub output: Option<RadcastAudioOutput>,
     pub error: Option<String>,
 }
@@ -158,6 +161,7 @@ impl RadcastJobStatus {
             phase: RadcastProcessingPhase::Preparing,
             percent: 0,
             elapsed_seconds: 0.0,
+            started_at: Some(Instant::now()),
             output: None,
             error: None,
         }
@@ -167,5 +171,13 @@ impl RadcastJobStatus {
         self.phase = progress.phase;
         self.percent = progress.percent;
         self.elapsed_seconds = elapsed_seconds;
+    }
+
+    pub fn refresh_elapsed(&mut self) {
+        if self.state == RadcastJobState::Running
+            && let Some(started_at) = self.started_at
+        {
+            self.elapsed_seconds = started_at.elapsed().as_secs_f64();
+        }
     }
 }

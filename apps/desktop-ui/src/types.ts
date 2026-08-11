@@ -52,7 +52,7 @@ export type CaptionQualityMode = "fast" | "accurate" | "reviewed";
 
 export type FillerRemovalMode = "normal" | "aggressive";
 
-export type EnhancementModel = "none" | "resemble" | "deepfilternet" | "studio" | "studio_v18";
+export type EnhancementModel = "none" | "resemble" | "deepfilternet" | "studio" | "studio_v18" | "studio_v18_natural" | "studio_v18_natural_plus" | "studio_v18_natural_double_plus";
 
 export type EnhancementQuality = "fast" | "standard" | "high";
 

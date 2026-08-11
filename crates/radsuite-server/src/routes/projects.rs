@@ -103,7 +103,7 @@ async fn add_project_member(
         return Err(ApiError::bad_request("cannot grant owner role"));
     }
     let target_email = req.email.trim().to_lowercase();
-    ensure_user_exists(&state, &target_email)?;
+    ensure_user_exists(&state, &target_email).await?;
 
     let mut projects = state.projects.lock().expect("project store lock");
     let project = projects
@@ -152,9 +152,8 @@ fn parse_project_id(value: &str) -> Result<ProjectId, ApiError> {
     ProjectId::from_str(value).map_err(|_| ApiError::bad_request("invalid project id"))
 }
 
-fn ensure_user_exists(state: &AppState, email: &str) -> Result<(), ApiError> {
-    let auth = state.auth.lock().expect("auth store lock");
-    if auth.users_by_email.contains_key(email) {
+async fn ensure_user_exists(state: &AppState, email: &str) -> Result<(), ApiError> {
+    if super::auth::load_user(state, email).await?.is_some() {
         Ok(())
     } else {
         Err(ApiError::not_found("user not found"))

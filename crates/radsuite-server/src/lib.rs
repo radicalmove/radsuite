@@ -12,6 +12,7 @@ pub fn build_router(state: AppState, _config: AppConfig) -> Router {
     Router::new()
         .merge(routes::health::router())
         .merge(routes::auth::router())
+        .merge(routes::admin::router())
         .merge(routes::projects::router())
         .merge(routes::assets::router())
         .merge(routes::sync::router())

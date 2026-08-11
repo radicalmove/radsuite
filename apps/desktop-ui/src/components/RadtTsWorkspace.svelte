@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
-  import { open } from "@tauri-apps/plugin-dialog";
+  import { open, save } from "@tauri-apps/plugin-dialog";
   import {
     browserStorage,
     readRadtTsProjectPreferences,
@@ -25,6 +25,7 @@
     mergeRadtTsVoicePreferences,
     type RadtTsDraft,
   } from "../lib/radtTsWorkflow";
+  import { filenameFromPath, saveLocalArtifact } from "../lib/fileDownload";
 
   type Props = {
     selectedProjectId: string | null;
@@ -44,6 +45,7 @@
   let cancelling = $state(false);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
+  let downloadingArtifact = $state<string | null>(null);
   let preferenceStorage = $state<StorageLike | null>(null);
   let settingsLoaded = $state(false);
   let loadedProjectId = $state<string | null>(null);
@@ -112,6 +114,35 @@
     if (value === "preparing") return "Preparing voice generation";
     if (value === "generating") return "Generating locally";
     return "Saving output";
+  }
+
+  async function downloadArtifact(
+    sourcePath: string,
+    defaultPath: string,
+    filterName: string,
+    extensions: string[],
+    label: string,
+  ) {
+    if (downloadingArtifact !== null) return;
+
+    downloadingArtifact = sourcePath;
+    error = null;
+    try {
+      const result = await saveLocalArtifact(
+        { sourcePath, defaultPath, filterName, extensions },
+        (options) => save(options),
+        (source, destination) =>
+          invoke<void>("save_local_file", {
+            sourcePath: source,
+            destinationPath: destination,
+          }),
+      );
+      if (result) status = `${label} saved.`;
+    } catch (reason: unknown) {
+      error = `Could not save ${label.toLowerCase()}: ${toErrorMessage(reason)}`;
+    } finally {
+      downloadingArtifact = null;
+    }
   }
 
   async function refresh() {
@@ -422,9 +453,20 @@
               Your browser does not support audio playback.
             </audio>
             <div class="radtts-output-actions">
-              <a class="secondary-button compact-button" href={convertFileSrc(output.path)} download={output.filename}>Download audio</a>
+              <button
+                class="secondary-button compact-button"
+                type="button"
+                disabled={downloadingArtifact !== null}
+                onclick={() => void downloadArtifact(output.path, output.filename, "Audio", [output.output_format], "Audio")}
+              >Download audio</button>
               {#each output.caption_paths as captionPath (captionPath)}
-                <a class="secondary-button compact-button" href={convertFileSrc(captionPath)} download>Download captions</a>
+                {@const captionFilename = filenameFromPath(captionPath, "captions.vtt")}
+                <button
+                  class="secondary-button compact-button"
+                  type="button"
+                  disabled={downloadingArtifact !== null}
+                  onclick={() => void downloadArtifact(captionPath, captionFilename, "Captions", ["vtt", "srt"], "Captions")}
+                >Download captions</button>
               {/each}
             </div>
           </article>

@@ -10,9 +10,10 @@ use radsuite_engines::{
     AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
     CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionQualitySummary,
     CaptionTranscriptionRequest, EnhancementModel, EnhancementProcessingRequest,
-    EnhancementProcessor, EnhancementQuality, FillerRemovalMode, RADCAST_OPTIMIZED_POSTFILTER,
-    RADCAST_STANDARD_POSTFILTER, RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER,
-    SpeechCleanupError,
+    EnhancementProcessor, EnhancementQuality, FillerRemovalMode,
+    RADCAST_NATURAL_DOUBLE_PLUS_POSTFILTER, RADCAST_NATURAL_PLUS_POSTFILTER,
+    RADCAST_NATURAL_POSTFILTER, RADCAST_OPTIMIZED_POSTFILTER, RADCAST_STANDARD_POSTFILTER,
+    RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER, SpeechCleanupError,
 };
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
@@ -655,7 +656,11 @@ where
             EnhancementModel::Resemble
             | EnhancementModel::DeepFilterNet
             | EnhancementModel::Studio => Some(RADCAST_STANDARD_PREFILTER),
-            EnhancementModel::StudioV18 | EnhancementModel::None => None,
+            EnhancementModel::StudioV18
+            | EnhancementModel::StudioV18Natural
+            | EnhancementModel::StudioV18NaturalPlus
+            | EnhancementModel::StudioV18NaturalDoublePlus
+            | EnhancementModel::None => None,
         };
         if let Err(error) = processor.process_with_additional_filter(
             AudioProcessingRequest {
@@ -681,14 +686,26 @@ where
             phase: RadcastProcessingPhase::EnhancingAudio,
             percent: 35,
         });
-        if let Err(error) = enhancement_processor.process_model_with_quality(
+        let enhancement_result = enhancement_processor.process_model_with_quality_and_progress(
             EnhancementProcessingRequest {
                 input_path: prepared_path.clone(),
                 output_path: enhanced_path.clone(),
             },
             request.enhancement_model,
             request.enhancement_quality,
-        ) {
+            |completed, total| {
+                let progress = if total == 0 {
+                    0.0
+                } else {
+                    (completed as f64 / total as f64).clamp(0.0, 1.0)
+                };
+                report_progress(RadcastProcessingProgress {
+                    phase: RadcastProcessingPhase::EnhancingAudio,
+                    percent: (35.0 + (43.0 * progress)).round() as u8,
+                });
+            },
+        );
+        if let Err(error) = enhancement_result {
             cleanup_temporary_paths(&[prepared_path, enhanced_path]);
             return Err(error.into());
         }
@@ -709,19 +726,45 @@ where
             35
         },
     });
-    let clip_start_seconds = (request.enhancement_model == EnhancementModel::None)
-        .then_some(request.clip_start_seconds)
-        .flatten();
-    let clip_end_seconds = (request.enhancement_model == EnhancementModel::None)
-        .then_some(request.clip_end_seconds)
-        .flatten();
+    let (clip_start_seconds, clip_end_seconds) =
+        if request.enhancement_model == EnhancementModel::None {
+            (request.clip_start_seconds, request.clip_end_seconds)
+        } else {
+            match (request.clip_start_seconds, request.clip_end_seconds) {
+                (Some(start), Some(end)) if end > start => (Some(0.0), Some(end - start)),
+                (Some(start), None) if source.duration_seconds > start => {
+                    (Some(0.0), Some(source.duration_seconds - start))
+                }
+                (None, Some(end)) if end > 0.0 => (Some(0.0), Some(end)),
+                _ => (None, None),
+            }
+        };
     let additional_filter = match request.enhancement_model {
         EnhancementModel::Resemble | EnhancementModel::DeepFilterNet => {
             Some(RADCAST_STANDARD_POSTFILTER)
         }
         EnhancementModel::Studio => Some(RADCAST_STUDIO_POSTFILTER),
         EnhancementModel::StudioV18 => Some(RADCAST_OPTIMIZED_POSTFILTER),
+        EnhancementModel::StudioV18Natural => Some(RADCAST_NATURAL_POSTFILTER),
+        EnhancementModel::StudioV18NaturalPlus => Some(RADCAST_NATURAL_PLUS_POSTFILTER),
+        EnhancementModel::StudioV18NaturalDoublePlus => {
+            Some(RADCAST_NATURAL_DOUBLE_PLUS_POSTFILTER)
+        }
         EnhancementModel::None => None,
+    };
+    let exact_duration_filter = if request.enhancement_model != EnhancementModel::None
+        && removal_intervals.is_empty()
+    {
+        clip_end_seconds
+            .map(|duration| format!("apad=whole_dur={duration:.3},atrim=duration={duration:.3}"))
+    } else {
+        None
+    };
+    let final_filter = match (additional_filter, exact_duration_filter.as_deref()) {
+        (Some(base), Some(duration_filter)) => Some(format!("{base},{duration_filter}")),
+        (Some(base), None) => Some(base.to_string()),
+        (None, Some(duration_filter)) => Some(duration_filter.to_string()),
+        (None, None) => None,
     };
     let cleanup_enabled =
         effective_cleanup_enabled(request.enhancement_model, request.cleanup_enabled);
@@ -736,7 +779,7 @@ where
             remove_intervals: removal_intervals,
             cleanup_enabled,
         },
-        additional_filter,
+        final_filter.as_deref(),
     ) {
         Ok(result) => result,
         Err(error) => {
@@ -1077,6 +1120,9 @@ mod tests {
             EnhancementModel::DeepFilterNet,
             EnhancementModel::Studio,
             EnhancementModel::StudioV18,
+            EnhancementModel::StudioV18Natural,
+            EnhancementModel::StudioV18NaturalPlus,
+            EnhancementModel::StudioV18NaturalDoublePlus,
         ] {
             assert!(!effective_cleanup_enabled(model, true));
         }

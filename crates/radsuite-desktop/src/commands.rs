@@ -1446,13 +1446,15 @@ pub fn get_radcast_audio_job(
     state: &DesktopState,
     job_id: String,
 ) -> Result<crate::RadcastJobStatus, RadcastAudioError> {
-    state
+    let mut jobs = state
         .radcast_jobs
         .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
-        .get(&job_id)
-        .cloned()
-        .ok_or(RadcastAudioError::MissingJob(job_id))
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    let job = jobs
+        .get_mut(&job_id)
+        .ok_or(RadcastAudioError::MissingJob(job_id))?;
+    job.refresh_elapsed();
+    Ok(job.clone())
 }
 
 pub async fn process_radcast_audio_with_processors_and_enhancement(

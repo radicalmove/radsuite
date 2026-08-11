@@ -35,6 +35,7 @@
     readThemeStorage,
     writeThemeStorage,
   } from "./lib/storage";
+  import { showsCitationActions } from "./lib/workspaceLayout";
   import {
     addModuleReading,
     addRadciteModule,
@@ -448,9 +449,12 @@
     await refreshRadciteModules();
   }
 
-  async function handleImportDetectedReadings() {
-    const path = analysedReadingsPath.trim() || sharedDocxPath.trim();
-    const sourceFileType = analysedReadingsSource ?? documentSource;
+  async function handleImportDetectedReadings(
+    sourcePathOverride?: string,
+    sourceFileTypeOverride?: "docx" | "pdf",
+  ) {
+    const path = sourcePathOverride?.trim() || analysedReadingsPath.trim() || sharedDocxPath.trim();
+    const sourceFileType = sourceFileTypeOverride ?? analysedReadingsSource ?? documentSource;
     if (!path) {
       throw new Error("Analyse a document before importing detected readings.");
     }
@@ -831,7 +835,11 @@
   });
 </script>
 
-<main class="app-shell" data-theme={theme}>
+<main
+  class="app-shell"
+  class:has-actions-panel={showsCitationActions(activeArea)}
+  data-theme={theme}
+>
   <ProjectSidebar
     {projects}
     {selectedProjectId}
@@ -1082,14 +1090,16 @@
     {/if}
   </section>
 
-  <CitationActionsPanel
-    {selectedParagraph}
-    {courseReferences}
-    onMarkResolved={handleMarkResolved}
-    onAddManualCitation={handleAddManualCitation}
-    onAddCourseReference={handleAddCourseReference}
-    onVerifyCitation={handleVerifyCitation}
-    onMarkReviewed={handleVerifyCitation}
-    onLinkCitation={handleLinkCitation}
-  />
+  {#if showsCitationActions(activeArea)}
+    <CitationActionsPanel
+      {selectedParagraph}
+      {courseReferences}
+      onMarkResolved={handleMarkResolved}
+      onAddManualCitation={handleAddManualCitation}
+      onAddCourseReference={handleAddCourseReference}
+      onVerifyCitation={handleVerifyCitation}
+      onMarkReviewed={handleVerifyCitation}
+      onLinkCitation={handleLinkCitation}
+    />
+  {/if}
 </main>

@@ -31,6 +31,7 @@ pub struct AuthUser {
     pub email: String,
     pub display_name: String,
     pub password_hash: String,
+    pub is_active: bool,
     pub is_admin: bool,
 }
 

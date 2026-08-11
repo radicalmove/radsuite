@@ -7,7 +7,8 @@ use std::{
 
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingError, AudioProcessingRequest, AudioProcessor,
-    AudioTimeInterval, RADCAST_OPTIMIZED_POSTFILTER,
+    AudioTimeInterval, RADCAST_NATURAL_DOUBLE_PLUS_POSTFILTER, RADCAST_NATURAL_PLUS_POSTFILTER,
+    RADCAST_NATURAL_POSTFILTER, RADCAST_OPTIMIZED_POSTFILTER,
 };
 
 #[test]
@@ -40,8 +41,16 @@ fn audio_processing_builds_trimmed_cleanup_commands_for_mp3_and_wav() {
     let mp3 = display_args(&mp3);
 
     assert_eq!(
-        mp3[0..5],
-        ["-y", "-hide_banner", "-loglevel", "error", "-ss"]
+        mp3[0..7],
+        [
+            "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-i",
+            "source.wav",
+            "-ss"
+        ]
     );
     assert!(mp3.contains(&"2.500".to_string()));
     assert!(mp3.contains(&"-t".to_string()));
@@ -77,6 +86,64 @@ fn audio_processing_can_apply_the_radcast_optimized_postfilter() {
     assert!(filter.contains("deesser=i=0.045:m=0.18:f=0.5:s=o"));
     assert!(filter.contains("loudnorm=I=-20.75:TP=-1.5:LRA=8"));
     assert!(filter.ends_with("lowpass=f=7550"));
+}
+
+#[test]
+fn audio_processing_can_apply_the_radcast_natural_postfilter() {
+    let args = AudioProcessor::ffmpeg_arguments_with_additional_filter(
+        &request(AudioOutputFormat::Wav),
+        Some(RADCAST_NATURAL_POSTFILTER),
+    )
+    .expect("build RADcast Natural filter arguments");
+    let args = display_args(&args);
+
+    let filter = args
+        .windows(2)
+        .find(|pair| pair[0] == "-af")
+        .map(|pair| pair[1].as_str())
+        .expect("audio filter");
+    assert!(filter.contains("deesser=i=0.012:m=0.08:f=0.5:s=o"));
+    assert!(filter.contains("equalizer=f=3000:t=q:w=1.0:g=-0.60"));
+    assert!(filter.ends_with("lowpass=f=8200"));
+}
+
+#[test]
+fn audio_processing_can_apply_the_radcast_natural_plus_postfilter() {
+    let args = AudioProcessor::ffmpeg_arguments_with_additional_filter(
+        &request(AudioOutputFormat::Wav),
+        Some(RADCAST_NATURAL_PLUS_POSTFILTER),
+    )
+    .expect("build RADcast Natural+ filter arguments");
+    let args = display_args(&args);
+
+    let filter = args
+        .windows(2)
+        .find(|pair| pair[0] == "-af")
+        .map(|pair| pair[1].as_str())
+        .expect("audio filter");
+    assert!(filter.contains("deesser=i=0.006:m=0.04:f=0.5:s=o"));
+    assert!(filter.contains("equalizer=f=3000:t=q:w=1.0:g=-0.30"));
+    assert!(filter.ends_with("lowpass=f=8800"));
+}
+
+#[test]
+fn audio_processing_can_apply_the_radcast_natural_double_plus_postfilter() {
+    let args = AudioProcessor::ffmpeg_arguments_with_additional_filter(
+        &request(AudioOutputFormat::Wav),
+        Some(RADCAST_NATURAL_DOUBLE_PLUS_POSTFILTER),
+    )
+    .expect("build RADcast Natural++ filter arguments");
+    let args = display_args(&args);
+
+    let filter = args
+        .windows(2)
+        .find(|pair| pair[0] == "-af")
+        .map(|pair| pair[1].as_str())
+        .expect("audio filter");
+    assert!(filter.contains("equalizer=f=130:t=q:w=1.0:g=2.2"));
+    assert!(filter.contains("equalizer=f=280:t=q:w=1.1:g=-1.2"));
+    assert!(filter.contains("acompressor=threshold=0.12:ratio=1.55"));
+    assert!(filter.ends_with("lowpass=f=10000"));
 }
 
 #[test]
