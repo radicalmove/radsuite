@@ -8,6 +8,7 @@
     ModuleReadingsExport,
     ModuleReadingSummary,
   } from "../types";
+  import { copyHtmlToClipboard } from "../lib/clipboard";
   import { saveLocalTextArtifact } from "../lib/fileDownload";
 
   type ExportMode = "course-references" | "module-readings";
@@ -154,7 +155,7 @@
     }
 
     try {
-      await navigator.clipboard.writeText(activeExportResult.html);
+      await copyHtmlToClipboard(activeExportResult.html);
       copyNotice = "HTML copied.";
       copyFailed = false;
     } catch (reason: unknown) {
