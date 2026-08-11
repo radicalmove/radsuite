@@ -11,6 +11,7 @@ const references: CourseReferenceSummary[] = [
   {
     id: "reference-valid",
     project_id: "project-1",
+    module_id: null,
     reference_type: "reference",
     citation_text: "Smith (2024)",
     apa_citation: "Smith, J. (2024). A valid source.",
@@ -27,6 +28,7 @@ const references: CourseReferenceSummary[] = [
   {
     id: "reference-warning",
     project_id: "project-1",
+    module_id: null,
     reference_type: "reference",
     citation_text: "Jones (2023)",
     apa_citation: "Jones, P. (2023). A source needing review.",
@@ -43,6 +45,7 @@ const references: CourseReferenceSummary[] = [
   {
     id: "reference-unknown",
     project_id: "project-1",
+    module_id: null,
     reference_type: "reference",
     citation_text: "Brown (2022)",
     apa_citation: "Brown, A. (2022). An unchecked source.",

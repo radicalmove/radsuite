@@ -10,9 +10,10 @@
   } from "../lib/referenceDisplay";
   import { browserStorage } from "../lib/storage";
   import type { UpdateCourseReferenceInput } from "../lib/referenceCommands";
-  import type { CourseReferenceSummary } from "../types";
+  import type { CourseModuleSummary, CourseReferenceSummary } from "../types";
 
   type Props = {
+    modules: CourseModuleSummary[];
     references: CourseReferenceSummary[];
     referencesLoading: boolean;
     referencesError: string | null;
@@ -23,17 +24,23 @@
     onUpdateReference: (
       input: UpdateCourseReferenceInput,
     ) => boolean | void | Promise<boolean | void>;
+    onAssignReferenceModule: (
+      referenceId: string,
+      moduleId: string | null,
+    ) => boolean | void | Promise<boolean | void>;
     onArchiveReference: (referenceId: string) => void | Promise<void>;
     onMergeReferences: (primaryReferenceId: string, mergeReferenceIds: string[]) => Promise<boolean>;
     onRefreshReferences: () => void | Promise<void>;
   };
 
   let {
+    modules,
     references,
     referencesLoading,
     referencesError,
     onAddReference,
     onUpdateReference,
+    onAssignReferenceModule,
     onArchiveReference,
     onMergeReferences,
     onRefreshReferences,
@@ -42,6 +49,7 @@
   let editingReferenceId = $state<string | null>(null);
   let apaCitation = $state("");
   let notes = $state("");
+  let referenceModuleId = $state("");
   let selectedReferenceIds = $state<string[]>([]);
   let primaryReferenceId = $state("");
   let lookupReferenceId = $state<string | null>(null);
@@ -86,12 +94,27 @@
     editingReferenceId = null;
     apaCitation = "";
     notes = "";
+    referenceModuleId = "";
   }
 
   function beginEditReference(reference: CourseReferenceSummary) {
     editingReferenceId = reference.id;
     apaCitation = reference.apa_citation ?? reference.citation_text ?? "";
     notes = reference.notes ?? "";
+    referenceModuleId = reference.module_id ?? "";
+  }
+
+  function moduleLabel(moduleId: string | null): string {
+    if (!moduleId) {
+      return "Course-wide";
+    }
+
+    const module = modules.find((item) => item.id === moduleId);
+    if (!module) {
+      return "Archived or unavailable module";
+    }
+
+    return module.code ? `${module.code} · ${module.title}` : module.title;
   }
 
   function lookupResultKey(result: CrossrefSourceResult): string {
@@ -245,13 +268,30 @@
     }
 
     if (editingReferenceId) {
-      await onUpdateReference({
+      const updated = await onUpdateReference({
         reference_id: editingReferenceId,
         apa_citation: nextApaCitation,
         notes: notes.trim() || null,
       });
+      if (updated === false) {
+        return;
+      }
+
+      const assigned = await onAssignReferenceModule(
+        editingReferenceId,
+        referenceModuleId || null,
+      );
+      if (assigned === false) {
+        return;
+      }
     } else {
-      await onAddReference(nextApaCitation, notes.trim() || null);
+      const added = await onAddReference(nextApaCitation, notes.trim() || null);
+      if (added && referenceModuleId) {
+        const assigned = await onAssignReferenceModule(added.id, referenceModuleId);
+        if (assigned === false) {
+          return;
+        }
+      }
     }
 
     resetReferenceForm();
@@ -303,6 +343,14 @@
 
     <label class="field-label" for="reference-notes">Notes</label>
     <input id="reference-notes" class="path-input" type="text" bind:value={notes} />
+
+    <label class="field-label" for="reference-module">Module (optional)</label>
+    <select id="reference-module" class="path-input" bind:value={referenceModuleId}>
+      <option value="">Course-wide reference</option>
+      {#each modules as module (module.id)}
+        <option value={module.id}>{moduleLabel(module.id)}</option>
+      {/each}
+    </select>
 
     <div class="reference-form-actions">
       <button class="primary-button" type="submit" disabled={submitDisabled}>
@@ -404,6 +452,7 @@
             </div>
             <div class="reference-meta">
               <span>{reference.validation_status.replace("_", " ")}</span>
+              <span>Module: {moduleLabel(reference.module_id)}</span>
               {#if reference.notes}
                 <span>{reference.notes}</span>
               {/if}

@@ -464,6 +464,7 @@ pub struct ListCourseReferencesRequest {
 pub struct CourseReferenceSummary {
     pub id: ReferenceEntryId,
     pub project_id: ProjectId,
+    pub module_id: Option<ModuleId>,
     pub reference_type: String,
     pub apa_citation: Option<String>,
     pub citation_text: Option<String>,
@@ -584,6 +585,12 @@ pub struct UpdateCourseReferenceRequest {
     pub notes: Option<String>,
     pub citation_text: Option<String>,
     pub url: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AssignCourseReferenceModuleRequest {
+    pub reference_id: ReferenceEntryId,
+    pub module_id: Option<ModuleId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -949,6 +956,10 @@ pub enum CourseReferenceError {
     InvalidMerge(String),
     #[error("could not load course reference {0}")]
     MissingReference(ReferenceEntryId),
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
+    #[error("RADcite module {module_id} belongs to a different project")]
+    ModuleProjectMismatch { module_id: ModuleId },
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
     #[error(transparent)]
@@ -1972,6 +1983,22 @@ pub async fn update_course_reference(
         reference.url = trimmed_optional(Some(url));
     }
     apply_basic_apa_validation(&mut reference);
+    reference.updated_at = Utc::now();
+
+    SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .update_reference_entry(&reference)
+        .await?;
+
+    Ok(course_reference_summary(reference))
+}
+
+pub async fn assign_course_reference_module(
+    state: &DesktopState,
+    request: AssignCourseReferenceModuleRequest,
+) -> Result<CourseReferenceSummary, CourseReferenceError> {
+    let mut reference = load_course_reference_or_error(state, request.reference_id).await?;
+    validate_course_reference_module(state, reference.project_id, request.module_id).await?;
+    reference.module_id = request.module_id;
     reference.updated_at = Utc::now();
 
     SqliteReferenceEntryRepository::new(state.database_pool.clone())
@@ -3087,6 +3114,7 @@ fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary
     CourseReferenceSummary {
         id: reference.id,
         project_id: reference.project_id,
+        module_id: reference.module_id,
         reference_type: reference_type_label(reference.reference_type).to_string(),
         apa_citation: reference.apa_citation,
         citation_text: reference.citation_text,
@@ -3100,6 +3128,26 @@ fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary
         validation_status: validation_status_label(reference.apa_validation_status).to_string(),
         validation_report: reference.apa_validation_report,
     }
+}
+
+async fn validate_course_reference_module(
+    state: &DesktopState,
+    project_id: ProjectId,
+    module_id: Option<ModuleId>,
+) -> Result<(), CourseReferenceError> {
+    let Some(module_id) = module_id else {
+        return Ok(());
+    };
+
+    let module = SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .load_course_module(module_id)
+        .await?
+        .ok_or(CourseReferenceError::MissingModule(module_id))?;
+    if module.project_id != project_id {
+        return Err(CourseReferenceError::ModuleProjectMismatch { module_id });
+    }
+
+    Ok(())
 }
 
 fn course_module_summary(module: CourseModule) -> CourseModuleSummary {
