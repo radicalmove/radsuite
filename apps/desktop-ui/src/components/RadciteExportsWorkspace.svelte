@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { invoke } from "@tauri-apps/api/core";
+  import { save } from "@tauri-apps/plugin-dialog";
   import type {
     CourseModuleSummary,
     CourseReferencesExport,
@@ -6,6 +8,7 @@
     ModuleReadingsExport,
     ModuleReadingSummary,
   } from "../types";
+  import { saveLocalTextArtifact } from "../lib/fileDownload";
 
   type ExportMode = "course-references" | "module-readings";
   type HtmlExportResult = CourseReferencesExport | ModuleReadingsExport;
@@ -66,6 +69,7 @@
   let useLibraryLinks = $state(true);
   let copyNotice = $state<string | null>(null);
   let copyFailed = $state(false);
+  let exportSaving = $state(false);
 
   let selectedModule = $derived(
     modules.find((module) => module.id === selectedModuleId) ?? modules[0] ?? null,
@@ -97,7 +101,7 @@
       (exportMode === "module-readings" && !selectedModule) ||
       (exportMode === "course-references" && apaFixCount > 0 && !allowIncomplete),
   );
-  let resultActionDisabled = $derived(activeExportLoading || !activeExportResult);
+  let resultActionDisabled = $derived(activeExportLoading || exportSaving || !activeExportResult);
 
   function moduleLabel(module: CourseModuleSummary): string {
     if (module.code) {
@@ -159,20 +163,37 @@
     }
   }
 
-  function downloadHtml() {
-    if (!activeExportResult) {
+  async function downloadHtml() {
+    const result = activeExportResult;
+    if (!result || exportSaving) {
       return;
     }
 
-    const blob = new Blob([activeExportResult.html], { type: activeExportResult.content_type });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = activeExportResult.filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
+    exportSaving = true;
+    copyNotice = null;
+    copyFailed = false;
+    try {
+      const saved = await saveLocalTextArtifact(
+        {
+          contents: result.html,
+          defaultPath: result.filename,
+          filterName: "HTML export",
+          extensions: ["html"],
+        },
+        (options) => save(options),
+        (destination, contents) =>
+          invoke<void>("write_local_text_file", {
+            destinationPath: destination,
+            contents,
+          }),
+      );
+      if (saved) copyNotice = "HTML saved.";
+    } catch (reason: unknown) {
+      copyNotice = reason instanceof Error ? reason.message : String(reason);
+      copyFailed = true;
+    } finally {
+      exportSaving = false;
+    }
   }
 </script>
 
@@ -297,8 +318,8 @@
       <button class="secondary-button" type="button" disabled={resultActionDisabled} onclick={copyHtml}>
         Copy HTML
       </button>
-      <button class="secondary-button" type="button" disabled={resultActionDisabled} onclick={downloadHtml}>
-        Download HTML
+      <button class="secondary-button" type="button" disabled={resultActionDisabled} onclick={() => void downloadHtml()}>
+        {exportSaving ? "Saving" : "Download HTML"}
       </button>
     </div>
   </section>

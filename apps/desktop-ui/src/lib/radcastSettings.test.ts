@@ -7,6 +7,8 @@ import {
   formatRadcastSilenceSeconds,
   formatRadcastTrimSeconds,
   isRadcastFullTrimRange,
+  clampRadcastPlaybackTime,
+  shouldRestartRadcastPlayback,
   normalizeRadcastTrimRange,
 } from "./radcastSettings";
 
@@ -85,6 +87,22 @@ describe("RADcast trim settings", () => {
     expect(fullRange).not.toBeNull();
     expect(isRadcastFullTrimRange(fullRange, 10)).toBe(true);
     expect(isRadcastFullTrimRange({ clip_start_seconds: 1, clip_end_seconds: 10 }, 10)).toBe(false);
-    expect(formatRadcastTrimSeconds(2.345)).toBe("2.3s");
+    expect(formatRadcastTrimSeconds(2.345)).toBe("2.345s");
+    expect(formatRadcastTrimSeconds(2.3456)).toBe("2.346s");
+  });
+
+  test("keeps the source player playhead inside the selected range", () => {
+    const range = { clip_start_seconds: 10, clip_end_seconds: 20 };
+    expect(clampRadcastPlaybackTime(4, range)).toBe(10);
+    expect(clampRadcastPlaybackTime(15, range)).toBe(15);
+    expect(clampRadcastPlaybackTime(24, range)).toBe(20);
+  });
+
+  test("restarts playback at the trim start after reaching the trim end", () => {
+    const range = { clip_start_seconds: 10, clip_end_seconds: 20 };
+    expect(shouldRestartRadcastPlayback(9, range)).toBe(true);
+    expect(shouldRestartRadcastPlayback(10, range)).toBe(false);
+    expect(shouldRestartRadcastPlayback(19.9, range)).toBe(false);
+    expect(shouldRestartRadcastPlayback(20, range)).toBe(true);
   });
 });

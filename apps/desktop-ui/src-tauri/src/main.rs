@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
@@ -87,6 +89,18 @@ async fn delete_radcast_audio(
     radsuite_desktop::delete_radcast_audio(&state, request)
         .await
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+fn save_local_file(source_path: String, destination_path: String) -> Result<(), String> {
+    radsuite_desktop::copy_local_file(Path::new(&source_path), Path::new(&destination_path))
+        .map_err(|error| format!("could not save file: {error}"))
+}
+
+#[tauri::command]
+fn write_local_text_file(destination_path: String, contents: String) -> Result<(), String> {
+    radsuite_desktop::write_local_text_file(Path::new(&destination_path), &contents)
+        .map_err(|error| format!("could not save text file: {error}"))
 }
 
 #[tauri::command]
@@ -602,6 +616,8 @@ fn main() {
             export_radcite_review_report,
             list_radcast_audio,
             delete_radcast_audio,
+            save_local_file,
+            write_local_text_file,
             save_radcast_settings,
             import_radcast_audio,
             import_radcast_audio_from_link,

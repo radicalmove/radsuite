@@ -90,5 +90,27 @@ export function isRadcastFullTrimRange(
 export function formatRadcastTrimSeconds(value: unknown): string {
   const numeric = typeof value === "number" ? value : Number(value);
   const safe = Number.isFinite(numeric) ? Math.max(0, numeric) : 0;
-  return `${safe.toFixed(1)}s`;
+  return `${safe.toFixed(3)}s`;
+}
+
+export function clampRadcastPlaybackTime(
+  value: unknown,
+  range: RadcastTrimRange,
+): number {
+  const numeric = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(numeric)) return range.clip_start_seconds;
+  return Math.max(
+    range.clip_start_seconds,
+    Math.min(range.clip_end_seconds, numeric),
+  );
+}
+
+export function shouldRestartRadcastPlayback(
+  value: unknown,
+  range: RadcastTrimRange,
+): boolean {
+  const numeric = typeof value === "number" ? value : Number(value);
+  return !Number.isFinite(numeric)
+    || numeric < range.clip_start_seconds
+    || numeric >= range.clip_end_seconds;
 }

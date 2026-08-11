@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { open } from "@tauri-apps/plugin-dialog";
+  import { open, save } from "@tauri-apps/plugin-dialog";
   import { invoke } from "@tauri-apps/api/core";
   import {
     filterParagraphs,
@@ -18,6 +18,11 @@
     exportRadciteReviewReport,
     type UpdateRadciteDocumentInput,
   } from "../lib/documentCommands";
+  import {
+    describeReadingImport,
+    shouldAutoImportReadings,
+  } from "../lib/documentReadingsWorkflow";
+  import { saveLocalTextArtifact } from "../lib/fileDownload";
   import { canUseSavedReviewForReadings } from "../lib/savedReviewCommands";
   import type {
     AnalyseDocxReviewResponse,
@@ -46,7 +51,10 @@
     onDocumentSourceChange: (source: DocumentSource) => void;
     onDocxPathChange: (path: string) => void;
     onOpenReadings: () => void | Promise<void>;
-    onImportDetectedReadings: () => Promise<ImportDocumentReadingsResponse>;
+    onImportDetectedReadings: (
+      sourcePath?: string,
+      sourceFileType?: DocumentSource,
+    ) => Promise<ImportDocumentReadingsResponse>;
     onLoadSavedReview: (documentId: string) => void | Promise<void>;
     onUseForReadings: (review: SavedRadciteReviewSummary) => void | Promise<void>;
     onUpdateDocument: (
@@ -88,6 +96,7 @@
   let readingsImportLoading = $state(false);
   let readingsImportError = $state<string | null>(null);
   let readingsImportStatus = $state<string | null>(null);
+  let readingsAutoImported = $state(false);
   let reviewReportLoading = $state(false);
   let reviewReportError = $state<string | null>(null);
   let reviewReportStatus = $state<string | null>(null);
@@ -208,6 +217,7 @@
     analysisError = null;
     readingsImportError = null;
     readingsImportStatus = null;
+    readingsAutoImported = false;
     reviewReportError = null;
     reviewReportStatus = null;
     onAnalysisResult(null);
@@ -224,6 +234,10 @@
       });
       onAnalysisResult(result);
       onFilterChange("all");
+      const sourcePath = result.source_path?.trim() || path;
+      if (shouldAutoImportReadings(result, sourcePath)) {
+        await importDetectedReadings(sourcePath, documentSource, true);
+      }
     } catch (reason: unknown) {
       analysisError = toErrorMessage(reason);
     } finally {
@@ -241,16 +255,24 @@
     reviewReportStatus = null;
     try {
       const report = await exportRadciteReviewReport(analysisResult.document_id);
-      const blob = new Blob([report.json], { type: report.content_type });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = report.filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      reviewReportStatus = "Review report downloaded.";
+      const saved = await saveLocalTextArtifact(
+        {
+          contents: report.json,
+          defaultPath: report.filename,
+          filterName: "RADcite review report",
+          extensions: ["json"],
+        },
+        async (options) => save(options),
+        async (destinationPath, contents) => {
+          await invoke<void>("write_local_text_file", {
+            destination_path: destinationPath,
+            contents,
+          });
+        },
+      );
+      if (saved) {
+        reviewReportStatus = "Review report saved.";
+      }
     } catch (reason: unknown) {
       reviewReportError = `Could not download the review report: ${toErrorMessage(reason)}`;
     } finally {
@@ -258,8 +280,18 @@
     }
   }
 
-  async function importDetectedReadings() {
-    if (!canOpenReadings || readingsImportLoading) {
+  async function importDetectedReadings(
+    sourcePathOverride?: string,
+    sourceFileTypeOverride?: DocumentSource,
+    automatic = false,
+  ) {
+    if (readingsImportLoading) {
+      return;
+    }
+
+    const sourcePath = sourcePathOverride?.trim() || readingsPath.trim();
+    if (!sourcePath) {
+      readingsImportError = "Analyse a document before importing detected readings.";
       return;
     }
 
@@ -267,32 +299,9 @@
     readingsImportError = null;
     readingsImportStatus = null;
     try {
-      const result = await onImportDetectedReadings();
-      if (result.candidate_count === 0) {
-        readingsImportStatus =
-          result.failed_file_count > 0
-            ? `${result.failed_file_count} source ${result.failed_file_count === 1 ? "file could not" : "files could not"} be read.`
-            : "No readings were detected in this document.";
-        return;
-      }
-
-      const parts = [`Processed ${result.saved_count} of ${result.candidate_count} detected readings.`];
-      if (result.created_module_count > 0) {
-        parts.push(
-          `Created ${result.created_module_count} ${result.created_module_count === 1 ? "module" : "modules"}.`,
-        );
-      }
-      if (result.unassigned_count > 0) {
-        parts.push(
-          `${result.unassigned_count} ${result.unassigned_count === 1 ? "reading needs" : "readings need"} a module assignment.`,
-        );
-      }
-      if (result.failed_file_count > 0) {
-        parts.push(
-          `${result.failed_file_count} source ${result.failed_file_count === 1 ? "file was" : "files were"} not readable.`,
-        );
-      }
-      readingsImportStatus = parts.join(" ");
+      const result = await onImportDetectedReadings(sourcePath, sourceFileTypeOverride);
+      readingsImportStatus = describeReadingImport(result);
+      readingsAutoImported ||= automatic;
     } catch (reason: unknown) {
       readingsImportError = toErrorMessage(reason);
     } finally {
@@ -321,7 +330,11 @@
             disabled={readingsImportLoading}
             onclick={() => void importDetectedReadings()}
           >
-            {readingsImportLoading ? "Importing" : "Import detected readings"}
+            {readingsImportLoading
+              ? "Importing"
+              : readingsAutoImported
+                ? "Refresh detected readings"
+                : "Import detected readings"}
           </button>
           <button
             class="secondary-button compact-button"

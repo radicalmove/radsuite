@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
-  import { open } from "@tauri-apps/plugin-dialog";
+  import { open, save } from "@tauri-apps/plugin-dialog";
   import {
     browserStorage,
     readRadtTsProjectPreferences,
@@ -21,6 +21,7 @@
     type RadtTsClipDraft,
     type RadtTsTranscriptionDraft,
   } from "../lib/radtTsToolsWorkflow";
+  import { filenameFromPath, saveLocalArtifact } from "../lib/fileDownload";
 
   type Props = {
     selectedProjectId: string | null;
@@ -58,6 +59,7 @@
   let job = $state<RadtTsMediaJobStatus | null>(null);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
+  let downloadingArtifact = $state<string | null>(null);
   let preferenceStorage = $state<StorageLike | null>(null);
   let settingsLoaded = $state(false);
   let settingsSaveTimer: number | null = null;
@@ -103,6 +105,35 @@
 
   function outputLabel(output: RadtTsMediaOutput): string {
     return output.kind === "transcription" ? "Transcript" : "Clip";
+  }
+
+  async function downloadArtifact(
+    sourcePath: string,
+    defaultPath: string,
+    filterName: string,
+    extensions: string[],
+    label: string,
+  ) {
+    if (downloadingArtifact !== null) return;
+
+    downloadingArtifact = sourcePath;
+    error = null;
+    try {
+      const result = await saveLocalArtifact(
+        { sourcePath, defaultPath, filterName, extensions },
+        (options) => save(options),
+        (source, destination) =>
+          invoke<void>("save_local_file", {
+            sourcePath: source,
+            destinationPath: destination,
+          }),
+      );
+      if (result) status = `${label} saved.`;
+    } catch (reason: unknown) {
+      error = `Could not save ${label.toLowerCase()}: ${toErrorMessage(reason)}`;
+    } finally {
+      downloadingArtifact = null;
+    }
   }
 
   async function refresh() {
@@ -311,10 +342,27 @@
     {#if outputs.length}
       <div class="radtts-output-list">
         {#each outputs as output (output.id)}
+          {@const primaryFilename = filenameFromPath(output.primary_path, `${output.name}.${output.output_format ?? (output.kind === "transcription" ? "txt" : "mp3")}`)}
           <article class="radtts-output-row radtts-tools-output-row">
             <div class="radtts-output-copy"><strong>{output.name}</strong><span>{outputLabel(output)}{output.output_format ? ` · ${output.output_format.toUpperCase()}` : ""}</span>{#each output.warnings as warning}<small>{warning}</small>{/each}</div>
             {#if output.kind === "clip"}<audio controls src={convertFileSrc(output.primary_path)}>Your browser does not support audio playback.</audio>{/if}
-            <div class="radtts-output-actions"><a class="secondary-button compact-button" href={convertFileSrc(output.primary_path)} download>Download {output.kind === "transcription" ? "transcript" : "clip"}</a>{#each output.artifacts as artifact (artifact.path)}<a class="secondary-button compact-button" href={convertFileSrc(artifact.path)} download>{artifact.label}</a>{/each}</div>
+            <div class="radtts-output-actions">
+              <button
+                class="secondary-button compact-button"
+                type="button"
+                disabled={downloadingArtifact !== null}
+                onclick={() => void downloadArtifact(output.primary_path, primaryFilename, output.kind === "transcription" ? "Transcript" : "Audio", [output.output_format ?? (output.kind === "transcription" ? "txt" : "mp3")], output.kind === "transcription" ? "Transcript" : "Clip")}
+              >Download {output.kind === "transcription" ? "transcript" : "clip"}</button>
+              {#each output.artifacts as artifact (artifact.path)}
+                {@const artifactFilename = filenameFromPath(artifact.path, `${output.name}.json`)}
+                <button
+                  class="secondary-button compact-button"
+                  type="button"
+                  disabled={downloadingArtifact !== null}
+                  onclick={() => void downloadArtifact(artifact.path, artifactFilename, "RADTTS file", ["json", "srt", "txt"], artifact.label)}
+                >{artifact.label}</button>
+              {/each}
+            </div>
           </article>
         {/each}
       </div>

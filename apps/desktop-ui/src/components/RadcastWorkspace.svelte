@@ -1,7 +1,7 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
-  import { open } from "@tauri-apps/plugin-dialog";
+  import { open, save } from "@tauri-apps/plugin-dialog";
   import type {
     AudioOutputFormat,
     CaptionFormat,
@@ -21,13 +21,16 @@
   import {
     canUseRadcastSpeechCleanup,
     clampRadcastSilenceSeconds,
+    clampRadcastPlaybackTime,
     effectiveRadcastCleanupEnabled,
     formatRadcastPauseRemovalCount,
     formatRadcastSilenceSeconds,
     formatRadcastTrimSeconds,
     isRadcastFullTrimRange,
     normalizeRadcastTrimRange,
+    shouldRestartRadcastPlayback,
   } from "../lib/radcastSettings";
+  import { saveLocalArtifact } from "../lib/fileDownload";
 
   type Props = {
     selectedProjectId: string | null;
@@ -58,12 +61,18 @@
   let fillerRemovalMode = $state<FillerRemovalMode>("aggressive");
   let trimRangesBySourceId = $state<Record<string, RadcastTrimRange>>({});
   let sourceAudioElement = $state<HTMLAudioElement | null>(null);
+  let sourcePlaybackSeconds = $state(0);
+  let playbackGuardFrame = $state<number | null>(null);
   let loading = $state(false);
   let deletingSource = $state(false);
+  let downloadingArtifact = $state<string | null>(null);
   let processing = $state(false);
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
   let radcastJob = $state<RadcastJobStatus | null>(null);
+  let radcastProgressPhase = $state<RadcastProcessingPhase | null>(null);
+  let radcastProgressPhaseStartedPercent = $state(0);
+  let radcastProgressPhaseStartedElapsed = $state(0);
   let cancelling = $state(false);
   let settingsLoaded = $state(false);
   let settingsSaveTimer: number | null = null;
@@ -108,6 +117,27 @@
         available: false,
         detail: "Checking local enhancement support.",
       },
+      {
+        id: "studio_v18_natural",
+        label: "RADcast Natural",
+        description: "RADcast's tuned cleanup path with gentler sibilance processing to preserve consonants.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
+      {
+        id: "studio_v18_natural_plus",
+        label: "RADcast Natural+",
+        description: "RADcast's tuned cleanup path with minimal sibilance processing for maximum consonant preservation.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
+      {
+        id: "studio_v18_natural_double_plus",
+        label: "RADcast Natural++",
+        description: "Speech-preserving room cleanup with a warm studio finish; avoids neural voice reconstruction.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
     ],
   });
 
@@ -131,6 +161,12 @@
     selectedSource && activeTrimRange
       ? (activeTrimRange.clip_end_seconds / selectedSource.duration_seconds) * 100
       : 100,
+  );
+  let trimPlayheadPercent = $derived(
+    selectedSource && selectedSource.duration_seconds > 0
+      ? (Math.max(0, Math.min(selectedSource.duration_seconds, sourcePlaybackSeconds)) /
+          selectedSource.duration_seconds) * 100
+      : 0,
   );
   let trimOutputSeconds = $derived(
     activeTrimRange
@@ -177,9 +213,50 @@
     return `${minutes}:${remainder.toString().padStart(2, "0")}`;
   }
 
+  function formatPreciseDuration(seconds: number): string {
+    const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    const minutes = Math.floor(safe / 60);
+    const remainder = (safe - minutes * 60).toFixed(3).padStart(6, "0");
+    return `${minutes}:${remainder}`;
+  }
+
   function formatBytes(bytes: number): string {
     if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  async function downloadArtifact(
+    sourcePath: string,
+    filename: string,
+    filterName: string,
+    extension: string,
+    label: string,
+  ) {
+    if (downloadingArtifact !== null) return;
+
+    downloadingArtifact = sourcePath;
+    error = null;
+    try {
+      const result = await saveLocalArtifact(
+        {
+          sourcePath,
+          defaultPath: filename,
+          filterName,
+          extensions: [extension],
+        },
+        (options) => save(options),
+        (source, destination) =>
+          invoke<void>("save_local_file", {
+            sourcePath: source,
+            destinationPath: destination,
+          }),
+      );
+      if (result) status = `${label} saved.`;
+    } catch (reason: unknown) {
+      error = `Could not save ${label.toLowerCase()}: ${toErrorMessage(reason)}`;
+    } finally {
+      downloadingArtifact = null;
+    }
   }
 
   function enhancementQualityLabel(quality: EnhancementQuality | undefined): string {
@@ -212,6 +289,55 @@
     return minutes ? `${minutes}m ${remainder}s` : `${remainder}s`;
   }
 
+  function captionEstimateSeconds(): number {
+    const duration = Math.max(1, trimOutputSeconds || selectedSource?.duration_seconds || 60);
+    const rate = captionQualityMode === "fast" ? 0.62 : captionQualityMode === "reviewed" ? 1.9 : 1.22;
+    return Math.max(18, Math.round(12 + (duration * rate)));
+  }
+
+  function progressTargetForPhase(phase: RadcastProcessingPhase): number {
+    if (phase === "preparing") return 20;
+    if (phase === "removing_filler_words") return 12;
+    if (phase === "preparing_enhancement") return 35;
+    if (phase === "enhancing_audio") return 78;
+    if (phase === "rendering_audio") return captionFormat ? 90 : 98;
+    if (phase === "generating_captions") return 98;
+    return 100;
+  }
+
+  function estimateRadcastRemainingSeconds(job: RadcastJobStatus): number | null {
+    if (job.state !== "running" || job.percent >= 100) return null;
+    const phaseProgress = job.percent - radcastProgressPhaseStartedPercent;
+    const phaseElapsed = job.elapsed_seconds - radcastProgressPhaseStartedElapsed;
+    if (phaseProgress <= 0 || phaseElapsed < 1) return null;
+
+    const phaseTarget = progressTargetForPhase(job.phase);
+    const phaseRemaining = Math.max(0, (phaseElapsed / phaseProgress) * (phaseTarget - job.percent));
+    let laterWork = 0;
+    if (job.phase === "enhancing_audio") {
+      laterWork = 5 + (captionFormat ? captionEstimateSeconds() : 0);
+    } else if (job.phase === "rendering_audio" && captionFormat) {
+      laterWork = captionEstimateSeconds();
+    }
+    return Math.max(1, Math.round(phaseRemaining + laterWork));
+  }
+
+  function resetRadcastProgress() {
+    radcastJob = null;
+    radcastProgressPhase = null;
+    radcastProgressPhaseStartedPercent = 0;
+    radcastProgressPhaseStartedElapsed = 0;
+  }
+
+  function setRadcastJob(nextJob: RadcastJobStatus) {
+    if (radcastProgressPhase !== nextJob.phase) {
+      radcastProgressPhase = nextJob.phase;
+      radcastProgressPhaseStartedPercent = nextJob.percent;
+      radcastProgressPhaseStartedElapsed = nextJob.elapsed_seconds;
+    }
+    radcastJob = nextJob;
+  }
+
   function setSelectedSource(sourceId: string | null) {
     rememberSelectedTrimRange();
     selectedSourceId = sourceId;
@@ -219,9 +345,10 @@
     const savedRange = source ? trimRangesBySourceId[source.id] : null;
     clipStart = savedRange?.clip_start_seconds ?? 0;
     clipEnd = savedRange?.clip_end_seconds ?? source?.duration_seconds ?? 0;
+    sourcePlaybackSeconds = clipStart;
     error = null;
     status = null;
-    radcastJob = null;
+    resetRadcastProgress();
   }
 
   function rememberSelectedTrimRange() {
@@ -239,7 +366,7 @@
     trimRangesBySourceId = nextRanges;
   }
 
-  function setTrimRange(startValue: unknown, endValue: unknown) {
+  function setTrimRange(startValue: unknown, endValue: unknown, previewValue?: unknown) {
     if (!selectedSource) return;
     const nextRange = normalizeRadcastTrimRange(
       startValue,
@@ -249,11 +376,22 @@
     if (!nextRange) return;
     clipStart = nextRange.clip_start_seconds;
     clipEnd = nextRange.clip_end_seconds;
+    if (sourceAudioElement) {
+      const currentTime = sourceAudioElement.currentTime;
+      const nextTime = previewValue === undefined
+        ? clampRadcastPlaybackTime(currentTime, nextRange)
+        : clampRadcastPlaybackTime(previewValue, nextRange);
+      if (currentTime > nextRange.clip_end_seconds) {
+        sourceAudioElement.pause();
+      }
+      sourceAudioElement.currentTime = nextTime;
+      sourcePlaybackSeconds = nextTime;
+    }
   }
 
   function resetTrimRange() {
     if (!selectedSource) return;
-    setTrimRange(0, selectedSource.duration_seconds);
+    setTrimRange(0, selectedSource.duration_seconds, 0);
   }
 
   function previewTrimRail(event: MouseEvent) {
@@ -262,7 +400,79 @@
     const bounds = rail.getBoundingClientRect();
     if (bounds.width <= 0) return;
     const ratio = Math.min(1, Math.max(0, (event.clientX - bounds.left) / bounds.width));
-    sourceAudioElement.currentTime = selectedSource.duration_seconds * ratio;
+    const requestedTime = selectedSource.duration_seconds * ratio;
+    sourceAudioElement.currentTime = activeTrimRange
+      ? clampRadcastPlaybackTime(requestedTime, activeTrimRange)
+      : requestedTime;
+    sourcePlaybackSeconds = sourceAudioElement.currentTime;
+  }
+
+  function stopPlaybackGuard() {
+    if (playbackGuardFrame !== null) {
+      window.cancelAnimationFrame(playbackGuardFrame);
+      playbackGuardFrame = null;
+    }
+  }
+
+  function runPlaybackGuard() {
+    playbackGuardFrame = null;
+    const audio = sourceAudioElement;
+    const range = activeTrimRange;
+    if (!audio || !range || audio.paused) return;
+
+    if (audio.currentTime >= range.clip_end_seconds) {
+      audio.pause();
+      audio.currentTime = range.clip_end_seconds;
+      sourcePlaybackSeconds = range.clip_end_seconds;
+      return;
+    }
+    if (audio.currentTime < range.clip_start_seconds) {
+      audio.currentTime = range.clip_start_seconds;
+    }
+    sourcePlaybackSeconds = audio.currentTime;
+    playbackGuardFrame = window.requestAnimationFrame(runPlaybackGuard);
+  }
+
+  function startPlaybackGuard() {
+    if (playbackGuardFrame === null) {
+      playbackGuardFrame = window.requestAnimationFrame(runPlaybackGuard);
+    }
+  }
+
+  function handleSourceLoadedMetadata(event: Event) {
+    if (!activeTrimRange) return;
+    const audio = event.currentTarget as HTMLAudioElement;
+    audio.currentTime = clampRadcastPlaybackTime(audio.currentTime, activeTrimRange);
+    sourcePlaybackSeconds = audio.currentTime;
+  }
+
+  function handleSourcePlay(event: Event) {
+    if (!activeTrimRange) return;
+    const audio = event.currentTarget as HTMLAudioElement;
+    if (shouldRestartRadcastPlayback(audio.currentTime, activeTrimRange)) {
+      audio.currentTime = activeTrimRange.clip_start_seconds;
+    }
+    sourcePlaybackSeconds = audio.currentTime;
+    startPlaybackGuard();
+  }
+
+  function handleSourceTimeUpdate(event: Event) {
+    if (!activeTrimRange) return;
+    const audio = event.currentTarget as HTMLAudioElement;
+    sourcePlaybackSeconds = audio.currentTime;
+    if (audio.currentTime >= activeTrimRange.clip_end_seconds) {
+      audio.pause();
+      audio.currentTime = activeTrimRange.clip_end_seconds;
+      sourcePlaybackSeconds = activeTrimRange.clip_end_seconds;
+    }
+  }
+
+  function handleSourceSeeking(event: Event) {
+    if (!activeTrimRange) return;
+    const audio = event.currentTarget as HTMLAudioElement;
+    const nextTime = clampRadcastPlaybackTime(audio.currentTime, activeTrimRange);
+    if (nextTime !== audio.currentTime) audio.currentTime = nextTime;
+    sourcePlaybackSeconds = nextTime;
   }
 
   function currentSettings(): RadcastProjectSettings {
@@ -445,18 +655,18 @@
           filler_removal_mode: fillerRemovalMode,
         },
       });
-      radcastJob = job;
+      setRadcastJob(job);
       while (job.state === "running") {
         await new Promise((resolve) => window.setTimeout(resolve, 400));
         job = await invoke<RadcastJobStatus>("get_radcast_audio_job", { jobId: job.id });
-        radcastJob = job;
+        setRadcastJob(job);
       }
       if (job.state === "failed") {
         throw new Error(job.error ?? "The local audio job failed.");
       }
       if (job.state === "cancelled") {
         status = "Audio processing cancelled";
-        radcastJob = null;
+        resetRadcastProgress();
         return;
       }
       const output = job.output;
@@ -475,11 +685,11 @@
         ? `; ${formatRadcastPauseRemovalCount(output.removed_pause_count)}`
         : "";
       status = `Audio processing complete${captionDetail}${captionReviewDetail}${fillerDetail}${pauseDetail}`;
-      radcastJob = null;
+      resetRadcastProgress();
     } catch (reason: unknown) {
       status = null;
       error = `Could not process audio: ${toErrorMessage(reason)}`;
-      radcastJob = null;
+      resetRadcastProgress();
     } finally {
       processing = false;
     }
@@ -513,7 +723,7 @@
     cancelling = true;
     error = null;
     try {
-      radcastJob = await invoke<RadcastJobStatus>("cancel_radcast_audio", { jobId: radcastJob.id });
+      setRadcastJob(await invoke<RadcastJobStatus>("cancel_radcast_audio", { jobId: radcastJob.id }));
       status = "Cancelling local audio processing...";
     } catch (reason: unknown) {
       error = `Could not cancel audio processing: ${toErrorMessage(reason)}`;
@@ -540,20 +750,6 @@
   {#if status}
     <div class="notice radcast-status" aria-live="polite">{status}</div>
   {/if}
-  {#if processing && radcastJob}
-    <div class="radcast-progress" aria-live="polite">
-      <div class="radcast-progress-heading">
-        <strong>{processingPhaseLabel(radcastJob.phase)}</strong>
-        <span>{radcastJob.percent}%</span>
-      </div>
-      <progress max="100" value={radcastJob.percent}></progress>
-      <small>Elapsed {formatElapsed(radcastJob.elapsed_seconds)}. Everything is being processed locally.</small>
-      <button class="secondary-button compact-button" type="button" disabled={cancelling} onclick={() => void cancelProcessing()}>
-        {cancelling ? "Cancelling..." : "Cancel processing"}
-      </button>
-    </div>
-  {/if}
-
   <div class="radcast-grid">
     <section class="radcast-panel" aria-labelledby="radcast-source-heading">
       <div class="radcast-panel-heading">
@@ -620,9 +816,24 @@
           <strong>{selectedSource.original_filename}</strong>
           <span>{formatDuration(selectedSource.duration_seconds)} · {formatBytes(selectedSource.byte_size)}</span>
         </div>
-        <audio bind:this={sourceAudioElement} class="radcast-audio-player" controls src={sourceAudioUrl}>
+        <audio
+          bind:this={sourceAudioElement}
+          class="radcast-audio-player"
+          controls
+          src={sourceAudioUrl}
+          onloadedmetadata={handleSourceLoadedMetadata}
+          onplay={handleSourcePlay}
+          onpause={stopPlaybackGuard}
+          onseeking={handleSourceSeeking}
+          ontimeupdate={handleSourceTimeUpdate}
+        >
           Your browser does not support audio playback.
         </audio>
+        <small class="field-note radcast-preview-note">
+          {hasTrimOverride
+            ? `Preview plays ${formatPreciseDuration(clipStart)} to ${formatPreciseDuration(clipEnd)}.`
+            : "Preview plays the full recording."}
+        </small>
 
         <div class="radcast-trim" aria-labelledby="radcast-trim-heading">
           <div class="radcast-subheading">
@@ -652,6 +863,11 @@
               class="radcast-trim-selection"
               style={`left: ${trimStartPercent}%; width: ${Math.max(0, trimEndPercent - trimStartPercent)}%;`}
             ></div>
+            <div
+              class="radcast-trim-playhead"
+              style={`left: ${trimPlayheadPercent}%;`}
+              aria-hidden="true"
+            ></div>
             <button
               class="radcast-trim-rail-seek"
               type="button"
@@ -663,22 +879,28 @@
               type="range"
               min="0"
               max={selectedSource.duration_seconds}
-              step="0.1"
+              step="0.001"
               value={clipStart}
               aria-label="Trim start"
               aria-valuetext={formatRadcastTrimSeconds(clipStart)}
-              oninput={(event) => setTrimRange((event.currentTarget as HTMLInputElement).value, clipEnd)}
+              oninput={(event) => {
+                const value = (event.currentTarget as HTMLInputElement).value;
+                setTrimRange(value, clipEnd, value);
+              }}
             />
             <input
               class="radcast-trim-range radcast-trim-range-end"
               type="range"
               min="0"
               max={selectedSource.duration_seconds}
-              step="0.1"
+              step="0.001"
               value={clipEnd}
               aria-label="Trim end"
               aria-valuetext={formatRadcastTrimSeconds(clipEnd)}
-              oninput={(event) => setTrimRange(clipStart, (event.currentTarget as HTMLInputElement).value)}
+              oninput={(event) => {
+                const value = (event.currentTarget as HTMLInputElement).value;
+                setTrimRange(clipStart, value, value);
+              }}
             />
           </div>
           <div class="radcast-trim-metrics" aria-live="polite">
@@ -693,9 +915,12 @@
                 type="number"
                 min="0"
                 max={selectedSource.duration_seconds}
-                step="0.1"
+                step="0.001"
                 value={clipStart}
-                oninput={(event) => setTrimRange((event.currentTarget as HTMLInputElement).value, clipEnd)}
+                oninput={(event) => {
+                  const value = (event.currentTarget as HTMLInputElement).value;
+                  setTrimRange(value, clipEnd, value);
+                }}
               />
             </label>
             <label>
@@ -704,9 +929,12 @@
                 type="number"
                 min="0"
                 max={selectedSource.duration_seconds}
-                step="0.1"
+                step="0.001"
                 value={clipEnd}
-                oninput={(event) => setTrimRange(clipStart, (event.currentTarget as HTMLInputElement).value)}
+                oninput={(event) => {
+                  const value = (event.currentTarget as HTMLInputElement).value;
+                  setTrimRange(clipStart, value, value);
+                }}
               />
             </label>
           </div>
@@ -721,145 +949,195 @@
           <h3 id="radcast-settings-heading">Create a new version</h3>
         </div>
       </div>
-      <label class="stack settings-compact-field">
-        <span>Enhancement profile</span>
-        <select bind:value={enhancementModel}>
-          {#each captionCapability.enhancement_models as model}
-            <option value={model.id} disabled={!model.available}>{model.label}{model.available ? "" : " (not installed)"}</option>
-          {/each}
-        </select>
-        <small class="field-note">{selectedEnhancementCapability?.description ?? "Checking local enhancement support."}</small>
-        <small class="field-note">{selectedEnhancementCapability?.detail ?? "Checking local enhancement support."}</small>
-      </label>
-      <label class="stack settings-compact-field">
-        <span>Enhancement quality</span>
-        <select bind:value={enhancementQuality} disabled={enhancementModel === "none"}>
-          <option value="fast">Fast · best for short clips</option>
-          <option value="standard">Standard · balanced</option>
-          <option value="high">High · maximum cleanup</option>
-        </select>
-        <small class="field-note">High uses the original RADcast Optimized quality; Fast and Standard reduce processing time.</small>
-      </label>
-      <label class="stack settings-compact-field">
-        <span>Output format</span>
-        <select bind:value={outputFormat}>
-          <option value="mp3">MP3</option>
-          <option value="wav">WAV</option>
-        </select>
-      </label>
-      <label class="stack settings-compact-field">
-        <span>Closed captions</span>
-        <select
-          value={captionFormat ?? ""}
-          disabled={!captionCapability.caption_available}
-          onchange={(event) => {
-            const value = (event.currentTarget as HTMLSelectElement).value;
-            captionFormat = value === "" ? null : (value as CaptionFormat);
-          }}
-        >
-          <option value="">Do not generate</option>
-          <option value="srt">SRT</option>
-          <option value="vtt">VTT</option>
-        </select>
-        <small class="field-note">{captionCapability.caption_detail}</small>
-      </label>
-      {#if captionFormat}
+      <div class="radcast-core-settings">
         <label class="stack settings-compact-field">
-          <span>Caption language</span>
-          <select bind:value={captionLanguage}>
-            <option value="en">English</option>
-            <option value="mi">Maori</option>
-            <option value="auto">Auto-detect</option>
+          <span>Enhancement profile</span>
+          <select bind:value={enhancementModel}>
+            {#each captionCapability.enhancement_models as model}
+              <option value={model.id} disabled={!model.available}>{model.label}{model.available ? "" : " (not installed)"}</option>
+            {/each}
+          </select>
+          <small class="field-note">{selectedEnhancementCapability?.description ?? "Checking local enhancement support."}</small>
+        </label>
+        <label class="stack settings-compact-field">
+          <span>Enhancement quality</span>
+          <select bind:value={enhancementQuality} disabled={enhancementModel === "none"}>
+            <option value="fast">Fast · best for short clips</option>
+            <option value="standard">Standard · balanced</option>
+            <option value="high">High · maximum cleanup</option>
           </select>
         </label>
         <label class="stack settings-compact-field">
-          <span>Caption quality</span>
-          <select bind:value={captionQualityMode}>
-            <option value="fast">Fast</option>
-            <option value="accurate">Accurate</option>
-            <option value="reviewed">Reviewed</option>
-          </select>
-          <small class="field-note">Reviewed uses the strongest local model and search settings available.</small>
-        </label>
-        <label class="stack settings-compact-field">
-          <span>Glossary and names</span>
-          <textarea bind:value={captionGlossary} rows="3" placeholder="Māori terms, names, or spellings"></textarea>
-          <small class="field-note">Optional terms passed to the transcription model as phrase guidance.</small>
-        </label>
-      {/if}
-      {#if !enhancementIncludesCleanup}
-        <label class="radcast-check">
-          <input type="checkbox" bind:checked={cleanupEnabled} />
-          <span>
-            <strong>Clean up audio</strong>
-            <small>Noise reduction and speech-focused loudness balancing.</small>
-          </span>
-        </label>
-      {:else}
-        <div class="radcast-check">
-          <span>
-            <strong>Cleanup included</strong>
-            <small>{enhancementModelLabel(enhancementModel)} applies its own tuned noise reduction, speech enhancement, and loudness balancing.</small>
-          </span>
-        </div>
-      {/if}
-      {#if !captionCapability.caption_available}
-        <div class="radcast-speech-note">
-          Pause reduction and filler removal need local speech transcription support. Closed captions, pause cleanup, and filler removal are unavailable until it is installed.
-        </div>
-      {/if}
-      <label class="radcast-check">
-        <input type="checkbox" bind:checked={shortenPauses} disabled={!captionCapability.caption_available} />
-        <span>
-          <strong>Shorten long pauses</strong>
-          <small>Keep a controlled amount of silence between spoken sections.</small>
-        </span>
-      </label>
-      {#if shortenPauses}
-        <div class="settings-compact-field radcast-range-row">
-          <div class="radcast-range-label">
-            <span>Keep each pause up to</span>
-            <strong>{formatRadcastSilenceSeconds(maxSilenceSeconds)}</strong>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="4"
-            step="0.25"
-            value={maxSilenceSeconds}
-            disabled={!captionCapability.caption_available}
-            aria-label="Keep each pause up to"
-            oninput={(event) => {
-              maxSilenceSeconds = clampRadcastSilenceSeconds(
-                (event.currentTarget as HTMLInputElement).value,
-              );
-            }}
-          />
-        </div>
-      {/if}
-      <label class="radcast-check">
-        <input type="checkbox" bind:checked={removeFillerWords} disabled={!captionCapability.caption_available} />
-        <span>
-          <strong>Remove filler words</strong>
-          <small>Remove recognised ums, uhs, and similar speech fillers.</small>
-        </span>
-      </label>
-      {#if removeFillerWords}
-        <label class="stack settings-compact-field">
-          <span>Filler removal</span>
-          <select bind:value={fillerRemovalMode}>
-            <option value="normal">Normal</option>
-            <option value="aggressive">Aggressive</option>
+          <span>Output format</span>
+          <select bind:value={outputFormat}>
+            <option value="mp3">MP3</option>
+            <option value="wav">WAV</option>
           </select>
         </label>
-      {/if}
-      <div class="radcast-processing-note">
-        <span class={selectedEnhancementCapability?.available ? "status-dot is-ready" : "status-dot"}></span>
-        <span>{selectedEnhancementCapability?.label ?? "Local enhancement"} runs on this computer without a server.</span>
       </div>
-      <button class="primary-button radcast-process-button" type="button" disabled={processDisabled} onclick={() => void processAudio()}>
-        {processing ? "Processing" : "Create audio version"}
-      </button>
+
+      <details class="radcast-settings-group" open={captionFormat !== null}>
+        <summary>
+          <span>Captions</span>
+          <span class="radcast-settings-state">{captionFormat ? captionFormat.toUpperCase() : "Off"}</span>
+        </summary>
+        <div class="radcast-settings-group-body">
+          <label class="stack settings-compact-field">
+            <span>Closed captions</span>
+            <select
+              value={captionFormat ?? ""}
+              disabled={!captionCapability.caption_available}
+              onchange={(event) => {
+                const value = (event.currentTarget as HTMLSelectElement).value;
+                captionFormat = value === "" ? null : (value as CaptionFormat);
+              }}
+            >
+              <option value="">Do not generate</option>
+              <option value="srt">SRT</option>
+              <option value="vtt">VTT</option>
+            </select>
+            <small class="field-note">{captionCapability.caption_detail}</small>
+          </label>
+          {#if captionFormat}
+            <label class="stack settings-compact-field">
+              <span>Caption language</span>
+              <select bind:value={captionLanguage}>
+                <option value="en">English</option>
+                <option value="mi">Maori</option>
+                <option value="auto">Auto-detect</option>
+              </select>
+            </label>
+            <label class="stack settings-compact-field">
+              <span>Caption quality</span>
+              <select bind:value={captionQualityMode}>
+                <option value="fast">Fast</option>
+                <option value="accurate">Accurate</option>
+                <option value="reviewed">Reviewed</option>
+              </select>
+              <small class="field-note">Reviewed uses the strongest local model and search settings available.</small>
+            </label>
+            <label class="stack settings-compact-field">
+              <span>Glossary and names</span>
+              <textarea bind:value={captionGlossary} rows="3" placeholder="Māori terms, names, or spellings"></textarea>
+              <small class="field-note">Optional terms passed to the transcription model as phrase guidance.</small>
+            </label>
+          {/if}
+        </div>
+      </details>
+
+      <details class="radcast-settings-group">
+        <summary>
+          <span>Speech cleanup</span>
+          <span class="radcast-settings-state">{shortenPauses || removeFillerWords ? "Custom" : "Optional"}</span>
+        </summary>
+        <div class="radcast-settings-group-body">
+          {#if !enhancementIncludesCleanup}
+            <label class="radcast-check">
+              <input type="checkbox" bind:checked={cleanupEnabled} />
+              <span>
+                <strong>Clean up audio</strong>
+                <small>Noise reduction and speech-focused loudness balancing.</small>
+              </span>
+            </label>
+          {:else}
+            <div class="radcast-check">
+              <span>
+                <strong>Cleanup included</strong>
+                <small>{enhancementModelLabel(enhancementModel)} applies its tuned noise reduction, speech enhancement, and loudness balancing.</small>
+              </span>
+            </div>
+          {/if}
+          {#if !captionCapability.caption_available}
+            <div class="radcast-speech-note">
+              Pause reduction and filler removal need local speech transcription support. Install it to enable these options.
+            </div>
+          {/if}
+          <label class="radcast-check">
+            <input type="checkbox" bind:checked={shortenPauses} disabled={!captionCapability.caption_available} />
+            <span>
+              <strong>Shorten long pauses</strong>
+              <small>Keep a controlled amount of silence between spoken sections.</small>
+            </span>
+          </label>
+          {#if shortenPauses}
+            <div class="settings-compact-field radcast-range-row">
+              <div class="radcast-range-label">
+                <span>Keep each pause up to</span>
+                <strong>{formatRadcastSilenceSeconds(maxSilenceSeconds)}</strong>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="4"
+                step="0.25"
+                value={maxSilenceSeconds}
+                disabled={!captionCapability.caption_available}
+                aria-label="Keep each pause up to"
+                oninput={(event) => {
+                  maxSilenceSeconds = clampRadcastSilenceSeconds(
+                    (event.currentTarget as HTMLInputElement).value,
+                  );
+                }}
+              />
+            </div>
+          {/if}
+          <label class="radcast-check">
+            <input type="checkbox" bind:checked={removeFillerWords} disabled={!captionCapability.caption_available} />
+            <span>
+              <strong>Remove filler words</strong>
+              <small>Remove recognised ums, uhs, and similar speech fillers.</small>
+            </span>
+          </label>
+          {#if removeFillerWords}
+            <label class="stack settings-compact-field">
+              <span>Filler removal</span>
+              <select bind:value={fillerRemovalMode}>
+                <option value="normal">Normal</option>
+                <option value="aggressive">Aggressive</option>
+              </select>
+            </label>
+          {/if}
+        </div>
+      </details>
+
+      <div class="radcast-action-dock">
+        {#if processing && radcastJob}
+          <div class="radcast-progress" aria-live="polite">
+            <div class="radcast-progress-heading">
+              <strong>{processingPhaseLabel(radcastJob.phase)}</strong>
+              <span>{radcastJob.percent}%</span>
+            </div>
+            <div
+              class="radcast-progress-track"
+              role="progressbar"
+              aria-label="RADcast processing progress"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              aria-valuenow={radcastJob.percent}
+            >
+              <span style={`width: ${radcastJob.percent}%;`}></span>
+            </div>
+            <small>
+              Elapsed {formatElapsed(radcastJob.elapsed_seconds)} ·
+              {#if estimateRadcastRemainingSeconds(radcastJob) === null}
+                Calculating remaining time...
+              {:else}
+                About {formatElapsed(estimateRadcastRemainingSeconds(radcastJob) ?? 0)} remaining
+              {/if}
+            </small>
+            <button class="secondary-button compact-button" type="button" disabled={cancelling} onclick={() => void cancelProcessing()}>
+              {cancelling ? "Cancelling..." : "Cancel processing"}
+            </button>
+          </div>
+        {/if}
+        <div class="radcast-processing-note">
+          <span class={selectedEnhancementCapability?.available ? "status-dot is-ready" : "status-dot"}></span>
+          <span>{selectedEnhancementCapability?.available ? "Ready to process on this Mac." : "Local enhancement is unavailable."}</span>
+        </div>
+        <button class="primary-button radcast-process-button" type="button" disabled={processDisabled} onclick={() => void processAudio()}>
+          {processing ? "Processing" : "Create audio version"}
+        </button>
+      </div>
     </section>
   </div>
 
@@ -883,20 +1161,27 @@
               Your browser does not support audio playback.
             </audio>
             <div class="radcast-output-actions">
-              <a class="secondary-button compact-button" href={convertFileSrc(output.path)} download={output.filename}>Download audio</a>
+              <button
+                class="secondary-button compact-button"
+                type="button"
+                disabled={downloadingArtifact !== null}
+                onclick={() => void downloadArtifact(output.path, output.filename, "Audio file", output.output_format, "Audio")}
+              >Download audio</button>
               {#if output.caption_path && output.caption_format}
-                <a
+                <button
                   class="secondary-button compact-button"
-                  href={convertFileSrc(output.caption_path)}
-                  download={`${output.filename}.${output.caption_format}`}
-                >Download {output.caption_format.toUpperCase()}</a>
+                  type="button"
+                  disabled={downloadingArtifact !== null}
+                  onclick={() => void downloadArtifact(output.caption_path!, `${output.filename}.${output.caption_format}`, "Caption file", output.caption_format!, output.caption_format!.toUpperCase())}
+                >Download {output.caption_format.toUpperCase()}</button>
               {/if}
               {#if output.caption_review_path}
-                <a
+                <button
                   class="secondary-button compact-button"
-                  href={convertFileSrc(output.caption_review_path)}
-                  download={`${output.filename}.review.txt`}
-                >Download caption review</a>
+                  type="button"
+                  disabled={downloadingArtifact !== null}
+                  onclick={() => void downloadArtifact(output.caption_review_path!, `${output.filename}.review.txt`, "Caption review", "txt", "Caption review")}
+                >Download caption review</button>
               {/if}
             </div>
           </article>

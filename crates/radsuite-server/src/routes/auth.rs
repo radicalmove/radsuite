@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
@@ -9,9 +11,11 @@ use axum::{
     response::{IntoResponse, Response},
     routing::post,
 };
+use chrono::Utc;
 use radsuite_core::{LoginRequest, LoginResponse, RegisterRequest};
 use rand_core::OsRng;
 use serde::Serialize;
+use sqlx::Row;
 use uuid::Uuid;
 
 use crate::{AppState, state::AuthUser};
@@ -44,19 +48,50 @@ async fn register(
     }
 
     let password_hash = hash_password(&req.password)?;
-    let token = Uuid::new_v4().to_string();
     let user = AuthUser {
         id: radsuite_core::UserId::new(),
         email: email.clone(),
         display_name: req.display_name.trim().to_string(),
         password_hash,
+        is_active: true,
         is_admin: false,
     };
 
-    let mut auth = state.auth.lock().expect("auth store lock");
-    if auth.users_by_email.contains_key(&email) {
+    if state
+        .auth
+        .lock()
+        .expect("auth store lock")
+        .users_by_email
+        .contains_key(&email)
+    {
         return Err(ApiError::conflict("user already exists"));
     }
+
+    if load_user(&state, &email).await?.is_some() {
+        return Err(ApiError::conflict("user already exists"));
+    }
+
+    let now = Utc::now().to_rfc3339();
+    sqlx::query(
+        r#"
+        INSERT INTO users
+            (id, email, display_name, password_hash, is_active, is_admin, created_at, updated_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)
+        "#,
+    )
+    .bind(user.id.0.to_string())
+    .bind(&user.email)
+    .bind(&user.display_name)
+    .bind(&user.password_hash)
+    .bind(user.is_active)
+    .bind(user.is_admin)
+    .bind(now)
+    .execute(&state.db)
+    .await
+    .map_err(|_| ApiError::internal("could not save user"))?;
+
+    let token = Uuid::new_v4().to_string();
+    let mut auth = state.auth.lock().expect("auth store lock");
     auth.users_by_email.insert(email.clone(), user);
     // Alpha-only in-memory sessions. Persistent sessions or refresh tokens must
     // replace this before external release.
@@ -70,19 +105,89 @@ async fn login(
     Json(req): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, ApiError> {
     let email = normalize_email(&req.email)?;
-    let mut auth = state.auth.lock().expect("auth store lock");
-    let user = auth
+    let cached_user = state
+        .auth
+        .lock()
+        .expect("auth store lock")
         .users_by_email
         .get(&email)
-        .ok_or_else(ApiError::unauthorized)?;
+        .cloned();
+    let user = match cached_user {
+        Some(user) => user,
+        None => load_user(&state, &email)
+            .await?
+            .ok_or_else(ApiError::unauthorized)?,
+    };
 
     if !verify_password(&req.password, &user.password_hash)? {
         return Err(ApiError::unauthorized());
     }
+    if !user.is_active {
+        return Err(ApiError::unauthorized());
+    }
 
     let token = Uuid::new_v4().to_string();
+    let mut auth = state.auth.lock().expect("auth store lock");
+    auth.users_by_email.insert(email.clone(), user);
     auth.sessions_by_token.insert(token.clone(), email);
     Ok(Json(LoginResponse { token }))
+}
+
+pub(crate) async fn load_user(state: &AppState, email: &str) -> Result<Option<AuthUser>, ApiError> {
+    let row = sqlx::query(
+        r#"
+        SELECT id, email, display_name, password_hash, is_active, is_admin
+        FROM users
+        WHERE email = ?1
+        "#,
+    )
+    .bind(email)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| ApiError::internal("could not load user"))?;
+
+    row.map(auth_user_from_row).transpose()
+}
+
+pub(crate) async fn load_users(state: &AppState) -> Result<Vec<AuthUser>, ApiError> {
+    let rows = sqlx::query(
+        r#"
+        SELECT id, email, display_name, password_hash, is_active, is_admin
+        FROM users
+        ORDER BY display_name COLLATE NOCASE, email COLLATE NOCASE
+        "#,
+    )
+    .fetch_all(&state.db)
+    .await
+    .map_err(|_| ApiError::internal("could not load users"))?;
+
+    rows.into_iter().map(auth_user_from_row).collect()
+}
+
+fn auth_user_from_row(row: sqlx::sqlite::SqliteRow) -> Result<AuthUser, ApiError> {
+    let id = row
+        .try_get::<String, _>("id")
+        .map_err(|_| ApiError::internal("invalid stored user"))?;
+    let id = radsuite_core::UserId::from_str(&id)
+        .map_err(|_| ApiError::internal("invalid stored user"))?;
+    Ok(AuthUser {
+        id,
+        email: row
+            .try_get("email")
+            .map_err(|_| ApiError::internal("invalid stored user"))?,
+        display_name: row
+            .try_get("display_name")
+            .map_err(|_| ApiError::internal("invalid stored user"))?,
+        password_hash: row
+            .try_get("password_hash")
+            .map_err(|_| ApiError::internal("invalid stored user"))?,
+        is_active: row
+            .try_get("is_active")
+            .map_err(|_| ApiError::internal("invalid stored user"))?,
+        is_admin: row
+            .try_get("is_admin")
+            .map_err(|_| ApiError::internal("invalid stored user"))?,
+    })
 }
 
 fn normalize_email(email: &str) -> Result<String, ApiError> {

@@ -73,6 +73,85 @@ fn enhancement_processor_maps_quality_profiles_to_model_steps() {
 }
 
 #[test]
+fn enhancement_processor_uses_the_optimized_model_for_the_natural_variant() {
+    let processor = EnhancementProcessor::from_command("radcast-studio-enhance");
+    let request = EnhancementProcessingRequest {
+        input_path: PathBuf::from("/tmp/source.wav"),
+        output_path: PathBuf::from("/tmp/output/enhanced.wav"),
+    };
+
+    let args = processor
+        .helper_arguments_for_model(
+            &request,
+            EnhancementModel::StudioV18Natural,
+            EnhancementQuality::High,
+        )
+        .expect("build RADcast Natural helper arguments");
+    let args = display_args(&args);
+
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--dereverb-method", "nara"])
+    );
+    assert!(args.windows(2).any(|pair| pair == ["--nfe", "32"]));
+}
+
+#[test]
+fn enhancement_processor_uses_the_optimized_model_for_the_natural_plus_variant() {
+    let processor = EnhancementProcessor::from_command("radcast-studio-enhance");
+    let request = EnhancementProcessingRequest {
+        input_path: PathBuf::from("/tmp/source.wav"),
+        output_path: PathBuf::from("/tmp/output/enhanced.wav"),
+    };
+
+    let args = processor
+        .helper_arguments_for_model(
+            &request,
+            EnhancementModel::StudioV18NaturalPlus,
+            EnhancementQuality::High,
+        )
+        .expect("build RADcast Natural+ helper arguments");
+    let args = display_args(&args);
+
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--dereverb-method", "nara"])
+    );
+    assert!(args.windows(2).any(|pair| pair == ["--nfe", "32"]));
+}
+
+#[test]
+fn enhancement_processor_uses_speech_preserving_dereverb_for_the_natural_double_plus_variant() {
+    let processor = EnhancementProcessor::from_command("radcast-studio-enhance");
+    let request = EnhancementProcessingRequest {
+        input_path: PathBuf::from("/tmp/source.wav"),
+        output_path: PathBuf::from("/tmp/output/enhanced.wav"),
+    };
+
+    let args = processor
+        .helper_arguments_for_model(
+            &request,
+            EnhancementModel::StudioV18NaturalDoublePlus,
+            EnhancementQuality::High,
+        )
+        .expect("build RADcast Natural++ helper arguments");
+    let args = display_args(&args);
+
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--dereverb-method", "spectral"])
+    );
+    assert!(args.windows(2).any(|pair| pair == ["--reduction", "0.90"]));
+    assert!(args.windows(2).any(|pair| pair == ["--gain-floor", "0.16"]));
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["--time-smoothing", "0.64"])
+    );
+    assert!(args.iter().any(|arg| arg == "--skip-enhance"));
+    assert!(!args.iter().any(|arg| arg == "--nfe"));
+}
+
+#[test]
 fn enhancement_processor_builds_resemble_arguments_for_the_selected_backend() {
     let processor = EnhancementProcessor::from_command("radcast-enhance");
     let request = EnhancementProcessingRequest {
@@ -148,6 +227,35 @@ fn enhancement_processor_copies_the_helper_output_to_the_requested_path() {
         fs::read(result.output_path).expect("read output"),
         b"enhanced"
     );
+    remove_dir(dir);
+}
+
+#[test]
+fn enhancement_processor_forwards_streamed_chunk_progress() {
+    let dir = test_dir("progress");
+    let helper = write_executable(
+        &dir,
+        "studio.sh",
+        "#!/bin/sh\nin_dir=\"$1\"\nout_dir=\"$2\"\nmkdir -p \"$out_dir\"\nprintf '%s\\n' 'RADCAST_ENHANCE_PROGRESS 0/3'\nsleep 0.02\nprintf '%s\\n' 'RADCAST_ENHANCE_PROGRESS 1/3'\nsleep 0.02\nprintf '%s\\n' 'RADCAST_ENHANCE_PROGRESS 2/3'\nsleep 0.02\nprintf '%s\\n' 'RADCAST_ENHANCE_PROGRESS 3/3'\nprintf '%s' enhanced > \"$out_dir/input.wav\"\n",
+    );
+    let input = dir.join("source.wav");
+    let output = dir.join("outputs").join("enhanced.wav");
+    fs::write(&input, b"source").expect("write source");
+    let mut progress = Vec::new();
+
+    EnhancementProcessor::from_command(helper)
+        .process_model_with_quality_and_progress(
+            EnhancementProcessingRequest {
+                input_path: input,
+                output_path: output,
+            },
+            EnhancementModel::StudioV18,
+            EnhancementQuality::Standard,
+            |completed, total| progress.push((completed, total)),
+        )
+        .expect("process enhancement with progress");
+
+    assert_eq!(progress, vec![(0, 3), (1, 3), (2, 3), (3, 3)]);
     remove_dir(dir);
 }
 

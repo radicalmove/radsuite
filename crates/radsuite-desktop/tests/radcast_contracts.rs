@@ -655,6 +655,13 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
     let ffmpeg_args = fs::read_to_string(ffmpeg_log).expect("read enhancement ffmpeg arguments");
     assert!(ffmpeg_args.contains("loudnorm=I=-20.75"));
     assert!(!ffmpeg_args.contains("afftdn"));
+    let final_ffmpeg_args = ffmpeg_args
+        .lines()
+        .last()
+        .expect("final render ffmpeg arguments");
+    assert!(final_ffmpeg_args.contains("-t 7.000"));
+    assert!(final_ffmpeg_args.contains("apad=whole_dur=7.000"));
+    assert!(final_ffmpeg_args.contains("atrim=duration=7.000"));
     let listing = list_radcast_audio(
         &state,
         ListRadcastAudioRequest {
@@ -860,12 +867,29 @@ fn radcast_capabilities_report_caption_model_readiness() {
     assert!(both_ready.optimized_available);
     assert!(both_ready.optimized_detail.contains("local"));
     assert!(both_ready.optimized_detail.contains("server"));
-    assert_eq!(both_ready.enhancement_models.len(), 5);
+    assert_eq!(both_ready.enhancement_models.len(), 8);
     assert!(
         both_ready
             .enhancement_models
             .iter()
             .any(|model| model.id == EnhancementModel::StudioV18 && model.available)
+    );
+    assert!(
+        both_ready
+            .enhancement_models
+            .iter()
+            .any(|model| model.id == EnhancementModel::StudioV18Natural && model.available)
+    );
+    assert!(
+        both_ready
+            .enhancement_models
+            .iter()
+            .any(|model| model.id == EnhancementModel::StudioV18NaturalPlus && model.available)
+    );
+    assert!(
+        both_ready.enhancement_models.iter().any(|model| model.id
+            == EnhancementModel::StudioV18NaturalDoublePlus
+            && model.available)
     );
 
     let unavailable = get_radcast_capabilities_with_processor(CaptionProcessor::from_commands(

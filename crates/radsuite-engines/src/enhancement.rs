@@ -1,8 +1,12 @@
 use std::{
     ffi::OsString,
     fs,
+    io::{BufRead, BufReader, Read},
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Stdio},
+    sync::mpsc,
+    thread,
+    time::Duration,
 };
 
 use serde::{Deserialize, Serialize};
@@ -16,16 +20,22 @@ pub enum EnhancementModel {
     DeepFilterNet,
     Studio,
     StudioV18,
+    StudioV18Natural,
+    StudioV18NaturalPlus,
+    StudioV18NaturalDoublePlus,
 }
 
 impl EnhancementModel {
-    pub const fn all() -> [Self; 5] {
+    pub const fn all() -> [Self; 8] {
         [
             Self::None,
             Self::Resemble,
             Self::DeepFilterNet,
             Self::Studio,
             Self::StudioV18,
+            Self::StudioV18Natural,
+            Self::StudioV18NaturalPlus,
+            Self::StudioV18NaturalDoublePlus,
         ]
     }
 
@@ -36,6 +46,9 @@ impl EnhancementModel {
             Self::DeepFilterNet => "DeepFilterNet3",
             Self::Studio => "Studio Cleanup",
             Self::StudioV18 => "RADcast Optimized",
+            Self::StudioV18Natural => "RADcast Natural",
+            Self::StudioV18NaturalPlus => "RADcast Natural+",
+            Self::StudioV18NaturalDoublePlus => "RADcast Natural++",
         }
     }
 
@@ -55,6 +68,15 @@ impl EnhancementModel {
             }
             Self::StudioV18 => {
                 "RADcast's tuned lecture-cleanup path with chunked dereverb and speech restoration."
+            }
+            Self::StudioV18Natural => {
+                "RADcast's tuned cleanup path with gentler sibilance processing to preserve consonants."
+            }
+            Self::StudioV18NaturalPlus => {
+                "RADcast's tuned cleanup path with minimal sibilance processing for maximum consonant preservation."
+            }
+            Self::StudioV18NaturalDoublePlus => {
+                "Speech-preserving room cleanup with a warm studio finish; avoids neural voice reconstruction."
             }
         }
     }
@@ -90,6 +112,12 @@ pub enum EnhancementProcessingError {
     MissingCommand { path: PathBuf },
     #[error("could not start enhancement helper {command}: {source}")]
     StartCommand {
+        command: String,
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("could not wait for enhancement helper {command}: {source}")]
+    WaitCommand {
         command: String,
         #[source]
         source: std::io::Error,
@@ -235,7 +263,30 @@ impl EnhancementProcessor {
                 OsString::from("--no-suffix"),
                 request.input_path.clone().into_os_string(),
             ]),
-            EnhancementModel::StudioV18 => Ok(vec![
+            EnhancementModel::StudioV18NaturalDoublePlus => Ok(vec![
+                input_dir.into_os_string(),
+                output_dir.into_os_string(),
+                OsString::from("--suffix"),
+                OsString::from(suffix),
+                OsString::from("--device"),
+                OsString::from(optimized_device()),
+                OsString::from("--dereverb-method"),
+                OsString::from("spectral"),
+                OsString::from("--reduction"),
+                OsString::from("0.90"),
+                OsString::from("--gain-floor"),
+                OsString::from("0.16"),
+                OsString::from("--time-smoothing"),
+                OsString::from("0.64"),
+                OsString::from("--transient-threshold"),
+                OsString::from("1.28"),
+                OsString::from("--transient-floor"),
+                OsString::from("0.96"),
+                OsString::from("--skip-enhance"),
+            ]),
+            EnhancementModel::StudioV18
+            | EnhancementModel::StudioV18Natural
+            | EnhancementModel::StudioV18NaturalPlus => Ok(vec![
                 input_dir.into_os_string(),
                 output_dir.into_os_string(),
                 OsString::from("--suffix"),
@@ -287,6 +338,19 @@ impl EnhancementProcessor {
         model: EnhancementModel,
         quality: EnhancementQuality,
     ) -> Result<EnhancementProcessingResult, EnhancementProcessingError> {
+        self.process_model_with_quality_and_progress(request, model, quality, |_, _| {})
+    }
+
+    pub fn process_model_with_quality_and_progress<F>(
+        &self,
+        request: EnhancementProcessingRequest,
+        model: EnhancementModel,
+        quality: EnhancementQuality,
+        mut report_progress: F,
+    ) -> Result<EnhancementProcessingResult, EnhancementProcessingError>
+    where
+        F: FnMut(usize, usize),
+    {
         if !request.input_path.is_file() {
             return Err(EnhancementProcessingError::MissingInput {
                 path: request.input_path,
@@ -326,22 +390,78 @@ impl EnhancementProcessor {
         };
         let args = self.helper_arguments_for_model(&staged_request, model, quality)?;
         let thread_count = local_thread_count();
-        let result = Command::new(command)
+        let command_name = command.display().to_string();
+        let mut child = Command::new(command)
             .args(&args)
             .env("OMP_NUM_THREADS", &thread_count)
             .env("MKL_NUM_THREADS", &thread_count)
             .env("OPENBLAS_NUM_THREADS", &thread_count)
             .env("VECLIB_MAXIMUM_THREADS", &thread_count)
             .env("PYTORCH_ENABLE_MPS_FALLBACK", "1")
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
             .map_err(|source| EnhancementProcessingError::StartCommand {
-                command: command.display().to_string(),
+                command: command_name.clone(),
                 source,
             })?;
-        if !result.status.success() {
+
+        let stdout =
+            child
+                .stdout
+                .take()
+                .ok_or_else(|| EnhancementProcessingError::MissingOutput {
+                    path: helper_output.clone(),
+                })?;
+        let stderr =
+            child
+                .stderr
+                .take()
+                .ok_or_else(|| EnhancementProcessingError::MissingOutput {
+                    path: helper_output.clone(),
+                })?;
+        let (progress_sender, progress_receiver) = mpsc::channel();
+        let stdout_thread = thread::spawn(move || {
+            let mut captured = String::new();
+            for line in BufReader::new(stdout).lines().map_while(Result::ok) {
+                if let Some(progress) = parse_enhancement_progress(&line) {
+                    let _ = progress_sender.send(progress);
+                }
+                captured.push_str(&line);
+                captured.push('\n');
+            }
+            captured
+        });
+        let stderr_thread = thread::spawn(move || {
+            let mut captured = String::new();
+            let _ = BufReader::new(stderr).read_to_string(&mut captured);
+            captured
+        });
+
+        let status = loop {
+            while let Ok((completed, total)) = progress_receiver.try_recv() {
+                report_progress(completed, total);
+            }
+            match child
+                .try_wait()
+                .map_err(|source| EnhancementProcessingError::WaitCommand {
+                    command: command_name.clone(),
+                    source,
+                })? {
+                Some(status) => break status,
+                None => thread::sleep(Duration::from_millis(50)),
+            }
+        };
+        let stdout = stdout_thread.join().unwrap_or_default();
+        let stderr = stderr_thread.join().unwrap_or_default();
+        while let Ok((completed, total)) = progress_receiver.try_recv() {
+            report_progress(completed, total);
+        }
+
+        if !status.success() {
             let _ = fs::remove_dir_all(&workspace);
             return Err(EnhancementProcessingError::CommandFailed {
-                message: command_output(&result.stdout, &result.stderr),
+                message: command_output(stdout.as_bytes(), stderr.as_bytes()),
             });
         }
         if !helper_output.is_file() {
@@ -364,7 +484,10 @@ impl EnhancementProcessor {
             EnhancementModel::Resemble => Some(&self.resemble_command),
             EnhancementModel::DeepFilterNet => Some(&self.deepfilternet_command),
             EnhancementModel::Studio => Some(&self.studio_command),
-            EnhancementModel::StudioV18 => Some(&self.optimized_command),
+            EnhancementModel::StudioV18
+            | EnhancementModel::StudioV18Natural
+            | EnhancementModel::StudioV18NaturalPlus
+            | EnhancementModel::StudioV18NaturalDoublePlus => Some(&self.optimized_command),
         }
     }
 }
@@ -438,6 +561,17 @@ fn local_thread_count() -> String {
         .map(|parallelism| parallelism.get())
         .unwrap_or(1)
         .to_string()
+}
+
+fn parse_enhancement_progress(line: &str) -> Option<(usize, usize)> {
+    let mut parts = line.split_whitespace();
+    if parts.next()? != "RADCAST_ENHANCE_PROGRESS" {
+        return None;
+    }
+    let (completed, total) = parts.next()?.split_once('/')?;
+    let completed = completed.parse().ok()?;
+    let total = total.parse().ok()?;
+    (total > 0 && completed <= total).then_some((completed, total))
 }
 
 fn resolve_command(environment_variables: &[&str], command: &str) -> PathBuf {

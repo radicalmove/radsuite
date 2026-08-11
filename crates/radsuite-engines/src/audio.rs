@@ -11,6 +11,9 @@ use thiserror::Error;
 const CLEANUP_FILTER: &str = "highpass=f=80,lowpass=f=12000,afftdn,loudnorm=I=-16:TP=-1.5:LRA=11";
 
 pub const RADCAST_OPTIMIZED_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=4.05,equalizer=f=200:t=q:w=1.0:g=1.75,equalizer=f=315:t=q:w=1.0:g=-0.55,equalizer=f=455:t=q:w=1.0:g=-0.2,equalizer=f=2350:t=q:w=1.0:g=-2.35,equalizer=f=3000:t=q:w=1.0:g=-1.70,equalizer=f=3850:t=q:w=1.0:g=-0.30,deesser=i=0.045:m=0.18:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-1.40,equalizer=f=6400:t=q:w=1.0:g=-1.20,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=7550";
+pub const RADCAST_NATURAL_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=3.35,equalizer=f=200:t=q:w=1.0:g=1.4,equalizer=f=315:t=q:w=1.0:g=-0.4,equalizer=f=455:t=q:w=1.0:g=-0.1,equalizer=f=2350:t=q:w=1.0:g=-1.10,equalizer=f=3000:t=q:w=1.0:g=-0.60,equalizer=f=3850:t=q:w=1.0:g=-0.05,deesser=i=0.012:m=0.08:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-0.45,equalizer=f=6400:t=q:w=1.0:g=-0.35,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=8200";
+pub const RADCAST_NATURAL_PLUS_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=3.15,equalizer=f=200:t=q:w=1.0:g=1.25,equalizer=f=315:t=q:w=1.0:g=-0.3,equalizer=f=455:t=q:w=1.0:g=-0.05,equalizer=f=2350:t=q:w=1.0:g=-0.70,equalizer=f=3000:t=q:w=1.0:g=-0.30,equalizer=f=3850:t=q:w=1.0:g=0,deesser=i=0.006:m=0.04:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-0.20,equalizer=f=6400:t=q:w=1.0:g=-0.15,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=8800";
+pub const RADCAST_NATURAL_DOUBLE_PLUS_POSTFILTER: &str = "highpass=f=70,equalizer=f=130:t=q:w=1.0:g=2.2,equalizer=f=280:t=q:w=1.1:g=-1.2,equalizer=f=520:t=q:w=1.0:g=-0.5,equalizer=f=1650:t=q:w=1.0:g=0.7,equalizer=f=3000:t=q:w=1.0:g=0.5,acompressor=threshold=0.12:ratio=1.55:attack=16:release=190:makeup=1.45,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=10000";
 
 pub const RADCAST_STANDARD_PREFILTER: &str = "highpass=f=85,agate=threshold=0.027:ratio=1.26:attack=8:release=280:range=0.56:knee=4,afftdn=nr=4:nf=-48:tn=1,equalizer=f=380:t=q:w=1.0:g=-1.0,equalizer=f=6800:t=q:w=1.2:g=-1.3";
 pub const RADCAST_STANDARD_POSTFILTER: &str = "highpass=f=65,equalizer=f=150:t=q:w=1.05:g=2.8,equalizer=f=320:t=q:w=1.0:g=-1.2,equalizer=f=520:t=q:w=1.0:g=-0.9,equalizer=f=2800:t=q:w=1.0:g=0.4,deesser=i=0.06:m=0.25:f=0.5:s=o,loudnorm=I=-20.5:TP=-1.5:LRA=8,equalizer=f=6200:t=q:w=1.2:g=-2.5,lowpass=f=6800";
@@ -181,13 +184,14 @@ impl AudioProcessor {
             OsString::from("error"),
         ];
 
+        args.push(OsString::from("-i"));
+        args.push(request.input_path.clone().into_os_string());
+
+        // Keep seeking after input so trim points are sample-accurate for encoded and WAV audio.
         if let Some(start) = request.clip_start_seconds {
             args.push(OsString::from("-ss"));
             args.push(OsString::from(format!("{start:.3}")));
         }
-
-        args.push(OsString::from("-i"));
-        args.push(request.input_path.clone().into_os_string());
 
         if let Some(end) = request.clip_end_seconds {
             let start = request.clip_start_seconds.unwrap_or(0.0);
