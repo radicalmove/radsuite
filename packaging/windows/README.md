@@ -1,13 +1,52 @@
 # Windows Packaging
 
-## Target
+## Current Status
 
-- Windows 11 x64
-- Tauri installer from `apps/desktop-ui/src-tauri`
+RADsuite has an initial Windows 11 x64 installer build. The workflow at
+`.github/workflows/windows-installer.yml` builds both formats:
 
-## Installer And Signing
+- NSIS `.exe`, suitable for the normal guided installation flow
+- Windows Installer `.msi`, suitable for managed or enterprise deployment
 
-Installer format still needs a final decision. The first implementation should keep Tauri's Windows bundle configuration active, then choose the distribution format after internal alpha testing.
+Run the workflow manually from GitHub Actions, or push a version tag matching
+`v*`. The workflow uploads both installers as the `RADsuite-windows-installers`
+artifact. This is an internal alpha packaging path, not yet a signed public
+release.
+
+## Release Checklist
+
+Before distributing a Windows build outside controlled testing:
+
+- Test installation, launch, upgrade, and uninstall on a clean Windows 11 x64 machine.
+- Confirm the app can create and reopen its local projects under Windows AppData.
+- Test RADcite import, review, readings, exports, and local backup behavior.
+- Test RADcast processing with the runtime bundled or installed for Windows.
+- Add the Windows RADTTS process-management adapter before advertising RADTTS support.
+- Obtain a Windows code-signing certificate and sign the installer and bundled binaries where practical.
+- Test Defender SmartScreen behavior with a signed build.
+- Decide whether the public distribution should offer NSIS, MSI, or both.
+
+## Runtime Scope
+
+The installer packages the Tauri application. It does not currently bundle every
+Python/model runtime used by the local audio and voice tools. RADcast and RADTTS
+must therefore be treated as separate Windows runtime work until their helper
+discovery, dependencies, cancellation, and quality have been verified on a real
+Windows machine. RADTTS currently keeps its voice-generation workflow disabled
+on Windows because process-tree cleanup still needs a Windows Job Object adapter.
+
+Native sidecars should be bundled with the app and discovered through
+`radsuite-engines` once their Windows builds are available. Runtime selection
+should account for CPU fallback, DirectML where useful, and CUDA where present
+and supportable.
+
+## Data Directories
+
+The desktop crate resolves app data directories through the `directories` crate.
+Windows data should resolve under the user's application data area and should
+not require administrator permissions.
+
+## Signing
 
 Production builds will require:
 
@@ -15,15 +54,3 @@ Production builds will require:
 - Signed installer
 - Signed sidecar binaries where practical
 - Defender SmartScreen testing before external release
-
-## Sidecars
-
-Native sidecars should be bundled with the app and discovered through `radsuite-engines`. Windows-specific runtime selection should account for:
-
-- CPU fallback
-- DirectML where useful
-- CUDA where present and supportable
-
-## Data Directories
-
-The desktop crate resolves app data directories through the `directories` crate. Windows data should resolve under the user's application data area.
