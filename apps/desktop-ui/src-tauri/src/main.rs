@@ -247,15 +247,7 @@ fn get_radcast_capabilities() -> RadcastCapabilityStatus {
 
 #[tauri::command]
 async fn get_radt_ts_capabilities() -> RadtTsCapabilityStatus {
-    tauri::async_runtime::spawn_blocking(radsuite_desktop::get_radt_ts_capabilities)
-        .await
-        .unwrap_or_else(|error| RadtTsCapabilityStatus {
-            available: false,
-            executable: None,
-            detail: format!("RADTTS capability check failed: {error}"),
-            supports_builtin_voices: false,
-            builtin_voices: Vec::new(),
-        })
+    radsuite_desktop::get_radt_ts_capabilities().await
 }
 
 #[tauri::command]
