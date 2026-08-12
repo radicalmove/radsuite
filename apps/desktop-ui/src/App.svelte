@@ -39,6 +39,15 @@
   import { showsCitationActions } from "./lib/workspaceLayout";
   import { displayAppVersion } from "./lib/appVersion";
   import { setupLocalRuntimes } from "./lib/runtimeSetup";
+  import { installUpdate, updaterApi, type UpdateProgress } from "./lib/updateCommands";
+  import {
+    UPDATE_CHECK_INTERVAL_MS,
+    dismissUpdateVersion,
+    readUpdateStorageState,
+    recordUpdateCheck,
+    shouldCheckForUpdate,
+    shouldShowUpdateVersion,
+  } from "./lib/updateState";
   import {
     addModuleReading,
     addRadciteModule,
@@ -92,7 +101,7 @@
 
   const fallbackStatus: AppStatus = {
     app_name: "RADsuite",
-    version: "0.2.1",
+    version: "0.2.2",
     database_ready: false,
     sync_configured: false,
     engines: [],
@@ -149,6 +158,11 @@
   let runtimeSetupRunning = $state(false);
   let runtimeSetupStatus = $state<string | null>(null);
   let runtimeSetupError = $state<string | null>(null);
+  let updateChecking = $state(false);
+  let availableUpdate = $state<Awaited<ReturnType<typeof updaterApi.check>>>(null);
+  let updateInstalling = $state(false);
+  let updateProgress = $state<UpdateProgress | null>(null);
+  let updateError = $state<string | null>(null);
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? emptyProject,
@@ -911,6 +925,49 @@
     writeThemeStorage(browserStorage(), nextTheme);
   }
 
+  async function checkForStableUpdate(force = false) {
+    const storage = browserStorage();
+    const updateState = readUpdateStorageState(storage);
+    if (!force && !shouldCheckForUpdate(Date.now(), updateState.lastCheckedAt)) {
+      return;
+    }
+
+    updateChecking = true;
+    updateError = null;
+    try {
+      const update = await updaterApi.check();
+      recordUpdateCheck(storage, Date.now());
+      availableUpdate = shouldShowUpdateVersion(update?.version, updateState.dismissedVersion, true)
+        ? update
+        : null;
+    } catch (reason: unknown) {
+      updateError = `Could not check for updates: ${toErrorMessage(reason)}`;
+    } finally {
+      updateChecking = false;
+    }
+  }
+
+  function deferStableUpdate() {
+    if (!availableUpdate) return;
+    dismissUpdateVersion(browserStorage(), availableUpdate.version);
+    availableUpdate = null;
+  }
+
+  async function applyStableUpdate() {
+    if (!availableUpdate) return;
+    updateInstalling = true;
+    updateProgress = null;
+    updateError = null;
+    try {
+      await installUpdate(availableUpdate, (progress) => {
+        updateProgress = progress;
+      });
+    } catch (reason: unknown) {
+      updateError = `Could not install the update: ${toErrorMessage(reason)}`;
+      updateInstalling = false;
+    }
+  }
+
   onMount(() => {
     applyTheme(readThemeStorage(browserStorage()));
 
@@ -923,6 +980,12 @@
         bridgeError = toErrorMessage(reason);
       });
     void refreshProjects().then(() => refreshProjectScopedData());
+    void checkForStableUpdate();
+    const updateTimer = window.setInterval(
+      () => void checkForStableUpdate(),
+      UPDATE_CHECK_INTERVAL_MS,
+    );
+    return () => window.clearInterval(updateTimer);
   });
 </script>
 
@@ -1043,6 +1106,31 @@
     {/if}
     {#if runtimeSetupError}
       <div class="notice">{runtimeSetupError}</div>
+    {/if}
+    {#if availableUpdate}
+      <div class="update-notice" role="status">
+        <div>
+          <strong>RADsuite {displayAppVersion(availableUpdate.version)} is available</strong>
+          <span>{availableUpdate.body || "A stable update is ready to install."}</span>
+          {#if updateProgress}
+            <small>
+              Downloaded {Math.round(updateProgress.downloadedBytes / 1024 / 1024)} MB
+              {#if updateProgress.totalBytes}
+                of {Math.round(updateProgress.totalBytes / 1024 / 1024)} MB
+              {/if}
+            </small>
+          {/if}
+        </div>
+        <div class="update-actions">
+          <button class="primary-button compact-button" type="button" disabled={updateInstalling} onclick={() => void applyStableUpdate()}>
+            {updateInstalling ? "Installing..." : "Update now"}
+          </button>
+          <button class="secondary-button compact-button" type="button" disabled={updateInstalling} onclick={deferStableUpdate}>Later</button>
+        </div>
+      </div>
+    {/if}
+    {#if updateError}
+      <div class="notice">{updateError}</div>
     {/if}
 
     {#if !selectedProjectId}

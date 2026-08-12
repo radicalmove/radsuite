@@ -1,0 +1,272 @@
+name: Stable release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stable-release
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: "22"
+  TAURI_CLI_VERSION: "2.9.6"
+  REPOSITORY: radicalmove/radsuite
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate tag and manifest versions
+        id: version
+        run: |
+          version="$(python3 scripts/validate-release-version.py --tag "$GITHUB_REF_NAME")"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Verify updater signing secrets
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        shell: bash
+        run: |
+          missing=()
+          for name in \
+            TAURI_SIGNING_PRIVATE_KEY \
+            TAURI_SIGNING_PRIVATE_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then missing+=("$name"); fi
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing protected stable-release secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+  checks:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop-ui/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify frontend
+        working-directory: apps/desktop-ui
+        run: |
+          npm ci
+          npm test -- --run
+          npm run check
+          npm run build
+      - name: Verify Rust
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets --all-features -- -D warnings
+          cargo test --workspace --all-features
+
+  build-macos-arm:
+    needs: [validate, checks]
+    runs-on: macos-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop-ui/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install frontend dependencies
+        working-directory: apps/desktop-ui
+        run: npm ci
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
+      - name: Build Apple Silicon package
+        run: cargo tauri build --bundles app,dmg
+      - name: Label Apple Silicon assets
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-assets"
+          version="${{ needs.validate.outputs.version }}"
+          dmg="$(find target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          updater="$(find target/release/bundle/macos -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
+          test -n "$dmg" && test -n "$updater" && test -f "$updater.sig"
+          cp "$dmg" "$RUNNER_TEMP/release-assets/RADsuite_${version}_Apple-Silicon.dmg"
+          cp "$updater" "$RUNNER_TEMP/release-assets/RADsuite_${version}_Apple-Silicon.app.tar.gz"
+          cp "$updater.sig" "$RUNNER_TEMP/release-assets/RADsuite_${version}_Apple-Silicon.app.tar.gz.sig"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-arm
+          if-no-files-found: error
+          path: ${{ runner.temp }}/release-assets/*
+
+  build-macos-intel:
+    needs: [validate, checks]
+    runs-on: macos-15-intel
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop-ui/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install frontend dependencies
+        working-directory: apps/desktop-ui
+        run: npm ci
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
+      - name: Build Intel package
+        run: cargo tauri build --bundles app,dmg
+      - name: Label Intel assets
+        run: |
+          mkdir -p "$RUNNER_TEMP/release-assets"
+          version="${{ needs.validate.outputs.version }}"
+          dmg="$(find target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print -quit)"
+          updater="$(find target/release/bundle/macos -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
+          test -n "$dmg" && test -n "$updater" && test -f "$updater.sig"
+          cp "$dmg" "$RUNNER_TEMP/release-assets/RADsuite_${version}_Intel.dmg"
+          cp "$updater" "$RUNNER_TEMP/release-assets/RADsuite_${version}_Intel.app.tar.gz"
+          cp "$updater.sig" "$RUNNER_TEMP/release-assets/RADsuite_${version}_Intel.app.tar.gz.sig"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-intel
+          if-no-files-found: error
+          path: ${{ runner.temp }}/release-assets/*
+
+  build-windows:
+    needs: [validate, checks]
+    runs-on: windows-latest
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/desktop-ui/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install frontend dependencies
+        working-directory: apps/desktop-ui
+        run: npm ci
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version $env:TAURI_CLI_VERSION --locked
+      - name: Build Windows packages
+        run: cargo tauri build --bundles msi,nsis
+      - name: Label Windows assets
+        shell: pwsh
+        run: |
+          $version = "${{ needs.validate.outputs.version }}"
+          $output = "$env:RUNNER_TEMP\release-assets"
+          New-Item -ItemType Directory -Force -Path $output | Out-Null
+          $nsis = Get-ChildItem "target\release\bundle\nsis" -Filter "*-setup.exe" | Select-Object -First 1
+          $msi = Get-ChildItem "target\release\bundle\msi" -Filter "*.msi" | Select-Object -First 1
+          if (-not $nsis -or -not $msi) { throw "Windows installers were not produced." }
+          if (-not (Test-Path "$($nsis.FullName).sig")) { throw "NSIS updater signature was not produced." }
+          Copy-Item $nsis.FullName "$output\RADsuite_${version}_Windows_x64_Setup.exe"
+          Copy-Item "$($nsis.FullName).sig" "$output\RADsuite_${version}_Windows_x64_Setup.exe.sig"
+          Copy-Item $msi.FullName "$output\RADsuite_${version}_Windows_x64.msi"
+          if (-not (Test-Path "$($msi.FullName).sig")) { throw "MSI updater signature was not produced." }
+          Copy-Item "$($msi.FullName).sig" "$output\RADsuite_${version}_Windows_x64.msi.sig"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          if-no-files-found: error
+          path: ${{ runner.temp }}/release-assets/*
+
+  publish:
+    needs: [validate, build-macos-arm, build-macos-intel, build-windows]
+    runs-on: ubuntu-latest
+    environment: stable
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.validate.outputs.version }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release-assets
+          merge-multiple: true
+      - name: Generate and validate release metadata
+        run: |
+          python3 scripts/build-update-manifest.py \
+            --asset-dir release-assets \
+            --version "$VERSION" \
+            --repository "$REPOSITORY" \
+            --manifest release-assets/latest.json \
+            --checksums release-assets/SHA256SUMS.txt
+          python3 scripts/validate-update-manifest.py \
+            --manifest release-assets/latest.json \
+            --asset-dir release-assets \
+            --version "$VERSION" \
+            --repository "$REPOSITORY"
+      - name: Create draft GitHub Release
+        run: |
+          gh release create "$TAG" \
+            --draft \
+            --title "RADsuite $VERSION" \
+            --notes "RADsuite $VERSION stable release. Existing 0.2.1 users may need to install this release manually once; later stable releases can update from inside the app."
+      - name: Upload labelled installers and metadata
+        run: gh release upload "$TAG" release-assets/* --clobber
+      - name: Validate uploaded release assets
+        run: |
+          gh release view "$TAG" --json assets --jq '.assets[].name' > release-assets/github-assets.txt
+          for required in \
+            "RADsuite_${VERSION}_Apple-Silicon.dmg" \
+            "RADsuite_${VERSION}_Apple-Silicon.app.tar.gz" \
+            "RADsuite_${VERSION}_Apple-Silicon.app.tar.gz.sig" \
+            "RADsuite_${VERSION}_Intel.dmg" \
+            "RADsuite_${VERSION}_Intel.app.tar.gz" \
+            "RADsuite_${VERSION}_Intel.app.tar.gz.sig" \
+            "RADsuite_${VERSION}_Windows_x64_Setup.exe" \
+            "RADsuite_${VERSION}_Windows_x64_Setup.exe.sig" \
+            "RADsuite_${VERSION}_Windows_x64.msi" \
+            "RADsuite_${VERSION}_Windows_x64.msi.sig" \
+            "latest.json" \
+            "SHA256SUMS.txt"; do
+            grep -Fx "$required" release-assets/github-assets.txt >/dev/null || { echo "Missing release asset: $required"; exit 1; }
+          done
+      - name: Validate published draft assets
+        run: |
+          test -s release-assets/github-assets.txt
+      - name: Publish stable release
+        run: gh release edit "$TAG" --draft=false
+      - name: Validate public latest endpoint
+        run: |
+          curl --fail --location --retry 3 --output release-assets/public-latest.json \
+            "https://github.com/$REPOSITORY/releases/latest/download/latest.json"
+          python3 scripts/validate-update-manifest.py \
+            --manifest release-assets/public-latest.json \
+            --asset-dir release-assets \
+            --version "$VERSION" \
+            --repository "$REPOSITORY"
