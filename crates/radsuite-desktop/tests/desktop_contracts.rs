@@ -824,8 +824,35 @@ async fn radcite_review_actions_persist_and_return_refreshed_review() {
                     && citation.start.is_none()
                     && citation.end.is_none()
                     && citation.verified
+                    && citation.reference_entry_id.is_some()
             })
     );
+
+    let references = list_course_references(&state, ListCourseReferencesRequest::default())
+        .await
+        .expect("list manual citation reference");
+    assert_eq!(references.len(), 1);
+    assert_eq!(references[0].apa_citation.as_deref(), Some("Jones (2024)"));
+    assert_eq!(references[0].citation_text.as_deref(), Some("Jones (2024)"));
+
+    let repeated = add_manual_citation_for_review(
+        &state,
+        AddManualCitationRequest {
+            document_id: response.document_id,
+            paragraph_id: missing_paragraph_id,
+            citation_text: "Jones (2024)".to_string(),
+        },
+    )
+    .await
+    .expect("reuse manual citation reference");
+    assert!(repeated.paragraphs[1].citations.iter().any(|citation| {
+        citation.text == "Jones (2024)" && citation.reference_entry_id == Some(references[0].id)
+    }));
+    let references_after_repeat =
+        list_course_references(&state, ListCourseReferencesRequest::default())
+            .await
+            .expect("list reused manual citation reference");
+    assert_eq!(references_after_repeat.len(), 1);
 }
 
 #[tokio::test]

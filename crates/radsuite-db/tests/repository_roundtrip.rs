@@ -334,7 +334,7 @@ async fn radcite_document_metadata_can_be_updated() {
         .await
         .expect("insert project");
 
-    let document_repo = SqliteCitationDocumentRepository::new(pool);
+    let document_repo = SqliteCitationDocumentRepository::new(pool.clone());
     let mut document = Document::new(project.id, "lesson-1.docx", DocumentFileType::Docx);
     document.source_path = Some("/app-data/documents/project/lesson-1.docx".to_string());
     let paragraph = Paragraph::new(document.id, 0, "Research shows that examples help.");
@@ -860,7 +860,8 @@ async fn radcite_review_actions_are_persisted() {
         .await
         .expect("insert project");
 
-    let document_repo = SqliteCitationDocumentRepository::new(pool);
+    let document_repo = SqliteCitationDocumentRepository::new(pool.clone());
+    let reference_repo = SqliteReferenceEntryRepository::new(pool);
     let document = Document::new(project.id, "lesson-1.docx", DocumentFileType::Docx);
     let cited = Paragraph::new(
         document.id,
@@ -903,12 +904,27 @@ async fn radcite_review_actions_are_persisted() {
     assert_eq!(manual_citation.position_end, None);
     assert!(manual_citation.verified);
 
+    let mut linked_reference = ReferenceEntry::new(project.id, ReferenceEntryType::Reference);
+    linked_reference.apa_citation = Some("Taylor (2025)".to_string());
+    reference_repo
+        .insert_reference_entry(&linked_reference)
+        .await
+        .expect("insert linked reference");
+    let linked_citation = document_repo
+        .insert_manual_citation_linked(missing.id, "Taylor (2025)", linked_reference.id)
+        .await
+        .expect("insert linked manual citation");
+    assert_eq!(
+        linked_citation.reference_entry_id,
+        Some(linked_reference.id)
+    );
+
     let summaries = document_repo
         .list_documents_for_project(project.id)
         .await
         .expect("list documents");
 
-    assert_eq!(summaries[0].citation_count, 2);
+    assert_eq!(summaries[0].citation_count, 3);
     assert_eq!(summaries[0].missing_citation_count, 0);
 
     let loaded = document_repo
@@ -929,6 +945,13 @@ async fn radcite_review_actions_are_persisted() {
             .citations
             .iter()
             .any(|item| item.id == manual_citation.id)
+    );
+    assert!(
+        loaded
+            .citations
+            .iter()
+            .any(|item| item.id == linked_citation.id
+                && item.reference_entry_id == Some(linked_reference.id))
     );
 }
 

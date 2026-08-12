@@ -999,6 +999,13 @@ pub trait CitationDocumentRepository {
         citation_text: &str,
     ) -> Result<Citation, DbError>;
 
+    async fn insert_manual_citation_linked(
+        &self,
+        paragraph_id: ParagraphId,
+        citation_text: &str,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<Citation, DbError>;
+
     async fn link_citation_to_reference(
         &self,
         citation_id: CitationId,
@@ -1014,6 +1021,66 @@ pub struct SqliteCitationDocumentRepository {
 impl SqliteCitationDocumentRepository {
     pub fn new(pool: SqlitePool) -> Self {
         Self { pool }
+    }
+
+    async fn insert_manual_citation_with_reference(
+        &self,
+        paragraph_id: ParagraphId,
+        citation_text: &str,
+        reference_entry_id: Option<ReferenceEntryId>,
+    ) -> Result<Citation, DbError> {
+        let now = Utc::now();
+        let citation = Citation {
+            id: CitationId::new(),
+            paragraph_id,
+            reference_entry_id,
+            citation_text: citation_text.trim().to_string(),
+            position_start: None,
+            position_end: None,
+            verified: true,
+            created_at: now,
+            updated_at: now,
+        };
+
+        let mut tx = self.pool.begin().await?;
+
+        sqlx::query(
+            r#"
+            INSERT INTO paragraph_citations
+                (id, paragraph_id, reference_entry_id, citation_text, position_start,
+                 position_end, verified, created_at, updated_at)
+            VALUES
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+            "#,
+        )
+        .bind(citation.id.0.to_string())
+        .bind(citation.paragraph_id.0.to_string())
+        .bind(citation.reference_entry_id.map(|id| id.0.to_string()))
+        .bind(&citation.citation_text)
+        .bind(citation.position_start)
+        .bind(citation.position_end)
+        .bind(citation.verified)
+        .bind(citation.created_at.to_rfc3339())
+        .bind(citation.updated_at.to_rfc3339())
+        .execute(&mut *tx)
+        .await?;
+
+        sqlx::query(
+            r#"
+            UPDATE paragraphs
+            SET needs_citation = 0,
+                updated_at = ?1
+            WHERE id = ?2
+            "#,
+        )
+        .bind(now.to_rfc3339())
+        .bind(paragraph_id.0.to_string())
+        .execute(&mut *tx)
+        .await?;
+
+        tx.commit().await?;
+
+        Ok(citation)
     }
 }
 
@@ -1451,58 +1518,22 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         paragraph_id: ParagraphId,
         citation_text: &str,
     ) -> Result<Citation, DbError> {
-        let now = Utc::now();
-        let citation = Citation {
-            id: CitationId::new(),
+        self.insert_manual_citation_with_reference(paragraph_id, citation_text, None)
+            .await
+    }
+
+    async fn insert_manual_citation_linked(
+        &self,
+        paragraph_id: ParagraphId,
+        citation_text: &str,
+        reference_entry_id: ReferenceEntryId,
+    ) -> Result<Citation, DbError> {
+        self.insert_manual_citation_with_reference(
             paragraph_id,
-            reference_entry_id: None,
-            citation_text: citation_text.trim().to_string(),
-            position_start: None,
-            position_end: None,
-            verified: true,
-            created_at: now,
-            updated_at: now,
-        };
-
-        let mut tx = self.pool.begin().await?;
-
-        sqlx::query(
-            r#"
-            INSERT INTO paragraph_citations
-                (id, paragraph_id, reference_entry_id, citation_text, position_start,
-                 position_end, verified, created_at, updated_at)
-            VALUES
-                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
-            "#,
+            citation_text,
+            Some(reference_entry_id),
         )
-        .bind(citation.id.0.to_string())
-        .bind(citation.paragraph_id.0.to_string())
-        .bind(citation.reference_entry_id.map(|id| id.0.to_string()))
-        .bind(&citation.citation_text)
-        .bind(citation.position_start)
-        .bind(citation.position_end)
-        .bind(citation.verified)
-        .bind(citation.created_at.to_rfc3339())
-        .bind(citation.updated_at.to_rfc3339())
-        .execute(&mut *tx)
-        .await?;
-
-        sqlx::query(
-            r#"
-            UPDATE paragraphs
-            SET needs_citation = 0,
-                updated_at = ?1
-            WHERE id = ?2
-            "#,
-        )
-        .bind(now.to_rfc3339())
-        .bind(paragraph_id.0.to_string())
-        .execute(&mut *tx)
-        .await?;
-
-        tx.commit().await?;
-
-        Ok(citation)
+        .await
     }
 
     async fn link_citation_to_reference(
