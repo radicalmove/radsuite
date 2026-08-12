@@ -455,6 +455,8 @@ pub struct ArchiveRadciteDocumentRequest {
 pub struct UpdateRadciteDocumentRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
+    #[serde(default)]
+    pub module_id: Option<ModuleId>,
     pub document_id: DocumentId,
     pub display_name: String,
     pub doc_number: Option<i32>,
@@ -959,6 +961,10 @@ pub enum RadciteDocumentError {
         document_id: DocumentId,
         project_id: ProjectId,
     },
+    #[error("RADcite module {module_id} belongs to a different project")]
+    ModuleProjectMismatch { module_id: ModuleId },
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
     #[error("cannot edit archived RADcite document {0}")]
     ArchivedDocument(DocumentId),
     #[error("could not load RADcite project {0}")]
@@ -1683,10 +1689,21 @@ pub async fn update_radcite_document(
         });
     }
 
+    if let Some(module_id) = request.module_id {
+        let module = SqliteCourseModuleRepository::new(state.database_pool.clone())
+            .load_course_module(module_id)
+            .await?
+            .ok_or(RadciteDocumentError::MissingModule(module_id))?;
+        if module.project_id != project.id {
+            return Err(RadciteDocumentError::ModuleProjectMismatch { module_id });
+        }
+    }
+
     if analysis.document.archived_at.is_some() {
         return Err(RadciteDocumentError::ArchivedDocument(request.document_id));
     }
 
+    analysis.document.module_id = request.module_id;
     analysis.document.notes = trimmed_optional(Some(request.display_name));
     analysis.document.doc_number = request.doc_number;
     analysis.document.doc_variant = request.doc_variant;

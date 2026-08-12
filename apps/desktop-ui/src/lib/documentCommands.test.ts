@@ -44,6 +44,7 @@ describe("document commands", () => {
         display_name: "Week 1 source",
         doc_number: null,
         doc_variant: "content",
+        module_id: "module-2",
         exclude_from_references: false,
       }),
     ).resolves.toBe(savedReview);
@@ -55,6 +56,7 @@ describe("document commands", () => {
         display_name: "Week 1 source",
         doc_number: null,
         doc_variant: "content",
+        module_id: "module-2",
         exclude_from_references: false,
       },
     });

@@ -7,6 +7,7 @@ import type {
 
 export type UpdateRadciteDocumentInput = {
   project_id?: string | null;
+  module_id?: string | null;
   document_id: string;
   display_name: string;
   doc_number: number | null;
@@ -23,6 +24,7 @@ export function updateRadciteDocument(
   return invoke<SavedRadciteReviewSummary>("update_radcite_document", {
     request: {
       project_id: trimmedOrNull(input.project_id),
+      module_id: trimmedOrNull(input.module_id),
       document_id: input.document_id,
       display_name: input.display_name,
       doc_number: input.doc_number,

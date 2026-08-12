@@ -1014,10 +1014,24 @@ async fn radcite_document_metadata_contract() {
     assert_eq!(response.doc_number, None);
     assert!(!response.exclude_from_references);
 
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Week 1".to_string(),
+            code: Some("M1".to_string()),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("create document module");
+
     let invalid_number = update_radcite_document(
         &state,
         UpdateRadciteDocumentRequest {
             project_id: None,
+            module_id: None,
             document_id: response.document_id,
             display_name: "Week 1".to_string(),
             doc_number: Some(0),
@@ -1045,6 +1059,7 @@ async fn radcite_document_metadata_contract() {
         &state,
         UpdateRadciteDocumentRequest {
             project_id: Some(other_project.id),
+            module_id: None,
             document_id: response.document_id,
             display_name: "Week 1".to_string(),
             doc_number: Some(1),
@@ -1063,6 +1078,7 @@ async fn radcite_document_metadata_contract() {
         &state,
         UpdateRadciteDocumentRequest {
             project_id: None,
+            module_id: Some(module.id),
             document_id: response.document_id,
             display_name: " Week 1 reading ".to_string(),
             doc_number: Some(3),
@@ -1077,6 +1093,7 @@ async fn radcite_document_metadata_contract() {
     assert_eq!(updated.doc_variant, "rise");
     assert_eq!(updated.doc_number, Some(3));
     assert!(updated.exclude_from_references);
+    assert_eq!(updated.module_id, Some(module.id));
 
     let loaded = load_saved_radcite_review(&state, response.document_id)
         .await
@@ -1085,6 +1102,54 @@ async fn radcite_document_metadata_contract() {
     assert_eq!(loaded.doc_variant, "rise");
     assert_eq!(loaded.doc_number, Some(3));
     assert!(loaded.exclude_from_references);
+    assert_eq!(loaded.module_id, Some(module.id));
+
+    let cleared = update_radcite_document(
+        &state,
+        UpdateRadciteDocumentRequest {
+            project_id: None,
+            module_id: None,
+            document_id: response.document_id,
+            display_name: "Week 1 reading".to_string(),
+            doc_number: Some(3),
+            doc_variant: DocumentVariant::Rise,
+            exclude_from_references: true,
+        },
+    )
+    .await
+    .expect("clear document module");
+    assert_eq!(cleared.module_id, None);
+
+    let other_module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: Some(other_project.id),
+            title: "Other module".to_string(),
+            code: Some("M2".to_string()),
+            order_index: Some(2),
+            description: None,
+        },
+    )
+    .await
+    .expect("create other project module");
+    let mismatched_module = update_radcite_document(
+        &state,
+        UpdateRadciteDocumentRequest {
+            project_id: None,
+            module_id: Some(other_module.id),
+            document_id: response.document_id,
+            display_name: "Week 1 reading".to_string(),
+            doc_number: Some(3),
+            doc_variant: DocumentVariant::Rise,
+            exclude_from_references: true,
+        },
+    )
+    .await
+    .expect_err("reject module from another project");
+    assert!(matches!(
+        mismatched_module,
+        RadciteDocumentError::ModuleProjectMismatch { module_id } if module_id == other_module.id
+    ));
 
     archive_radcite_document(
         &state,
@@ -1099,6 +1164,7 @@ async fn radcite_document_metadata_contract() {
         &state,
         UpdateRadciteDocumentRequest {
             project_id: None,
+            module_id: None,
             document_id: response.document_id,
             display_name: "Archived".to_string(),
             doc_number: None,
@@ -3519,6 +3585,7 @@ async fn radcite_excluded_document_filtering() {
         &state,
         UpdateRadciteDocumentRequest {
             project_id: None,
+            module_id: None,
             document_id: analysis.document_id,
             display_name: String::new(),
             doc_number: None,
