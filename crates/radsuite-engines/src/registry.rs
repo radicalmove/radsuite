@@ -3,6 +3,15 @@ use std::{
     path::{Path, PathBuf},
 };
 
+const AUDIO_CLEANUP_HOME_CANDIDATES: &[&str] = &[
+    ".radcast/venv311/bin/radcast-studio-enhance",
+    ".radcast/venv/bin/radcast-studio-enhance",
+    ".radcast/venv311/Scripts/radcast-studio-enhance.exe",
+    ".radcast/venv/Scripts/radcast-studio-enhance.exe",
+    ".radcast/venv311/Scripts/radcast-studio-enhance.cmd",
+    ".radcast/venv/Scripts/radcast-studio-enhance.cmd",
+];
+
 use crate::EngineStatus;
 
 #[derive(Debug, Clone)]
@@ -76,15 +85,12 @@ impl Default for EngineRegistry {
             resolve_command(
                 "RADSUITE_STUDIO_COMMAND",
                 "radcast-studio-enhance",
-                &[
-                    ".radcast/venv311/bin/radcast-studio-enhance",
-                    ".radcast/venv/bin/radcast-studio-enhance",
-                ],
+                AUDIO_CLEANUP_HOME_CANDIDATES,
             ),
             resolve_command(
                 "RADSUITE_RADTTS_CLI",
                 "radtts",
-                &["RADTTS/.venv/bin/radtts"],
+                &["RADTTS/.venv/bin/radtts", "RADTTS/.venv/Scripts/radtts.exe"],
             ),
         )
     }
@@ -101,16 +107,25 @@ fn resolve_command(env_name: &str, command: &str, home_candidates: &[&str]) -> O
         return Some(path);
     }
 
-    if let Some(home) = env::var_os("HOME").map(PathBuf::from) {
-        for relative_path in home_candidates {
-            let path = home.join(relative_path);
-            if path.is_file() {
-                return Some(path);
-            }
-        }
+    let home = if cfg!(windows) {
+        env::var_os("USERPROFILE").or_else(|| env::var_os("HOME"))
+    } else {
+        env::var_os("HOME")
+    }
+    .map(PathBuf::from);
+    if let Some(path) = resolve_home_command(home.as_deref(), home_candidates) {
+        return Some(path);
     }
 
     find_on_path(command)
+}
+
+fn resolve_home_command(home: Option<&Path>, candidates: &[&str]) -> Option<PathBuf> {
+    let home = home?;
+    candidates
+        .iter()
+        .map(|relative_path| home.join(relative_path))
+        .find(|path| path.is_file())
 }
 
 fn find_on_path(command: &str) -> Option<PathBuf> {
@@ -120,7 +135,51 @@ fn find_on_path(command: &str) -> Option<PathBuf> {
     }
 
     let path = env::var_os("PATH")?;
+    let command_names = if cfg!(windows) {
+        vec![
+            command.to_string(),
+            format!("{command}.exe"),
+            format!("{command}.cmd"),
+            format!("{command}.bat"),
+        ]
+    } else {
+        vec![command.to_string()]
+    };
     env::split_paths(&path)
-        .map(|directory| directory.join(command))
+        .flat_map(|directory| command_names.iter().map(move |name| directory.join(name)))
         .find(|path| path.is_file())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use super::{AUDIO_CLEANUP_HOME_CANDIDATES, resolve_home_command};
+
+    #[test]
+    fn finds_audio_cleanup_helper_in_windows_user_venv() {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after the Unix epoch")
+            .as_nanos();
+        let home = std::env::temp_dir().join(format!("radsuite-registry-home-{suffix}"));
+        let helper = home
+            .join(".radcast")
+            .join("venv")
+            .join("Scripts")
+            .join("radcast-studio-enhance.exe");
+        fs::create_dir_all(helper.parent().expect("helper has a parent"))
+            .expect("create helper directory");
+        fs::write(&helper, b"helper").expect("write helper marker");
+
+        assert_eq!(
+            resolve_home_command(Some(&home), AUDIO_CLEANUP_HOME_CANDIDATES),
+            Some(helper)
+        );
+
+        fs::remove_dir_all(home).expect("remove helper directory");
+    }
 }

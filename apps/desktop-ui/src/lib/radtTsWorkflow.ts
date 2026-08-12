@@ -71,9 +71,11 @@ export function mergeRadtTsVoicePreferences(
   draft: RadtTsDraft,
   preferences: RadtTsVoicePreferences | undefined,
 ): RadtTsDraft {
+  const voiceSource: RadtTsVoiceSource = preferences?.voiceSource ?? draft.voiceSource;
   return {
     ...draft,
     ...preferences,
+    voiceSource,
     pauseSeed: preferences?.pauseSeed === undefined
       ? draft.pauseSeed
       : normalizeRadtTsPauseSeedText(preferences.pauseSeed),
@@ -114,7 +116,7 @@ export function canStartRadtTs(
     draft.pauseMinSeconds > 0 &&
     draft.pauseMaxSeconds >= draft.pauseMinSeconds &&
     (draft.voiceSource === "builtin"
-      ? draft.builtInSpeaker.trim().length > 0
+      ? capability.supports_builtin_voices && draft.builtInSpeaker.trim().length > 0
       : draft.referenceAudioPath.trim().length > 0 && draft.acknowledgeVoiceClone)
   );
 }

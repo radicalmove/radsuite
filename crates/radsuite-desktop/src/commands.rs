@@ -57,6 +57,7 @@ const LOCAL_RADCITE_PROJECT_TITLE: &str = "RADcite Functional Testing";
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppStatus {
     pub app_name: String,
+    pub version: String,
     pub database_ready: bool,
     pub sync_configured: bool,
     pub engines: Vec<EngineStatus>,
@@ -290,6 +291,7 @@ fn optimized_capability_detail() -> String {
 pub fn get_app_status(state: &DesktopState) -> AppStatus {
     AppStatus {
         app_name: state.app_name.clone(),
+        version: env!("CARGO_PKG_VERSION").to_string(),
         database_ready: state.database_ready,
         sync_configured: state.sync_configured,
         engines: state.engine_registry.list(),

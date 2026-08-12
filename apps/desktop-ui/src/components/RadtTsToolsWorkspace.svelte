@@ -32,6 +32,8 @@
     available: false,
     executable: null,
     detail: "Checking local RADTTS support.",
+    supports_builtin_voices: false,
+    builtin_voices: [],
   });
   let outputs = $state<RadtTsMediaOutput[]>([]);
   let transcription = $state<RadtTsTranscriptionDraft>({

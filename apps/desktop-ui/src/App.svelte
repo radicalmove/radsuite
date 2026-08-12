@@ -37,6 +37,7 @@
     writeThemeStorage,
   } from "./lib/storage";
   import { showsCitationActions } from "./lib/workspaceLayout";
+  import { displayAppVersion } from "./lib/appVersion";
   import {
     addModuleReading,
     addRadciteModule,
@@ -90,6 +91,7 @@
 
   const fallbackStatus: AppStatus = {
     app_name: "RADsuite",
+    version: "0.2.0",
     database_ready: false,
     sync_configured: false,
     engines: [],
@@ -931,6 +933,13 @@
         <h2>{selectedProject.code} · {selectedProject.title}</h2>
       </div>
       <div class="status-strip" aria-label="Application status">
+        <span
+          class="version-chip"
+          title={`RADsuite application version ${displayAppVersion(status.version)}`}
+          aria-label={`RADsuite application version ${displayAppVersion(status.version)}`}
+        >
+          {displayAppVersion(status.version)}
+        </span>
         <span
           class="status-chip"
           class:is-ready={status.database_ready}

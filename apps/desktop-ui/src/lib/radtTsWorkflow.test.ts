@@ -15,6 +15,8 @@ const capability: RadtTsCapabilityStatus = {
   available: true,
   executable: "/Users/example/RADTTS/.venv/bin/radtts",
   detail: "Available",
+  supports_builtin_voices: true,
+  builtin_voices: ["Ryan", "Vivian"],
 };
 
 const draft: RadtTsDraft = {
@@ -94,7 +96,15 @@ describe("RAD TTS workflow", () => {
     ).toBe(8192);
   });
 
-  it("builds a built-in voice request without reference audio or clone authorization", () => {
+  it("preserves a saved built-in voice preference", () => {
+    expect(
+      mergeRadtTsVoicePreferences(createDefaultRadtTsDraft(), {
+        voiceSource: "builtin",
+      }).voiceSource,
+    ).toBe("builtin");
+  });
+
+  it("enables built-in voice generation when the runtime advertises it", () => {
     const builtinDraft = {
       ...draft,
       voiceSource: "builtin" as const,
@@ -114,6 +124,13 @@ describe("RAD TTS workflow", () => {
     });
     expect(canStartRadtTs(builtinDraft, capability)).toBe(true);
     expect(canStartRadtTs({ ...builtinDraft, builtInSpeaker: "" }, capability)).toBe(false);
+    expect(
+      canStartRadtTs(builtinDraft, {
+        ...capability,
+        supports_builtin_voices: false,
+        builtin_voices: [],
+      }),
+    ).toBe(false);
   });
 
   it("defaults and formats the generation budget", () => {

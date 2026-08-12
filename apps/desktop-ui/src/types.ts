@@ -7,6 +7,7 @@ export type EngineStatus = {
 
 export type AppStatus = {
   app_name: string;
+  version: string;
   database_ready: boolean;
   sync_configured: boolean;
   engines: EngineStatus[];
@@ -182,6 +183,8 @@ export type RadtTsCapabilityStatus = {
   available: boolean;
   executable: string | null;
   detail: string;
+  supports_builtin_voices: boolean;
+  builtin_voices: string[];
 };
 
 export type RadtTsJobState = "starting" | "running" | "completed" | "failed" | "cancelled";

@@ -3,7 +3,7 @@ use std::{
     env, fs,
     io::Write,
     path::{Path, PathBuf},
-    process::Stdio,
+    process::{Command as StdCommand, Stdio},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -13,13 +13,16 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
-    process::{Child, Command},
+    process::Command,
 };
 use uuid::Uuid;
 
-use crate::DesktopState;
+use crate::{
+    DesktopState,
+    process_group::{ManagedChild, ManagedProcessGroup},
+};
 
-pub type RadtTsChildHandle = Arc<Mutex<Option<Child>>>;
+pub type RadtTsChildHandle = Arc<Mutex<Option<ManagedChild>>>;
 pub type RadtTsTempFileSet = (PathBuf, Option<PathBuf>);
 
 #[derive(Debug, Default)]
@@ -35,6 +38,9 @@ const MAX_OUTPUT_NAME_LENGTH: usize = 80;
 const DEFAULT_MAX_NEW_TOKENS: u32 = 1200;
 const MIN_MAX_NEW_TOKENS: u32 = 64;
 const MAX_MAX_NEW_TOKENS: u32 = 8192;
+const BUILTIN_VOICE_IDS: &[&str] = &[
+    "Aiden", "Dylan", "Eric", "Ono_Anna", "Ryan", "Serena", "Sohee", "Uncle_Fu", "Vivian",
+];
 
 fn default_max_new_tokens() -> u32 {
     DEFAULT_MAX_NEW_TOKENS
@@ -62,15 +68,6 @@ pub enum RadtTsVoiceSource {
     #[default]
     Reference,
     Builtin,
-}
-
-impl RadtTsVoiceSource {
-    fn as_cli_value(self) -> &'static str {
-        match self {
-            Self::Reference => "reference",
-            Self::Builtin => "builtin",
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -133,6 +130,8 @@ pub struct RadtTsCapabilityStatus {
     pub available: bool,
     pub executable: Option<String>,
     pub detail: String,
+    pub supports_builtin_voices: bool,
+    pub builtin_voices: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -216,16 +215,16 @@ pub struct RadtTsOutputListing {
 
 #[derive(Debug, Error)]
 pub enum RadtTsError {
-    #[error("RADTTS voice generation is currently supported on macOS and Linux only")]
-    UnsupportedPlatform,
     #[error("RADTTS is not available: {0}")]
     MissingCli(String),
     #[error("voice generation text cannot be empty")]
     EmptyText,
     #[error("voice-clone authorization is required before using reference audio")]
     MissingVoiceCloneAuthorization,
-    #[error("a built-in speaker is required for built-in voice generation")]
-    MissingBuiltInSpeaker,
+    #[error("the installed RADTTS CLI supports reference-audio synthesis only")]
+    UnsupportedVoiceSource,
+    #[error("unsupported built-in voice speaker: {0}")]
+    InvalidBuiltInSpeaker(String),
     #[error("pause maximum must be greater than or equal to pause minimum")]
     InvalidPauseBounds,
     #[error("maximum new tokens must be between 64 and 8192")]
@@ -285,11 +284,8 @@ pub async fn start_radt_ts_synthesis(
     state: &DesktopState,
     request: RadtTsSynthesisRequest,
 ) -> Result<RadtTsJobStatus, RadtTsError> {
-    if cfg!(windows) {
-        return Err(RadtTsError::UnsupportedPlatform);
-    }
-
     let capability = discover_radt_ts_cli();
+    let supports_builtin_voices = capability.supports_builtin_voices;
     let executable = capability
         .executable
         .map(PathBuf::from)
@@ -301,6 +297,7 @@ pub async fn start_radt_ts_synthesis(
         projects_root.clone(),
         state.paths.cache_dir.join("pending.txt"),
         None,
+        supports_builtin_voices,
     )?;
 
     {
@@ -355,6 +352,7 @@ pub async fn start_radt_ts_synthesis(
         projects_root,
         text_path.clone(),
         reference_text_path.clone(),
+        supports_builtin_voices,
     ) {
         Ok(args) => args,
         Err(error) => {
@@ -374,8 +372,8 @@ pub async fn start_radt_ts_synthesis(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    configure_process_group(&mut command);
-    let child = match command.spawn() {
+    let process_group = ManagedProcessGroup::attach(&mut command).map_err(RadtTsError::Io)?;
+    let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
             remove_temp_text_files(&text_path, reference_text_path.as_deref());
@@ -387,7 +385,17 @@ pub async fn start_radt_ts_synthesis(
             return Err(RadtTsError::Io(error));
         }
     };
-    let child_handle = Arc::new(Mutex::new(Some(child)));
+    if let Err(error) = process_group.register_child(&child) {
+        let _ = child.start_kill();
+        remove_temp_text_files(&text_path, reference_text_path.as_deref());
+        state
+            .radt_ts_active_projects
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&request.project_id.to_string());
+        return Err(RadtTsError::Io(error));
+    }
+    let child_handle = Arc::new(Mutex::new(Some((child, process_group))));
     let job_id = Uuid::new_v4().to_string();
     let initial = RadtTsJobStatus {
         id: job_id.clone(),
@@ -605,7 +613,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let child = match guard.as_mut() {
-            Some(child) => child,
+            Some((child, _)) => child,
             None => {
                 finish_radt_ts_job(
                     &jobs,
@@ -652,7 +660,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             guard
                 .as_mut()
-                .and_then(|child| child.try_wait().transpose())
+                .and_then(|child| child.0.try_wait().transpose())
                 .transpose()
         };
         match exited {
@@ -803,39 +811,12 @@ fn request_process_termination(handle: &RadtTsChildHandle, force: bool) {
     let mut guard = handle
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let Some(child) = guard.as_mut() else { return };
-    if let Some(pid) = child.id() {
-        terminate_process_group(pid, force);
-    }
+    let Some((child, process_group)) = guard.as_mut() else {
+        return;
+    };
+    let _ = process_group.terminate(child, force);
     if force {
         let _ = child.start_kill();
-    }
-}
-
-fn terminate_process_group(pid: u32, force: bool) {
-    #[cfg(unix)]
-    {
-        let signal = if force { libc::SIGKILL } else { libc::SIGTERM };
-        // The child is placed in a dedicated process group before spawn.
-        unsafe {
-            let _ = libc::kill(-(pid as libc::pid_t), signal);
-        }
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = (pid, force);
-    }
-}
-
-fn configure_process_group(command: &mut Command) {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt;
-        command.as_std_mut().process_group(0);
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = command;
     }
 }
 
@@ -854,11 +835,47 @@ pub(crate) fn ensure_project_root(
     ] {
         fs::create_dir_all(project_root.join(relative))?;
     }
-    for (name, value) in [("jobs.json", "[]"), ("outputs.json", "[]")] {
+    for (name, value) in [
+        ("project.json", "{\"project_id\":\""),
+        ("jobs.json", "[]"),
+        ("outputs.json", "[]"),
+    ] {
         let path = project_root.join("manifests").join(name);
         if !path.exists() {
-            fs::write(path, value)?;
+            let contents = if name == "project.json" {
+                format!("{value}{project_id}\"}}\n")
+            } else {
+                format!("{value}\n")
+            };
+            fs::write(path, contents)?;
         }
+    }
+    let presets_path = project_root.join("manifests").join("presets.json");
+    if !presets_path.exists() {
+        fs::write(
+            presets_path,
+            r#"{
+  "natural_lecture_intro": {
+    "chunk_mode": "sentence",
+    "pause_config": {"min_seconds": 0.45, "max_seconds": 1.1, "seed": null},
+    "max_new_tokens": 1200,
+    "model_mode": "quality"
+  },
+  "bridge_segment": {
+    "chunk_mode": "sentence",
+    "pause_config": {"min_seconds": 0.3, "max_seconds": 0.85, "seed": null},
+    "max_new_tokens": 900,
+    "model_mode": "fast"
+  },
+  "short_concept_explainer": {
+    "chunk_mode": "single",
+    "pause_config": {"min_seconds": 0.25, "max_seconds": 0.5, "seed": null},
+    "max_new_tokens": 700,
+    "model_mode": "fast"
+  }
+}
+"#,
+        )?;
     }
     Ok(project_root.canonicalize()?)
 }
@@ -1033,12 +1050,16 @@ pub fn build_synthesis_args(
     projects_root: PathBuf,
     text_file: PathBuf,
     reference_text_file: Option<PathBuf>,
+    supports_builtin_voices: bool,
 ) -> Result<Vec<String>, RadtTsError> {
     if request.text.trim().is_empty() {
         return Err(RadtTsError::EmptyText);
     }
     if request.voice_source == RadtTsVoiceSource::Reference && !request.acknowledge_voice_clone {
         return Err(RadtTsError::MissingVoiceCloneAuthorization);
+    }
+    if request.voice_source == RadtTsVoiceSource::Builtin && !supports_builtin_voices {
+        return Err(RadtTsError::UnsupportedVoiceSource);
     }
     if request.pause_min_seconds <= 0.0 || request.pause_max_seconds < request.pause_min_seconds {
         return Err(RadtTsError::InvalidPauseBounds);
@@ -1055,8 +1076,6 @@ pub fn build_synthesis_args(
         request.project_id.to_string(),
         "--text-file".to_string(),
         text_file.display().to_string(),
-        "--voice-source".to_string(),
-        request.voice_source.as_cli_value().to_string(),
         "--mode".to_string(),
         request.quality.as_cli_value().to_string(),
         "--max-new-tokens".to_string(),
@@ -1090,9 +1109,21 @@ pub fn build_synthesis_args(
                 .built_in_speaker
                 .as_deref()
                 .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or(RadtTsError::MissingBuiltInSpeaker)?;
-            args.extend(["--built-in-speaker".to_string(), speaker.to_string()]);
+                .filter(|value| BUILTIN_VOICE_IDS.contains(value))
+                .ok_or_else(|| {
+                    RadtTsError::InvalidBuiltInSpeaker(
+                        request
+                            .built_in_speaker
+                            .clone()
+                            .unwrap_or_else(|| "missing speaker".to_string()),
+                    )
+                })?;
+            args.extend([
+                "--voice-source".to_string(),
+                "builtin".to_string(),
+                "--built-in-speaker".to_string(),
+                speaker.to_string(),
+            ]);
             if let Some(instruct) = request
                 .built_in_instruct
                 .as_deref()
@@ -1122,18 +1153,8 @@ pub(crate) fn parse_cli_result(stdout: &[u8]) -> Result<RadtTsCliResult, RadtTsE
 }
 
 pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
-    if cfg!(windows) {
-        return RadtTsCapabilityStatus {
-            available: false,
-            executable: None,
-            detail: "Voice generation will be available on Windows after process cleanup support is added.".to_string(),
-        };
-    }
-
     let override_path = env::var_os("RADSUITE_RADTTS_CLI").map(PathBuf::from);
-    let home_path = env::var_os("HOME")
-        .map(PathBuf::from)
-        .map(|home| home.join("RADTTS").join(".venv").join("bin").join("radtts"));
+    let home_path = radt_ts_home_path();
     let candidates = override_path
         .into_iter()
         .chain(find_on_path("radtts"))
@@ -1141,26 +1162,134 @@ pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
         .collect::<Vec<_>>();
     let executable = candidates.into_iter().find(|candidate| candidate.is_file());
     match executable {
-        Some(path) => RadtTsCapabilityStatus {
-            available: true,
-            executable: Some(path.display().to_string()),
-            detail: "Local RADTTS voice generation is available on this computer.".to_string(),
+        Some(path) => match probe_radt_ts_cli(&path) {
+            Ok(features) => RadtTsCapabilityStatus {
+                available: true,
+                executable: Some(path.display().to_string()),
+                detail: format!(
+                    "Local RADTTS is ready at {}. {}Models are loaded on demand.",
+                    path.display(),
+                    if features.supports_builtin_voices {
+                        "Built-in voices are available. "
+                    } else {
+                        "Only reference voices are available. "
+                    }
+                ),
+                supports_builtin_voices: features.supports_builtin_voices,
+                builtin_voices: if features.supports_builtin_voices {
+                    BUILTIN_VOICE_IDS
+                        .iter()
+                        .map(|value| (*value).to_string())
+                        .collect()
+                } else {
+                    Vec::new()
+                },
+            },
+            Err(detail) => RadtTsCapabilityStatus {
+                available: false,
+                executable: Some(path.display().to_string()),
+                detail,
+                supports_builtin_voices: false,
+                builtin_voices: Vec::new(),
+            },
         },
         None => RadtTsCapabilityStatus {
             available: false,
             executable: None,
             detail: "Install RADTTS locally or set RADSUITE_RADTTS_CLI to its executable."
                 .to_string(),
+            supports_builtin_voices: false,
+            builtin_voices: Vec::new(),
         },
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RadtTsCliFeatures {
+    supports_builtin_voices: bool,
+}
+
+fn probe_radt_ts_cli(path: &Path) -> Result<RadtTsCliFeatures, String> {
+    let output = StdCommand::new(path)
+        .args(["synthesize", "--help"])
+        .output()
+        .map_err(|error| {
+            format!(
+                "RADTTS was found at {} but could not start: {}. Check the Python environment and dependencies.",
+                path.display(), error
+            )
+    })?;
+    if output.status.success() {
+        let help = format!(
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return Ok(RadtTsCliFeatures {
+            supports_builtin_voices: help.contains("--voice-source")
+                && help.contains("--built-in-speaker"),
+        });
+    }
+
+    let detail = String::from_utf8_lossy(&output.stderr)
+        .trim()
+        .chars()
+        .take(300)
+        .collect::<String>();
+    let detail = if detail.is_empty() {
+        String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .chars()
+            .take(300)
+            .collect::<String>()
+    } else {
+        detail
+    };
+    Err(format!(
+        "RADTTS was found at {} but its synthesis CLI is not ready{}.",
+        path.display(),
+        if detail.is_empty() {
+            " Check the Python environment and dependencies.".to_string()
+        } else {
+            format!(" {}", detail)
+        }
+    ))
+}
+
 fn find_on_path(name: &str) -> Vec<PathBuf> {
+    let names = if cfg!(windows) {
+        vec![
+            name.to_string(),
+            format!("{name}.exe"),
+            format!("{name}.cmd"),
+            format!("{name}.bat"),
+        ]
+    } else {
+        vec![name.to_string()]
+    };
     env::var_os("PATH")
         .into_iter()
         .flat_map(|path| env::split_paths(&path).collect::<Vec<_>>())
-        .map(|directory| directory.join(name))
+        .flat_map(|directory| names.iter().map(move |name| directory.join(name)))
         .collect()
+}
+
+fn radt_ts_home_path() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        env::var_os("USERPROFILE").map(PathBuf::from).map(|home| {
+            home.join("RADTTS")
+                .join(".venv")
+                .join("Scripts")
+                .join("radtts.exe")
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        env::var_os("HOME")
+            .map(PathBuf::from)
+            .map(|home| home.join("RADTTS").join(".venv").join("bin").join("radtts"))
+    }
 }
 
 #[cfg(test)]
@@ -1172,8 +1301,8 @@ mod tests {
     use super::{
         RadtTsChunkMode, RadtTsOutputFormat, RadtTsQuality, RadtTsSynthesisRequest,
         RadtTsVoiceSource, StartRadtTsSynthesisRequest, build_synthesis_args, contained_file,
-        parse_cli_result, remove_temp_text_files, shutdown_radt_ts_jobs, validate_output_name,
-        validate_reference_audio,
+        parse_cli_result, probe_radt_ts_cli, remove_temp_text_files, shutdown_radt_ts_jobs,
+        validate_output_name, validate_reference_audio,
     };
     use crate::state::DesktopState;
 
@@ -1216,6 +1345,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             Some(PathBuf::from("/tmp/reference.txt")),
+            false,
         )
         .expect("valid request should build");
         assert_eq!(args[0], "--projects-root");
@@ -1273,11 +1403,45 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect("valid request should build");
         assert!(!args.contains(&"--reference-text-file".to_string()));
         assert!(!args.contains(&"--pause-seed".to_string()));
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn rejects_builtin_voice_requests_until_the_installed_cli_supports_them() {
+        let request = RadtTsSynthesisRequest {
+            project_id: ProjectId::new(),
+            text: "A short script.".to_string(),
+            voice_source: RadtTsVoiceSource::Builtin,
+            reference_audio_path: None,
+            reference_text: None,
+            built_in_speaker: Some("Vivian".to_string()),
+            built_in_instruct: Some("Warm and clear".to_string()),
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Sentence,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.75,
+            pause_seed: None,
+            max_new_tokens: 1200,
+            output_format: RadtTsOutputFormat::Mp3,
+            output_name: "intro".to_string(),
+            acknowledge_voice_clone: false,
+        };
+
+        let error = build_synthesis_args(
+            &request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+            false,
+        )
+        .expect_err("built-in voices are not supported by the installed CLI");
+
+        assert!(matches!(error, super::RadtTsError::UnsupportedVoiceSource));
     }
 
     #[test]
@@ -1306,54 +1470,18 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            true,
         )
-        .expect("valid built-in request should build");
+        .expect("supported built-in voice should build");
 
-        assert!(
-            args.windows(2)
-                .any(|pair| pair == ["--voice-source", "builtin"])
-        );
-        assert!(
-            args.windows(2)
-                .any(|pair| pair == ["--built-in-speaker", "Vivian"])
-        );
-        assert!(
-            args.windows(2)
-                .any(|pair| pair == ["--built-in-instruct", "Warm and clear"])
-        );
+        assert!(args.contains(&"--voice-source".to_string()));
+        assert!(args.contains(&"builtin".to_string()));
+        assert!(args.contains(&"--built-in-speaker".to_string()));
+        assert!(args.contains(&"Vivian".to_string()));
+        assert!(args.contains(&"--built-in-instruct".to_string()));
+        assert!(args.contains(&"Warm and clear".to_string()));
         assert!(!args.contains(&"--reference-audio".to_string()));
-        assert!(args.contains(&"fast".to_string()));
-    }
-
-    #[test]
-    fn rejects_builtin_voice_requests_without_a_speaker() {
-        let request = RadtTsSynthesisRequest {
-            project_id: ProjectId::new(),
-            text: "A short script.".to_string(),
-            voice_source: RadtTsVoiceSource::Builtin,
-            reference_audio_path: None,
-            reference_text: None,
-            built_in_speaker: None,
-            built_in_instruct: None,
-            quality: RadtTsQuality::High,
-            chunk_mode: RadtTsChunkMode::Single,
-            pause_min_seconds: 0.25,
-            pause_max_seconds: 0.75,
-            pause_seed: None,
-            max_new_tokens: 1200,
-            output_format: RadtTsOutputFormat::Mp3,
-            output_name: "intro".to_string(),
-            acknowledge_voice_clone: false,
-        };
-
-        let error = build_synthesis_args(
-            &request,
-            PathBuf::from("/tmp/project"),
-            PathBuf::from("/tmp/script.txt"),
-            None,
-        )
-        .expect_err("a built-in speaker is required");
-        assert!(error.to_string().contains("built-in speaker"));
+        assert!(!args.contains(&"--ack-voice-clone".to_string()));
     }
 
     #[test]
@@ -1386,6 +1514,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect_err("too-small generation budget should be rejected");
         assert!(error.to_string().contains("between 64 and 8192"));
@@ -1399,6 +1528,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect("the lower generation budget boundary should be accepted");
         assert!(lower_args.contains(&"64".to_string()));
@@ -1412,6 +1542,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect("the upper generation budget boundary should be accepted");
         assert!(upper_args.contains(&"8192".to_string()));
@@ -1424,6 +1555,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect_err("too-large generation budget should be rejected");
         assert!(error.to_string().contains("between 64 and 8192"));
@@ -1520,6 +1652,21 @@ mod tests {
     }
 
     #[test]
+    fn creates_radt_ts_project_scaffold_for_cli_commands() {
+        let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
+        let project_id = ProjectId::new();
+
+        let project_root = super::ensure_project_root(&root, project_id)
+            .expect("project scaffold should be created");
+
+        assert!(project_root.join("manifests/project.json").is_file());
+        assert!(project_root.join("manifests/presets.json").is_file());
+        assert!(project_root.join("manifests/jobs.json").is_file());
+        assert!(project_root.join("manifests/outputs.json").is_file());
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
     fn rejects_malformed_cli_result() {
         assert!(parse_cli_result(b"not json").is_err());
         assert!(parse_cli_result(br#"{"status":"completed"}"#).is_err());
@@ -1565,5 +1712,18 @@ mod tests {
         fs::write(&text, [0_u8; 8]).expect("create text file");
         assert!(validate_reference_audio(&text).is_err());
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn probes_the_installed_cli_without_starting_a_generation_job() {
+        let executable = std::env::var_os("RADSUITE_RADTTS_CLI")
+            .map(PathBuf::from)
+            .or_else(super::radt_ts_home_path)
+            .filter(|path| path.is_file());
+
+        if let Some(executable) = executable {
+            probe_radt_ts_cli(&executable)
+                .expect("installed RADTTS CLI should answer synthesis help");
+        }
     }
 }

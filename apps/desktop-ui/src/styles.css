@@ -666,6 +666,20 @@ button:disabled {
   white-space: nowrap;
 }
 
+.version-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 27px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--fg-3);
+  background: var(--bg-panel-alt);
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
 .status-dot {
   width: 7px;
   height: 7px;

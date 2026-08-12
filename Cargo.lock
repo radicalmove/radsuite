@@ -3364,7 +3364,7 @@ dependencies = [
 
 [[package]]
 name = "radsuite-desktop"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "chrono",
  "directories",
@@ -3383,6 +3383,7 @@ dependencies = [
  "tokio",
  "url",
  "uuid",
+ "windows-sys 0.61.2",
  "zip",
 ]
 
@@ -3430,7 +3431,7 @@ dependencies = [
 
 [[package]]
 name = "radsuite-tauri"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "radsuite-desktop",
  "tauri",
