@@ -11,19 +11,20 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
-    process::{Child, Command},
+    process::Command,
 };
 use uuid::Uuid;
 
 use crate::{
     DesktopState,
+    process_group::{ManagedChild, ManagedProcessGroup},
     radt_ts::{
         RadtTsCapabilityStatus, RadtTsOutputFormat, contained_file, discover_radt_ts_cli,
         ensure_project_root, validate_output_name,
     },
 };
 
-pub type RadtTsMediaChildHandle = Arc<Mutex<Option<Child>>>;
+pub type RadtTsMediaChildHandle = Arc<Mutex<Option<ManagedChild>>>;
 
 const MAX_CAPTURED_OUTPUT_BYTES: usize = 512 * 1024;
 const MEDIA_JOB_TIMEOUT: Duration = Duration::from_secs(60 * 60);
@@ -212,9 +213,6 @@ pub async fn start_radt_ts_transcription(
     state: &DesktopState,
     request: StartRadtTsTranscriptionRequest,
 ) -> Result<RadtTsMediaJobStatus, RadtTsMediaError> {
-    if cfg!(windows) {
-        return Err(RadtTsMediaError::UnsupportedPlatform);
-    }
     let project_id = request.project_id.unwrap_or_default();
     let executable = media_executable()?;
     let projects_root = state.paths.data_dir.join("radt-ts-projects");
@@ -243,9 +241,6 @@ pub async fn start_radt_ts_clip(
     state: &DesktopState,
     request: StartRadtTsClipRequest,
 ) -> Result<RadtTsMediaJobStatus, RadtTsMediaError> {
-    if cfg!(windows) {
-        return Err(RadtTsMediaError::UnsupportedPlatform);
-    }
     let project_id = request.project_id.unwrap_or_default();
     let executable = media_executable()?;
     let projects_root = state.paths.data_dir.join("radt-ts-projects");
@@ -483,15 +478,20 @@ async fn start_media_process(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    configure_process_group(&mut command);
-    let child = match command.spawn() {
+    let process_group = ManagedProcessGroup::attach(&mut command).map_err(RadtTsMediaError::Io)?;
+    let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
             remove_active_project(state, project_id);
             return Err(RadtTsMediaError::Io(error));
         }
     };
-    let child_handle = Arc::new(Mutex::new(Some(child)));
+    if let Err(error) = process_group.register_child(&child) {
+        let _ = child.start_kill();
+        remove_active_project(state, project_id);
+        return Err(RadtTsMediaError::Io(error));
+    }
+    let child_handle = Arc::new(Mutex::new(Some((child, process_group))));
     let job_id = Uuid::new_v4().to_string();
     let initial = RadtTsMediaJobStatus {
         id: job_id.clone(),
@@ -557,7 +557,7 @@ async fn run_media_job(job_id: String, context: MediaJobContext) {
         let mut guard = child_handle
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let Some(child) = guard.as_mut() else {
+        let Some((child, _)) = guard.as_mut() else {
             finish_media_job(
                 &jobs,
                 &children,
@@ -599,7 +599,7 @@ async fn run_media_job(job_id: String, context: MediaJobContext) {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             guard
                 .as_mut()
-                .and_then(|child| child.try_wait().transpose())
+                .and_then(|child| child.0.try_wait().transpose())
                 .transpose()
         };
         match exited {
@@ -1020,38 +1020,12 @@ fn request_process_termination(handle: &RadtTsMediaChildHandle, force: bool) {
     let mut guard = handle
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let Some(child) = guard.as_mut() else { return };
-    if let Some(pid) = child.id() {
-        terminate_process_group(pid, force);
-    }
+    let Some((child, process_group)) = guard.as_mut() else {
+        return;
+    };
+    let _ = process_group.terminate(child, force);
     if force {
         let _ = child.start_kill();
-    }
-}
-
-fn terminate_process_group(pid: u32, force: bool) {
-    #[cfg(unix)]
-    {
-        let signal = if force { libc::SIGKILL } else { libc::SIGTERM };
-        unsafe {
-            let _ = libc::kill(-(pid as libc::pid_t), signal);
-        }
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = (pid, force);
-    }
-}
-
-fn configure_process_group(command: &mut Command) {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt;
-        command.as_std_mut().process_group(0);
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = command;
     }
 }
 

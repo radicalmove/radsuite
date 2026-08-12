@@ -12,7 +12,7 @@ Replace the disabled RADsuite `Voice generation` navigation item with a usable l
 
 The first slice includes:
 
-- local RADTTS CLI discovery using an explicit environment override, PATH lookup, and the conventional `~/RADTTS/.venv/bin/radtts` installation;
+- local RADTTS CLI discovery using an explicit environment override, PATH lookup, and the conventional `~/RADTTS/.venv/bin/radtts` (macOS/Linux) or `%USERPROFILE%\\RADTTS\\.venv\\Scripts\\radtts.exe` (Windows) installation;
 - a project-scoped reference-voice synthesis workflow;
 - explicit voice-clone authorization before reference audio is used;
 - fast/high-quality model selection, sentence/single chunking, pause range, and MP3/WAV output;
@@ -22,7 +22,7 @@ The first slice includes:
 - native Svelte controls for script text, reference audio, settings, progress, playback, and downloads;
 - contract tests for request validation, executable discovery, argument construction, output parsing, and job state transitions.
 
-Built-in voices, filler insertion, remote workers, network sync, account sharing, a Rust-native TTS model, and Windows process-tree management remain subsequent slices. This boundary is intentional: the current RADTTS CLI already supports the reference-voice path and its carefully tuned model settings, while the built-in voice path currently exists only in the separate API/UI contract. This first bridge is supported on macOS and Linux, where the process-group cleanup contract is implemented; the UI keeps Voice generation unavailable on Windows until a Job Object adapter is added.
+Built-in voices, filler insertion, remote workers, network sync, account sharing, and a Rust-native TTS model remain subsequent slices. The current RADTTS CLI already supports the reference-voice path and its carefully tuned model settings. The local bridge now supports process cleanup on macOS/Linux through process groups and on Windows through Job Objects; Windows still requires the RADTTS helper to be installed separately.
 
 ## Local runtime boundary
 
@@ -32,7 +32,7 @@ The executable search order is:
 
 1. `RADSUITE_RADTTS_CLI`, when set;
 2. `radtts` available on PATH;
-3. `$HOME/RADTTS/.venv/bin/radtts`.
+3. `$HOME/RADTTS/.venv/bin/radtts` on macOS/Linux, or `%USERPROFILE%\\RADTTS\\.venv\\Scripts\\radtts.exe` on Windows.
 
 Capability discovery returns a plain-language status and the resolved executable path. Missing runtime support disables synthesis with an actionable message rather than failing at process launch.
 
@@ -48,7 +48,7 @@ Capability discovery returns a plain-language status and the resolved executable
 7. On completion, Rust reads the output metadata and returns only output/caption paths under the selected RADTTS project root. On cancellation or failure it terminates and reaps the process tree.
 8. The UI displays the generated audio and captions using Tauri file URLs and refreshes the persisted output list.
 
-Cancellation is OS-level process termination; the current `radtts job --cancel` command cannot cancel a separate CLI process and is not used. On Unix, the child is started in its own process group and cancellation sends a group signal before force-killing the group after a bounded wait. The first bridge refuses to start on Windows because the equivalent Job Object cleanup is not yet implemented. Tauri app shutdown calls the desktop state's synchronous cancellation hook so active process groups receive termination rather than being abandoned.
+Cancellation is OS-level process termination; the current `radtts job --cancel` command cannot cancel a separate CLI process and is not used. On Unix, the child is started in its own process group and cancellation sends a group signal before force-killing the group after a bounded wait. On Windows, the child is assigned to a Job Object configured to terminate its process tree when the job is closed or explicitly cancelled. Tauri app shutdown calls the desktop state's synchronous cancellation hook so active process groups or jobs receive termination rather than being abandoned.
 
 ## Storage, validation, and safety
 

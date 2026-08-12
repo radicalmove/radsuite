@@ -24,7 +24,7 @@ Before distributing a Windows build outside controlled testing:
 - Confirm the app can create and reopen its local projects under Windows AppData.
 - Test RADcite import, review, readings, exports, and local backup behavior.
 - Test RADcast processing with the runtime bundled or installed for Windows.
-- Add the Windows RADTTS process-management adapter before advertising RADTTS support.
+- Install and test the RADTTS helper and its Python/model runtime on Windows before advertising voice-generation support.
 - Obtain a Windows code-signing certificate and sign the installer and bundled binaries where practical.
 - Test Defender SmartScreen behavior with a signed build.
 - Decide whether the public distribution should offer NSIS, MSI, or both.
@@ -37,8 +37,8 @@ The installer packages the Tauri application. It does not currently bundle every
 Python/model runtime used by the local audio and voice tools. RADcast and RADTTS
 must therefore be treated as separate Windows runtime work until their helper
 discovery, dependencies, cancellation, and quality have been verified on a real
-Windows machine. RADTTS currently keeps its voice-generation workflow disabled
-on Windows because process-tree cleanup still needs a Windows Job Object adapter.
+Windows machine. RADsuite includes Windows Job Object process cleanup, but the
+RADTTS helper and its model dependencies are not bundled by this installer.
 
 Native sidecars should be bundled with the app and discovered through
 `radsuite-engines` once their Windows builds are available. Runtime selection

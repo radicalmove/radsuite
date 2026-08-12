@@ -13,13 +13,16 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::{
     io::{AsyncRead, AsyncReadExt},
-    process::{Child, Command},
+    process::Command,
 };
 use uuid::Uuid;
 
-use crate::DesktopState;
+use crate::{
+    DesktopState,
+    process_group::{ManagedChild, ManagedProcessGroup},
+};
 
-pub type RadtTsChildHandle = Arc<Mutex<Option<Child>>>;
+pub type RadtTsChildHandle = Arc<Mutex<Option<ManagedChild>>>;
 pub type RadtTsTempFileSet = (PathBuf, Option<PathBuf>);
 
 #[derive(Debug, Default)]
@@ -285,10 +288,6 @@ pub async fn start_radt_ts_synthesis(
     state: &DesktopState,
     request: RadtTsSynthesisRequest,
 ) -> Result<RadtTsJobStatus, RadtTsError> {
-    if cfg!(windows) {
-        return Err(RadtTsError::UnsupportedPlatform);
-    }
-
     let capability = discover_radt_ts_cli();
     let executable = capability
         .executable
@@ -374,8 +373,8 @@ pub async fn start_radt_ts_synthesis(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    configure_process_group(&mut command);
-    let child = match command.spawn() {
+    let process_group = ManagedProcessGroup::attach(&mut command).map_err(RadtTsError::Io)?;
+    let mut child = match command.spawn() {
         Ok(child) => child,
         Err(error) => {
             remove_temp_text_files(&text_path, reference_text_path.as_deref());
@@ -387,7 +386,17 @@ pub async fn start_radt_ts_synthesis(
             return Err(RadtTsError::Io(error));
         }
     };
-    let child_handle = Arc::new(Mutex::new(Some(child)));
+    if let Err(error) = process_group.register_child(&child) {
+        let _ = child.start_kill();
+        remove_temp_text_files(&text_path, reference_text_path.as_deref());
+        state
+            .radt_ts_active_projects
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .remove(&request.project_id.to_string());
+        return Err(RadtTsError::Io(error));
+    }
+    let child_handle = Arc::new(Mutex::new(Some((child, process_group))));
     let job_id = Uuid::new_v4().to_string();
     let initial = RadtTsJobStatus {
         id: job_id.clone(),
@@ -605,7 +614,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
         let child = match guard.as_mut() {
-            Some(child) => child,
+            Some((child, _)) => child,
             None => {
                 finish_radt_ts_job(
                     &jobs,
@@ -652,7 +661,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
                 .unwrap_or_else(|poisoned| poisoned.into_inner());
             guard
                 .as_mut()
-                .and_then(|child| child.try_wait().transpose())
+                .and_then(|child| child.0.try_wait().transpose())
                 .transpose()
         };
         match exited {
@@ -803,39 +812,12 @@ fn request_process_termination(handle: &RadtTsChildHandle, force: bool) {
     let mut guard = handle
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let Some(child) = guard.as_mut() else { return };
-    if let Some(pid) = child.id() {
-        terminate_process_group(pid, force);
-    }
+    let Some((child, process_group)) = guard.as_mut() else {
+        return;
+    };
+    let _ = process_group.terminate(child, force);
     if force {
         let _ = child.start_kill();
-    }
-}
-
-fn terminate_process_group(pid: u32, force: bool) {
-    #[cfg(unix)]
-    {
-        let signal = if force { libc::SIGKILL } else { libc::SIGTERM };
-        // The child is placed in a dedicated process group before spawn.
-        unsafe {
-            let _ = libc::kill(-(pid as libc::pid_t), signal);
-        }
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = (pid, force);
-    }
-}
-
-fn configure_process_group(command: &mut Command) {
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt;
-        command.as_std_mut().process_group(0);
-    }
-    #[cfg(not(unix))]
-    {
-        let _ = command;
     }
 }
 
@@ -1122,18 +1104,8 @@ pub(crate) fn parse_cli_result(stdout: &[u8]) -> Result<RadtTsCliResult, RadtTsE
 }
 
 pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
-    if cfg!(windows) {
-        return RadtTsCapabilityStatus {
-            available: false,
-            executable: None,
-            detail: "Voice generation will be available on Windows after process cleanup support is added.".to_string(),
-        };
-    }
-
     let override_path = env::var_os("RADSUITE_RADTTS_CLI").map(PathBuf::from);
-    let home_path = env::var_os("HOME")
-        .map(PathBuf::from)
-        .map(|home| home.join("RADTTS").join(".venv").join("bin").join("radtts"));
+    let home_path = radt_ts_home_path();
     let candidates = override_path
         .into_iter()
         .chain(find_on_path("radtts"))
@@ -1156,11 +1128,39 @@ pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
 }
 
 fn find_on_path(name: &str) -> Vec<PathBuf> {
+    let names = if cfg!(windows) {
+        vec![
+            name.to_string(),
+            format!("{name}.exe"),
+            format!("{name}.cmd"),
+            format!("{name}.bat"),
+        ]
+    } else {
+        vec![name.to_string()]
+    };
     env::var_os("PATH")
         .into_iter()
         .flat_map(|path| env::split_paths(&path).collect::<Vec<_>>())
-        .map(|directory| directory.join(name))
+        .flat_map(|directory| names.iter().map(move |name| directory.join(name)))
         .collect()
+}
+
+fn radt_ts_home_path() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        env::var_os("USERPROFILE").map(PathBuf::from).map(|home| {
+            home.join("RADTTS")
+                .join(".venv")
+                .join("Scripts")
+                .join("radtts.exe")
+        })
+    }
+    #[cfg(not(windows))]
+    {
+        env::var_os("HOME")
+            .map(PathBuf::from)
+            .map(|home| home.join("RADTTS").join(".venv").join("bin").join("radtts"))
+    }
 }
 
 #[cfg(test)]
