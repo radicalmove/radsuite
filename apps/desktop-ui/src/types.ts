@@ -341,6 +341,15 @@ export type RadciteArchiveItem = {
   archived_at: string;
 };
 
+export type CourseReferenceCitationUsage = {
+  document_id: string;
+  document_name: string;
+  paragraph_id: string;
+  paragraph_order_index: number;
+  page: number | null;
+  citation_text: string;
+};
+
 export type CourseReferenceSummary = {
   id: string;
   project_id: string;
@@ -357,6 +366,7 @@ export type CourseReferenceSummary = {
   notes: string | null;
   validation_status: "unknown" | "valid" | "needs_fix";
   validation_report: string | null;
+  citations?: CourseReferenceCitationUsage[];
 };
 
 export type CourseModuleSummary = {

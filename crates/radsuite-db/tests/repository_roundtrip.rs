@@ -729,12 +729,13 @@ async fn paragraph_citation_can_be_linked_to_reference_entry() {
     let document = Document::new(project.id, "lesson-1.docx", DocumentFileType::Docx);
     let cited = Paragraph::new(document.id, 0, "Smith (2020) explains worked examples.");
     let citation = Citation::new(cited.id, "Smith (2020)", 0, 12);
+    let repeated_citation = Citation::new(cited.id, "Smith (2020)", 13, 25);
 
     document_repo
         .insert_document_analysis(
             &document,
             std::slice::from_ref(&cited),
-            std::slice::from_ref(&citation),
+            &[citation.clone(), repeated_citation.clone()],
         )
         .await
         .expect("insert document analysis");
@@ -743,6 +744,10 @@ async fn paragraph_citation_can_be_linked_to_reference_entry() {
         .link_citation_to_reference(citation.id, reference.id)
         .await
         .expect("link citation to reference");
+    document_repo
+        .link_citation_to_reference(repeated_citation.id, reference.id)
+        .await
+        .expect("link repeated citation to reference");
 
     let loaded = document_repo
         .load_document_analysis(document.id)
@@ -752,6 +757,20 @@ async fn paragraph_citation_can_be_linked_to_reference_entry() {
 
     assert_eq!(loaded.citations[0].reference_entry_id, Some(reference.id));
     assert!(!loaded.citations[0].verified);
+
+    let usages = reference_repo
+        .list_reference_citation_usages_for_project(project.id)
+        .await
+        .expect("list reference citation usages");
+    assert_eq!(usages.len(), 2);
+    assert!(usages.iter().all(|usage| {
+        usage.reference_entry_id == reference.id
+            && usage.document_id == document.id
+            && usage.paragraph_id == cited.id
+            && usage.document_name == "lesson-1.docx"
+            && usage.page.is_none()
+            && usage.citation_text == "Smith (2020)"
+    }));
 }
 
 #[tokio::test]

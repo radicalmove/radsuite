@@ -1,4 +1,9 @@
-use std::{cmp::Ordering, collections::HashSet, path::PathBuf, time::Instant};
+use std::{
+    cmp::Ordering,
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+    time::Instant,
+};
 
 use chrono::Utc;
 use radsuite_cite::{
@@ -15,8 +20,8 @@ use radsuite_core::{
 };
 use radsuite_db::{
     CitationDocumentRepository, CourseModuleRepository, DbError, ProjectRepository,
-    ReferenceEntryRepository, SqliteCitationDocumentRepository, SqliteCourseModuleRepository,
-    SqliteProjectRepository, SqliteReferenceEntryRepository,
+    ReferenceCitationUsage, ReferenceEntryRepository, SqliteCitationDocumentRepository,
+    SqliteCourseModuleRepository, SqliteProjectRepository, SqliteReferenceEntryRepository,
 };
 use radsuite_engines::EngineStatus;
 use radsuite_engines::{AudioProcessor, CaptionProcessor, EnhancementModel, EnhancementProcessor};
@@ -477,6 +482,17 @@ pub struct CourseReferenceSummary {
     pub notes: Option<String>,
     pub validation_status: String,
     pub validation_report: Option<String>,
+    pub citations: Vec<CourseReferenceCitationUsage>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CourseReferenceCitationUsage {
+    pub document_id: DocumentId,
+    pub document_name: String,
+    pub paragraph_id: ParagraphId,
+    pub paragraph_order_index: i32,
+    pub page: Option<i32>,
+    pub citation_text: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -891,6 +907,20 @@ pub enum ReviewActionError {
     EmptyCitationText,
     #[error("could not load RADcite review document {0}")]
     MissingDocument(DocumentId),
+    #[error("could not find citation {citation_id} in RADcite review document {document_id}")]
+    MissingCitation {
+        document_id: DocumentId,
+        citation_id: CitationId,
+    },
+    #[error("could not load RADcite reference {0}")]
+    MissingReference(ReferenceEntryId),
+    #[error(
+        "RADcite citation document {document_id} and reference {reference_id} belong to different projects"
+    )]
+    ReferenceProjectMismatch {
+        document_id: DocumentId,
+        reference_id: ReferenceEntryId,
+    },
     #[error("could not load project {0} for RADcite review document")]
     MissingProject(ProjectId),
     #[error(transparent)]
@@ -1925,10 +1955,24 @@ pub async fn list_course_references(
 ) -> Result<Vec<CourseReferenceSummary>, CourseReferenceError> {
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
     let references = load_course_reference_entries(state, project.id).await?;
+    let usages = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .list_reference_citation_usages_for_project(project.id)
+        .await?;
+    let mut usage_by_reference =
+        HashMap::<ReferenceEntryId, Vec<CourseReferenceCitationUsage>>::new();
+    for usage in usages {
+        usage_by_reference
+            .entry(usage.reference_entry_id)
+            .or_default()
+            .push(course_reference_citation_usage(usage));
+    }
 
     Ok(references
         .into_iter()
-        .map(course_reference_summary)
+        .map(|reference| {
+            let citations = usage_by_reference.remove(&reference.id).unwrap_or_default();
+            course_reference_summary_with_citations(reference, citations)
+        })
         .collect())
 }
 
@@ -2890,7 +2934,36 @@ pub async fn link_citation_to_reference_for_review(
     state: &DesktopState,
     request: LinkCitationReferenceRequest,
 ) -> Result<AnalyseDocxReviewResponse, ReviewActionError> {
-    SqliteCitationDocumentRepository::new(state.database_pool.clone())
+    let document_repo = SqliteCitationDocumentRepository::new(state.database_pool.clone());
+    let analysis = document_repo
+        .load_document_analysis(request.document_id)
+        .await?
+        .ok_or(ReviewActionError::MissingDocument(request.document_id))?;
+    if !analysis
+        .citations
+        .iter()
+        .any(|citation| citation.id == request.citation_id)
+    {
+        return Err(ReviewActionError::MissingCitation {
+            document_id: request.document_id,
+            citation_id: request.citation_id,
+        });
+    }
+
+    let reference = SqliteReferenceEntryRepository::new(state.database_pool.clone())
+        .load_reference_entry(request.reference_entry_id)
+        .await?
+        .ok_or(ReviewActionError::MissingReference(
+            request.reference_entry_id,
+        ))?;
+    if reference.project_id != analysis.document.project_id {
+        return Err(ReviewActionError::ReferenceProjectMismatch {
+            document_id: request.document_id,
+            reference_id: request.reference_entry_id,
+        });
+    }
+
+    document_repo
         .link_citation_to_reference(request.citation_id, request.reference_entry_id)
         .await?;
 
@@ -3156,6 +3229,13 @@ fn radcite_project_summary(project: Project) -> RadciteProjectSummary {
 }
 
 fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary {
+    course_reference_summary_with_citations(reference, Vec::new())
+}
+
+fn course_reference_summary_with_citations(
+    reference: ReferenceEntry,
+    citations: Vec<CourseReferenceCitationUsage>,
+) -> CourseReferenceSummary {
     CourseReferenceSummary {
         id: reference.id,
         project_id: reference.project_id,
@@ -3172,6 +3252,18 @@ fn course_reference_summary(reference: ReferenceEntry) -> CourseReferenceSummary
         notes: reference.notes,
         validation_status: validation_status_label(reference.apa_validation_status).to_string(),
         validation_report: reference.apa_validation_report,
+        citations,
+    }
+}
+
+fn course_reference_citation_usage(usage: ReferenceCitationUsage) -> CourseReferenceCitationUsage {
+    CourseReferenceCitationUsage {
+        document_id: usage.document_id,
+        document_name: usage.document_name,
+        paragraph_id: usage.paragraph_id,
+        paragraph_order_index: usage.paragraph_order_index,
+        page: usage.page,
+        citation_text: usage.citation_text,
     }
 }
 

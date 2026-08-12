@@ -511,6 +511,17 @@ impl CourseModuleRepository for SqliteCourseModuleRepository {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ReferenceCitationUsage {
+    pub reference_entry_id: ReferenceEntryId,
+    pub document_id: DocumentId,
+    pub document_name: String,
+    pub paragraph_id: ParagraphId,
+    pub paragraph_order_index: i32,
+    pub page: Option<i32>,
+    pub citation_text: String,
+}
+
 #[async_trait]
 pub trait ReferenceEntryRepository {
     async fn insert_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError>;
@@ -537,6 +548,10 @@ pub trait ReferenceEntryRepository {
         project_id: ProjectId,
         reference_type: ReferenceEntryType,
     ) -> Result<Vec<ReferenceEntry>, DbError>;
+    async fn list_reference_citation_usages_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<ReferenceCitationUsage>, DbError>;
     async fn list_archived_reference_entries_for_project(
         &self,
         project_id: ProjectId,
@@ -862,6 +877,60 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
         .await?;
 
         rows.iter().map(reference_entry_from_row).collect()
+    }
+
+    async fn list_reference_citation_usages_for_project(
+        &self,
+        project_id: ProjectId,
+    ) -> Result<Vec<ReferenceCitationUsage>, DbError> {
+        let rows = sqlx::query(
+            r#"
+            SELECT
+                pc.reference_entry_id AS reference_entry_id,
+                d.id AS document_id,
+                COALESCE(NULLIF(TRIM(d.notes), ''), d.original_filename) AS document_name,
+                p.id AS paragraph_id,
+                p.order_index AS paragraph_order_index,
+                p.page AS page,
+                pc.citation_text AS citation_text
+            FROM paragraph_citations pc
+            INNER JOIN reference_entries r ON r.id = pc.reference_entry_id
+            INNER JOIN paragraphs p ON p.id = pc.paragraph_id
+            INNER JOIN documents d ON d.id = p.document_id
+            WHERE r.project_id = ?1
+              AND d.project_id = ?1
+              AND r.reference_type = 'reference'
+              AND r.archived_at IS NULL
+              AND d.archived_at IS NULL
+              AND d.exclude_from_references = 0
+            ORDER BY
+                pc.reference_entry_id,
+                document_name COLLATE NOCASE,
+                p.order_index,
+                pc.id
+            "#,
+        )
+        .bind(project_id.0.to_string())
+        .fetch_all(&self.pool)
+        .await?;
+
+        rows.into_iter()
+            .map(|row| {
+                let reference_entry_id: String = row.try_get("reference_entry_id")?;
+                let document_id: String = row.try_get("document_id")?;
+                let paragraph_id: String = row.try_get("paragraph_id")?;
+
+                Ok(ReferenceCitationUsage {
+                    reference_entry_id: ReferenceEntryId(Uuid::parse_str(&reference_entry_id)?),
+                    document_id: DocumentId(Uuid::parse_str(&document_id)?),
+                    document_name: row.try_get("document_name")?,
+                    paragraph_id: ParagraphId(Uuid::parse_str(&paragraph_id)?),
+                    paragraph_order_index: row.try_get("paragraph_order_index")?,
+                    page: row.try_get("page")?,
+                    citation_text: row.try_get("citation_text")?,
+                })
+            })
+            .collect()
     }
 
     async fn list_archived_reference_entries_for_project(
