@@ -85,6 +85,7 @@ pub enum DocumentVariant {
 pub struct Document {
     pub id: DocumentId,
     pub project_id: ProjectId,
+    pub module_id: Option<ModuleId>,
     pub asset_id: Option<AssetId>,
     pub source_path: Option<String>,
     pub original_filename: String,
@@ -109,6 +110,7 @@ impl Document {
         Self {
             id: DocumentId::new(),
             project_id,
+            module_id: None,
             asset_id: None,
             source_path: None,
             original_filename: original_filename.into(),

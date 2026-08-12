@@ -6,6 +6,7 @@ const analysis: AnalyseDocxReviewResponse = {
   project_id: "project-1",
   project_title: "Course",
   document_id: "document-1",
+  module_id: "module-1",
   original_filename: "module-1.docx",
   display_name: "Module 1",
   source_path: "/Users/tester/Desktop/module-1.docx",

@@ -47,6 +47,7 @@ export type PreviewModuleReadingsPdfImportInput = {
 
 export type ImportDocumentReadingsInput = {
   project_id?: string | null;
+  module_id?: string | null;
   path: string;
   source_file_type: "docx" | "pdf";
 };
@@ -178,6 +179,7 @@ export function importDocumentReadings(
   return invoke<ImportDocumentReadingsResponse>("import_document_readings", {
     request: {
       project_id: trimmedOrNull(input.project_id),
+      module_id: trimmedOrNull(input.module_id),
       path: input.path.trim(),
       source_file_type: input.source_file_type,
     },

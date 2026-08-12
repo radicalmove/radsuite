@@ -31,6 +31,7 @@ function analysis(paragraphs: ReviewParagraph[]): AnalyseDocxReviewResponse {
     project_id: "project-1",
     project_title: "RADcite Functional Testing",
     document_id: "document-1",
+    module_id: null,
     original_filename: "source.docx",
     display_name: "source.docx",
     source_path: "/app-data/documents/project-1/source.docx",

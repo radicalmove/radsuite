@@ -14,6 +14,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 const savedReview: SavedRadciteReviewSummary = {
   document_id: "document-1",
   project_id: "project-1",
+  module_id: "module-1",
   original_filename: "source.docx",
   display_name: "source.docx",
   source_path: "/app-data/documents/project-1/source.docx",
@@ -30,6 +31,7 @@ const loadedReview: AnalyseDocxReviewResponse = {
   project_id: "project-1",
   project_title: "RADcite Functional Testing",
   document_id: "document-1",
+  module_id: "module-1",
   original_filename: "source.docx",
   display_name: "source.docx",
   source_path: "/app-data/documents/project-1/source.docx",

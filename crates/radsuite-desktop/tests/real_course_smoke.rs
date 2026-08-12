@@ -73,6 +73,7 @@ async fn real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_avail
         &state,
         AnalyseDocxRequest {
             project_id: Some(crju201.id),
+            module_id: None,
             path: crju201_docx.to_string_lossy().into_owned(),
             original_filename: crju201_docx
                 .file_name()
@@ -260,6 +261,7 @@ async fn real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_avail
         &state,
         AnalyseDocxRequest {
             project_id: Some(coms432.id),
+            module_id: None,
             path: coms432_docx.to_string_lossy().into_owned(),
             original_filename: coms432_docx
                 .file_name()
@@ -283,6 +285,7 @@ async fn real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_avail
         &state,
         AnalyseDocxRequest {
             project_id: Some(mbis622.id),
+            module_id: None,
             path: mbis622_docx.to_string_lossy().into_owned(),
             original_filename: mbis622_docx
                 .file_name()

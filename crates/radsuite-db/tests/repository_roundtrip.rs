@@ -263,8 +263,15 @@ async fn radcite_document_can_be_inserted_and_loaded() {
         .await
         .expect("insert project");
 
+    let module = CourseModule::new(project.id, "Module 1", Some(1));
+    SqliteCourseModuleRepository::new(pool.clone())
+        .insert_course_module(&module)
+        .await
+        .expect("insert module");
+
     let document_repo = SqliteCitationDocumentRepository::new(pool);
     let mut document = Document::new(project.id, "lesson-1.docx", DocumentFileType::Docx);
+    document.module_id = Some(module.id);
     document.source_path = Some("/app-data/documents/project/lesson-1.docx".to_string());
     let mut cited = Paragraph::new(
         document.id,
@@ -297,6 +304,7 @@ async fn radcite_document_can_be_inserted_and_loaded() {
 
     assert_eq!(summaries.len(), 1);
     assert_eq!(summaries[0].document_id, document.id);
+    assert_eq!(summaries[0].module_id, Some(module.id));
     assert_eq!(summaries[0].original_filename, "lesson-1.docx");
     assert_eq!(
         summaries[0].source_path.as_deref(),
@@ -313,6 +321,7 @@ async fn radcite_document_can_be_inserted_and_loaded() {
         .expect("document exists");
 
     assert_eq!(loaded.document.id, document.id);
+    assert_eq!(loaded.document.module_id, Some(module.id));
     assert_eq!(loaded.document.source_path, document.source_path);
     assert_eq!(loaded.paragraphs, vec![cited, missing]);
     assert_eq!(loaded.citations, vec![citation]);

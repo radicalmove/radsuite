@@ -328,6 +328,7 @@ describe("reading commands", () => {
     await expect(
       importDocumentReadings({
         project_id: " project-1 ",
+        module_id: " module-1 ",
         path: " /tmp/module-6.pdf ",
         source_file_type: "pdf",
       }),
@@ -336,6 +337,7 @@ describe("reading commands", () => {
     expect(invoke).toHaveBeenCalledWith("import_document_readings", {
       request: {
         project_id: "project-1",
+        module_id: "module-1",
         path: "/tmp/module-6.pdf",
         source_file_type: "pdf",
       },
