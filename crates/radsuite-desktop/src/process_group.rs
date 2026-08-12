@@ -21,6 +21,7 @@ impl ManagedProcessGroup {
 
         #[cfg(windows)]
         {
+            let _ = command;
             let job = windows_job::Job::new()?;
             job.configure_kill_on_close()?;
             Ok(Self { job })
@@ -80,15 +81,16 @@ mod windows_job {
     };
 
     #[derive(Debug)]
-    pub struct Job(HANDLE);
+    // Store the opaque handle as an integer so the job context remains Send.
+    pub struct Job(usize);
 
     impl Job {
         pub fn new() -> io::Result<Self> {
             let handle = unsafe { CreateJobObjectW(ptr::null(), ptr::null()) };
-            if handle == 0 {
+            if handle.is_null() {
                 return Err(last_error());
             }
-            Ok(Self(handle))
+            Ok(Self(handle as usize))
         }
 
         pub fn configure_kill_on_close(&self) -> io::Result<()> {
@@ -96,7 +98,7 @@ mod windows_job {
             limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
             let result = unsafe {
                 SetInformationJobObject(
-                    self.0,
+                    self.raw_handle(),
                     JobObjectExtendedLimitInformation,
                     &limits as *const _ as *const _,
                     mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
@@ -109,7 +111,8 @@ mod windows_job {
         }
 
         pub fn assign_process(&self, raw_handle: RawHandle) -> io::Result<()> {
-            let result = unsafe { AssignProcessToJobObject(self.0, raw_handle as HANDLE) };
+            let result =
+                unsafe { AssignProcessToJobObject(self.raw_handle(), raw_handle as HANDLE) };
             if result == 0 {
                 return Err(last_error());
             }
@@ -117,18 +120,22 @@ mod windows_job {
         }
 
         pub fn terminate(&self) -> io::Result<()> {
-            let result = unsafe { TerminateJobObject(self.0, 1) };
+            let result = unsafe { TerminateJobObject(self.raw_handle(), 1) };
             if result == 0 {
                 return Err(last_error());
             }
             Ok(())
+        }
+
+        fn raw_handle(&self) -> HANDLE {
+            self.0 as HANDLE
         }
     }
 
     impl Drop for Job {
         fn drop(&mut self) {
             unsafe {
-                CloseHandle(self.0);
+                CloseHandle(self.raw_handle());
             }
         }
     }
