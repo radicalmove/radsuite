@@ -395,6 +395,7 @@
     if (analysisResult?.document_id === input.document_id) {
       analysisResult = {
         ...analysisResult,
+        module_id: updated.module_id,
         display_name: updated.display_name,
         doc_variant: updated.doc_variant,
         doc_number: updated.doc_number,

@@ -573,6 +573,25 @@
                       <option value="other">Other</option>
                     </select>
                   </label>
+                  <label>
+                    <span>Course module</span>
+                    <select
+                      value={editorDraft.module_id ?? ""}
+                      onchange={(event) => {
+                        if (editorDraft) {
+                          editorDraft.module_id =
+                            (event.currentTarget as HTMLSelectElement).value || null;
+                        }
+                      }}
+                    >
+                      <option value="">No module assigned</option>
+                      {#each modules as module (module.id)}
+                        <option value={module.id}>
+                          {module.code ? `${module.code} · ` : ""}{module.title}
+                        </option>
+                      {/each}
+                    </select>
+                  </label>
                   <label class="saved-review-exclude">
                     <input
                       type="checkbox"

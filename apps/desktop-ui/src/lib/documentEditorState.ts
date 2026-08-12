@@ -5,6 +5,7 @@ export type DocumentEditorDraft = {
   display_name: string;
   doc_number: string;
   doc_variant: RadciteDocumentVariant;
+  module_id: string | null;
   exclude_from_references: boolean;
 };
 
@@ -21,6 +22,7 @@ export function buildDocumentUpdateInput(
 
   return {
     project_id: projectId,
+    module_id: draft.module_id,
     document_id: review.document_id,
     display_name: draft.display_name.trim(),
     doc_number: docNumber,
@@ -36,6 +38,7 @@ export function createDocumentEditorDraft(
     display_name: review.display_name,
     doc_number: review.doc_number === null ? "" : String(review.doc_number),
     doc_variant: review.doc_variant,
+    module_id: review.module_id,
     exclude_from_references: review.exclude_from_references,
   };
 }

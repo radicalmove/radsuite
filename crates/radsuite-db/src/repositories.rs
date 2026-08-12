@@ -1247,16 +1247,18 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         sqlx::query(
             r#"
             UPDATE documents
-            SET doc_variant = ?2,
-                doc_number = ?3,
-                notes = ?4,
-                exclude_from_references = ?5,
-                updated_at = ?6
+            SET module_id = ?2,
+                doc_variant = ?3,
+                doc_number = ?4,
+                notes = ?5,
+                exclude_from_references = ?6,
+                updated_at = ?7
             WHERE id = ?1
               AND archived_at IS NULL
             "#,
         )
         .bind(document.id.0.to_string())
+        .bind(document.module_id.map(|id| id.0.to_string()))
         .bind(document_variant_as_str(document.doc_variant))
         .bind(document.doc_number)
         .bind(document.notes.as_deref())

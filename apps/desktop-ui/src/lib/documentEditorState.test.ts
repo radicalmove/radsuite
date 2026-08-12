@@ -28,6 +28,7 @@ const draft: DocumentEditorDraft = {
   display_name: "Renamed source",
   doc_number: "4",
   doc_variant: "other",
+  module_id: "module-2",
   exclude_from_references: false,
 };
 
@@ -37,6 +38,7 @@ describe("document editor state", () => {
       display_name: "Week 1 source",
       doc_number: "3",
       doc_variant: "rise",
+      module_id: null,
       exclude_from_references: true,
     });
   });
@@ -58,6 +60,7 @@ describe("document editor state", () => {
       display_name: "Renamed source",
       doc_number: 4,
       doc_variant: "other",
+      module_id: "module-2",
       exclude_from_references: false,
     });
 
