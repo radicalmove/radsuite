@@ -41,6 +41,16 @@ export const helpSections: HelpSection[] = [
       "Open Exports to create and copy or download course-reference and module-reading HTML.",
     ],
   },
+  {
+    id: "local-media-tools",
+    title: "Use voice and audio tools",
+    summary: "RADcast and RADTTS run locally when their separate helper runtimes are installed on this computer.",
+    steps: [
+      "Open Audio cleanup to process a recording with the locally installed RADcast helper.",
+      "Open Voice generation to create authorised reference-voice audio with RADTTS, or Transcribe & clip to create timed transcripts and verified clips.",
+      "On Windows, install RADTTS under your user folder so RADsuite can find RADTTS\\.venv\\Scripts\\radtts.exe; the large voice models are downloaded separately when first used.",
+    ],
+  },
 ];
 
 export const helpFaqs: HelpFaq[] = [
@@ -59,5 +69,9 @@ export const helpFaqs: HelpFaq[] = [
   {
     question: "How do I restore something I archived?",
     answer: "Open Archive under the current project, find the document, module, reading, or reference, and choose Restore.",
+  },
+  {
+    question: "Why is voice generation unavailable?",
+    answer: "RADTTS is a separate local Python runtime. RADsuite needs its radtts command and dependencies installed, and the first generation may download a Qwen model. The installer does not bundle those large models.",
   },
 ];

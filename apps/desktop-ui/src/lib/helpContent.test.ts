@@ -8,6 +8,7 @@ describe("RADsuite help content", () => {
       "getting-started",
       "citation-review",
       "readings-and-exports",
+      "local-media-tools",
     ]);
 
     const guideText = helpSections
@@ -18,6 +19,8 @@ describe("RADsuite help content", () => {
     expect(guideText).toContain("Use for readings");
     expect(guideText).toContain("Copy search query");
     expect(guideText).toContain("Export");
+    expect(guideText).toContain("RADcast");
+    expect(guideText).toContain("RADTTS");
   });
 
   test("answers the local-first and recovery questions users need", () => {
@@ -27,6 +30,7 @@ describe("RADsuite help content", () => {
         expect.objectContaining({ question: "What does cloud sync mean?" }),
         expect.objectContaining({ question: "How do I reuse an analysed document?" }),
         expect.objectContaining({ question: "How do I restore something I archived?" }),
+        expect.objectContaining({ question: "Why is voice generation unavailable?" }),
       ]),
     );
   });

@@ -3,7 +3,7 @@ use std::{
     env, fs,
     io::Write,
     path::{Path, PathBuf},
-    process::Stdio,
+    process::{Command as StdCommand, Stdio},
     sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
@@ -1123,10 +1123,20 @@ pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
         .collect::<Vec<_>>();
     let executable = candidates.into_iter().find(|candidate| candidate.is_file());
     match executable {
-        Some(path) => RadtTsCapabilityStatus {
-            available: true,
-            executable: Some(path.display().to_string()),
-            detail: "Local RADTTS voice generation is available on this computer.".to_string(),
+        Some(path) => match probe_radt_ts_cli(&path) {
+            Ok(()) => RadtTsCapabilityStatus {
+                available: true,
+                executable: Some(path.display().to_string()),
+                detail: format!(
+                    "Local RADTTS is ready at {}. Models are loaded on demand.",
+                    path.display()
+                ),
+            },
+            Err(detail) => RadtTsCapabilityStatus {
+                available: false,
+                executable: Some(path.display().to_string()),
+                detail,
+            },
         },
         None => RadtTsCapabilityStatus {
             available: false,
@@ -1135,6 +1145,45 @@ pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
                 .to_string(),
         },
     }
+}
+
+fn probe_radt_ts_cli(path: &Path) -> Result<(), String> {
+    let output = StdCommand::new(path)
+        .args(["synthesize", "--help"])
+        .output()
+        .map_err(|error| {
+            format!(
+                "RADTTS was found at {} but could not start: {}. Check the Python environment and dependencies.",
+                path.display(), error
+            )
+        })?;
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let detail = String::from_utf8_lossy(&output.stderr)
+        .trim()
+        .chars()
+        .take(300)
+        .collect::<String>();
+    let detail = if detail.is_empty() {
+        String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .chars()
+            .take(300)
+            .collect::<String>()
+    } else {
+        detail
+    };
+    Err(format!(
+        "RADTTS was found at {} but its synthesis CLI is not ready{}.",
+        path.display(),
+        if detail.is_empty() {
+            " Check the Python environment and dependencies.".to_string()
+        } else {
+            format!(" {}", detail)
+        }
+    ))
 }
 
 fn find_on_path(name: &str) -> Vec<PathBuf> {
@@ -1182,8 +1231,8 @@ mod tests {
     use super::{
         RadtTsChunkMode, RadtTsOutputFormat, RadtTsQuality, RadtTsSynthesisRequest,
         RadtTsVoiceSource, StartRadtTsSynthesisRequest, build_synthesis_args, contained_file,
-        parse_cli_result, remove_temp_text_files, shutdown_radt_ts_jobs, validate_output_name,
-        validate_reference_audio,
+        parse_cli_result, probe_radt_ts_cli, remove_temp_text_files, shutdown_radt_ts_jobs,
+        validate_output_name, validate_reference_audio,
     };
     use crate::state::DesktopState;
 
@@ -1546,5 +1595,18 @@ mod tests {
         fs::write(&text, [0_u8; 8]).expect("create text file");
         assert!(validate_reference_audio(&text).is_err());
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn probes_the_installed_cli_without_starting_a_generation_job() {
+        let executable = std::env::var_os("RADSUITE_RADTTS_CLI")
+            .map(PathBuf::from)
+            .or_else(super::radt_ts_home_path)
+            .filter(|path| path.is_file());
+
+        if let Some(executable) = executable {
+            probe_radt_ts_cli(&executable)
+                .expect("installed RADTTS CLI should answer synthesis help");
+        }
     }
 }
