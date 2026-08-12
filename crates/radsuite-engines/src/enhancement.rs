@@ -583,33 +583,102 @@ fn resolve_command(environment_variables: &[&str], command: &str) -> PathBuf {
             }
         }
     }
-    let home = std::env::var_os("HOME")
-        .map(PathBuf::from)
-        .unwrap_or_default();
-    let candidates = match command {
-        "radcast-enhance" => vec![
-            home.join(".radcast/venv311/bin/radcast-enhance"),
-            home.join(".radcast/venv/bin/radcast-enhance"),
-            PathBuf::from("/opt/homebrew/bin/radcast-enhance"),
-            PathBuf::from("/usr/local/bin/radcast-enhance"),
-        ],
-        "deepFilter" => vec![
-            home.join(".radcast/venv311/bin/deepFilter"),
-            home.join(".radcast/venv/bin/deepFilter"),
-            PathBuf::from("/opt/homebrew/bin/deepFilter"),
-            PathBuf::from("/usr/local/bin/deepFilter"),
-        ],
-        _ => vec![
-            home.join(".radcast/venv311/bin/radcast-studio-enhance"),
-            home.join(".radcast/venv/bin/radcast-studio-enhance"),
-            PathBuf::from("/opt/homebrew/bin/radcast-studio-enhance"),
-            PathBuf::from("/usr/local/bin/radcast-studio-enhance"),
-        ],
-    };
-    for candidate in candidates {
+    let home = if cfg!(windows) {
+        std::env::var_os("USERPROFILE").or_else(|| std::env::var_os("HOME"))
+    } else {
+        std::env::var_os("HOME")
+    }
+    .map(PathBuf::from);
+    for candidate in command_candidates(home.as_deref(), command, cfg!(windows)) {
         if candidate.is_file() {
             return candidate;
         }
     }
     PathBuf::from(command)
+}
+
+fn command_candidates(home: Option<&Path>, command: &str, windows: bool) -> Vec<PathBuf> {
+    let helper_name = match command {
+        "radcast-enhance" => "radcast-enhance",
+        "deepFilter" => "deepFilter",
+        _ => "radcast-studio-enhance",
+    };
+    let mut candidates = Vec::new();
+    if let Some(home) = home {
+        if windows {
+            for environment_dir in ["venv311", "venv"] {
+                for launcher in [
+                    helper_name,
+                    &format!("{helper_name}.exe"),
+                    &format!("{helper_name}.cmd"),
+                    &format!("{helper_name}.bat"),
+                ] {
+                    candidates.push(
+                        home.join(".radcast")
+                            .join(environment_dir)
+                            .join("Scripts")
+                            .join(launcher),
+                    );
+                }
+            }
+        } else {
+            candidates.extend([
+                home.join(".radcast")
+                    .join("venv311")
+                    .join("bin")
+                    .join(helper_name),
+                home.join(".radcast")
+                    .join("venv")
+                    .join("bin")
+                    .join(helper_name),
+            ]);
+        }
+    }
+    if !windows {
+        candidates.extend([
+            PathBuf::from("/opt/homebrew/bin").join(helper_name),
+            PathBuf::from("/usr/local/bin").join(helper_name),
+        ]);
+    }
+    candidates
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
+
+    use super::command_candidates;
+
+    #[test]
+    fn includes_windows_virtual_environment_helper_paths() {
+        let suffix = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("system clock should be after the Unix epoch")
+            .as_nanos();
+        let home = std::env::temp_dir().join(format!("radsuite-engine-home-{suffix}"));
+        let helper = home
+            .join(".radcast")
+            .join("venv")
+            .join("Scripts")
+            .join("radcast-studio-enhance.exe");
+        fs::create_dir_all(helper.parent().expect("helper has a parent"))
+            .expect("create helper directory");
+        fs::write(&helper, b"helper").expect("write helper marker");
+
+        let candidates = command_candidates(Some(&home), "radcast-studio-enhance", true);
+
+        assert!(candidates.contains(&helper));
+        assert!(
+            candidates
+                .iter()
+                .any(|candidate| candidate.ends_with(PathBuf::from(
+                    ".radcast/venv311/Scripts/radcast-studio-enhance.exe",
+                )))
+        );
+        fs::remove_dir_all(home).expect("remove helper directory");
+    }
 }

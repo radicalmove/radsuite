@@ -31,6 +31,7 @@ describe("RADsuite help content", () => {
         expect.objectContaining({ question: "How do I reuse an analysed document?" }),
         expect.objectContaining({ question: "How do I restore something I archived?" }),
         expect.objectContaining({ question: "Why is voice generation unavailable?" }),
+        expect.objectContaining({ question: "Why is RADcast Optimized unavailable?" }),
       ]),
     );
   });

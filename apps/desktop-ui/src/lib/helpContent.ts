@@ -48,7 +48,8 @@ export const helpSections: HelpSection[] = [
     steps: [
       "Open Audio cleanup to process a recording with the locally installed RADcast helper.",
       "Open Voice generation to create authorised reference-voice audio with RADTTS, or Transcribe & clip to create timed transcripts and verified clips.",
-      "On Windows, install RADTTS under your user folder so RADsuite can find RADTTS\\.venv\\Scripts\\radtts.exe; the large voice models are downloaded separately when first used.",
+      "On Windows, install RADTTS under %USERPROFILE%\\RADTTS\\.venv so RADsuite can find %USERPROFILE%\\RADTTS\\.venv\\Scripts\\radtts.exe; the large voice models are downloaded separately when first used.",
+      "For RADcast Optimized on Windows, install its helper in %USERPROFILE%\\.radcast\\venv or set RADSUITE_STUDIO_COMMAND to the helper executable, then reopen RADsuite.",
     ],
   },
 ];
@@ -72,6 +73,10 @@ export const helpFaqs: HelpFaq[] = [
   },
   {
     question: "Why is voice generation unavailable?",
-    answer: "RADTTS is a separate local Python runtime. RADsuite needs its radtts command and dependencies installed, and the first generation may download a Qwen model. The installer does not bundle those large models.",
+    answer: "RADTTS is a separate local Python runtime. On Windows, RADsuite looks for %USERPROFILE%\\RADTTS\\.venv\\Scripts\\radtts.exe; on macOS it looks for ~/RADTTS/.venv/bin/radtts. The first generation may download a Qwen model. The RADsuite installer does not bundle Python runtimes or large models.",
+  },
+  {
+    question: "Why is RADcast Optimized unavailable?",
+    answer: "RADcast Optimized uses a separate local helper and model environment. On Windows, RADsuite checks %USERPROFILE%\\.radcast\\venv\\Scripts\\radcast-studio-enhance.exe and its command-line launchers. You can also set RADSUITE_STUDIO_COMMAND to the exact helper path and restart RADsuite.",
   },
 ];
