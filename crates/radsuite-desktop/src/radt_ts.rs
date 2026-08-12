@@ -67,15 +67,6 @@ pub enum RadtTsVoiceSource {
     Builtin,
 }
 
-impl RadtTsVoiceSource {
-    fn as_cli_value(self) -> &'static str {
-        match self {
-            Self::Reference => "reference",
-            Self::Builtin => "builtin",
-        }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum RadtTsChunkMode {
@@ -227,8 +218,8 @@ pub enum RadtTsError {
     EmptyText,
     #[error("voice-clone authorization is required before using reference audio")]
     MissingVoiceCloneAuthorization,
-    #[error("a built-in speaker is required for built-in voice generation")]
-    MissingBuiltInSpeaker,
+    #[error("the installed RADTTS CLI supports reference-audio synthesis only")]
+    UnsupportedVoiceSource,
     #[error("pause maximum must be greater than or equal to pause minimum")]
     InvalidPauseBounds,
     #[error("maximum new tokens must be between 64 and 8192")]
@@ -836,11 +827,47 @@ pub(crate) fn ensure_project_root(
     ] {
         fs::create_dir_all(project_root.join(relative))?;
     }
-    for (name, value) in [("jobs.json", "[]"), ("outputs.json", "[]")] {
+    for (name, value) in [
+        ("project.json", "{\"project_id\":\""),
+        ("jobs.json", "[]"),
+        ("outputs.json", "[]"),
+    ] {
         let path = project_root.join("manifests").join(name);
         if !path.exists() {
-            fs::write(path, value)?;
+            let contents = if name == "project.json" {
+                format!("{value}{project_id}\"}}\n")
+            } else {
+                format!("{value}\n")
+            };
+            fs::write(path, contents)?;
         }
+    }
+    let presets_path = project_root.join("manifests").join("presets.json");
+    if !presets_path.exists() {
+        fs::write(
+            presets_path,
+            r#"{
+  "natural_lecture_intro": {
+    "chunk_mode": "sentence",
+    "pause_config": {"min_seconds": 0.45, "max_seconds": 1.1, "seed": null},
+    "max_new_tokens": 1200,
+    "model_mode": "quality"
+  },
+  "bridge_segment": {
+    "chunk_mode": "sentence",
+    "pause_config": {"min_seconds": 0.3, "max_seconds": 0.85, "seed": null},
+    "max_new_tokens": 900,
+    "model_mode": "fast"
+  },
+  "short_concept_explainer": {
+    "chunk_mode": "single",
+    "pause_config": {"min_seconds": 0.25, "max_seconds": 0.5, "seed": null},
+    "max_new_tokens": 700,
+    "model_mode": "fast"
+  }
+}
+"#,
+        )?;
     }
     Ok(project_root.canonicalize()?)
 }
@@ -1022,6 +1049,9 @@ pub fn build_synthesis_args(
     if request.voice_source == RadtTsVoiceSource::Reference && !request.acknowledge_voice_clone {
         return Err(RadtTsError::MissingVoiceCloneAuthorization);
     }
+    if request.voice_source == RadtTsVoiceSource::Builtin {
+        return Err(RadtTsError::UnsupportedVoiceSource);
+    }
     if request.pause_min_seconds <= 0.0 || request.pause_max_seconds < request.pause_min_seconds {
         return Err(RadtTsError::InvalidPauseBounds);
     }
@@ -1037,8 +1067,6 @@ pub fn build_synthesis_args(
         request.project_id.to_string(),
         "--text-file".to_string(),
         text_file.display().to_string(),
-        "--voice-source".to_string(),
-        request.voice_source.as_cli_value().to_string(),
         "--mode".to_string(),
         request.quality.as_cli_value().to_string(),
         "--max-new-tokens".to_string(),
@@ -1067,23 +1095,7 @@ pub fn build_synthesis_args(
                 "--ack-voice-clone".to_string(),
             ]);
         }
-        RadtTsVoiceSource::Builtin => {
-            let speaker = request
-                .built_in_speaker
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-                .ok_or(RadtTsError::MissingBuiltInSpeaker)?;
-            args.extend(["--built-in-speaker".to_string(), speaker.to_string()]);
-            if let Some(instruct) = request
-                .built_in_instruct
-                .as_deref()
-                .map(str::trim)
-                .filter(|value| !value.is_empty())
-            {
-                args.extend(["--built-in-instruct".to_string(), instruct.to_string()]);
-            }
-        }
+        RadtTsVoiceSource::Builtin => unreachable!("built-in voices are rejected above"),
     }
     if let Some(pause_seed) = request.pause_seed {
         args.extend(["--pause-seed".to_string(), pause_seed.to_string()]);
@@ -1281,7 +1293,7 @@ mod tests {
     }
 
     #[test]
-    fn builds_builtin_voice_cli_arguments_without_reference_audio() {
+    fn rejects_builtin_voice_requests_until_the_installed_cli_supports_them() {
         let request = RadtTsSynthesisRequest {
             project_id: ProjectId::new(),
             text: "A short script.".to_string(),
@@ -1301,59 +1313,15 @@ mod tests {
             acknowledge_voice_clone: false,
         };
 
-        let args = build_synthesis_args(
-            &request,
-            PathBuf::from("/tmp/project"),
-            PathBuf::from("/tmp/script.txt"),
-            None,
-        )
-        .expect("valid built-in request should build");
-
-        assert!(
-            args.windows(2)
-                .any(|pair| pair == ["--voice-source", "builtin"])
-        );
-        assert!(
-            args.windows(2)
-                .any(|pair| pair == ["--built-in-speaker", "Vivian"])
-        );
-        assert!(
-            args.windows(2)
-                .any(|pair| pair == ["--built-in-instruct", "Warm and clear"])
-        );
-        assert!(!args.contains(&"--reference-audio".to_string()));
-        assert!(args.contains(&"fast".to_string()));
-    }
-
-    #[test]
-    fn rejects_builtin_voice_requests_without_a_speaker() {
-        let request = RadtTsSynthesisRequest {
-            project_id: ProjectId::new(),
-            text: "A short script.".to_string(),
-            voice_source: RadtTsVoiceSource::Builtin,
-            reference_audio_path: None,
-            reference_text: None,
-            built_in_speaker: None,
-            built_in_instruct: None,
-            quality: RadtTsQuality::High,
-            chunk_mode: RadtTsChunkMode::Single,
-            pause_min_seconds: 0.25,
-            pause_max_seconds: 0.75,
-            pause_seed: None,
-            max_new_tokens: 1200,
-            output_format: RadtTsOutputFormat::Mp3,
-            output_name: "intro".to_string(),
-            acknowledge_voice_clone: false,
-        };
-
         let error = build_synthesis_args(
             &request,
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
         )
-        .expect_err("a built-in speaker is required");
-        assert!(error.to_string().contains("built-in speaker"));
+        .expect_err("built-in voices are not supported by the installed CLI");
+
+        assert!(matches!(error, super::RadtTsError::UnsupportedVoiceSource));
     }
 
     #[test]
@@ -1517,6 +1485,21 @@ mod tests {
             result.outputs.output_file.as_deref(),
             Some("/tmp/project/assets/generated_audio/intro.mp3")
         );
+    }
+
+    #[test]
+    fn creates_radt_ts_project_scaffold_for_cli_commands() {
+        let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
+        let project_id = ProjectId::new();
+
+        let project_root = super::ensure_project_root(&root, project_id)
+            .expect("project scaffold should be created");
+
+        assert!(project_root.join("manifests/project.json").is_file());
+        assert!(project_root.join("manifests/presets.json").is_file());
+        assert!(project_root.join("manifests/jobs.json").is_file());
+        assert!(project_root.join("manifests/outputs.json").is_file());
+        fs::remove_dir_all(root).expect("remove test directory");
     }
 
     #[test]
