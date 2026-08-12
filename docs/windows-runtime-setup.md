@@ -9,6 +9,15 @@ and hardware-specific.
 The setup also installs FFmpeg through `winget` when it is missing. FFmpeg is
 used by RADcast for trimming and output conversion.
 
+The setup checks for a real Python 3.11 executable before creating either
+environment. If Python is installed during setup but Windows has not exposed
+it to the current app process yet, close and reopen RADsuite and choose
+**Prepare audio and voice tools** again. The setup is safe to repeat.
+
+RADcast installs its CPU Torch runtime before its audio-cleanup packages. This
+is required on Windows because some of those packages compile native Torch
+extensions during installation.
+
 ## RADTTS
 
 The first-run setup performs the equivalent PowerShell steps automatically.

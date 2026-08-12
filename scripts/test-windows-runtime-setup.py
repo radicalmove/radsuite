@@ -1,0 +1,38 @@
+"""Regression checks for the Windows local-runtime bootstrap script."""
+
+from pathlib import Path
+
+
+SCRIPT = (Path(__file__).with_name("setup-local-runtimes.ps1")).read_text(
+    encoding="utf-8"
+)
+
+
+def test_resolves_a_real_python_311_executable():
+    assert "function Resolve-Python311" in SCRIPT
+    assert "sys.executable" in SCRIPT
+    assert "--list" in SCRIPT
+    assert 'Invoke-Checked $Python @("-m", "venv", $Venv)' in SCRIPT
+    assert 'Invoke-Checked $Python @("-3.11", "-m", "venv", $Venv)' not in SCRIPT
+
+
+def test_installs_torch_before_radcast_build_dependencies():
+    torch_install = SCRIPT.index('"torch==2.1.1"')
+    radcast_install = SCRIPT.index("$RadcastRepository", torch_install)
+    assert torch_install < radcast_install
+    assert '"--no-build-isolation"' in SCRIPT
+
+
+def test_installs_radt_ts_runtime_dependencies_that_were_missing_on_windows():
+    assert '"edge-tts>=6.1.4"' in SCRIPT
+    assert '"gradio"' in SCRIPT
+
+
+def test_uses_windows_powershell_compatible_syntax():
+    assert "Join-String" not in SCRIPT
+
+
+if __name__ == "__main__":
+    test_resolves_a_real_python_311_executable()
+    test_installs_torch_before_radcast_build_dependencies()
+    test_installs_radt_ts_runtime_dependencies_that_were_missing_on_windows()

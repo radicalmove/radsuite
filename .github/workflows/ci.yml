@@ -40,3 +40,10 @@ jobs:
           cache-dependency-path: apps/desktop-ui/package-lock.json
       - run: npm ci
       - run: npm run build
+
+  windows-runtime-setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Windows runtime bootstrap contract
+        run: python3 scripts/test-windows-runtime-setup.py
