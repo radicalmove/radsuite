@@ -2834,8 +2834,53 @@ pub async fn add_manual_citation_for_review(
         return Err(ReviewActionError::EmptyCitationText);
     }
 
-    SqliteCitationDocumentRepository::new(state.database_pool.clone())
-        .insert_manual_citation(request.paragraph_id, citation_text)
+    let document_repo = SqliteCitationDocumentRepository::new(state.database_pool.clone());
+    let analysis = document_repo
+        .load_document_analysis(request.document_id)
+        .await?
+        .ok_or(ReviewActionError::MissingDocument(request.document_id))?;
+    let paragraph_belongs_to_document = analysis
+        .paragraphs
+        .iter()
+        .any(|paragraph| paragraph.id == request.paragraph_id);
+    if !paragraph_belongs_to_document {
+        return Err(ReviewActionError::MissingDocument(request.document_id));
+    }
+
+    let reference_repo = SqliteReferenceEntryRepository::new(state.database_pool.clone());
+    let existing_reference = reference_repo
+        .list_reference_entries_for_project(
+            analysis.document.project_id,
+            ReferenceEntryType::Reference,
+        )
+        .await?
+        .into_iter()
+        .find(|reference| {
+            reference
+                .apa_citation
+                .as_deref()
+                .or(reference.citation_text.as_deref())
+                .map(normalised_reference_identity)
+                .is_some_and(|identity| identity == normalised_reference_identity(citation_text))
+        });
+
+    let reference_entry_id = if let Some(reference) = existing_reference {
+        reference.id
+    } else {
+        let mut reference =
+            ReferenceEntry::new(analysis.document.project_id, ReferenceEntryType::Reference);
+        reference.document_id = Some(analysis.document.id);
+        reference.paragraph_id = Some(request.paragraph_id);
+        reference.citation_text = Some(citation_text.to_string());
+        reference.apa_citation = Some(citation_text.to_string());
+        apply_basic_apa_validation(&mut reference);
+        let reference_entry_id = reference.id;
+        reference_repo.insert_reference_entry(&reference).await?;
+        reference_entry_id
+    };
+
+    document_repo
+        .insert_manual_citation_linked(request.paragraph_id, citation_text, reference_entry_id)
         .await?;
 
     load_review_response(state, request.document_id).await

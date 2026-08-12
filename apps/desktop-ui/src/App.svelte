@@ -801,7 +801,7 @@
     reviewActionError = null;
     try {
       analysisResult = await persistAddManualCitation(analysisResult, paragraphId, citationText);
-      void refreshSavedReviews();
+      await Promise.all([refreshSavedReviews(), refreshCourseReferences()]);
     } catch (reason: unknown) {
       reviewActionError = `Could not save citation action: ${toErrorMessage(reason)}`;
     }
