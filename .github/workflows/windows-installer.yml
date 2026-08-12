@@ -38,8 +38,9 @@ jobs:
       - name: Verify Rust workspace
         run: |
           cargo fmt --all --check
-          cargo clippy --workspace --all-targets --all-features -- -D warnings
-          cargo test --workspace --all-features
+          cargo clippy --workspace --all-features -- -D warnings
+          cargo check --workspace --all-features
+          cargo test --workspace --all-features --lib
 
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version 2.9.6 --locked

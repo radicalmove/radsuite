@@ -10,10 +10,11 @@ RADsuite has an initial Windows 11 x64 installer build. The workflow at
 
 Run the workflow manually from GitHub Actions, or push a version tag matching
 `v*`. The workflow uploads both installers and a `SHA256SUMS.txt` checksum file
-as the `RADsuite-windows-installers` artifact. The workflow also runs the Rust
-workspace checks and fails if it does not produce exactly one MSI and one NSIS
-installer. This is an internal alpha packaging path, not yet a signed public
-release.
+as the `RADsuite-windows-installers` artifact. The workflow also runs
+Windows-compatible Rust checks and library tests, and fails if it does not
+produce exactly one MSI and one NSIS installer. The full integration suite
+remains covered by the normal CI workflow. This is an internal alpha packaging
+path, not yet a signed public release.
 
 ## Release Checklist
 
