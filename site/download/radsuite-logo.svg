@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">RADsuite logo</title>
+  <desc id="desc">A compact RADsuite mark with layered citation pages, red accent lines, and a verification point</desc>
+  <rect x="5" y="5" width="54" height="54" rx="12" fill="#17191D"/>
+  <path d="M16 17C16 14.8 17.8 13 20 13H37.2L48 23.8V47C48 49.2 46.2 51 44 51H20C17.8 51 16 49.2 16 47V17Z" fill="#25292E" stroke="#FFFFFF" stroke-opacity=".18" stroke-width="1.4"/>
+  <path d="M37.4 13V21C37.4 22 38 22.5 39 22.5H48" fill="none" stroke="#CE3E2E" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M23 27H40M23 34.5H35M23 42H42" fill="none" stroke="#CE3E2E" stroke-width="3" stroke-linecap="round"/>
+  <path d="M14 20H18V46H14C12.3 46 11 44.7 11 43V23C11 21.3 12.3 20 14 20Z" fill="#CE3E2E"/>
+  <circle cx="46" cy="47" r="8.5" fill="#CE3E2E" stroke="#101113" stroke-width="2"/>
+  <path d="M42.2 46.8L45 49.8L50.6 43" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

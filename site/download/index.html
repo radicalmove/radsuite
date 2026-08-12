@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Download RADsuite for Apple Silicon Mac, Intel Mac, or Windows.">
+    <title>Download RADsuite</title>
+    <link rel="icon" href="radsuite-logo.svg" type="image/svg+xml">
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #17191d;
+        --muted: #5e6869;
+        --paper: #f5f6f3;
+        --panel: #ffffff;
+        --line: #d8ddda;
+        --accent: #ce3e2e;
+        --accent-dark: #8e2a22;
+        --green: #1f7a64;
+        --shadow: 0 18px 44px rgba(23, 25, 29, 0.11);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-width: 320px;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        line-height: 1.5;
+      }
+
+      a { color: inherit; }
+
+      .shell {
+        width: min(100% - 36px, 1040px);
+        margin: 0 auto;
+        padding: 28px 0 52px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 56px;
+      }
+
+      header img { width: 54px; height: 54px; }
+
+      .brand {
+        font-size: 1.2rem;
+        font-weight: 850;
+        letter-spacing: 0;
+      }
+
+      .brand span {
+        display: block;
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 750;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      main { max-width: 900px; }
+
+      .eyebrow {
+        margin: 0 0 10px;
+        color: var(--accent-dark);
+        font-size: 0.76rem;
+        font-weight: 800;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 720px;
+        margin: 0;
+        font-size: clamp(2.3rem, 6vw, 4.4rem);
+        line-height: 1.02;
+        letter-spacing: -0.03em;
+      }
+
+      .intro {
+        max-width: 680px;
+        margin: 20px 0 34px;
+        color: var(--muted);
+        font-size: 1.15rem;
+      }
+
+      .download-panel {
+        padding: 26px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        box-shadow: var(--shadow);
+      }
+
+      .download-panel h2 {
+        margin: 0 0 6px;
+        font-size: 1.28rem;
+      }
+
+      .download-panel > p {
+        margin: 0 0 20px;
+        color: var(--muted);
+      }
+
+      .choices {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .choice {
+        display: flex;
+        min-height: 190px;
+        flex-direction: column;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fbfcfa;
+      }
+
+      .choice h3 { margin: 0 0 7px; font-size: 1.03rem; }
+
+      .choice p {
+        min-height: 52px;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+
+      .button {
+        display: inline-flex;
+        width: 100%;
+        min-height: 44px;
+        align-items: center;
+        justify-content: center;
+        margin-top: auto;
+        padding: 10px 14px;
+        border: 1px solid var(--accent);
+        border-radius: 5px;
+        background: var(--accent);
+        color: #ffffff;
+        font-weight: 800;
+        text-decoration: none;
+      }
+
+      .button:hover, .button:focus-visible { background: var(--accent-dark); }
+
+      .button:focus-visible, a:focus-visible {
+        outline: 3px solid rgba(31, 122, 100, 0.35);
+        outline-offset: 3px;
+      }
+
+      .tip {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        margin: 18px 0 0;
+        padding: 14px 16px;
+        border-left: 4px solid var(--green);
+        background: #e8f3ef;
+        color: #24483f;
+        font-size: 0.92rem;
+      }
+
+      .tip strong { color: #165b4b; }
+
+      .details {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 28px;
+        margin-top: 44px;
+      }
+
+      .details h2 { margin: 0 0 8px; font-size: 1.08rem; }
+
+      .details p { margin: 0; color: var(--muted); font-size: 0.94rem; }
+
+      footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 18px;
+        margin-top: 46px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      footer a { color: var(--accent-dark); font-weight: 750; }
+
+      @media (max-width: 760px) {
+        .shell { width: min(100% - 28px, 620px); padding-top: 20px; }
+        header { margin-bottom: 40px; }
+        .download-panel { padding: 18px; }
+        .choices, .details { grid-template-columns: 1fr; }
+        .choice { min-height: 0; }
+        .choice p { min-height: 0; }
+        footer { flex-direction: column; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header>
+        <img src="radsuite-logo.svg" alt="">
+        <div class="brand"><span>Local course production tools</span>RADsuite</div>
+      </header>
+
+      <main>
+        <p class="eyebrow">Download RADsuite</p>
+        <h1>Choose the version for your computer.</h1>
+        <p class="intro">RADsuite runs locally on your computer and includes RADcite, RADcast, and RADTTS. Choose one installer below.</p>
+
+        <section class="download-panel" aria-labelledby="downloads-heading">
+          <h2 id="downloads-heading">Which one should I choose?</h2>
+          <p>Only download one. The app will update itself when a newer version is available.</p>
+
+          <div class="choices">
+            <article class="choice">
+              <h3>Apple Silicon Mac</h3>
+              <p>For Macs with an M1, M2, M3, or M4 chip.</p>
+              <a class="button" href="https://github.com/radicalmove/radsuite/releases/latest/download/RADsuite_Apple-Silicon.dmg">Download Apple Silicon</a>
+            </article>
+
+            <article class="choice">
+              <h3>Intel Mac</h3>
+              <p>For older Macs with an Intel processor.</p>
+              <a class="button" href="https://github.com/radicalmove/radsuite/releases/latest/download/RADsuite_Intel.dmg">Download Intel Mac</a>
+            </article>
+
+            <article class="choice">
+              <h3>Windows</h3>
+              <p>For 64-bit Windows 10 or Windows 11 computers.</p>
+              <a class="button" href="https://github.com/radicalmove/radsuite/releases/latest/download/RADsuite_Windows_x64_Setup.exe">Download Windows</a>
+            </article>
+          </div>
+
+          <p class="tip"><strong>Not sure about your Mac?</strong> Open the Apple menu, choose <strong>About This Mac</strong>, and look for either “Chip” (Apple Silicon) or “Processor” (Intel).</p>
+        </section>
+
+        <section class="details" aria-label="Additional information">
+          <div>
+            <h2>What happens next?</h2>
+            <p>Open the downloaded installer and follow the normal installation steps. RADsuite keeps its work on the local computer.</p>
+          </div>
+          <div>
+            <h2>Need the technical files?</h2>
+            <p>The full release page contains updater packages, checksums, and the alternative Windows MSI installer.</p>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <span>RADsuite <span id="release-version">stable release</span></span>
+        <a href="https://github.com/radicalmove/radsuite/releases/latest">View release details</a>
+      </footer>
+    </div>
+  </body>
+</html>

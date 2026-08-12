@@ -2,15 +2,21 @@
 
 ## Public install page
 
-Send users this permanent link:
+Send users this simple download page:
+
+<https://radicalmove.github.io/radsuite/>
+
+It has one clear choice for each supported computer and points to the latest stable installer. The GitHub release page remains available for technical downloads:
 
 <https://github.com/radicalmove/radsuite/releases/latest>
 
 Choose the installer for the computer:
 
-- Apple Silicon Mac: `RADsuite_<version>_Apple-Silicon.dmg`
-- Intel Mac: `RADsuite_<version>_Intel.dmg`
-- Windows x64: `RADsuite_<version>_Windows_x64_Setup.exe`
+- Apple Silicon Mac: `RADsuite_Apple-Silicon.dmg`
+- Intel Mac: `RADsuite_Intel.dmg`
+- Windows x64: `RADsuite_Windows_x64_Setup.exe`
+
+The stable release workflow uploads these unversioned aliases alongside the versioned files. This keeps the public download links unchanged when a new version is published.
 
 The MSI is also published for managed or institutional Windows deployment. Ordinary Windows users should use the Setup EXE.
 
