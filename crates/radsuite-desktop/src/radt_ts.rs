@@ -38,6 +38,9 @@ const MAX_OUTPUT_NAME_LENGTH: usize = 80;
 const DEFAULT_MAX_NEW_TOKENS: u32 = 1200;
 const MIN_MAX_NEW_TOKENS: u32 = 64;
 const MAX_MAX_NEW_TOKENS: u32 = 8192;
+const BUILTIN_VOICE_IDS: &[&str] = &[
+    "Aiden", "Dylan", "Eric", "Ono_Anna", "Ryan", "Serena", "Sohee", "Uncle_Fu", "Vivian",
+];
 
 fn default_max_new_tokens() -> u32 {
     DEFAULT_MAX_NEW_TOKENS
@@ -127,6 +130,8 @@ pub struct RadtTsCapabilityStatus {
     pub available: bool,
     pub executable: Option<String>,
     pub detail: String,
+    pub supports_builtin_voices: bool,
+    pub builtin_voices: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -218,6 +223,8 @@ pub enum RadtTsError {
     MissingVoiceCloneAuthorization,
     #[error("the installed RADTTS CLI supports reference-audio synthesis only")]
     UnsupportedVoiceSource,
+    #[error("unsupported built-in voice speaker: {0}")]
+    InvalidBuiltInSpeaker(String),
     #[error("pause maximum must be greater than or equal to pause minimum")]
     InvalidPauseBounds,
     #[error("maximum new tokens must be between 64 and 8192")]
@@ -278,6 +285,7 @@ pub async fn start_radt_ts_synthesis(
     request: RadtTsSynthesisRequest,
 ) -> Result<RadtTsJobStatus, RadtTsError> {
     let capability = discover_radt_ts_cli();
+    let supports_builtin_voices = capability.supports_builtin_voices;
     let executable = capability
         .executable
         .map(PathBuf::from)
@@ -289,6 +297,7 @@ pub async fn start_radt_ts_synthesis(
         projects_root.clone(),
         state.paths.cache_dir.join("pending.txt"),
         None,
+        supports_builtin_voices,
     )?;
 
     {
@@ -343,6 +352,7 @@ pub async fn start_radt_ts_synthesis(
         projects_root,
         text_path.clone(),
         reference_text_path.clone(),
+        supports_builtin_voices,
     ) {
         Ok(args) => args,
         Err(error) => {
@@ -1040,6 +1050,7 @@ pub fn build_synthesis_args(
     projects_root: PathBuf,
     text_file: PathBuf,
     reference_text_file: Option<PathBuf>,
+    supports_builtin_voices: bool,
 ) -> Result<Vec<String>, RadtTsError> {
     if request.text.trim().is_empty() {
         return Err(RadtTsError::EmptyText);
@@ -1047,7 +1058,7 @@ pub fn build_synthesis_args(
     if request.voice_source == RadtTsVoiceSource::Reference && !request.acknowledge_voice_clone {
         return Err(RadtTsError::MissingVoiceCloneAuthorization);
     }
-    if request.voice_source == RadtTsVoiceSource::Builtin {
+    if request.voice_source == RadtTsVoiceSource::Builtin && !supports_builtin_voices {
         return Err(RadtTsError::UnsupportedVoiceSource);
     }
     if request.pause_min_seconds <= 0.0 || request.pause_max_seconds < request.pause_min_seconds {
@@ -1093,7 +1104,35 @@ pub fn build_synthesis_args(
                 "--ack-voice-clone".to_string(),
             ]);
         }
-        RadtTsVoiceSource::Builtin => unreachable!("built-in voices are rejected above"),
+        RadtTsVoiceSource::Builtin => {
+            let speaker = request
+                .built_in_speaker
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| BUILTIN_VOICE_IDS.contains(value))
+                .ok_or_else(|| {
+                    RadtTsError::InvalidBuiltInSpeaker(
+                        request
+                            .built_in_speaker
+                            .clone()
+                            .unwrap_or_else(|| "missing speaker".to_string()),
+                    )
+                })?;
+            args.extend([
+                "--voice-source".to_string(),
+                "builtin".to_string(),
+                "--built-in-speaker".to_string(),
+                speaker.to_string(),
+            ]);
+            if let Some(instruct) = request
+                .built_in_instruct
+                .as_deref()
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+            {
+                args.extend(["--built-in-instruct".to_string(), instruct.to_string()]);
+            }
+        }
     }
     if let Some(pause_seed) = request.pause_seed {
         args.extend(["--pause-seed".to_string(), pause_seed.to_string()]);
@@ -1124,18 +1163,34 @@ pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
     let executable = candidates.into_iter().find(|candidate| candidate.is_file());
     match executable {
         Some(path) => match probe_radt_ts_cli(&path) {
-            Ok(()) => RadtTsCapabilityStatus {
+            Ok(features) => RadtTsCapabilityStatus {
                 available: true,
                 executable: Some(path.display().to_string()),
                 detail: format!(
-                    "Local RADTTS is ready at {}. Models are loaded on demand.",
-                    path.display()
+                    "Local RADTTS is ready at {}. {}Models are loaded on demand.",
+                    path.display(),
+                    if features.supports_builtin_voices {
+                        "Built-in voices are available. "
+                    } else {
+                        "Only reference voices are available. "
+                    }
                 ),
+                supports_builtin_voices: features.supports_builtin_voices,
+                builtin_voices: if features.supports_builtin_voices {
+                    BUILTIN_VOICE_IDS
+                        .iter()
+                        .map(|value| (*value).to_string())
+                        .collect()
+                } else {
+                    Vec::new()
+                },
             },
             Err(detail) => RadtTsCapabilityStatus {
                 available: false,
                 executable: Some(path.display().to_string()),
                 detail,
+                supports_builtin_voices: false,
+                builtin_voices: Vec::new(),
             },
         },
         None => RadtTsCapabilityStatus {
@@ -1143,11 +1198,18 @@ pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
             executable: None,
             detail: "Install RADTTS locally or set RADSUITE_RADTTS_CLI to its executable."
                 .to_string(),
+            supports_builtin_voices: false,
+            builtin_voices: Vec::new(),
         },
     }
 }
 
-fn probe_radt_ts_cli(path: &Path) -> Result<(), String> {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct RadtTsCliFeatures {
+    supports_builtin_voices: bool,
+}
+
+fn probe_radt_ts_cli(path: &Path) -> Result<RadtTsCliFeatures, String> {
     let output = StdCommand::new(path)
         .args(["synthesize", "--help"])
         .output()
@@ -1156,9 +1218,17 @@ fn probe_radt_ts_cli(path: &Path) -> Result<(), String> {
                 "RADTTS was found at {} but could not start: {}. Check the Python environment and dependencies.",
                 path.display(), error
             )
-        })?;
+    })?;
     if output.status.success() {
-        return Ok(());
+        let help = format!(
+            "{}\n{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return Ok(RadtTsCliFeatures {
+            supports_builtin_voices: help.contains("--voice-source")
+                && help.contains("--built-in-speaker"),
+        });
     }
 
     let detail = String::from_utf8_lossy(&output.stderr)
@@ -1275,6 +1345,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             Some(PathBuf::from("/tmp/reference.txt")),
+            false,
         )
         .expect("valid request should build");
         assert_eq!(args[0], "--projects-root");
@@ -1332,6 +1403,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect("valid request should build");
         assert!(!args.contains(&"--reference-text-file".to_string()));
@@ -1365,10 +1437,51 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect_err("built-in voices are not supported by the installed CLI");
 
         assert!(matches!(error, super::RadtTsError::UnsupportedVoiceSource));
+    }
+
+    #[test]
+    fn builds_builtin_voice_cli_arguments_without_reference_audio() {
+        let request = RadtTsSynthesisRequest {
+            project_id: ProjectId::new(),
+            text: "A short script.".to_string(),
+            voice_source: RadtTsVoiceSource::Builtin,
+            reference_audio_path: None,
+            reference_text: None,
+            built_in_speaker: Some("Vivian".to_string()),
+            built_in_instruct: Some("Warm and clear".to_string()),
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Sentence,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.75,
+            pause_seed: None,
+            max_new_tokens: 1200,
+            output_format: RadtTsOutputFormat::Mp3,
+            output_name: "intro".to_string(),
+            acknowledge_voice_clone: false,
+        };
+
+        let args = build_synthesis_args(
+            &request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+            true,
+        )
+        .expect("supported built-in voice should build");
+
+        assert!(args.contains(&"--voice-source".to_string()));
+        assert!(args.contains(&"builtin".to_string()));
+        assert!(args.contains(&"--built-in-speaker".to_string()));
+        assert!(args.contains(&"Vivian".to_string()));
+        assert!(args.contains(&"--built-in-instruct".to_string()));
+        assert!(args.contains(&"Warm and clear".to_string()));
+        assert!(!args.contains(&"--reference-audio".to_string()));
+        assert!(!args.contains(&"--ack-voice-clone".to_string()));
     }
 
     #[test]
@@ -1401,6 +1514,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect_err("too-small generation budget should be rejected");
         assert!(error.to_string().contains("between 64 and 8192"));
@@ -1414,6 +1528,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect("the lower generation budget boundary should be accepted");
         assert!(lower_args.contains(&"64".to_string()));
@@ -1427,6 +1542,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect("the upper generation budget boundary should be accepted");
         assert!(upper_args.contains(&"8192".to_string()));
@@ -1439,6 +1555,7 @@ mod tests {
             PathBuf::from("/tmp/project"),
             PathBuf::from("/tmp/script.txt"),
             None,
+            false,
         )
         .expect_err("too-large generation budget should be rejected");
         assert!(error.to_string().contains("between 64 and 8192"));

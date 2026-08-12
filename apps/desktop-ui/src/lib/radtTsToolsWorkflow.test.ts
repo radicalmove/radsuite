@@ -13,6 +13,8 @@ const capability: RadtTsCapabilityStatus = {
   available: true,
   executable: "/usr/local/bin/radtts",
   detail: "available",
+  supports_builtin_voices: true,
+  builtin_voices: ["Ryan", "Vivian"],
 };
 
 const transcription: RadtTsTranscriptionDraft = {

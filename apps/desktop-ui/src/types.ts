@@ -182,6 +182,8 @@ export type RadtTsCapabilityStatus = {
   available: boolean;
   executable: string | null;
   detail: string;
+  supports_builtin_voices: boolean;
+  builtin_voices: string[];
 };
 
 export type RadtTsJobState = "starting" | "running" | "completed" | "failed" | "cancelled";

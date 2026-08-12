@@ -37,6 +37,8 @@
     available: false,
     executable: null,
     detail: "Checking local voice generation support.",
+    supports_builtin_voices: false,
+    builtin_voices: [],
   });
   let outputs = $state<RadtTsAudioOutput[]>([]);
   let job = $state<RadtTsJobStatus | null>(null);
@@ -181,7 +183,7 @@
   async function synthesize() {
     if (startDisabled) {
       error = draft.voiceSource === "builtin"
-        ? "Built-in voices are not available in the installed RADTTS CLI. Choose an authorised reference voice."
+        ? "Built-in voices are not available in the installed RADTTS runtime. Install the updated RADTTS CLI or choose an authorised reference voice."
         : "Enter a script, choose reference audio, authorize voice cloning, and check the pause range.";
       return;
     }
@@ -297,6 +299,9 @@
         <span>Voice source</span>
         <select bind:value={draft.voiceSource}>
           <option value="reference">Authorised reference voice</option>
+          <option value="builtin" disabled={!capability.supports_builtin_voices}>
+            {capability.supports_builtin_voices ? "Built-in RADTTS voice" : "Built-in voice (runtime update required)"}
+          </option>
         </select>
       </label>
       {#if draft.voiceSource === "reference"}
@@ -325,6 +330,27 @@
             <strong>I have permission to use this voice</strong>
             <small>Required before reference-voice synthesis can start.</small>
           </span>
+        </label>
+      {:else}
+        <label class="stack">
+          <span>Built-in speaker</span>
+          <select bind:value={draft.builtInSpeaker} disabled={!capability.supports_builtin_voices}>
+            <option value="">Choose a speaker</option>
+            {#each capability.builtin_voices as speaker}
+              <option value={speaker}>{speaker.replaceAll("_", " ")}</option>
+            {/each}
+          </select>
+          <small class="field-note">Built-in voices run locally and do not need reference audio or voice-clone permission.</small>
+        </label>
+        <label class="stack">
+          <span>Style instruction (optional)</span>
+          <input
+            type="text"
+            bind:value={draft.builtInInstruct}
+            placeholder="Warm, clear, conversational"
+            disabled={!capability.supports_builtin_voices}
+          />
+          <small class="field-note">Describe the delivery you want, such as calm, clear, and suitable for a lecture.</small>
         </label>
       {/if}
       <label class="stack">
@@ -393,7 +419,7 @@
       </label>
       <div class="radtts-processing-note">
         <span class="status-dot" class:is-ready={capability.available}></span>
-        <span>{capability.available ? "The RADTTS engine will run entirely on this computer." : capability.detail}</span>
+        <span>{capability.available ? (capability.supports_builtin_voices ? "Reference and built-in voices are available locally." : "Reference voice generation is available locally.") : capability.detail}</span>
       </div>
       <button class="primary-button radtts-process-button" type="button" disabled={startDisabled} onclick={() => void synthesize()}>
         {processing ? "Generating" : "Generate voice audio"}
