@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from "svelte";
   import { open, save } from "@tauri-apps/plugin-dialog";
   import { invoke } from "@tauri-apps/api/core";
   import {
@@ -114,6 +115,20 @@
   let filteredParagraphs = $derived(
     analysisResult ? filterParagraphs(analysisResult.paragraphs, activeFilter) : [],
   );
+
+  $effect(() => {
+    const paragraphId = selectedParagraphId;
+    if (!paragraphId || !analysisResult || analysisResult.document_id !== selectedDocumentId) {
+      return;
+    }
+
+    void tick().then(() => {
+      document.getElementById(`radcite-paragraph-${paragraphId}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    });
+  });
 
   function toErrorMessage(reason: unknown): string {
     return reason instanceof Error ? reason.message : String(reason);
@@ -654,6 +669,7 @@
     <div class="paragraph-list" aria-label="Analysed paragraphs">
       {#each filteredParagraphs as paragraph (paragraph.id)}
         <button
+          id={`radcite-paragraph-${paragraph.id}`}
           class="paragraph-row"
           class:is-selected={selectedParagraphId === paragraph.id}
           type="button"
