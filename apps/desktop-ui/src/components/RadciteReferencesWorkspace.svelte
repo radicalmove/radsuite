@@ -31,6 +31,7 @@
     onArchiveReference: (referenceId: string) => void | Promise<void>;
     onMergeReferences: (primaryReferenceId: string, mergeReferenceIds: string[]) => Promise<boolean>;
     onRefreshReferences: () => void | Promise<void>;
+    onOpenCitation: (documentId: string, paragraphId: string) => void | Promise<void>;
   };
 
   let {
@@ -44,6 +45,7 @@
     onArchiveReference,
     onMergeReferences,
     onRefreshReferences,
+    onOpenCitation,
   }: Props = $props();
 
   let editingReferenceId = $state<string | null>(null);
@@ -461,6 +463,25 @@
               <div class="reference-validation-report" role="status">
                 <strong>APA check</strong>
                 <span>{reference.validation_report}</span>
+              </div>
+            {/if}
+            {#if reference.citations?.length}
+              <div class="reference-usage" aria-label="Citation uses">
+                <strong>
+                  {reference.citations.length} citation use{reference.citations.length === 1 ? "" : "s"}
+                </strong>
+                <div class="reference-usage-list">
+                  {#each reference.citations as usage, usageIndex (`${usage.document_id}:${usage.paragraph_id}:${usageIndex}`)}
+                    <button
+                      class="reference-citation-link"
+                      type="button"
+                      title={`Open citation in ${usage.document_name}${usage.page ? ` · p.${usage.page}` : ""}`}
+                      onclick={() => void onOpenCitation(usage.document_id, usage.paragraph_id)}
+                    >
+                      {usage.document_name}{usage.page ? ` · p.${usage.page}` : ""} · {usage.citation_text}
+                    </button>
+                  {/each}
+                </div>
               </div>
             {/if}
             {#if lookupReferenceId === reference.id}

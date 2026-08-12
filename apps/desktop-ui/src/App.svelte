@@ -439,6 +439,17 @@
     }
   }
 
+  async function handleOpenReferenceCitation(documentId: string, paragraphId: string) {
+    activeArea = "documents";
+    activeFilter = "all";
+    if (analysisResult?.document_id !== documentId) {
+      await handleLoadSavedReview(documentId);
+    }
+    if (analysisResult?.document_id === documentId) {
+      selectedParagraphId = paragraphId;
+    }
+  }
+
   async function handleUseSavedReviewForReadings(review: SavedRadciteReviewSummary) {
     if (!canUseSavedReviewForReadings(review)) {
       return;
@@ -1041,6 +1052,9 @@
         onMergeReferences={handleMergeCourseReferences}
         onRefreshReferences={() => {
           void refreshCourseReferences();
+        }}
+        onOpenCitation={(documentId, paragraphId) => {
+          void handleOpenReferenceCitation(documentId, paragraphId);
         }}
       />
     {:else if activeArea === "readings"}

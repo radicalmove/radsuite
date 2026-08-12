@@ -8,7 +8,10 @@ use radsuite_core::{
     DocumentVariant, ModuleId, ProjectId, ReadingCategory, ReferenceEntry, ReferenceEntryId,
     ReferenceEntryType,
 };
-use radsuite_db::{ReferenceEntryRepository, SqliteReferenceEntryRepository, migrate};
+use radsuite_db::{
+    CitationDocumentRepository, ReferenceEntryRepository, SqliteCitationDocumentRepository,
+    SqliteReferenceEntryRepository, migrate,
+};
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxError, AnalyseDocxRequest, AnalysePdfRequest, AppPaths,
@@ -23,7 +26,7 @@ use radsuite_desktop::{
     PreviewModuleReadingsCsvImportRequest, PreviewModuleReadingsImportRequest,
     PreviewModuleReadingsPdfImportRequest, RadciteArchiveItemKind, RadciteDocumentError,
     RadciteModuleError, RadciteProjectError, RestoreRadciteArchiveItemRequest,
-    RestoreRadciteProjectRequest, SaveModuleReadingsImportCandidate,
+    RestoreRadciteProjectRequest, ReviewActionError, SaveModuleReadingsImportCandidate,
     SaveModuleReadingsImportRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
     UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
     UpdateRadciteProjectRequest, add_course_reference, add_manual_citation_for_review,
@@ -3069,6 +3072,107 @@ async fn paragraph_citations_can_be_linked_to_course_references() {
         loaded.paragraphs[0].citations[0].reference_entry_id,
         Some(reference.id)
     );
+
+    let references =
+        list_course_references(&state, ListCourseReferencesRequest { project_id: None })
+            .await
+            .expect("list course references with citation usage");
+    assert_eq!(references.len(), 1);
+    assert_eq!(references[0].citations.len(), 1);
+    assert_eq!(references[0].citations[0].document_id, analysis.document_id);
+    assert_eq!(
+        references[0].citations[0].paragraph_id,
+        analysis.paragraphs[0].id
+    );
+    assert_eq!(
+        references[0].citations[0].document_name,
+        "linked-reference.docx"
+    );
+    assert_eq!(references[0].citations[0].citation_text, "Smith (2020)");
+}
+
+#[tokio::test]
+async fn course_reference_usage_and_linking_are_project_scoped() {
+    let state = desktop_state_with_migrated_pool().await;
+    let first_path = write_minimal_docx("desktop-project-one.docx");
+    let _first_analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: None,
+            path: first_path.to_string_lossy().into_owned(),
+            original_filename: Some("project-one.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse first project document");
+    let first_reference = add_course_reference(
+        &state,
+        AddCourseReferenceRequest {
+            project_id: None,
+            apa_citation: "Smith, J. (2020). Project-scoped reference. Learning Press.".to_string(),
+            notes: None,
+        },
+    )
+    .await
+    .expect("add first project reference");
+
+    let second_project = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("CRJU151".to_string()),
+            title: "Second project".to_string(),
+        },
+    )
+    .await
+    .expect("create second project");
+    let second_path = write_minimal_docx("desktop-project-two.docx");
+    let second_analysis = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: Some(second_project.id),
+            path: second_path.to_string_lossy().into_owned(),
+            original_filename: Some("project-two.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse second project document");
+
+    let mismatch = link_citation_to_reference_for_review(
+        &state,
+        LinkCitationReferenceRequest {
+            document_id: second_analysis.document_id,
+            citation_id: second_analysis.paragraphs[0].citations[0].id,
+            reference_entry_id: first_reference.id,
+        },
+    )
+    .await
+    .expect_err("reject cross-project citation link");
+    assert!(matches!(
+        mismatch,
+        ReviewActionError::ReferenceProjectMismatch {
+            document_id,
+            reference_id,
+        } if document_id == second_analysis.document_id && reference_id == first_reference.id
+    ));
+
+    SqliteCitationDocumentRepository::new(state.database_pool.clone())
+        .link_citation_to_reference(
+            second_analysis.paragraphs[0].citations[0].id,
+            first_reference.id,
+        )
+        .await
+        .expect("create an invalid cross-project fixture");
+
+    let first_references = list_course_references(
+        &state,
+        ListCourseReferencesRequest {
+            project_id: Some(first_reference.project_id),
+        },
+    )
+    .await
+    .expect("list first project references");
+    assert_eq!(first_references.len(), 1);
+    assert!(first_references[0].citations.is_empty());
 }
 
 #[tokio::test]
