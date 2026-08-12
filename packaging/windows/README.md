@@ -9,8 +9,10 @@ RADsuite has an initial Windows 11 x64 installer build. The workflow at
 - Windows Installer `.msi`, suitable for managed or enterprise deployment
 
 Run the workflow manually from GitHub Actions, or push a version tag matching
-`v*`. The workflow uploads both installers as the `RADsuite-windows-installers`
-artifact. This is an internal alpha packaging path, not yet a signed public
+`v*`. The workflow uploads both installers and a `SHA256SUMS.txt` checksum file
+as the `RADsuite-windows-installers` artifact. The workflow also runs the Rust
+workspace checks and fails if it does not produce exactly one MSI and one NSIS
+installer. This is an internal alpha packaging path, not yet a signed public
 release.
 
 ## Release Checklist
@@ -25,6 +27,8 @@ Before distributing a Windows build outside controlled testing:
 - Obtain a Windows code-signing certificate and sign the installer and bundled binaries where practical.
 - Test Defender SmartScreen behavior with a signed build.
 - Decide whether the public distribution should offer NSIS, MSI, or both.
+- Publish checksums with every external installer release and document the
+  verification command for users.
 
 ## Runtime Scope
 
