@@ -212,7 +212,7 @@ pub async fn start_radt_ts_transcription(
     request: StartRadtTsTranscriptionRequest,
 ) -> Result<RadtTsMediaJobStatus, RadtTsMediaError> {
     let project_id = request.project_id.unwrap_or_default();
-    let executable = media_executable()?;
+    let executable = media_executable().await?;
     let projects_root = state.paths.data_dir.join("radt-ts-projects");
     let project_root = ensure_project_root(&projects_root, project_id)
         .map_err(|error| RadtTsMediaError::Io(std::io::Error::other(error.to_string())))?;
@@ -240,7 +240,7 @@ pub async fn start_radt_ts_clip(
     request: StartRadtTsClipRequest,
 ) -> Result<RadtTsMediaJobStatus, RadtTsMediaError> {
     let project_id = request.project_id.unwrap_or_default();
-    let executable = media_executable()?;
+    let executable = media_executable().await?;
     let projects_root = state.paths.data_dir.join("radt-ts-projects");
     let project_root = ensure_project_root(&projects_root, project_id)
         .map_err(|error| RadtTsMediaError::Io(std::io::Error::other(error.to_string())))?;
@@ -787,8 +787,8 @@ fn update_job<F>(
     }
 }
 
-fn media_executable() -> Result<PathBuf, RadtTsMediaError> {
-    let capability = discover_radt_ts_cli();
+async fn media_executable() -> Result<PathBuf, RadtTsMediaError> {
+    let capability = crate::radt_ts::discover_radt_ts_cli_async().await;
     capability
         .executable
         .map(PathBuf::from)

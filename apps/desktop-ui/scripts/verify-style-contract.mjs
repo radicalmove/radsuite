@@ -200,7 +200,7 @@ for (const needle of [
 }
 
 for (const needle of [
-  "Saved on this Mac",
+  "Saved locally",
   "Local saving unavailable",
   "Cloud backup on",
   "Cloud backup off",

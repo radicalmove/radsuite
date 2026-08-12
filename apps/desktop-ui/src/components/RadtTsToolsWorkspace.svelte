@@ -31,7 +31,7 @@
   let capability = $state<RadtTsCapabilityStatus>({
     available: false,
     executable: null,
-    detail: "Checking local RADTTS support.",
+    detail: "RADTTS is not ready yet. Use the setup button on the start screen to prepare local audio tools.",
     supports_builtin_voices: false,
     builtin_voices: [],
   });

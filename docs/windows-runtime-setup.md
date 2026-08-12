@@ -1,24 +1,20 @@
 # Windows Runtime Setup
 
-The RADsuite Windows installer contains the desktop application. The local
-processing runtimes remain separate because their Python environments and
-model caches are large and hardware-specific.
+The RADsuite Windows installer contains the desktop application. On first
+launch, choose **Prepare audio and voice tools**. RADsuite installs the local
+processing runtimes into the current user's profile; the Python environments
+and model caches remain outside the small app installer because they are large
+and hardware-specific.
+
+The setup also installs FFmpeg through `winget` when it is missing. FFmpeg is
+used by RADcast for trimming and output conversion.
 
 ## RADTTS
 
-Install Python 3.11 and Git, then run PowerShell:
+The first-run setup performs the equivalent PowerShell steps automatically.
+The expected runtime location is:
 
 ```powershell
-$root = Join-Path $env:USERPROFILE "RADTTS"
-py -3.11 -m venv "$root\.venv"
-$python = "$root\.venv\Scripts\python.exe"
-& $python -m pip install --upgrade pip
-& $python -m pip install --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple "git+https://github.com/radicalmove/RADTTS.git#egg=radtts[asr,tts]"
-```
-
-RADsuite will detect:
-
-```text
 %USERPROFILE%\RADTTS\.venv\Scripts\radtts.exe
 ```
 
@@ -28,8 +24,7 @@ requires the normal permission acknowledgement in RADsuite.
 
 ## RADcast Optimized
 
-RADcast Optimized requires the separate RADcast helper environment. Install
-the RADcast package and its local audio/model dependencies into:
+RADcast Optimized uses the helper environment prepared by RADsuite at:
 
 ```text
 %USERPROFILE%\.radcast\venv
@@ -41,8 +36,8 @@ The helper expected by RADsuite is:
 %USERPROFILE%\.radcast\venv\Scripts\radcast-studio-enhance.exe
 ```
 
-If the helper is installed elsewhere, set a user environment variable before
-starting RADsuite:
+If a specialist installation is elsewhere, set a user environment variable
+before starting RADsuite:
 
 ```powershell
 [Environment]::SetEnvironmentVariable(

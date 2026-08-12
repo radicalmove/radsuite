@@ -951,7 +951,17 @@ async fn desktop_state_with_migrated_pool() -> DesktopState {
         .await
         .expect("connect test database");
     migrate(&pool).await.expect("migrate test database");
-    DesktopState::for_tests_with_pool(pool)
+    let state = DesktopState::for_tests_with_pool(pool);
+    create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("CRJU150".to_string()),
+            title: "RADcite Functional Testing".to_string(),
+        },
+    )
+    .await
+    .expect("seed test project");
+    state
 }
 
 fn fake_processor(dir: &Path) -> AudioProcessor {

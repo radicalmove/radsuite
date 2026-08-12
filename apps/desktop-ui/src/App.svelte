@@ -38,6 +38,7 @@
   } from "./lib/storage";
   import { showsCitationActions } from "./lib/workspaceLayout";
   import { displayAppVersion } from "./lib/appVersion";
+  import { setupLocalRuntimes } from "./lib/runtimeSetup";
   import {
     addModuleReading,
     addRadciteModule,
@@ -91,15 +92,15 @@
 
   const fallbackStatus: AppStatus = {
     app_name: "RADsuite",
-    version: "0.2.0",
+    version: "0.2.1",
     database_ready: false,
     sync_configured: false,
     engines: [],
   };
-  const fallbackProject: ProjectNavItem = {
-    id: "radcite-fallback",
-    code: "CRJU150",
-    title: "RADcite Functional Testing",
+  const emptyProject: ProjectNavItem = {
+    id: "no-project",
+    code: "",
+    title: "No project selected",
     description: null,
     structureMode: "modules",
     archived_at: null,
@@ -107,10 +108,10 @@
 
   let status = $state<AppStatus>(fallbackStatus);
   let bridgeError = $state<string | null>(null);
-  let projects = $state<ProjectNavItem[]>([fallbackProject]);
+  let projects = $state<ProjectNavItem[]>([]);
   let projectsLoading = $state(false);
   let projectsError = $state<string | null>(null);
-  let selectedProjectId = $state(fallbackProject.id);
+  let selectedProjectId = $state("");
   let activeArea = $state<ToolArea>("documents");
   let documentSource = $state<"docx" | "pdf">("docx");
   let sharedDocxPath = $state("");
@@ -145,9 +146,12 @@
   let moduleReadingsExport = $state<ModuleReadingsExport | null>(null);
   let moduleReadingsExportLoading = $state(false);
   let moduleReadingsExportError = $state<string | null>(null);
+  let runtimeSetupRunning = $state(false);
+  let runtimeSetupStatus = $state<string | null>(null);
+  let runtimeSetupError = $state<string | null>(null);
 
   let selectedProject = $derived(
-    projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? fallbackProject,
+    projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? emptyProject,
   );
   let selectedParagraph = $derived<ReviewParagraph | null>(
     analysisResult?.paragraphs.find((paragraph) => paragraph.id === selectedParagraphId) ?? null,
@@ -183,7 +187,7 @@
   }
 
   function selectedProjectCommandId(): string | null {
-    return selectedProjectId === fallbackProject.id ? null : selectedProjectId;
+    return selectedProjectId || null;
   }
 
   function projectNavItem(project: {
@@ -236,18 +240,35 @@
     try {
       const loadedProjects = await listRadciteProjects();
       const nextProjects = loadedProjects.map(projectNavItem);
-      projects = nextProjects.length ? nextProjects : [fallbackProject];
+      projects = nextProjects;
       selectedProjectId =
         (preferredProjectId && nextProjects.some((project) => project.id === preferredProjectId)
           ? preferredProjectId
           : nextProjects.find((project) => project.archived_at === null)?.id ??
-            nextProjects[0]?.id) ?? fallbackProject.id;
+            nextProjects[0]?.id) ?? "";
     } catch (reason: unknown) {
       projectsError = `Could not load projects: ${toErrorMessage(reason)}`;
-      projects = [fallbackProject];
-      selectedProjectId = fallbackProject.id;
+      projects = [];
+      selectedProjectId = "";
     } finally {
       projectsLoading = false;
+    }
+  }
+
+  async function handleSetupLocalRuntimes() {
+    if (runtimeSetupRunning) {
+      return;
+    }
+    runtimeSetupRunning = true;
+    runtimeSetupStatus = null;
+    runtimeSetupError = null;
+    try {
+      runtimeSetupStatus = await setupLocalRuntimes();
+      status = await invoke<AppStatus>("get_app_status");
+    } catch (reason: unknown) {
+      runtimeSetupError = `Could not prepare local audio and voice tools: ${toErrorMessage(reason)}`;
+    } finally {
+      runtimeSetupRunning = false;
     }
   }
 
@@ -257,9 +278,7 @@
       const created = await createRadciteProject(input);
       await refreshProjects(created.id);
       resetProjectScopedState();
-      await refreshSavedReviews();
-      await refreshCourseReferences();
-      await refreshArchive();
+      await refreshProjectScopedData();
     } catch (reason: unknown) {
       projectsError = `Could not create project: ${toErrorMessage(reason)}`;
       throw reason;
@@ -352,6 +371,10 @@
   }
 
   async function refreshSavedReviews() {
+    if (!selectedProjectId) {
+      savedReviews = [];
+      return;
+    }
     savedReviewsLoading = true;
     savedReviewsError = null;
     try {
@@ -364,6 +387,10 @@
   }
 
   async function refreshArchive() {
+    if (!selectedProjectId) {
+      archiveItems = [];
+      return;
+    }
     archiveLoading = true;
     archiveError = null;
     try {
@@ -508,6 +535,10 @@
   }
 
   async function refreshCourseReferences() {
+    if (!selectedProjectId) {
+      courseReferences = [];
+      return;
+    }
     courseReferencesLoading = true;
     courseReferencesError = null;
     try {
@@ -520,6 +551,12 @@
   }
 
   async function refreshRadciteModules(preferredModuleId: string | null = selectedModuleId) {
+    if (!selectedProjectId) {
+      radciteModules = [];
+      selectedModuleId = null;
+      moduleReadings = [];
+      return;
+    }
     radciteModulesLoading = true;
     radciteModulesError = null;
     try {
@@ -885,12 +922,7 @@
       .catch((reason: unknown) => {
         bridgeError = toErrorMessage(reason);
       });
-    void refreshProjects().then(() => {
-      void refreshSavedReviews();
-      void refreshCourseReferences();
-      void refreshArchive();
-      void refreshRadciteModules(null);
-    });
+    void refreshProjects().then(() => refreshProjectScopedData());
   });
 </script>
 
@@ -926,6 +958,9 @@
     onSelectArea={(area) => {
       activeArea = area;
       selectedParagraphId = null;
+      if (!selectedProjectId) {
+        return;
+      }
       if (area === "references" || area === "exports") {
         void refreshCourseReferences();
       }
@@ -942,7 +977,7 @@
     <header class="workspace-topbar">
       <div>
         <p class="eyebrow">Project</p>
-        <h2>{selectedProject.code} · {selectedProject.title}</h2>
+        <h2>{selectedProjectId ? `${selectedProject.code} · ${selectedProject.title}` : "Create a project to begin"}</h2>
       </div>
       <div class="status-strip" aria-label="Application status">
         <span
@@ -956,21 +991,21 @@
           class="status-chip"
           class:is-ready={status.database_ready}
           title={status.database_ready
-            ? "Your work is saved on this Mac and remains available offline."
-            : "RADsuite cannot currently save your work on this Mac."}
+            ? "Your work is saved locally and remains available offline."
+            : "RADsuite cannot currently save your work locally."}
           aria-label={status.database_ready
-            ? "Saved on this Mac"
+            ? "Saved locally"
             : "Local saving unavailable"}
         >
           <span class="status-dot"></span>
-          <span>{status.database_ready ? "Saved on this Mac" : "Local saving unavailable"}</span>
+          <span>{status.database_ready ? "Saved locally" : "Local saving unavailable"}</span>
         </span>
         <span
           class="status-chip"
           class:is-ready={status.sync_configured}
           title={status.sync_configured
             ? "Cloud backup is connected."
-            : "Cloud backup is off; your work remains saved on this Mac and is not copied to another device."}
+            : "Cloud backup is off; your work remains saved locally and is not copied to another device."}
           aria-label={status.sync_configured ? "Cloud backup on" : "Cloud backup off"}
         >
           <span class="status-dot"></span>
@@ -1006,8 +1041,27 @@
     {#if reviewActionError}
       <div class="notice">{reviewActionError}</div>
     {/if}
+    {#if runtimeSetupError}
+      <div class="notice">{runtimeSetupError}</div>
+    {/if}
 
-    {#if activeArea === "documents"}
+    {#if !selectedProjectId}
+      <section class="workspace-placeholder">
+        <p class="eyebrow">No project selected</p>
+        <h2>Create a project to get started</h2>
+        <span>Use the + button in the Projects panel to create a course workspace.</span>
+        <div class="runtime-setup-panel">
+          <strong>Prepare local audio and voice tools</strong>
+          <span>RADcast and RADTTS will be installed on this computer. Larger models download only when first used.</span>
+          <button class="primary-button" type="button" disabled={runtimeSetupRunning} onclick={() => void handleSetupLocalRuntimes()}>
+            {runtimeSetupRunning ? "Preparing local tools..." : "Prepare audio and voice tools"}
+          </button>
+          {#if runtimeSetupStatus}
+            <small>{runtimeSetupStatus}</small>
+          {/if}
+        </div>
+      </section>
+    {:else if activeArea === "documents"}
       <RadciteDocumentsWorkspace
         selectedProjectId={selectedProjectCommandId()}
         modules={radciteModules}

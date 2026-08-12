@@ -284,7 +284,7 @@ pub async fn start_radt_ts_synthesis(
     state: &DesktopState,
     request: RadtTsSynthesisRequest,
 ) -> Result<RadtTsJobStatus, RadtTsError> {
-    let capability = discover_radt_ts_cli();
+    let capability = discover_radt_ts_cli_async().await;
     let supports_builtin_voices = capability.supports_builtin_voices;
     let executable = capability
         .executable
@@ -1204,20 +1204,75 @@ pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
     }
 }
 
+pub async fn discover_radt_ts_cli_async() -> RadtTsCapabilityStatus {
+    tokio::task::spawn_blocking(discover_radt_ts_cli)
+        .await
+        .unwrap_or_else(|error| RadtTsCapabilityStatus {
+            available: false,
+            executable: None,
+            detail: format!("RADTTS capability check failed: {error}"),
+            supports_builtin_voices: false,
+            builtin_voices: Vec::new(),
+        })
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct RadtTsCliFeatures {
     supports_builtin_voices: bool,
 }
 
 fn probe_radt_ts_cli(path: &Path) -> Result<RadtTsCliFeatures, String> {
-    let output = StdCommand::new(path)
+    probe_radt_ts_cli_with_timeout(path, Duration::from_secs(8))
+}
+
+fn probe_radt_ts_cli_with_timeout(
+    path: &Path,
+    timeout: Duration,
+) -> Result<RadtTsCliFeatures, String> {
+    let mut child = StdCommand::new(path)
         .args(["synthesize", "--help"])
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|error| {
             format!(
                 "RADTTS was found at {} but could not start: {}. Check the Python environment and dependencies.",
                 path.display(), error
             )
+        })?;
+    let started = Instant::now();
+    loop {
+        if child
+            .try_wait()
+            .map_err(|error| {
+                format!(
+                    "RADTTS was found at {} but could not be checked: {}.",
+                    path.display(),
+                    error
+                )
+            })?
+            .is_some()
+        {
+            break;
+        }
+        if started.elapsed() >= timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(format!(
+                "RADTTS was found at {} but timed out during its capability check after {} seconds. Check the Python environment and dependencies.",
+                path.display(),
+                timeout.as_secs_f64()
+            ));
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+
+    let output = child.wait_with_output().map_err(|error| {
+        format!(
+            "RADTTS was found at {} but its capability check could not be read: {}.",
+            path.display(),
+            error
+        )
     })?;
     if output.status.success() {
         let help = format!(
@@ -1301,8 +1356,9 @@ mod tests {
     use super::{
         RadtTsChunkMode, RadtTsOutputFormat, RadtTsQuality, RadtTsSynthesisRequest,
         RadtTsVoiceSource, StartRadtTsSynthesisRequest, build_synthesis_args, contained_file,
-        parse_cli_result, probe_radt_ts_cli, remove_temp_text_files, shutdown_radt_ts_jobs,
-        validate_output_name, validate_reference_audio,
+        parse_cli_result, probe_radt_ts_cli, probe_radt_ts_cli_with_timeout,
+        remove_temp_text_files, shutdown_radt_ts_jobs, validate_output_name,
+        validate_reference_audio,
     };
     use crate::state::DesktopState;
 
@@ -1725,5 +1781,27 @@ mod tests {
             probe_radt_ts_cli(&executable)
                 .expect("installed RADTTS CLI should answer synthesis help");
         }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stops_waiting_when_the_cli_does_not_answer_help() {
+        use std::os::unix::fs::PermissionsExt;
+        use std::time::Duration;
+
+        let executable =
+            std::env::temp_dir().join(format!("radsuite-radt-ts-slow-{}.sh", uuid::Uuid::new_v4()));
+        fs::write(&executable, "#!/bin/sh\nsleep 1\n").expect("write slow CLI");
+        let mut permissions = fs::metadata(&executable)
+            .expect("read slow CLI permissions")
+            .permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&executable, permissions).expect("make slow CLI executable");
+
+        let error = probe_radt_ts_cli_with_timeout(&executable, Duration::from_millis(50))
+            .expect_err("slow CLI should time out");
+        assert!(error.contains("timed out"), "unexpected error: {error}");
+
+        fs::remove_file(executable).expect("remove slow CLI");
     }
 }

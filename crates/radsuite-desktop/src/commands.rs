@@ -51,9 +51,6 @@ pub use crate::radt_ts_tools::{
 };
 pub use radsuite_engines::{AudioOutputFormat, CaptionFormat};
 
-const LOCAL_RADCITE_PROJECT_CODE: &str = "CRJU150";
-const LOCAL_RADCITE_PROJECT_TITLE: &str = "RADcite Functional Testing";
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppStatus {
     pub app_name: String,
@@ -1179,8 +1176,6 @@ impl From<RadciteProjectLookupError> for CourseReferenceExportError {
 pub async fn list_radcite_projects(
     state: &DesktopState,
 ) -> Result<Vec<RadciteProjectSummary>, RadciteProjectError> {
-    load_or_create_local_radcite_project(state).await?;
-
     let projects = SqliteProjectRepository::new(state.database_pool.clone())
         .list_projects()
         .await?;
@@ -3189,32 +3184,19 @@ async fn load_review_response(
     })
 }
 
-async fn load_or_create_local_radcite_project(state: &DesktopState) -> Result<Project, DbError> {
-    let project_repo = SqliteProjectRepository::new(state.database_pool.clone());
-
-    if let Some(project) = project_repo
-        .load_project_by_code(LOCAL_RADCITE_PROJECT_CODE)
-        .await?
-    {
-        return Ok(project);
-    }
-
-    let project = Project::new(
-        LOCAL_RADCITE_PROJECT_CODE,
-        LOCAL_RADCITE_PROJECT_TITLE,
-        UserId::new(),
-    );
-    project_repo.insert_project(&project).await?;
-
-    Ok(project)
-}
-
 async fn load_requested_or_local_radcite_project(
     state: &DesktopState,
     project_id: Option<ProjectId>,
 ) -> Result<Project, RadciteProjectLookupError> {
-    let Some(project_id) = project_id else {
-        return Ok(load_or_create_local_radcite_project(state).await?);
+    let project_id = match project_id {
+        Some(project_id) => project_id,
+        None => SqliteProjectRepository::new(state.database_pool.clone())
+            .list_projects()
+            .await?
+            .into_iter()
+            .next()
+            .map(|project| project.id)
+            .ok_or(RadciteProjectLookupError::MissingProject(ProjectId::new()))?,
     };
 
     SqliteProjectRepository::new(state.database_pool.clone())
