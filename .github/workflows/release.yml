@@ -230,6 +230,11 @@ jobs:
             --asset-dir release-assets \
             --version "$VERSION" \
             --repository "$REPOSITORY"
+      - name: Create stable public download aliases
+        run: |
+          cp "release-assets/RADsuite_${VERSION}_Apple-Silicon.dmg" release-assets/RADsuite_Apple-Silicon.dmg
+          cp "release-assets/RADsuite_${VERSION}_Intel.dmg" release-assets/RADsuite_Intel.dmg
+          cp "release-assets/RADsuite_${VERSION}_Windows_x64_Setup.exe" release-assets/RADsuite_Windows_x64_Setup.exe
       - name: Create draft GitHub Release
         run: |
           gh release create "$TAG" \
@@ -253,7 +258,10 @@ jobs:
             "RADsuite_${VERSION}_Windows_x64.msi" \
             "RADsuite_${VERSION}_Windows_x64.msi.sig" \
             "latest.json" \
-            "SHA256SUMS.txt"; do
+            "SHA256SUMS.txt" \
+            "RADsuite_Apple-Silicon.dmg" \
+            "RADsuite_Intel.dmg" \
+            "RADsuite_Windows_x64_Setup.exe"; do
             grep -Fx "$required" release-assets/github-assets.txt >/dev/null || { echo "Missing release asset: $required"; exit 1; }
           done
       - name: Validate published draft assets
