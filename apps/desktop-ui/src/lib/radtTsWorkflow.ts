@@ -72,9 +72,13 @@ export function mergeRadtTsVoicePreferences(
   draft: RadtTsDraft,
   preferences: RadtTsVoicePreferences | undefined,
 ): RadtTsDraft {
+  const voiceSource: RadtTsVoiceSource = preferences?.voiceSource === "builtin"
+    ? "reference"
+    : preferences?.voiceSource ?? draft.voiceSource;
   return {
     ...draft,
     ...preferences,
+    voiceSource,
     pauseSeed: preferences?.pauseSeed === undefined
       ? draft.pauseSeed
       : normalizeRadtTsPauseSeedText(preferences.pauseSeed),

@@ -94,6 +94,14 @@ describe("RAD TTS workflow", () => {
     ).toBe(8192);
   });
 
+  it("falls back to reference voice when an old built-in preference is loaded", () => {
+    expect(
+      mergeRadtTsVoicePreferences(createDefaultRadtTsDraft(), {
+        voiceSource: "builtin",
+      }).voiceSource,
+    ).toBe("reference");
+  });
+
   it("does not enable unsupported built-in voice generation", () => {
     const builtinDraft = {
       ...draft,

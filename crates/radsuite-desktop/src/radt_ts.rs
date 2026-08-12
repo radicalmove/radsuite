@@ -210,8 +210,6 @@ pub struct RadtTsOutputListing {
 
 #[derive(Debug, Error)]
 pub enum RadtTsError {
-    #[error("RADTTS voice generation is currently supported on macOS and Linux only")]
-    UnsupportedPlatform,
     #[error("RADTTS is not available: {0}")]
     MissingCli(String),
     #[error("voice generation text cannot be empty")]

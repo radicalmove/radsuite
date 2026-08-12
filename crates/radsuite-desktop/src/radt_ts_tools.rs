@@ -125,8 +125,6 @@ pub enum RadtTsVerificationMode {
 
 #[derive(Debug, Error)]
 pub enum RadtTsMediaError {
-    #[error("RADTTS media tools are currently supported on macOS and Linux only")]
-    UnsupportedPlatform,
     #[error("RADTTS is not available: {0}")]
     MissingCli(String),
     #[error("audio input is invalid: {0}")]

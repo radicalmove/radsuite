@@ -84,7 +84,7 @@ impl Default for EngineRegistry {
             resolve_command(
                 "RADSUITE_RADTTS_CLI",
                 "radtts",
-                &["RADTTS/.venv/bin/radtts"],
+                &["RADTTS/.venv/bin/radtts", "RADTTS/.venv/Scripts/radtts.exe"],
             ),
         )
     }
@@ -101,7 +101,13 @@ fn resolve_command(env_name: &str, command: &str, home_candidates: &[&str]) -> O
         return Some(path);
     }
 
-    if let Some(home) = env::var_os("HOME").map(PathBuf::from) {
+    let home = if cfg!(windows) {
+        env::var_os("USERPROFILE").or_else(|| env::var_os("HOME"))
+    } else {
+        env::var_os("HOME")
+    }
+    .map(PathBuf::from);
+    if let Some(home) = home {
         for relative_path in home_candidates {
             let path = home.join(relative_path);
             if path.is_file() {
@@ -120,7 +126,17 @@ fn find_on_path(command: &str) -> Option<PathBuf> {
     }
 
     let path = env::var_os("PATH")?;
+    let command_names = if cfg!(windows) {
+        vec![
+            command.to_string(),
+            format!("{command}.exe"),
+            format!("{command}.cmd"),
+            format!("{command}.bat"),
+        ]
+    } else {
+        vec![command.to_string()]
+    };
     env::split_paths(&path)
-        .map(|directory| directory.join(command))
+        .flat_map(|directory| command_names.iter().map(move |name| directory.join(name)))
         .find(|path| path.is_file())
 }
