@@ -1299,9 +1299,17 @@
     {:else if activeArea === "radcast"}
       <RadcastWorkspace selectedProjectId={selectedProjectCommandId()} />
     {:else if activeArea === "radtts"}
-      <RadtTsWorkspace selectedProjectId={selectedProjectCommandId()} />
+      <RadtTsWorkspace
+        selectedProjectId={selectedProjectCommandId()}
+        onPrepareLocalTools={handleSetupLocalRuntimes}
+        preparingLocalTools={runtimeSetupRunning}
+      />
     {:else if activeArea === "radt-tools"}
-      <RadtTsToolsWorkspace selectedProjectId={selectedProjectCommandId()} />
+      <RadtTsToolsWorkspace
+        selectedProjectId={selectedProjectCommandId()}
+        onPrepareLocalTools={handleSetupLocalRuntimes}
+        preparingLocalTools={runtimeSetupRunning}
+      />
     {:else}
       <section class="workspace-placeholder">
         <p class="eyebrow">Coming later</p>

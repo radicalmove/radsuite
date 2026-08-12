@@ -21,13 +21,20 @@
     type RadtTsClipDraft,
     type RadtTsTranscriptionDraft,
   } from "../lib/radtTsToolsWorkflow";
+  import { capabilityNotice } from "../lib/radtTsCapability";
   import { filenameFromPath, saveLocalArtifact } from "../lib/fileDownload";
 
   type Props = {
     selectedProjectId: string | null;
+    onPrepareLocalTools?: () => Promise<void>;
+    preparingLocalTools?: boolean;
   };
 
-  let { selectedProjectId }: Props = $props();
+  let {
+    selectedProjectId,
+    onPrepareLocalTools,
+    preparingLocalTools = false,
+  }: Props = $props();
   let capability = $state<RadtTsCapabilityStatus>({
     available: false,
     executable: null,
@@ -56,6 +63,7 @@
     outputFormat: "mp3",
   });
   let loading = $state(false);
+  let checkingCapability = $state(true);
   let processing = $state(false);
   let cancelling = $state(false);
   let job = $state<RadtTsMediaJobStatus | null>(null);
@@ -140,6 +148,7 @@
 
   async function refresh() {
     loading = true;
+    checkingCapability = true;
     settingsLoaded = false;
     error = null;
     try {
@@ -162,7 +171,20 @@
     } catch (reason: unknown) {
       error = `Could not load transcription tools: ${toErrorMessage(reason)}`;
     } finally {
+      checkingCapability = false;
       loading = false;
+    }
+  }
+
+  async function prepareLocalTools() {
+    if (!onPrepareLocalTools || preparingLocalTools) return;
+    error = null;
+    status = null;
+    try {
+      await onPrepareLocalTools();
+      await refresh();
+    } catch (reason: unknown) {
+      error = `Could not prepare local audio tools: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -296,7 +318,23 @@
 
   {#if error}<div class="notice analysis-notice" role="alert">{error}</div>{/if}
   {#if status}<div class="notice radtts-status" aria-live="polite">{status}</div>{/if}
-  {#if !capability.available}<div class="notice radtts-capability" role="status">{capability.detail}</div>{/if}
+  {#if checkingCapability || !capability.available}
+    <div class="notice radtts-capability" role="status">
+      <span>{capabilityNotice(checkingCapability, capability)}</span>
+      {#if !checkingCapability}
+        <div class="radtts-capability-actions">
+          {#if onPrepareLocalTools}
+            <button class="primary-button compact-button" type="button" disabled={preparingLocalTools || loading || processing} onclick={() => void prepareLocalTools()}>
+              {preparingLocalTools ? "Preparing local tools..." : "Prepare local tools"}
+            </button>
+          {/if}
+          <button class="secondary-button compact-button" type="button" disabled={loading || processing} onclick={() => void refresh()}>
+            Check again
+          </button>
+        </div>
+      {/if}
+    </div>
+  {/if}
   {#if processing && job}
     <div class="radtts-progress" aria-live="polite">
       <div class="radtts-progress-heading"><strong>{phaseLabel(job.phase)}</strong><span>Running locally</span></div>

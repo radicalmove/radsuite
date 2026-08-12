@@ -172,8 +172,8 @@ pub fn get_radcast_capabilities_with_processors(
     }
 }
 
-pub fn get_radt_ts_capabilities() -> RadtTsCapabilityStatus {
-    crate::radt_ts::discover_radt_ts_cli()
+pub async fn get_radt_ts_capabilities() -> RadtTsCapabilityStatus {
+    crate::radt_ts::discover_radt_ts_cli_async().await
 }
 
 pub async fn list_radt_ts_outputs(
