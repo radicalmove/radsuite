@@ -51,18 +51,6 @@
   let loadedProjectId = $state<string | null>(null);
   let settingsSaveTimer: number | null = null;
   let draft = $state<RadtTsDraft>(createDefaultRadtTsDraft());
-  const builtinSpeakers: Array<{ id: string; label: string; language: string }> = [
-    { id: "Aiden", label: "Aiden", language: "English" },
-    { id: "Dylan", label: "Dylan", language: "Chinese" },
-    { id: "Eric", label: "Eric", language: "Chinese" },
-    { id: "Ono_Anna", label: "Ono Anna", language: "Japanese" },
-    { id: "Ryan", label: "Ryan", language: "English" },
-    { id: "Serena", label: "Serena", language: "Chinese" },
-    { id: "Sohee", label: "Sohee", language: "Korean" },
-    { id: "Uncle_Fu", label: "Uncle Fu", language: "Chinese" },
-    { id: "Vivian", label: "Vivian", language: "Chinese" },
-  ];
-
   let startDisabled = $derived(
     processing || !canStartRadtTs(draft, capability),
   );
@@ -193,7 +181,7 @@
   async function synthesize() {
     if (startDisabled) {
       error = draft.voiceSource === "builtin"
-        ? "Enter a script, choose a built-in speaker, and check the pause range."
+        ? "Built-in voices are not available in the installed RADTTS CLI. Choose an authorised reference voice."
         : "Enter a script, choose reference audio, authorize voice cloning, and check the pause range.";
       return;
     }
@@ -309,7 +297,6 @@
         <span>Voice source</span>
         <select bind:value={draft.voiceSource}>
           <option value="reference">Authorised reference voice</option>
-          <option value="builtin">Built-in voice</option>
         </select>
       </label>
       {#if draft.voiceSource === "reference"}
@@ -338,25 +325,6 @@
             <strong>I have permission to use this voice</strong>
             <small>Required before reference-voice synthesis can start.</small>
           </span>
-        </label>
-      {:else}
-        <label class="stack">
-          <span>Built-in speaker</span>
-          <select bind:value={draft.builtInSpeaker}>
-            {#each builtinSpeakers as speaker (speaker.id)}
-              <option value={speaker.id}>{speaker.label} · {speaker.language}</option>
-            {/each}
-          </select>
-          <small class="field-note">Uses RADTTS CustomVoice models. No reference recording or voice-clone permission is required.</small>
-        </label>
-        <label class="stack">
-          <span>Voice instruction (optional)</span>
-          <textarea
-            rows="3"
-            bind:value={draft.builtInInstruct}
-            placeholder="For example: warm, clear, and measured"
-          ></textarea>
-          <small class="field-note">Describe the delivery style you want the built-in speaker to use.</small>
         </label>
       {/if}
       <label class="stack">

@@ -94,7 +94,7 @@ describe("RAD TTS workflow", () => {
     ).toBe(8192);
   });
 
-  it("builds a built-in voice request without reference audio or clone authorization", () => {
+  it("does not enable unsupported built-in voice generation", () => {
     const builtinDraft = {
       ...draft,
       voiceSource: "builtin" as const,
@@ -112,7 +112,7 @@ describe("RAD TTS workflow", () => {
       built_in_instruct: "Warm and clear",
       acknowledge_voice_clone: false,
     });
-    expect(canStartRadtTs(builtinDraft, capability)).toBe(true);
+    expect(canStartRadtTs(builtinDraft, capability)).toBe(false);
     expect(canStartRadtTs({ ...builtinDraft, builtInSpeaker: "" }, capability)).toBe(false);
   });
 

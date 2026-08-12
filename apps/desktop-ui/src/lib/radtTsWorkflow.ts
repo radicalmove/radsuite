@@ -9,6 +9,7 @@ import type {
 export const RADTTS_MIN_NEW_TOKENS = 64;
 export const RADTTS_MAX_NEW_TOKENS = 8192;
 export const RADTTS_DEFAULT_NEW_TOKENS = 1200;
+export const RADTTS_SUPPORTS_BUILTIN_VOICES = false;
 
 export type RadtTsDraft = {
   text: string;
@@ -114,7 +115,7 @@ export function canStartRadtTs(
     draft.pauseMinSeconds > 0 &&
     draft.pauseMaxSeconds >= draft.pauseMinSeconds &&
     (draft.voiceSource === "builtin"
-      ? draft.builtInSpeaker.trim().length > 0
+      ? RADTTS_SUPPORTS_BUILTIN_VOICES && draft.builtInSpeaker.trim().length > 0
       : draft.referenceAudioPath.trim().length > 0 && draft.acknowledgeVoiceClone)
   );
 }
