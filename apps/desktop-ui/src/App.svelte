@@ -116,6 +116,7 @@
   let sharedDocxPath = $state("");
   let analysedReadingsPath = $state("");
   let analysedReadingsSource = $state<"docx" | "pdf" | null>(null);
+  let documentModuleId = $state<string | null>(null);
   let analysisResult = $state<AnalyseDocxReviewResponse | null>(null);
   let activeFilter = $state<ParagraphFilter>("all");
   let selectedParagraphId = $state<string | null>(null);
@@ -158,6 +159,7 @@
 
   function handleAnalysisResult(result: AnalyseDocxReviewResponse | null) {
     analysisResult = result;
+    documentModuleId = result?.module_id ?? null;
     selectedParagraphId = null;
     reviewActionError = null;
     if (result) {
@@ -177,6 +179,7 @@
     sharedDocxPath = "";
     analysedReadingsPath = "";
     analysedReadingsSource = null;
+    documentModuleId = null;
   }
 
   function selectedProjectCommandId(): string | null {
@@ -206,6 +209,7 @@
     analysedReadingsPath = "";
     analysedReadingsSource = null;
     analysisResult = null;
+    documentModuleId = null;
     activeFilter = "all";
     selectedParagraphId = null;
     reviewActionError = null;
@@ -342,6 +346,9 @@
     if (activeArea === "readings" || activeArea === "exports") {
       await refreshRadciteModules(null);
     }
+    if (activeArea === "documents") {
+      await refreshRadciteModules(null);
+    }
   }
 
   async function refreshSavedReviews() {
@@ -430,6 +437,7 @@
     try {
       const loaded = await loadSavedRadciteReview(documentId);
       analysisResult = loaded;
+      documentModuleId = loaded.module_id;
       activeFilter = "all";
       documentSource = loaded.source_file_type;
       const sourcePath = loaded.source_path?.trim() ?? "";
@@ -466,15 +474,16 @@
     analysedReadingsPath = sourcePath;
     analysedReadingsSource = review.source_file_type;
     documentSource = review.source_file_type;
+    documentModuleId = review.module_id;
     activeArea = "readings";
     selectedParagraphId = null;
-    await refreshRadciteModules();
+    await refreshRadciteModules(documentModuleId);
   }
 
   async function handleOpenReadingsFromDocument() {
     activeArea = "readings";
     selectedParagraphId = null;
-    await refreshRadciteModules();
+    await refreshRadciteModules(documentModuleId ?? analysisResult?.module_id ?? null);
   }
 
   async function handleImportDetectedReadings(
@@ -489,6 +498,7 @@
 
     const result = await importDocumentReadings({
       project_id: selectedProjectCommandId(),
+      module_id: documentModuleId ?? analysisResult?.module_id ?? null,
       path,
       source_file_type: sourceFileType,
     });
@@ -878,6 +888,7 @@
       void refreshSavedReviews();
       void refreshCourseReferences();
       void refreshArchive();
+      void refreshRadciteModules(null);
     });
   });
 </script>
@@ -998,6 +1009,8 @@
     {#if activeArea === "documents"}
       <RadciteDocumentsWorkspace
         selectedProjectId={selectedProjectCommandId()}
+        modules={radciteModules}
+        documentModuleId={documentModuleId}
         {documentSource}
         docxPath={sharedDocxPath}
         {activeFilter}
@@ -1014,6 +1027,9 @@
         }}
         onAnalysisResult={handleAnalysisResult}
         onDocumentSourceChange={handleDocumentSourceChange}
+        onDocumentModuleChange={(moduleId) => {
+          documentModuleId = moduleId;
+        }}
         onDocxPathChange={(path) => {
           sharedDocxPath = path;
         }}

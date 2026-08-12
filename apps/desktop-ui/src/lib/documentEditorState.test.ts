@@ -11,6 +11,7 @@ import {
 const savedReview: SavedRadciteReviewSummary = {
   document_id: "document-1",
   project_id: "project-1",
+  module_id: null,
   original_filename: "source.docx",
   display_name: "Week 1 source",
   source_path: "/app-data/documents/project-1/source.docx",

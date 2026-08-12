@@ -1006,6 +1006,7 @@ impl ReferenceEntryRepository for SqliteReferenceEntryRepository {
 pub struct CitationDocumentSummary {
     pub document_id: DocumentId,
     pub project_id: ProjectId,
+    pub module_id: Option<ModuleId>,
     pub original_filename: String,
     pub display_name: String,
     pub file_type: DocumentFileType,
@@ -1166,15 +1167,16 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         sqlx::query(
             r#"
             INSERT INTO documents
-                (id, project_id, asset_id, source_path, original_filename, file_type, doc_variant,
+                (id, project_id, module_id, asset_id, source_path, original_filename, file_type, doc_variant,
                  doc_number, notes, exclude_from_references, archived_at, uploaded_at, created_at,
                  updated_at)
             VALUES
-                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+                (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
             "#,
         )
         .bind(document.id.0.to_string())
         .bind(document.project_id.0.to_string())
+        .bind(document.module_id.map(|id| id.0.to_string()))
         .bind(document.asset_id.map(|id| id.0.to_string()))
         .bind(document.source_path.as_deref())
         .bind(&document.original_filename)
@@ -1275,6 +1277,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             SELECT
                 d.id,
                 d.project_id,
+                d.module_id,
                 d.source_path,
                 d.original_filename,
                 d.notes,
@@ -1291,7 +1294,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.project_id = ?1
               AND d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.notes,
+            GROUP BY d.id, d.project_id, d.module_id, d.source_path, d.original_filename, d.notes,
                      d.file_type, d.doc_variant, d.doc_number, d.exclude_from_references,
                      d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
@@ -1316,6 +1319,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
                 Ok(CitationDocumentSummary {
                     document_id: DocumentId(Uuid::parse_str(&document_id)?),
                     project_id: ProjectId(Uuid::parse_str(&row_project_id)?),
+                    module_id: parse_optional_module_id(row.try_get("module_id")?)?,
                     original_filename,
                     display_name,
                     file_type: parse_document_file_type(&file_type)?,
@@ -1417,6 +1421,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             SELECT
                 d.id,
                 d.project_id,
+                d.module_id,
                 d.source_path,
                 d.original_filename,
                 d.notes,
@@ -1433,7 +1438,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.project_id = ?1
               AND d.archived_at IS NOT NULL
-            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.notes,
+            GROUP BY d.id, d.project_id, d.module_id, d.source_path, d.original_filename, d.notes,
                      d.file_type, d.doc_variant, d.doc_number, d.exclude_from_references,
                      d.archived_at, d.uploaded_at
             ORDER BY d.archived_at DESC, d.original_filename COLLATE NOCASE
@@ -1452,6 +1457,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             SELECT
                 d.id,
                 d.project_id,
+                d.module_id,
                 d.source_path,
                 d.original_filename,
                 d.notes,
@@ -1467,7 +1473,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
             LEFT JOIN paragraphs p ON p.document_id = d.id
             LEFT JOIN paragraph_citations pc ON pc.paragraph_id = p.id
             WHERE d.archived_at IS NULL
-            GROUP BY d.id, d.project_id, d.source_path, d.original_filename, d.notes,
+            GROUP BY d.id, d.project_id, d.module_id, d.source_path, d.original_filename, d.notes,
                      d.file_type, d.doc_variant, d.doc_number, d.exclude_from_references,
                      d.archived_at, d.uploaded_at
             ORDER BY d.uploaded_at DESC, d.original_filename COLLATE NOCASE
@@ -1486,7 +1492,7 @@ impl CitationDocumentRepository for SqliteCitationDocumentRepository {
         let Some(document_row) = sqlx::query(
             r#"
             SELECT
-                id, project_id, asset_id, source_path, original_filename, file_type, doc_variant,
+                id, project_id, module_id, asset_id, source_path, original_filename, file_type, doc_variant,
                 doc_number, notes, exclude_from_references, archived_at, uploaded_at, created_at,
                 updated_at
             FROM documents
@@ -1644,6 +1650,7 @@ fn citation_summary_from_row(
     Ok(CitationDocumentSummary {
         document_id: DocumentId(Uuid::parse_str(&document_id)?),
         project_id: ProjectId(Uuid::parse_str(&row_project_id)?),
+        module_id: parse_optional_module_id(row.try_get("module_id")?)?,
         original_filename,
         display_name,
         file_type: parse_document_file_type(&file_type)?,
@@ -1840,6 +1847,14 @@ fn parse_optional_datetime(value: Option<String>) -> Result<Option<DateTime<Utc>
     value.as_deref().map(parse_datetime).transpose()
 }
 
+fn parse_optional_module_id(value: Option<String>) -> Result<Option<ModuleId>, DbError> {
+    Ok(value
+        .as_deref()
+        .map(Uuid::parse_str)
+        .transpose()?
+        .map(ModuleId))
+}
+
 fn document_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Document, DbError> {
     let id: String = row.try_get("id")?;
     let project_id: String = row.try_get("project_id")?;
@@ -1854,6 +1869,7 @@ fn document_from_row(row: &sqlx::sqlite::SqliteRow) -> Result<Document, DbError>
     Ok(Document {
         id: DocumentId(Uuid::parse_str(&id)?),
         project_id: ProjectId(Uuid::parse_str(&project_id)?),
+        module_id: parse_optional_module_id(row.try_get("module_id")?)?,
         asset_id: asset_id
             .as_deref()
             .map(Uuid::parse_str)

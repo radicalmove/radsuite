@@ -337,6 +337,8 @@ pub struct RestoreRadciteProjectRequest {
 pub struct AnalyseDocxRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
+    #[serde(default)]
+    pub module_id: Option<ModuleId>,
     pub path: String,
     pub original_filename: Option<String>,
 }
@@ -345,6 +347,8 @@ pub struct AnalyseDocxRequest {
 pub struct AnalysePdfRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
+    #[serde(default)]
+    pub module_id: Option<ModuleId>,
     pub path: String,
     pub original_filename: Option<String>,
 }
@@ -354,6 +358,7 @@ pub struct AnalyseDocxResponse {
     pub project_id: ProjectId,
     pub project_title: String,
     pub document_id: DocumentId,
+    pub module_id: Option<ModuleId>,
     pub original_filename: String,
     pub source_path: Option<String>,
     pub source_file_type: String,
@@ -367,6 +372,7 @@ pub struct AnalyseDocxReviewResponse {
     pub project_id: ProjectId,
     pub project_title: String,
     pub document_id: DocumentId,
+    pub module_id: Option<ModuleId>,
     pub original_filename: String,
     pub display_name: String,
     pub source_path: Option<String>,
@@ -393,6 +399,7 @@ pub struct AnalyseDocxSummary {
 pub struct SavedRadciteReviewSummary {
     pub document_id: DocumentId,
     pub project_id: ProjectId,
+    pub module_id: Option<ModuleId>,
     pub original_filename: String,
     pub display_name: String,
     pub source_path: Option<String>,
@@ -705,6 +712,8 @@ pub struct PreviewModuleReadingsPdfImportRequest {
 pub struct ImportDocumentReadingsRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
+    #[serde(default)]
+    pub module_id: Option<ModuleId>,
     pub path: String,
     pub source_file_type: DocumentFileType,
 }
@@ -851,6 +860,10 @@ pub enum AnalyseDocxError {
     MissingFilename,
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
+    #[error("RADcite module {module_id} belongs to a different project")]
+    ModuleProjectMismatch { module_id: ModuleId },
     #[error(transparent)]
     Ingestion(#[from] DocxIngestionError),
     #[error(transparent)]
@@ -867,6 +880,10 @@ pub enum AnalysePdfError {
     MissingFilename,
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
+    #[error("could not load RADcite module {0}")]
+    MissingModule(ModuleId),
+    #[error("RADcite module {module_id} belongs to a different project")]
+    ModuleProjectMismatch { module_id: ModuleId },
     #[error(transparent)]
     Ingestion(#[from] PdfIngestionError),
     #[error(transparent)]
@@ -1036,6 +1053,8 @@ pub enum ModuleReadingImportError {
     Pdf(#[from] PdfReadingExtractionError),
     #[error("could not load RADcite module {0}")]
     MissingModule(ModuleId),
+    #[error("RADcite module {module_id} belongs to a different project")]
+    ModuleProjectMismatch { module_id: ModuleId },
     #[error("could not load RADcite project {0}")]
     MissingProject(ProjectId),
     #[error("choose compulsory or optional for the reading category")]
@@ -1534,6 +1553,7 @@ pub async fn analyse_docx_path(
         project_id: analysed.project.id,
         project_title: analysed.project.title,
         document_id: analysed.document.id,
+        module_id: analysed.document.module_id,
         original_filename: analysed.document.original_filename.clone(),
         source_path: analysed.document.source_path,
         source_file_type: document_file_type_label(analysed.document.file_type).to_string(),
@@ -1560,6 +1580,7 @@ pub async fn analyse_docx_for_review(
         project_id: analysed.project.id,
         project_title: analysed.project.title,
         document_id: analysed.document.id,
+        module_id: analysed.document.module_id,
         original_filename: analysed.document.original_filename.clone(),
         display_name: effective_document_display_name(&analysed.document),
         source_path: analysed.document.source_path,
@@ -1589,6 +1610,7 @@ pub async fn analyse_pdf_for_review(
         project_id: analysed.project.id,
         project_title: analysed.project.title,
         document_id: analysed.document.id,
+        module_id: analysed.document.module_id,
         original_filename: analysed.document.original_filename.clone(),
         display_name: effective_document_display_name(&analysed.document),
         source_path: analysed.document.source_path,
@@ -1615,6 +1637,7 @@ pub async fn list_saved_radcite_reviews(
         .map(|document| SavedRadciteReviewSummary {
             document_id: document.document_id,
             project_id: document.project_id,
+            module_id: document.module_id,
             original_filename: document.original_filename,
             display_name: document.display_name,
             source_path: document.source_path,
@@ -1710,6 +1733,7 @@ pub async fn archive_radcite_document(
     Ok(SavedRadciteReviewSummary {
         document_id: analysis.document.id,
         project_id: project.id,
+        module_id: analysis.document.module_id,
         original_filename: analysis.document.original_filename.clone(),
         display_name: effective_document_display_name(&analysis.document),
         source_path: analysis.document.source_path,
@@ -2514,6 +2538,15 @@ pub async fn import_document_readings(
     let mut modules = module_repo
         .list_course_modules_for_project(project.id)
         .await?;
+    let requested_module = if let Some(module_id) = request.module_id {
+        let module = load_course_module_for_import_or_error(state, module_id).await?;
+        if module.project_id != project.id {
+            return Err(ModuleReadingImportError::ModuleProjectMismatch { module_id });
+        }
+        Some(module)
+    } else {
+        None
+    };
     let mut modules_to_insert = Vec::new();
     let mut created_module_count = 0;
     let mut unassigned_count = 0;
@@ -2528,19 +2561,18 @@ pub async fn import_document_readings(
         let (path_module_order, path_module_title) = infer_module_from_path(&candidate_path);
         let module_order = candidate.module_order.or(path_module_order);
         let module_title = candidate.module_title.clone().or(path_module_title);
-        let module = find_import_module(&modules, module_order, module_title.as_deref())
-            .or_else(|| {
-                (module_order.is_none() && module_title.is_none() && modules.len() == 1)
-                    .then(|| modules.first().cloned())
-                    .flatten()
-            })
-            .or_else(|| {
+        let module =
+            find_import_module(&modules, module_order, module_title.as_deref()).or_else(|| {
                 let has_module_signal = module_order.is_some()
                     || module_title
                         .as_deref()
                         .is_some_and(|title| !title.trim().is_empty());
                 if !has_module_signal {
-                    return None;
+                    return requested_module.clone().or_else(|| {
+                        (modules.len() == 1)
+                            .then(|| modules.first().cloned())
+                            .flatten()
+                    });
                 }
 
                 let title = module_title
@@ -3004,6 +3036,7 @@ async fn analyse_docx(
         .ok_or(AnalyseDocxError::MissingFilename)?;
 
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    validate_document_module_for_docx(state, project.id, request.module_id).await?;
     validate_source(&path)?;
 
     let mut analysed = ingest_docx(DocxIngestionRequest {
@@ -3011,6 +3044,7 @@ async fn analyse_docx(
         path: path.clone(),
         original_filename,
     })?;
+    analysed.document.module_id = request.module_id;
 
     let managed_path = store_source(
         &state.paths.data_dir,
@@ -3061,6 +3095,7 @@ async fn analyse_pdf(
         .ok_or(AnalysePdfError::MissingFilename)?;
 
     let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    validate_document_module_for_pdf(state, project.id, request.module_id).await?;
     validate_source(&path)?;
 
     let mut analysed = ingest_pdf(PdfIngestionRequest {
@@ -3068,6 +3103,7 @@ async fn analyse_pdf(
         path: path.clone(),
         original_filename,
     })?;
+    analysed.document.module_id = request.module_id;
 
     let managed_path = store_source(
         &state.paths.data_dir,
@@ -3123,6 +3159,7 @@ async fn load_review_response(
         project_id: project.id,
         project_title: project.title,
         document_id: analysis.document.id,
+        module_id: analysis.document.module_id,
         original_filename: analysis.document.original_filename.clone(),
         display_name: effective_document_display_name(&analysis.document),
         source_path: analysis.document.source_path,
@@ -3286,6 +3323,42 @@ async fn validate_course_reference_module(
         return Err(CourseReferenceError::ModuleProjectMismatch { module_id });
     }
 
+    Ok(())
+}
+
+async fn validate_document_module_for_docx(
+    state: &DesktopState,
+    project_id: ProjectId,
+    module_id: Option<ModuleId>,
+) -> Result<(), AnalyseDocxError> {
+    let Some(module_id) = module_id else {
+        return Ok(());
+    };
+    let module = SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .load_course_module(module_id)
+        .await?
+        .ok_or(AnalyseDocxError::MissingModule(module_id))?;
+    if module.project_id != project_id {
+        return Err(AnalyseDocxError::ModuleProjectMismatch { module_id });
+    }
+    Ok(())
+}
+
+async fn validate_document_module_for_pdf(
+    state: &DesktopState,
+    project_id: ProjectId,
+    module_id: Option<ModuleId>,
+) -> Result<(), AnalysePdfError> {
+    let Some(module_id) = module_id else {
+        return Ok(());
+    };
+    let module = SqliteCourseModuleRepository::new(state.database_pool.clone())
+        .load_course_module(module_id)
+        .await?
+        .ok_or(AnalysePdfError::MissingModule(module_id))?;
+    if module.project_id != project_id {
+        return Err(AnalysePdfError::ModuleProjectMismatch { module_id });
+    }
     Ok(())
 }
 
@@ -3473,6 +3546,7 @@ fn saved_review_summary_from_analysis(
     SavedRadciteReviewSummary {
         document_id: document.id,
         project_id: document.project_id,
+        module_id: document.module_id,
         original_filename: document.original_filename.clone(),
         display_name: effective_document_display_name(document),
         source_path: document.source_path.clone(),

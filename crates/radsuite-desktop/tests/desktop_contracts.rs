@@ -211,10 +211,83 @@ async fn legacy_radcite_import_preserves_course_structure_and_review_links() {
     .await
     .expect("list imported review");
     assert_eq!(reviews.len(), 1);
+    assert_eq!(reviews[0].module_id, Some(modules[0].id));
     assert_eq!(reviews[0].paragraph_count, 2);
     assert_eq!(reviews[0].citation_count, 1);
 
     let _ = fs::remove_file(source_path);
+}
+
+#[tokio::test]
+async fn radcite_document_module_assignment_round_trips_and_validates_project_scope() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = list_radcite_projects(&state)
+        .await
+        .expect("list local project")
+        .remove(0);
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: Some(project.id),
+            code: Some("M1".to_string()),
+            title: "Foundations".to_string(),
+            order_index: Some(1),
+            description: None,
+        },
+    )
+    .await
+    .expect("create module");
+    let path = write_minimal_docx("desktop-document-module-link.docx");
+
+    let response = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: Some(project.id),
+            module_id: Some(module.id),
+            path: path.to_string_lossy().into_owned(),
+            original_filename: Some("document-module-link.docx".to_string()),
+        },
+    )
+    .await
+    .expect("analyse document with module");
+
+    assert_eq!(response.module_id, Some(module.id));
+    let saved = list_saved_radcite_reviews(
+        &state,
+        ListSavedReviewsRequest {
+            project_id: Some(project.id),
+        },
+    )
+    .await
+    .expect("list saved linked document");
+    assert_eq!(saved[0].module_id, Some(module.id));
+
+    let other_project = create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("OTHER-MODULE".to_string()),
+            title: "Other module project".to_string(),
+        },
+    )
+    .await
+    .expect("create other project");
+    let mismatch = analyse_docx_for_review(
+        &state,
+        AnalyseDocxRequest {
+            project_id: Some(other_project.id),
+            module_id: Some(module.id),
+            path: write_minimal_docx("desktop-document-module-mismatch.docx")
+                .to_string_lossy()
+                .into_owned(),
+            original_filename: Some("document-module-mismatch.docx".to_string()),
+        },
+    )
+    .await
+    .expect_err("reject module from another project");
+    assert!(matches!(
+        mismatch,
+        AnalyseDocxError::ModuleProjectMismatch { module_id } if module_id == module.id
+    ));
 }
 
 #[tokio::test]
@@ -404,6 +477,7 @@ async fn radcite_commands_respect_selected_project_context() {
         &state,
         AnalyseDocxRequest {
             project_id: Some(crju201.id),
+            module_id: None,
             path: crju_path.to_string_lossy().into_owned(),
             original_filename: Some("crju201.docx".to_string()),
         },
@@ -414,6 +488,7 @@ async fn radcite_commands_respect_selected_project_context() {
         &state,
         AnalyseDocxRequest {
             project_id: Some(coms432.id),
+            module_id: None,
             path: coms_path.to_string_lossy().into_owned(),
             original_filename: Some("coms432.docx".to_string()),
         },
@@ -566,6 +641,7 @@ async fn selected_project_commands_reject_missing_projects() {
         &state,
         AnalyseDocxRequest {
             project_id: Some(missing_project_id),
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("missing-project.docx".to_string()),
         },
@@ -588,6 +664,7 @@ async fn analyse_docx_path_persists_document_and_returns_summary() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("lesson-3.docx".to_string()),
         },
@@ -611,6 +688,7 @@ async fn analyse_docx_for_review_returns_ordered_paragraphs_and_citations() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-source.docx".to_string()),
         },
@@ -647,6 +725,7 @@ async fn review_report_export_contains_document_statistics_and_findings() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-source.docx".to_string()),
         },
@@ -698,6 +777,7 @@ async fn analyse_pdf_for_review_persists_ordered_paragraphs_and_citations() {
         &state,
         AnalysePdfRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-source.pdf".to_string()),
         },
@@ -740,6 +820,7 @@ async fn source_copy_failure_does_not_persist_a_saved_review() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("not-a-file.docx".to_string()),
         },
@@ -766,6 +847,7 @@ async fn radcite_review_actions_persist_and_return_refreshed_review() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-actions.docx".to_string()),
         },
@@ -867,6 +949,7 @@ async fn saved_radcite_review_can_be_listed_and_loaded() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("saved-review.docx".to_string()),
         },
@@ -918,6 +1001,7 @@ async fn radcite_document_metadata_contract() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("document-metadata.docx".to_string()),
         },
@@ -1040,6 +1124,7 @@ async fn analysed_docx_reviews_reuse_the_local_radcite_project() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: first_path.to_string_lossy().into_owned(),
             original_filename: Some("first-local-project.docx".to_string()),
         },
@@ -1051,6 +1136,7 @@ async fn analysed_docx_reviews_reuse_the_local_radcite_project() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: second_path.to_string_lossy().into_owned(),
             original_filename: Some("second-local-project.docx".to_string()),
         },
@@ -1083,6 +1169,7 @@ async fn local_course_references_are_added_to_the_radcite_project() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("reference-project.docx".to_string()),
         },
@@ -1511,6 +1598,7 @@ async fn course_references_can_be_merged_without_losing_citation_links() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("merge-reference.docx".to_string()),
         },
@@ -2063,6 +2151,7 @@ async fn document_readings_import_creates_modules_and_is_idempotent() {
     let path = write_readings_import_docx("desktop-document-readings-import.docx");
     let request = ImportDocumentReadingsRequest {
         project_id: None,
+        module_id: None,
         path: path.to_string_lossy().into_owned(),
         source_file_type: radsuite_core::DocumentFileType::Docx,
     };
@@ -2122,6 +2211,52 @@ async fn document_readings_import_creates_modules_and_is_idempotent() {
 }
 
 #[tokio::test]
+async fn document_readings_import_uses_selected_module_when_source_has_no_module_signal() {
+    let state = desktop_state_with_migrated_pool().await;
+    let module = add_radcite_module(
+        &state,
+        AddRadciteModuleRequest {
+            project_id: None,
+            title: "Module 3".to_string(),
+            code: Some("M03".to_string()),
+            order_index: Some(3),
+            description: None,
+        },
+    )
+    .await
+    .expect("add selected module");
+    let path = write_unassigned_readings_import_docx("desktop-selected-module-readings.docx");
+
+    let result = import_document_readings(
+        &state,
+        ImportDocumentReadingsRequest {
+            project_id: None,
+            module_id: Some(module.id),
+            path: path.to_string_lossy().into_owned(),
+            source_file_type: radsuite_core::DocumentFileType::Docx,
+        },
+    )
+    .await
+    .expect("import readings into selected module");
+
+    assert_eq!(result.candidate_count, 1);
+    assert_eq!(result.saved_count, 1);
+    assert_eq!(result.created_module_count, 0);
+    assert_eq!(result.unassigned_count, 0);
+
+    let readings = list_module_readings(
+        &state,
+        ListModuleReadingsRequest {
+            module_id: module.id,
+        },
+    )
+    .await
+    .expect("list selected module readings");
+    assert_eq!(readings.len(), 1);
+    assert_eq!(readings[0].reading_category, "compulsory");
+}
+
+#[tokio::test]
 async fn document_pdf_readings_import_infers_module_from_scorm_filename() {
     let state = desktop_state_with_migrated_pool().await;
     let path = write_readings_import_pdf(
@@ -2136,6 +2271,7 @@ async fn document_pdf_readings_import_infers_module_from_scorm_filename() {
         &state,
         ImportDocumentReadingsRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             source_file_type: radsuite_core::DocumentFileType::Pdf,
         },
@@ -3027,6 +3163,7 @@ async fn paragraph_citations_can_be_linked_to_course_references() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("linked-reference.docx".to_string()),
         },
@@ -3099,6 +3236,7 @@ async fn course_reference_usage_and_linking_are_project_scoped() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: first_path.to_string_lossy().into_owned(),
             original_filename: Some("project-one.docx".to_string()),
         },
@@ -3130,6 +3268,7 @@ async fn course_reference_usage_and_linking_are_project_scoped() {
         &state,
         AnalyseDocxRequest {
             project_id: Some(second_project.id),
+            module_id: None,
             path: second_path.to_string_lossy().into_owned(),
             original_filename: Some("project-two.docx".to_string()),
         },
@@ -3196,6 +3335,7 @@ async fn reference_suggestions_include_strong_course_reference_matches() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("reference-suggestions.docx".to_string()),
         },
@@ -3236,6 +3376,7 @@ async fn review_queue_summary_tracks_linked_suggested_and_unlinked_citations() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("review-queue.docx".to_string()),
         },
@@ -3287,6 +3428,7 @@ async fn reference_suggestions_are_empty_when_course_references_do_not_match() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("reference-suggestions-empty.docx".to_string()),
         },
@@ -3309,6 +3451,7 @@ async fn radcite_excluded_document_filtering() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: path.to_string_lossy().into_owned(),
             original_filename: Some("excluded-document.docx".to_string()),
         },
@@ -3855,6 +3998,7 @@ async fn analyse_docx_path_rejects_empty_path() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: "  ".to_string(),
             original_filename: None,
         },
@@ -3872,6 +4016,7 @@ async fn radcite_archive_lists_and_restores_project_items() {
         &state,
         AnalyseDocxRequest {
             project_id: None,
+            module_id: None,
             path: write_minimal_docx("desktop-archive.docx")
                 .to_string_lossy()
                 .into_owned(),
@@ -4029,6 +4174,10 @@ fn write_readings_import_docx(filename: &str) -> PathBuf {
     write_docx_with_document_xml(filename, readings_import_document_xml())
 }
 
+fn write_unassigned_readings_import_docx(filename: &str) -> PathBuf {
+    write_docx_with_document_xml(filename, unassigned_readings_import_document_xml())
+}
+
 fn write_readings_import_csv(filename: &str) -> PathBuf {
     let path = std::env::temp_dir().join(format!("radsuite-{filename}"));
     std::fs::write(
@@ -4130,6 +4279,20 @@ fn readings_import_document_xml() -> &'static str {
     </w:p>
     <w:p>
       <w:r><w:t>This ordinary teaching note should not be imported.</w:t></w:r>
+    </w:p>
+  </w:body>
+</w:document>"#
+}
+
+fn unassigned_readings_import_document_xml() -> &'static str {
+    r#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Required readings</w:t></w:r>
+    </w:p>
+    <w:p>
+      <w:r><w:t>Goldberg, M. H., &amp; Gustafson, A. (2023). Strategic campaigns.</w:t></w:r>
     </w:p>
   </w:body>
 </w:document>"#

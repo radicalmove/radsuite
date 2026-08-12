@@ -298,6 +298,7 @@ export type AnalyseDocxReviewResponse = {
   project_id: string;
   project_title: string;
   document_id: string;
+  module_id: string | null;
   original_filename: string;
   display_name: string;
   source_path: string | null;
@@ -312,6 +313,7 @@ export type AnalyseDocxReviewResponse = {
 export type SavedRadciteReviewSummary = {
   document_id: string;
   project_id: string;
+  module_id: string | null;
   original_filename: string;
   display_name: string;
   source_path: string | null;

@@ -70,6 +70,7 @@ struct LegacyModule {
 struct LegacyDocument {
     id: i64,
     course_id: i64,
+    module_id: Option<i64>,
     original_filename: String,
     stored_filename: Option<String>,
     file_type: String,
@@ -278,10 +279,11 @@ pub async fn import_legacy_radcite_database(
         let document_id = DocumentId::new();
         let source_path = existing_absolute_path(document.stored_filename.as_deref());
         sqlx::query(
-            "INSERT INTO documents (id, project_id, asset_id, source_path, original_filename, file_type, doc_variant, doc_number, notes, exclude_from_references, archived_at, uploaded_at, created_at, updated_at) VALUES (?1, ?2, NULL, ?3, ?4, ?5, ?6, ?7, ?8, ?9, NULL, ?10, ?10, ?10)",
+            "INSERT INTO documents (id, project_id, module_id, asset_id, source_path, original_filename, file_type, doc_variant, doc_number, notes, exclude_from_references, archived_at, uploaded_at, created_at, updated_at) VALUES (?1, ?2, ?3, NULL, ?4, ?5, ?6, ?7, ?8, ?9, ?10, NULL, ?11, ?11, ?11)",
         )
         .bind(document_id.to_string())
         .bind(project_id.to_string())
+        .bind(document.module_id.and_then(|id| module_ids.get(&id).map(ToString::to_string)))
         .bind(source_path.as_deref())
         .bind(document.original_filename)
         .bind(file_type_as_str(file_type))
@@ -511,7 +513,7 @@ async fn load_documents(
     pool: &SqlitePool,
 ) -> Result<Vec<LegacyDocument>, LegacyRadciteImportError> {
     let rows = sqlx::query(
-        "SELECT id, course_id, original_filename, stored_filename, file_type, doc_variant, doc_number, notes, exclude_from_references FROM documents ORDER BY course_id, id",
+        "SELECT id, course_id, module_id, original_filename, stored_filename, file_type, doc_variant, doc_number, notes, exclude_from_references FROM documents ORDER BY course_id, id",
     )
     .fetch_all(pool)
     .await
@@ -522,6 +524,9 @@ async fn load_documents(
                 id: row.try_get("id").map_err(LegacyRadciteImportError::Read)?,
                 course_id: row
                     .try_get("course_id")
+                    .map_err(LegacyRadciteImportError::Read)?,
+                module_id: row
+                    .try_get("module_id")
                     .map_err(LegacyRadciteImportError::Read)?,
                 original_filename: row
                     .try_get("original_filename")

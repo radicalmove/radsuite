@@ -86,4 +86,12 @@ async fn project_archive_migration_preserves_existing_projects_and_children() {
     .await
     .expect("check source path column");
     assert_eq!(source_path_column_count, 1);
+
+    let module_id_column_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM pragma_table_info('documents') WHERE name = 'module_id'",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("check document module column");
+    assert_eq!(module_id_column_count, 1);
 }

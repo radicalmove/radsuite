@@ -1706,6 +1706,27 @@ button:disabled {
   gap: var(--s-2);
 }
 
+.document-module-field {
+  display: grid;
+  max-width: 520px;
+  gap: 6px;
+}
+
+.document-module-field select {
+  width: 100%;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  color: var(--fg-1);
+  background: var(--bg);
+}
+
+.document-module-field small {
+  color: var(--fg-3);
+  font-size: 0.74rem;
+}
+
 .path-input {
   width: 100%;
   min-height: 42px;

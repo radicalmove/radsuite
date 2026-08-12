@@ -28,6 +28,7 @@
   import type {
     AnalyseDocxReviewResponse,
     ImportDocumentReadingsResponse,
+    CourseModuleSummary,
     ParagraphFilter,
     ReviewParagraph,
     SavedRadciteReviewSummary,
@@ -37,6 +38,8 @@
 
   type Props = {
     selectedProjectId: string | null;
+    modules: CourseModuleSummary[];
+    documentModuleId: string | null;
     documentSource: DocumentSource;
     docxPath: string;
     activeFilter: ParagraphFilter;
@@ -50,6 +53,7 @@
     onFilterChange: (filter: ParagraphFilter) => void;
     onAnalysisResult: (result: AnalyseDocxReviewResponse | null) => void;
     onDocumentSourceChange: (source: DocumentSource) => void;
+    onDocumentModuleChange: (moduleId: string | null) => void;
     onDocxPathChange: (path: string) => void;
     onOpenReadings: () => void | Promise<void>;
     onImportDetectedReadings: (
@@ -68,6 +72,8 @@
 
   let {
     selectedProjectId,
+    modules,
+    documentModuleId,
     documentSource,
     docxPath,
     activeFilter,
@@ -81,6 +87,7 @@
     onFilterChange,
     onAnalysisResult,
     onDocumentSourceChange,
+    onDocumentModuleChange,
     onDocxPathChange,
     onOpenReadings,
     onImportDetectedReadings,
@@ -243,6 +250,7 @@
       const result = await invoke<AnalyseDocxReviewResponse>(command, {
         request: {
           project_id: selectedProjectId,
+          module_id: documentModuleId,
           path,
           original_filename: null,
         },
@@ -421,6 +429,25 @@
         {analysisLoading ? "Analysing" : "Analyse"}
       </button>
     </div>
+    <label class="document-module-field" for="document-module">
+      <span class="field-label">Course module</span>
+      <select
+        id="document-module"
+        value={documentModuleId ?? ""}
+        onchange={(event) => {
+          const value = (event.currentTarget as HTMLSelectElement).value;
+          onDocumentModuleChange(value || null);
+        }}
+      >
+        <option value="">No module assigned</option>
+        {#each modules as module (module.id)}
+          <option value={module.id}>
+            {module.code ? `${module.code} · ` : ""}{module.title}
+          </option>
+        {/each}
+      </select>
+      <small>Assign this document once so detected readings can use the same module automatically.</small>
+    </label>
   </form>
 
   {#if analysisError}
