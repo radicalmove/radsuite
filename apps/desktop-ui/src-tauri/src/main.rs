@@ -1,4 +1,6 @@
-use std::path::Path;
+use std::{path::Path, process::Stdio};
+
+use tauri::Manager;
 
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
@@ -30,6 +32,64 @@ use radsuite_desktop::{
 #[tauri::command]
 fn get_app_status(state: tauri::State<'_, DesktopState>) -> AppStatus {
     radsuite_desktop::get_app_status(&state)
+}
+
+#[tauri::command]
+async fn setup_local_runtimes(app: tauri::AppHandle) -> Result<String, String> {
+    let shell = app
+        .path()
+        .resolve(
+            "setup-local-runtimes.sh",
+            tauri::path::BaseDirectory::Resource,
+        )
+        .map_err(|error| format!("could not find the local runtime setup script: {error}"))?;
+    let powershell = app
+        .path()
+        .resolve(
+            "setup-local-runtimes.ps1",
+            tauri::path::BaseDirectory::Resource,
+        )
+        .map_err(|error| format!("could not find the Windows runtime setup script: {error}"))?;
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let (program, arguments) = if cfg!(windows) {
+            (
+                "powershell.exe".to_string(),
+                vec![
+                    "-NoProfile".to_string(),
+                    "-ExecutionPolicy".to_string(),
+                    "Bypass".to_string(),
+                    "-File".to_string(),
+                    powershell.display().to_string(),
+                ],
+            )
+        } else {
+            ("/bin/bash".to_string(), vec![shell.display().to_string()])
+        };
+        let output = std::process::Command::new(&program)
+            .args(&arguments)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .output()
+            .map_err(|error| format!("could not start local runtime setup: {error}"))?;
+        if output.status.success() {
+            let message = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            Ok(if message.is_empty() {
+                "Local audio and voice runtimes are ready.".to_string()
+            } else {
+                message
+            })
+        } else {
+            let detail = String::from_utf8_lossy(&output.stderr).trim().to_string();
+            Err(if detail.is_empty() {
+                format!("local runtime setup exited with {}", output.status)
+            } else {
+                detail
+            })
+        }
+    })
+    .await
+    .map_err(|error| format!("local runtime setup task failed: {error}"))?
 }
 
 #[tauri::command]
@@ -186,8 +246,16 @@ fn get_radcast_capabilities() -> RadcastCapabilityStatus {
 }
 
 #[tauri::command]
-fn get_radt_ts_capabilities() -> RadtTsCapabilityStatus {
-    radsuite_desktop::get_radt_ts_capabilities()
+async fn get_radt_ts_capabilities() -> RadtTsCapabilityStatus {
+    tauri::async_runtime::spawn_blocking(radsuite_desktop::get_radt_ts_capabilities)
+        .await
+        .unwrap_or_else(|error| RadtTsCapabilityStatus {
+            available: false,
+            executable: None,
+            detail: format!("RADTTS capability check failed: {error}"),
+            supports_builtin_voices: false,
+            builtin_voices: Vec::new(),
+        })
 }
 
 #[tauri::command]
@@ -628,9 +696,12 @@ fn main() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             get_app_status,
+            setup_local_runtimes,
             analyse_docx_path,
             analyse_docx_for_review,
             analyse_pdf_for_review,

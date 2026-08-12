@@ -292,15 +292,13 @@ async fn radcite_document_module_assignment_round_trips_and_validates_project_sc
 
 #[tokio::test]
 async fn local_radcite_projects_can_be_listed_and_created() {
-    let state = desktop_state_with_migrated_pool().await;
+    let state = empty_desktop_state_with_migrated_pool().await;
 
     let initial_projects = list_radcite_projects(&state)
         .await
         .expect("list initial projects");
 
-    assert_eq!(initial_projects.len(), 1);
-    assert_eq!(initial_projects[0].code.as_deref(), Some("CRJU150"));
-    assert_eq!(initial_projects[0].title, "RADcite Functional Testing");
+    assert!(initial_projects.is_empty());
 
     let created = create_radcite_project(
         &state,
@@ -319,8 +317,25 @@ async fn local_radcite_projects_can_be_listed_and_created() {
         .await
         .expect("list projects after create");
 
-    assert_eq!(projects.len(), 2);
-    assert!(projects.iter().any(|project| project.id == created.id));
+    assert_eq!(projects.len(), 1);
+    assert_eq!(projects[0].id, created.id);
+}
+
+#[tokio::test]
+async fn fresh_project_scoped_refresh_does_not_create_a_sample_project() {
+    let state = empty_desktop_state_with_migrated_pool().await;
+
+    let error = list_saved_radcite_reviews(&state, ListSavedReviewsRequest { project_id: None })
+        .await
+        .expect_err("project-scoped refresh without a project should be rejected");
+    assert!(error.to_string().contains("project"));
+
+    assert!(
+        list_radcite_projects(&state)
+            .await
+            .expect("list fresh projects")
+            .is_empty()
+    );
 }
 
 #[tokio::test]
@@ -4224,6 +4239,20 @@ async fn radcite_archive_lists_and_restores_project_items() {
 }
 
 async fn desktop_state_with_migrated_pool() -> DesktopState {
+    let state = empty_desktop_state_with_migrated_pool().await;
+    create_radcite_project(
+        &state,
+        CreateRadciteProjectRequest {
+            code: Some("CRJU150".to_string()),
+            title: "RADcite Functional Testing".to_string(),
+        },
+    )
+    .await
+    .expect("seed test project");
+    state
+}
+
+async fn empty_desktop_state_with_migrated_pool() -> DesktopState {
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
         .connect("sqlite::memory:")

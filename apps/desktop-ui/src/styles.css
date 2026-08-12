@@ -760,6 +760,51 @@ button:disabled {
   background: var(--danger-tint);
 }
 
+.update-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-4);
+  margin-top: var(--s-4);
+  padding: var(--s-3) var(--s-4);
+  border: 1px solid rgba(99, 153, 34, 0.3);
+  border-left: 4px solid var(--success);
+  background: var(--success-tint);
+}
+
+.update-notice > div:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.update-notice span,
+.update-notice small {
+  color: var(--fg-3);
+  font-size: 0.78rem;
+}
+
+.update-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  justify-content: flex-end;
+}
+
+.update-actions .compact-button {
+  min-height: 34px;
+}
+
+@media (max-width: 760px) {
+  .update-notice {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .update-actions {
+    justify-content: flex-start;
+  }
+}
+
 .help-backdrop {
   position: fixed;
   z-index: 30;
@@ -3141,6 +3186,26 @@ button:disabled {
   border: 1px dashed var(--line);
   border-radius: var(--r-md);
   background: var(--bg-panel-alt);
+}
+
+.runtime-setup-panel {
+  display: grid;
+  gap: var(--s-2);
+  max-width: 34rem;
+  margin-top: var(--s-4);
+  padding: var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--bg-panel);
+}
+
+.runtime-setup-panel span,
+.runtime-setup-panel small {
+  color: var(--fg-3);
+}
+
+.runtime-setup-panel .primary-button {
+  justify-self: start;
 }
 
 .document-empty strong,

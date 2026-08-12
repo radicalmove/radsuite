@@ -1132,7 +1132,7 @@
         {/if}
         <div class="radcast-processing-note">
           <span class={selectedEnhancementCapability?.available ? "status-dot is-ready" : "status-dot"}></span>
-          <span>{selectedEnhancementCapability?.available ? "Ready to process on this Mac." : "Local enhancement is unavailable."}</span>
+          <span>{selectedEnhancementCapability?.available ? "Ready to process locally." : "Local enhancement is unavailable."}</span>
         </div>
         <button class="primary-button radcast-process-button" type="button" disabled={processDisabled} onclick={() => void processAudio()}>
           {processing ? "Processing" : "Create audio version"}

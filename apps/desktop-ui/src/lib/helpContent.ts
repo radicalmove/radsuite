@@ -44,12 +44,11 @@ export const helpSections: HelpSection[] = [
   {
     id: "local-media-tools",
     title: "Use voice and audio tools",
-    summary: "RADcast and RADTTS run locally when their separate helper runtimes are installed on this computer.",
+    summary: "RADcast and RADTTS run locally after RADsuite prepares the runtimes on this computer.",
     steps: [
       "Open Audio cleanup to process a recording with the locally installed RADcast helper.",
       "Open Voice generation to create authorised reference-voice audio with RADTTS, or Transcribe & clip to create timed transcripts and verified clips.",
-      "On Windows, install RADTTS under %USERPROFILE%\\RADTTS\\.venv so RADsuite can find %USERPROFILE%\\RADTTS\\.venv\\Scripts\\radtts.exe; the large voice models are downloaded separately when first used.",
-      "For RADcast Optimized on Windows, install its helper in %USERPROFILE%\\.radcast\\venv or set RADSUITE_STUDIO_COMMAND to the helper executable, then reopen RADsuite.",
+      "On a new installation, use Prepare audio and voice tools on the start screen. RADsuite installs the local helpers and downloads the large models only when each tool is first used.",
     ],
   },
 ];
@@ -57,11 +56,11 @@ export const helpSections: HelpSection[] = [
 export const helpFaqs: HelpFaq[] = [
   {
     question: "Where is my work saved?",
-    answer: "RADsuite saves your work on this Mac and keeps it available offline. The Saved on this Mac status confirms local saving is available.",
+    answer: "RADsuite saves your work locally and keeps it available offline. The Saved locally status confirms local saving is available.",
   },
   {
     question: "What does cloud sync mean?",
-    answer: "Cloud sync is optional. When it is not connected, your work is still saved on this Mac but is not copied to another device.",
+    answer: "Cloud sync is optional. When it is not connected, your work is still saved locally but is not copied to another device.",
   },
   {
     question: "How do I reuse an analysed document?",
@@ -73,10 +72,10 @@ export const helpFaqs: HelpFaq[] = [
   },
   {
     question: "Why is voice generation unavailable?",
-    answer: "RADTTS is a separate local Python runtime. On Windows, RADsuite looks for %USERPROFILE%\\RADTTS\\.venv\\Scripts\\radtts.exe; on macOS it looks for ~/RADTTS/.venv/bin/radtts. The first generation may download a Qwen model. The RADsuite installer does not bundle Python runtimes or large models.",
+    answer: "RADTTS is a local Python runtime. RADsuite will set it up when needed, and the first generation may download a Qwen model.",
   },
   {
     question: "Why is RADcast Optimized unavailable?",
-    answer: "RADcast Optimized uses a separate local helper and model environment. On Windows, RADsuite checks %USERPROFILE%\\.radcast\\venv\\Scripts\\radcast-studio-enhance.exe and its command-line launchers. You can also set RADSUITE_STUDIO_COMMAND to the exact helper path and restart RADsuite.",
+    answer: "RADcast Optimized uses a local helper and model environment. RADsuite will set it up when needed and keep processing on this computer.",
   },
 ];

@@ -3,5 +3,5 @@
   "identifier": "main-capability",
   "description": "Permissions for the main RADsuite desktop window",
   "windows": ["main"],
-  "permissions": ["core:default", "dialog:default"]
+  "permissions": ["core:default", "dialog:default", "process:default", "updater:default"]
 }
