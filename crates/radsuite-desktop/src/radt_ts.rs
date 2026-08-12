@@ -833,6 +833,10 @@ fn configure_process_group(command: &mut Command) {
         use std::os::unix::process::CommandExt;
         command.as_std_mut().process_group(0);
     }
+    #[cfg(not(unix))]
+    {
+        let _ = command;
+    }
 }
 
 pub(crate) fn ensure_project_root(
