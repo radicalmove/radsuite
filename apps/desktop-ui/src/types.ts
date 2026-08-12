@@ -7,6 +7,7 @@ export type EngineStatus = {
 
 export type AppStatus = {
   app_name: string;
+  version: string;
   database_ready: boolean;
   sync_configured: boolean;
   engines: EngineStatus[];
