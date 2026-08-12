@@ -3412,7 +3412,7 @@ dependencies = [
 
 [[package]]
 name = "radsuite-desktop"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "chrono",
  "directories",
@@ -3479,7 +3479,7 @@ dependencies = [
 
 [[package]]
 name = "radsuite-tauri"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "radsuite-desktop",
  "serde_json",
