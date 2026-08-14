@@ -24,6 +24,8 @@ The MSI is also published for managed or institutional Windows deployment. Ordin
 
 RADsuite checks the stable GitHub Releases endpoint after launch and no more than once every 24 hours. When a newer stable version is available, the app shows an `Update now` prompt. The updater verifies the signed package before installing it and keeps the local database, project files, generated outputs, Python environments, and model caches in place.
 
+Users should not uninstall the previous version before updating. The signed in-app updater replaces the application and relaunches it. For a manual install, the Windows Setup EXE upgrades the existing per-user installation, while either Mac DMG is installed by replacing the existing RADsuite app in Applications. The stable app identifier stays the same across releases, so these are upgrades rather than separate installations.
+
 Version `0.2.2` is the updater bridge release. Users running `0.2.1` must install `0.2.2` once from the public install page. Later stable releases can be discovered inside the app.
 
 ## Publishing a stable release
