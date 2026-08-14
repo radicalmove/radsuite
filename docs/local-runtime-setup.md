@@ -7,7 +7,7 @@ RADsuite is intentionally a small desktop download. The first-run setup installs
 
 The app launches the platform-specific setup script from its bundled resources. The scripts are safe to run again: existing environments are reused and packages are upgraded in place. They install Python packages and native prerequisites, but do not download the largest speech or enhancement model files. Those models are downloaded by the relevant tool when it is first used, which keeps the initial app package small and makes setup failures easier to diagnose.
 
-The scripts install FFmpeg/FFprobe when the platform package manager is available, because RADcast uses them for trimming and output conversion. They use the current `main` branches of the RADcast and RADTTS repositories. On Intel macOS, RADTTS uses the newest Torch line for which Intel wheels are available; Apple Silicon and Windows use the current RADTTS pins. A later release process can replace those URLs with pinned release archives once the runtime APIs are versioned independently.
+On Windows, the setup downloads a private Python 3.11 runtime and FFmpeg/FFprobe into `%LOCALAPPDATA%\RADsuite\runtime`; it does not require administrator rights, a package manager, or changes to the system PATH. On macOS/Linux, it uses the platform's existing package-manager flow for native prerequisites. The tools use the current `main` branches of the RADcast and RADTTS repositories. On Intel macOS, RADTTS uses the newest Torch line for which Intel wheels are available; Apple Silicon and Windows use the current RADTTS pins. A later release process can replace those URLs with pinned release archives once the runtime APIs are versioned independently.
 
 For diagnostics without changing the machine:
 
