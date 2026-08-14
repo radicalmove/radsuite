@@ -8,6 +8,8 @@ use std::{
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::runtime::windows_ffmpeg_path;
+
 const CLEANUP_FILTER: &str = "highpass=f=80,lowpass=f=12000,afftdn,loudnorm=I=-16:TP=-1.5:LRA=11";
 
 pub const RADCAST_OPTIMIZED_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=4.05,equalizer=f=200:t=q:w=1.0:g=1.75,equalizer=f=315:t=q:w=1.0:g=-0.55,equalizer=f=455:t=q:w=1.0:g=-0.2,equalizer=f=2350:t=q:w=1.0:g=-2.35,equalizer=f=3000:t=q:w=1.0:g=-1.70,equalizer=f=3850:t=q:w=1.0:g=-0.30,deesser=i=0.045:m=0.18:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-1.40,equalizer=f=6400:t=q:w=1.0:g=-1.20,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=7550";
@@ -376,6 +378,14 @@ fn resolve_tool(environment_variable: &str, command: &str) -> PathBuf {
         if !path.as_os_str().is_empty() {
             return path;
         }
+    }
+
+    if let Some(path) = windows_ffmpeg_path(
+        std::env::var_os("LOCALAPPDATA").as_deref().map(Path::new),
+        command,
+        cfg!(windows),
+    ) {
+        return path;
     }
 
     for candidate in [

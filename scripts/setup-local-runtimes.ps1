@@ -1,4 +1,5 @@
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 $RadcastRepository = "https://github.com/radicalmove/RADcast/archive/refs/heads/main.zip"
 $RadtTsRepository = "https://github.com/radicalmove/RADTTS/archive/refs/heads/main.zip"
@@ -6,6 +7,23 @@ $RadtTsRoot = Join-Path $env:USERPROFILE "RADTTS"
 $RadtTsVenv = Join-Path $RadtTsRoot ".venv"
 $RadcastRoot = Join-Path $env:USERPROFILE ".radcast"
 $RadcastVenv = Join-Path $RadcastRoot "venv"
+
+$LocalAppData = [Environment]::GetEnvironmentVariable("LOCALAPPDATA")
+if (-not $LocalAppData) {
+  $LocalAppData = Join-Path $env:USERPROFILE "AppData\Local"
+}
+$RuntimeRoot = Join-Path $LocalAppData "RADsuite\runtime"
+$PythonRoot = Join-Path $RuntimeRoot "python311"
+$PythonExecutable = Join-Path $PythonRoot "python.exe"
+$PythonInstaller = Join-Path $RuntimeRoot "python-3.11.9-amd64.exe"
+$PythonInstallerUrl = "https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe"
+$FfmpegRoot = Join-Path $RuntimeRoot "ffmpeg"
+$FfmpegBin = Join-Path $FfmpegRoot "bin"
+$FfmpegExecutable = Join-Path $FfmpegBin "ffmpeg.exe"
+$FfprobeExecutable = Join-Path $FfmpegBin "ffprobe.exe"
+$FfmpegArchive = Join-Path $RuntimeRoot "ffmpeg-release-essentials.zip"
+$FfmpegExtract = Join-Path $RuntimeRoot "ffmpeg-extract"
+$FfmpegArchiveUrl = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip"
 
 function Log([string]$Message) {
   Write-Output "[RADsuite setup] $Message"
@@ -18,10 +36,17 @@ function Invoke-Checked([string]$File, [string[]]$Arguments) {
   }
 }
 
-function Refresh-ProcessPath() {
-  $machinePath = [Environment]::GetEnvironmentVariable("Path", "Machine")
-  $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-  $env:Path = (@($machinePath, $userPath, $env:Path) | Where-Object { $_ } | Select-Object -Unique) -join ";"
+function Invoke-Installer([string]$File, [string[]]$Arguments) {
+  $process = Start-Process -FilePath $File -ArgumentList $Arguments -Wait -PassThru -WindowStyle Hidden
+  if ($process.ExitCode -notin @(0, 3010)) {
+    throw "Installer failed with exit code $($process.ExitCode): $File"
+  }
+}
+
+function Download-File([string]$Url, [string]$Destination) {
+  New-Item -ItemType Directory -Force -Path (Split-Path $Destination) | Out-Null
+  Log "Downloading $Url."
+  Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $Destination
 }
 
 function Test-Python311([string]$Executable) {
@@ -37,7 +62,7 @@ function Test-Python311([string]$Executable) {
 }
 
 function Resolve-Python311() {
-  $candidates = @()
+  $candidates = @($PythonExecutable)
   foreach ($commandName in @("python.exe", "python3.exe")) {
     $command = Get-Command $commandName -ErrorAction SilentlyContinue
     if ($command -and $command.Source) {
@@ -79,43 +104,60 @@ function Resolve-Python311() {
   return $null
 }
 
+New-Item -ItemType Directory -Force -Path $RuntimeRoot | Out-Null
 $Python = Resolve-Python311
 if (-not $Python) {
-  $winget = Get-Command winget -ErrorAction SilentlyContinue
-  if ($winget) {
-    Log "Installing Python 3.11 with winget."
-    Invoke-Checked $winget.Source @(
-      "install", "--exact", "--id", "Python.Python.3.11", "--scope", "user",
-      "--accept-source-agreements", "--accept-package-agreements"
-    )
-    Refresh-ProcessPath
-    $Python = Resolve-Python311
-    if (-not $Python) {
-      throw "Python 3.11 was installed but is not available to RADsuite yet. Close and reopen RADsuite, then choose Prepare audio and voice tools again."
-    }
-  } else {
-    throw "Python 3.11 is required. Install it from https://www.python.org/downloads/windows/ and run setup again."
+  Log "Installing a private Python 3.11 runtime for this Windows user. No administrator access is required."
+  if (-not (Test-Path -LiteralPath $PythonInstaller -PathType Leaf)) {
+    Download-File $PythonInstallerUrl $PythonInstaller
   }
+  $targetDirArgument = 'TargetDir="{0}"' -f $PythonRoot
+  Invoke-Installer $PythonInstaller @(
+    "/quiet",
+    "InstallAllUsers=0",
+    $targetDirArgument,
+    "Include_pip=1",
+    "Include_test=0",
+    "Include_launcher=0",
+    "Shortcuts=0",
+    "PrependPath=0",
+    "AssociateFiles=0",
+    "SimpleInstall=1"
+  )
+  $Python = Resolve-Python311
+  if (-not $Python) {
+    throw "The private Python 3.11 runtime could not be started after installation. Check whether your organisation blocks downloaded applications, then run Prepare audio and voice tools again."
+  }
+  Remove-Item -LiteralPath $PythonInstaller -Force -ErrorAction SilentlyContinue
 }
 Log "Using Python 3.11 at $Python."
 
 function Ensure-Ffmpeg() {
+  if (Test-Path -LiteralPath $FfmpegExecutable -PathType Leaf) -and (Test-Path -LiteralPath $FfprobeExecutable -PathType Leaf) {
+    $env:Path = "$FfmpegBin;$env:Path"
+    return
+  }
   if ((Get-Command ffmpeg -ErrorAction SilentlyContinue) -and (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
     return
   }
-  $winget = Get-Command winget -ErrorAction SilentlyContinue
-  if (-not $winget) {
-    throw "FFmpeg is required for audio processing. Install it from https://ffmpeg.org/download.html and run setup again."
+
+  Log "Installing a private FFmpeg runtime for this Windows user."
+  Remove-Item -LiteralPath $FfmpegExtract -Recurse -Force -ErrorAction SilentlyContinue
+  if (-not (Test-Path -LiteralPath $FfmpegArchive -PathType Leaf)) {
+    Download-File $FfmpegArchiveUrl $FfmpegArchive
   }
-  Log "Installing FFmpeg for local audio conversion."
-  Invoke-Checked $winget.Source @(
-    "install", "--exact", "--id", "Gyan.FFmpeg.Shared", "--scope", "user",
-    "--accept-source-agreements", "--accept-package-agreements"
-  )
-  Refresh-ProcessPath
-  if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue) -or -not (Get-Command ffprobe -ErrorAction SilentlyContinue)) {
-    throw "FFmpeg was installed but is not available on PATH. Restart RADsuite and run setup again."
+  Expand-Archive -LiteralPath $FfmpegArchive -DestinationPath $FfmpegExtract -Force
+  $downloadedFfmpeg = Get-ChildItem -LiteralPath $FfmpegExtract -Filter "ffmpeg.exe" -File -Recurse | Select-Object -First 1
+  $downloadedFfprobe = Get-ChildItem -LiteralPath $FfmpegExtract -Filter "ffprobe.exe" -File -Recurse | Select-Object -First 1
+  if (-not $downloadedFfmpeg -or -not $downloadedFfprobe) {
+    throw "The downloaded FFmpeg package did not contain ffmpeg.exe and ffprobe.exe."
   }
+  New-Item -ItemType Directory -Force -Path $FfmpegBin | Out-Null
+  Copy-Item -LiteralPath $downloadedFfmpeg.FullName -Destination $FfmpegExecutable -Force
+  Copy-Item -LiteralPath $downloadedFfprobe.FullName -Destination $FfprobeExecutable -Force
+  Remove-Item -LiteralPath $FfmpegArchive -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $FfmpegExtract -Recurse -Force -ErrorAction SilentlyContinue
+  $env:Path = "$FfmpegBin;$env:Path"
 }
 
 Ensure-Ffmpeg

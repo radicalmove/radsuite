@@ -28,6 +28,22 @@ def test_installs_radt_ts_runtime_dependencies_that_were_missing_on_windows():
     assert '"gradio"' in SCRIPT
 
 
+def test_bootstraps_python_without_admin_rights_or_winget():
+    assert 'python-3.11.9-amd64.exe' in SCRIPT
+    assert 'InstallAllUsers=0' in SCRIPT
+    assert 'TargetDir=' in SCRIPT
+    assert '$PythonRoot' in SCRIPT
+    assert '$RuntimeRoot' in SCRIPT
+    assert 'winget' not in SCRIPT.lower()
+
+
+def test_bootstraps_ffmpeg_inside_the_user_local_runtime():
+    assert 'ffmpeg-release-essentials.zip' in SCRIPT
+    assert 'Expand-Archive' in SCRIPT
+    assert '$FfmpegBin' in SCRIPT
+    assert 'winget' not in SCRIPT.lower()
+
+
 def test_uses_windows_powershell_compatible_syntax():
     assert "Join-String" not in SCRIPT
 
@@ -36,3 +52,5 @@ if __name__ == "__main__":
     test_resolves_a_real_python_311_executable()
     test_installs_torch_before_radcast_build_dependencies()
     test_installs_radt_ts_runtime_dependencies_that_were_missing_on_windows()
+    test_bootstraps_python_without_admin_rights_or_winget()
+    test_bootstraps_ffmpeg_inside_the_user_local_runtime()

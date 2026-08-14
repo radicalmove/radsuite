@@ -13,6 +13,7 @@ const AUDIO_CLEANUP_HOME_CANDIDATES: &[&str] = &[
 ];
 
 use crate::EngineStatus;
+use crate::runtime::windows_ffmpeg_path;
 
 #[derive(Debug, Clone)]
 pub struct EngineRegistry {
@@ -103,6 +104,16 @@ fn existing_file(path: Option<PathBuf>) -> Option<PathBuf> {
 fn resolve_command(env_name: &str, command: &str, home_candidates: &[&str]) -> Option<PathBuf> {
     if let Some(path) = env::var_os(env_name).map(PathBuf::from)
         && path.is_file()
+    {
+        return Some(path);
+    }
+
+    if let Some(path) = windows_ffmpeg_path(
+        env::var_os("LOCALAPPDATA").as_deref().map(Path::new),
+        command,
+        cfg!(windows),
+    )
+    .filter(|path| path.is_file())
     {
         return Some(path);
     }

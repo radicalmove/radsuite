@@ -6,13 +6,29 @@ processing runtimes into the current user's profile; the Python environments
 and model caches remain outside the small app installer because they are large
 and hardware-specific.
 
-The setup also installs FFmpeg through `winget` when it is missing. FFmpeg is
-used by RADcast for trimming and output conversion.
+The setup does not require administrator rights or a pre-installed Python
+package manager. If Python 3.11 is not already available, RADsuite downloads
+the official Python 3.11.9 Windows runtime and installs it for the current user
+only at:
+
+```text
+%LOCALAPPDATA%\RADsuite\runtime\python311
+```
+
+If FFmpeg is not already available, RADsuite downloads a private FFmpeg build
+for the current user at:
+
+```text
+%LOCALAPPDATA%\RADsuite\runtime\ffmpeg\bin
+```
+
+FFmpeg is used by RADcast for trimming and output conversion. RADsuite does
+not modify the system Python installation or the system PATH.
 
 The setup checks for a real Python 3.11 executable before creating either
-environment. If Python is installed during setup but Windows has not exposed
-it to the current app process yet, close and reopen RADsuite and choose
-**Prepare audio and voice tools** again. The setup is safe to repeat.
+environment and is safe to repeat. A blocked download or application execution
+policy can still prevent setup; in that case the organisation's IT policy must
+allow downloads from `python.org` and `gyan.dev`.
 
 RADcast installs its CPU Torch runtime before its audio-cleanup packages. This
 is required on Windows because some of those packages compile native Torch
