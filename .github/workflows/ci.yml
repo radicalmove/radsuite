@@ -47,3 +47,5 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check Windows runtime bootstrap contract
         run: python3 scripts/test-windows-runtime-setup.py
+      - name: Check installer upgrade contract
+        run: python3 scripts/test-installer-upgrade-contract.py
