@@ -251,6 +251,42 @@ fn audio_processor_runs_with_deterministic_tool_commands() {
     remove_dir(dir);
 }
 
+#[test]
+fn audio_processor_exposes_runner_progress_without_changing_the_default_path() {
+    let dir = test_dir("runner-progress");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'out_time_us=1000000\\n'\nmkdir -p \"$(dirname \"$output\")\"\nprintf 'fake audio' > \"$output\"\n",
+    );
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nprintf '12.5\\n'");
+    let input = dir.join("source.wav");
+    let output = dir.join("outputs").join("clean.wav");
+    fs::write(&input, b"source audio").expect("write source");
+    let mut progress = Vec::new();
+
+    let result = AudioProcessor::from_commands(ffmpeg, ffprobe)
+        .process_with_callbacks(
+            AudioProcessingRequest {
+                input_path: input,
+                output_path: output,
+                output_format: AudioOutputFormat::Wav,
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+                cleanup_enabled: false,
+                max_silence_seconds: None,
+                remove_intervals: Vec::new(),
+            },
+            || false,
+            |line| progress.push(line.to_string()),
+        )
+        .expect("process audio with callbacks");
+
+    assert_eq!(result.duration_seconds, 12.5);
+    assert!(progress.iter().any(|line| line == "out_time_us=1000000"));
+    remove_dir(dir);
+}
+
 fn request(output_format: AudioOutputFormat) -> AudioProcessingRequest {
     AudioProcessingRequest {
         input_path: PathBuf::from("source.wav"),
