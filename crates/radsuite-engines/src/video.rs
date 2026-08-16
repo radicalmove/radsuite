@@ -1,6 +1,6 @@
 use std::{
     ffi::OsString,
-    fs,
+    fs, io,
     path::{Path, PathBuf},
     process,
     sync::atomic::{AtomicU64, Ordering},
@@ -254,6 +254,14 @@ impl VideoExporter {
                 return Err(with_cleanup(error, &[partial_path.as_path()]));
             }
         };
+        if is_cancelled() {
+            return Err(with_cleanup(
+                VideoExportError::Process(ProcessError::Cancelled {
+                    executable: self.ffprobe_command.clone(),
+                }),
+                &[partial_path.as_path()],
+            ));
+        }
         promote_partial_output(&partial_path, &request.output_path)?;
         Ok(VideoExportResult {
             output_path: request.output_path,
@@ -429,17 +437,77 @@ fn promote_partial_output(partial_path: &Path, output_path: &Path) -> Result<(),
         ));
     }
 
-    if let Err(source) = fs::hard_link(partial_path, output_path) {
-        let cause = if source.kind() == std::io::ErrorKind::AlreadyExists {
+    if let Err(hard_link_error) = fs::hard_link(partial_path, output_path) {
+        let cause = if hard_link_error.kind() == std::io::ErrorKind::AlreadyExists {
             VideoExportError::OutputExists {
                 path: output_path.to_path_buf(),
             }
         } else {
-            VideoExportError::PromoteOutput { source }
+            return promote_by_no_replace_copy(partial_path, output_path, hard_link_error);
         };
         return Err(with_cleanup(cause, &[partial_path]));
     }
 
+    finish_promotion(partial_path, output_path)
+}
+
+fn promote_by_no_replace_copy(
+    partial_path: &Path,
+    output_path: &Path,
+    hard_link_error: io::Error,
+) -> Result<(), VideoExportError> {
+    let mut destination = match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(output_path)
+    {
+        Ok(destination) => destination,
+        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
+            return Err(with_cleanup(
+                VideoExportError::OutputExists {
+                    path: output_path.to_path_buf(),
+                },
+                &[partial_path],
+            ));
+        }
+        Err(error) => {
+            return Err(with_cleanup(
+                VideoExportError::PromoteOutput {
+                    source: io::Error::new(
+                        error.kind(),
+                        format!(
+                            "hard-link promotion failed: {hard_link_error}; no-replace copy destination failed: {error}"
+                        ),
+                    ),
+                },
+                &[partial_path],
+            ));
+        }
+    };
+
+    let copy_result = (|| -> io::Result<()> {
+        let mut source = fs::File::open(partial_path)?;
+        io::copy(&mut source, &mut destination)?;
+        destination.sync_all()
+    })();
+    if let Err(error) = copy_result {
+        drop(destination);
+        let cause = VideoExportError::PromoteOutput {
+            source: io::Error::new(
+                error.kind(),
+                format!(
+                    "hard-link promotion failed: {hard_link_error}; no-replace copy failed: {error}"
+                ),
+            ),
+        };
+        return Err(with_cleanup(cause, &[output_path]));
+    }
+
+    drop(destination);
+    finish_promotion(partial_path, output_path)
+}
+
+fn finish_promotion(partial_path: &Path, output_path: &Path) -> Result<(), VideoExportError> {
     if let Err(source) = fs::remove_file(partial_path) {
         let mut cleanup_failures = vec![CleanupFailure {
             path: partial_path.to_path_buf(),
@@ -522,4 +590,33 @@ struct ProbeStream {
 #[derive(Debug, Deserialize)]
 struct ProbeFormat {
     duration: serde_json::Value,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_replace_copy_preserves_partial_source_when_copy_fails() {
+        let suffix = process::id();
+        let directory = std::env::temp_dir().join(format!("radsuite-video-promotion-{suffix}"));
+        fs::create_dir_all(&directory).expect("create promotion test directory");
+        let partial = directory.join("output.partial.mp4");
+        let output = directory.join("output.mp4");
+        fs::create_dir(&partial).expect("create invalid partial source");
+
+        let result = promote_by_no_replace_copy(
+            &partial,
+            &output,
+            io::Error::other("hard links unavailable"),
+        );
+
+        assert!(matches!(
+            result,
+            Err(VideoExportError::PromoteOutput { .. })
+        ));
+        assert!(partial.exists());
+        assert!(!output.exists());
+        let _ = fs::remove_dir_all(directory);
+    }
 }

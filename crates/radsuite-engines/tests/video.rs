@@ -7,12 +7,20 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
+#[cfg(windows)]
+use std::{
+    ffi::OsString,
+    fs,
+    path::PathBuf,
+    time::{Duration, SystemTime, UNIX_EPOCH},
+};
+
 #[cfg(unix)]
 use std::time::{Duration, Instant};
 
 use radsuite_engines::{VideoExportRequest, VideoExporter, VideoProbeError};
 
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 use radsuite_engines::{ProcessError, run_process};
 
 #[test]
@@ -343,6 +351,46 @@ fn video_export_does_not_replace_output_created_during_probe() {
 
 #[cfg(unix)]
 #[test]
+fn video_export_rechecks_cancellation_before_promoting_a_valid_probe() {
+    let dir = test_dir("post-probe-cancel");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'fake mp4' > \"$output\"\n",
+    );
+    let ffprobe = write_executable(
+        &dir,
+        "ffprobe.sh",
+        "#!/bin/sh\nprintf '%s\\n' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"duration\":12.5}}'\n",
+    );
+    let image = dir.join("cover.png");
+    let audio = dir.join("final.wav");
+    let output = dir.join("output.mp4");
+    fs::write(&image, b"image").expect("write image fixture");
+    fs::write(&audio, b"audio").expect("write audio fixture");
+    let mut cancellation_calls = 0;
+
+    let result = VideoExporter::from_commands(ffmpeg, ffprobe).export_with_callbacks(
+        VideoExportRequest::new(&image, &audio, &output, 12.5),
+        || {
+            cancellation_calls += 1;
+            cancellation_calls >= 5
+        },
+        |_| {},
+    );
+
+    assert!(matches!(
+        result,
+        Err(radsuite_engines::VideoExportError::Process(
+            ProcessError::Cancelled { .. }
+        ))
+    ));
+    assert!(!output.exists());
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
 fn video_export_reports_partial_cleanup_failures() {
     let dir = test_dir("cleanup-failure");
     let ffmpeg = write_executable(
@@ -417,6 +465,38 @@ fn video_export_cancellation_during_ffprobe_stops_without_succeeding() {
     remove_dir(dir);
 }
 
+#[cfg(windows)]
+#[test]
+fn process_runner_cancels_a_cmd_descendant_tree() {
+    let dir = test_dir("windows-tree");
+    let script = dir.join("tree.cmd");
+    fs::write(
+        &script,
+        "@echo off\r\nstart \"\" /b cmd /c \"ping 127.0.0.1 -n 30 >NUL\"\r\nping 127.0.0.1 -n 30 >NUL\r\n",
+    )
+    .expect("write Windows process tree script");
+    let started = std::time::Instant::now();
+    let mut polls = 0;
+
+    let result = run_process(
+        Path::new("cmd.exe"),
+        &[
+            OsString::from("/D"),
+            OsString::from("/C"),
+            script.as_os_str().to_owned(),
+        ],
+        || {
+            polls += 1;
+            polls > 3
+        },
+        |_| {},
+    );
+
+    assert!(matches!(result, Err(ProcessError::Cancelled { .. })));
+    assert!(started.elapsed() < Duration::from_secs(5));
+    remove_dir(dir);
+}
+
 fn valid_probe_json() -> String {
     r#"{
         "streams": [
@@ -468,6 +548,22 @@ fn test_dir(label: &str) -> PathBuf {
 }
 
 #[cfg(unix)]
+fn remove_dir(path: PathBuf) {
+    let _ = fs::remove_dir_all(path);
+}
+
+#[cfg(windows)]
+fn test_dir(label: &str) -> PathBuf {
+    let suffix = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("system clock")
+        .as_nanos();
+    let path = std::env::temp_dir().join(format!("radsuite-video-{label}-{suffix}"));
+    fs::create_dir_all(&path).expect("create test directory");
+    path
+}
+
+#[cfg(windows)]
 fn remove_dir(path: PathBuf) {
     let _ = fs::remove_dir_all(path);
 }

@@ -11,6 +11,7 @@ use std::{
 use thiserror::Error;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
+const MAX_TERMINATION_ATTEMPTS: usize = 3;
 
 #[derive(Debug)]
 pub struct ProcessOutput {
@@ -82,10 +83,7 @@ where
     configure_unix_process_group(&mut command);
 
     #[cfg(windows)]
-    let process_job = WindowsProcessJob::new().map_err(|source| ProcessError::Start {
-        executable: executable.clone(),
-        source,
-    })?;
+    let mut process_control = WindowsProcessControl::new();
 
     #[cfg(windows)]
     configure_windows_process_group(&mut command);
@@ -96,19 +94,7 @@ where
     })?;
 
     #[cfg(windows)]
-    if let Err(assignment_error) = process_job.assign(&child) {
-        let source = match terminate_and_wait_after_job_assignment_failure(&mut child, &process_job)
-        {
-            Ok(()) => assignment_error,
-            Err(cleanup_error) => io::Error::new(
-                cleanup_error.kind(),
-                format!(
-                    "job assignment failed: {assignment_error}; child cleanup failed: {cleanup_error}"
-                ),
-            ),
-        };
-        return Err(ProcessError::Start { executable, source });
-    }
+    process_control.assign(&child);
 
     let stdout = match child.stdout.take() {
         Some(stdout) => stdout,
@@ -116,7 +102,7 @@ where
             let cleanup_diagnostics = cleanup_spawned_child(
                 &mut child,
                 #[cfg(windows)]
-                &process_job,
+                &process_control,
             );
             return Err(ProcessError::Io {
                 executable,
@@ -133,7 +119,7 @@ where
             let cleanup_diagnostics = cleanup_spawned_child(
                 &mut child,
                 #[cfg(windows)]
-                &process_job,
+                &process_control,
             );
             return Err(ProcessError::Io {
                 executable,
@@ -157,6 +143,8 @@ where
     let mut cancelled = false;
     let mut reader_error = None;
     let mut termination_diagnostics = Vec::new();
+    let mut termination_attempts = 0;
+    let mut cleanup_exhausted = false;
 
     while status.is_none() || reader_count < 2 {
         drain_events(
@@ -172,10 +160,13 @@ where
         if status.is_none() && !cancelled && is_cancelled() {
             #[cfg(windows)]
             {
-                status = terminate_child(&mut child, &process_job, &mut termination_diagnostics);
+                termination_attempts += 1;
+                status =
+                    terminate_child(&mut child, &process_control, &mut termination_diagnostics);
             }
             #[cfg(not(windows))]
             {
+                termination_attempts += 1;
                 status = terminate_child(&mut child, &mut termination_diagnostics);
             }
             cancelled = true;
@@ -185,31 +176,63 @@ where
             match child.try_wait() {
                 Ok(Some(next_status)) => status = Some(next_status),
                 Ok(None) if cancelled => {
-                    #[cfg(windows)]
-                    {
-                        status =
-                            terminate_child(&mut child, &process_job, &mut termination_diagnostics);
-                    }
-                    #[cfg(not(windows))]
-                    {
-                        status = terminate_child(&mut child, &mut termination_diagnostics);
+                    if termination_retry_allowed(termination_attempts) {
+                        termination_attempts += 1;
+                        #[cfg(windows)]
+                        {
+                            status = terminate_child(
+                                &mut child,
+                                &process_control,
+                                &mut termination_diagnostics,
+                            );
+                        }
+                        #[cfg(not(windows))]
+                        {
+                            status = terminate_child(&mut child, &mut termination_diagnostics);
+                        }
+                    } else {
+                        cleanup_exhausted = true;
+                        termination_diagnostics.push(format!(
+                            "child termination did not reap after {MAX_TERMINATION_ATTEMPTS} attempts"
+                        ));
                     }
                 }
                 Ok(None) => {}
                 Err(error) => {
                     termination_diagnostics.push(format!("child status polling failed: {error}"));
-                    #[cfg(windows)]
-                    {
-                        status =
-                            terminate_child(&mut child, &process_job, &mut termination_diagnostics);
-                    }
-                    #[cfg(not(windows))]
-                    {
-                        status = terminate_child(&mut child, &mut termination_diagnostics);
-                    }
                     cancelled = true;
+                    if termination_retry_allowed(termination_attempts) {
+                        termination_attempts += 1;
+                        #[cfg(windows)]
+                        {
+                            status = terminate_child(
+                                &mut child,
+                                &process_control,
+                                &mut termination_diagnostics,
+                            );
+                        }
+                        #[cfg(not(windows))]
+                        {
+                            status = terminate_child(&mut child, &mut termination_diagnostics);
+                        }
+                    } else {
+                        cleanup_exhausted = true;
+                        termination_diagnostics.push(format!(
+                            "child termination did not reap after {MAX_TERMINATION_ATTEMPTS} attempts"
+                        ));
+                    }
                 }
             }
+        }
+
+        if cleanup_exhausted && status.is_none() {
+            match child.wait() {
+                Ok(next_status) => status = Some(next_status),
+                Err(error) => termination_diagnostics.push(format!(
+                    "final child wait after termination retry budget failed: {error}"
+                )),
+            }
+            break;
         }
 
         if status.is_none() || reader_count < 2 {
@@ -369,6 +392,10 @@ fn combine_diagnostics(diagnostics: &[String]) -> String {
     diagnostics.join("; ")
 }
 
+fn termination_retry_allowed(attempts: usize) -> bool {
+    attempts < MAX_TERMINATION_ATTEMPTS
+}
+
 fn combine_setup_diagnostics(message: &str, cleanup_diagnostics: &[String]) -> String {
     if cleanup_diagnostics.is_empty() {
         message.to_string()
@@ -416,9 +443,12 @@ fn cleanup_spawned_child(child: &mut Child) -> Vec<String> {
 }
 
 #[cfg(windows)]
-fn cleanup_spawned_child(child: &mut Child, process_job: &WindowsProcessJob) -> Vec<String> {
+fn cleanup_spawned_child(
+    child: &mut Child,
+    process_control: &WindowsProcessControl,
+) -> Vec<String> {
     let mut diagnostics = Vec::new();
-    let _ = terminate_child(child, process_job, &mut diagnostics);
+    let _ = terminate_child(child, process_control, &mut diagnostics);
     diagnostics
 }
 
@@ -474,44 +504,83 @@ fn terminate_child(child: &mut Child, diagnostics: &mut Vec<String>) -> Option<E
 }
 
 #[cfg(windows)]
-fn terminate_and_wait_after_job_assignment_failure(
-    child: &mut Child,
-    process_job: &WindowsProcessJob,
-) -> io::Result<()> {
-    let mut diagnostics = Vec::new();
-    if let Err(error) = process_job.terminate() {
-        diagnostics.push(format!("Windows Job Object termination failed: {error}"));
-    }
-    if let Err(error) = terminate_windows_process_tree(child.id()) {
-        diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
-    }
-    if let Err(error) = kill_and_wait(child) {
-        diagnostics.push(format!("Windows child kill/wait failed: {error}"));
-    }
-    if diagnostics.is_empty() {
-        Ok(())
-    } else {
-        Err(io::Error::other(combine_diagnostics(&diagnostics)))
-    }
-}
-
-#[cfg(windows)]
 fn terminate_child(
     child: &mut Child,
-    process_job: &WindowsProcessJob,
+    process_control: &WindowsProcessControl,
     diagnostics: &mut Vec<String>,
 ) -> Option<ExitStatus> {
-    if let Err(error) = process_job.terminate() {
-        diagnostics.push(format!("Windows Job Object termination failed: {error}"));
-        if let Err(error) = terminate_windows_process_tree(child.id()) {
-            diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
-        }
-    }
+    process_control.terminate(child, diagnostics);
     match kill_and_wait(child) {
         Ok(status) => Some(status),
         Err(error) => {
             diagnostics.push(format!("Windows child kill/wait failed: {error}"));
             None
+        }
+    }
+}
+
+#[cfg(windows)]
+struct WindowsProcessControl {
+    job: Option<WindowsProcessJob>,
+    use_pid_tree: bool,
+    diagnostics: Vec<String>,
+}
+
+#[cfg(windows)]
+impl WindowsProcessControl {
+    fn new() -> Self {
+        match WindowsProcessJob::new() {
+            Ok(job) => Self {
+                job: Some(job),
+                use_pid_tree: false,
+                diagnostics: Vec::new(),
+            },
+            Err(error) => Self {
+                job: None,
+                use_pid_tree: true,
+                diagnostics: vec![format!("Windows Job Object unavailable: {error}")],
+            },
+        }
+    }
+
+    fn assign(&mut self, child: &Child) {
+        let Some(job) = self.job.as_ref() else {
+            return;
+        };
+        if let Err(error) = job.assign(child) {
+            self.record_assignment_failure(error);
+        }
+    }
+
+    fn record_assignment_failure(&mut self, error: io::Error) {
+        self.use_pid_tree = true;
+        self.diagnostics.push(format!(
+            "Windows Job Object assignment unavailable: {error}"
+        ));
+    }
+
+    fn terminate(&self, child: &Child, diagnostics: &mut Vec<String>) {
+        let diagnostic_count = diagnostics.len();
+        if self.use_pid_tree {
+            if let Err(error) = terminate_windows_process_tree(child.id()) {
+                diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
+                if let Some(job) = self.job.as_ref()
+                    && let Err(error) = job.terminate()
+                {
+                    diagnostics.push(format!("Windows Job Object termination failed: {error}"));
+                }
+            }
+        } else if let Some(job) = self.job.as_ref()
+            && let Err(error) = job.terminate()
+        {
+            diagnostics.push(format!("Windows Job Object termination failed: {error}"));
+            if let Err(error) = terminate_windows_process_tree(child.id()) {
+                diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
+            }
+        }
+
+        if diagnostics.len() > diagnostic_count {
+            diagnostics.extend(self.diagnostics.iter().cloned());
         }
     }
 }
@@ -639,6 +708,40 @@ mod tests {
             combine_setup_diagnostics("child setup failed", &diagnostics),
             "child setup failed; child cleanup failed: terminate failed; kill failed; wait failed"
         );
+    }
+
+    #[test]
+    fn termination_retry_budget_is_bounded() {
+        assert!(termination_retry_allowed(0));
+        assert!(termination_retry_allowed(MAX_TERMINATION_ATTEMPTS - 1));
+        assert!(!termination_retry_allowed(MAX_TERMINATION_ATTEMPTS));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn assignment_failure_keeps_child_for_pid_tree_cleanup() {
+        let mut child = Command::new("cmd")
+            .args(["/C", "ping 127.0.0.1 -n 30 >NUL"])
+            .spawn()
+            .expect("spawn Windows test child");
+        let mut control = WindowsProcessControl {
+            job: Some(WindowsProcessJob {
+                handle: std::ptr::null_mut(),
+            }),
+            use_pid_tree: false,
+            diagnostics: Vec::new(),
+        };
+
+        control.assign(&child);
+
+        assert!(control.use_pid_tree);
+        assert!(!control.diagnostics.is_empty());
+        assert!(child.try_wait().expect("poll Windows test child").is_none());
+
+        let mut diagnostics = Vec::new();
+        control.terminate(&child, &mut diagnostics);
+        let status = kill_and_wait(&mut child).expect("reap Windows test child");
+        assert!(!status.success());
     }
 
     #[cfg(windows)]
