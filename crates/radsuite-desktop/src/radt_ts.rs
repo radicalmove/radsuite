@@ -18,7 +18,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    DesktopState,
+    DesktopState, MediaOutputFormat,
     process_group::{ManagedChild, ManagedProcessGroup},
 };
 
@@ -44,6 +44,10 @@ const BUILTIN_VOICE_IDS: &[&str] = &[
 
 fn default_max_new_tokens() -> u32 {
     DEFAULT_MAX_NEW_TOKENS
+}
+
+fn default_output_format() -> RadtTsOutputFormat {
+    RadtTsOutputFormat::Mp3
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -102,6 +106,24 @@ impl RadtTsOutputFormat {
     }
 }
 
+impl From<RadtTsOutputFormat> for MediaOutputFormat {
+    fn from(value: RadtTsOutputFormat) -> Self {
+        match value {
+            RadtTsOutputFormat::Mp3 => Self::Mp3,
+            RadtTsOutputFormat::Wav => Self::Wav,
+        }
+    }
+}
+
+impl From<MediaOutputFormat> for RadtTsOutputFormat {
+    fn from(value: MediaOutputFormat) -> Self {
+        match value.audio_format() {
+            radsuite_engines::AudioOutputFormat::Mp3 => Self::Mp3,
+            radsuite_engines::AudioOutputFormat::Wav => Self::Wav,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RadtTsSynthesisRequest {
     pub project_id: ProjectId,
@@ -120,6 +142,7 @@ pub struct RadtTsSynthesisRequest {
     pub pause_max_seconds: f64,
     pub pause_seed: Option<i64>,
     pub max_new_tokens: u32,
+    #[serde(default = "default_output_format")]
     pub output_format: RadtTsOutputFormat,
     pub output_name: String,
     pub acknowledge_voice_clone: bool,
@@ -157,10 +180,19 @@ pub struct RadtTsAudioOutput {
     pub id: String,
     pub filename: String,
     pub path: String,
+    #[serde(default = "default_output_format")]
     pub output_format: RadtTsOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
     pub caption_paths: Vec<String>,
     pub duration_seconds: Option<f64>,
     pub created_at: Option<String>,
+}
+
+impl RadtTsAudioOutput {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -203,9 +235,18 @@ pub struct StartRadtTsSynthesisRequest {
     pub pause_seed: Option<i64>,
     #[serde(default = "default_max_new_tokens")]
     pub max_new_tokens: u32,
+    #[serde(default = "default_output_format")]
     pub output_format: RadtTsOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
     pub output_name: String,
     pub acknowledge_voice_clone: bool,
+}
+
+impl StartRadtTsSynthesisRequest {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -270,6 +311,8 @@ struct RadtTsOutputMetadata {
     output_file: String,
     duration_seconds: Option<f64>,
     output_format: Option<RadtTsOutputFormat>,
+    #[serde(default)]
+    media_format: Option<MediaOutputFormat>,
     created_at: Option<String>,
     captions: Option<HashMap<String, String>>,
     project_id: String,
@@ -980,6 +1023,10 @@ fn output_from_metadata(
         filename,
         path: output_path.display().to_string(),
         output_format,
+        media_format: Some(MediaOutputFormat::from_request(
+            metadata.media_format,
+            Some(output_format),
+        )),
         caption_paths,
         duration_seconds: metadata.duration_seconds,
         created_at: metadata.created_at.clone(),

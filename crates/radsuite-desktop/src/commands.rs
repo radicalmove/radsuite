@@ -31,7 +31,7 @@ use thiserror::Error;
 use uuid::Uuid;
 
 use crate::{
-    DesktopState,
+    DesktopState, MediaOutputFormat,
     document_store::{DocumentStorageError, store_source, validate_source},
     library_links::build_uc_library_link,
 };
@@ -194,6 +194,8 @@ pub async fn start_radt_ts_synthesis(
     let project = load_requested_or_local_radcite_project(state, request.project_id)
         .await
         .map_err(|error| error.to_string())?;
+    let media_format =
+        MediaOutputFormat::from_request(request.media_format, Some(request.output_format));
     let request = crate::radt_ts::RadtTsSynthesisRequest {
         project_id: project.id,
         text: request.text,
@@ -208,7 +210,7 @@ pub async fn start_radt_ts_synthesis(
         pause_max_seconds: request.pause_max_seconds,
         pause_seed: request.pause_seed,
         max_new_tokens: request.max_new_tokens,
-        output_format: request.output_format,
+        output_format: media_format.into(),
         output_name: request.output_name,
         acknowledge_voice_clone: request.acknowledge_voice_clone,
     };

@@ -22,6 +22,8 @@ use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
 
+use crate::MediaOutputFormat;
+
 const RADCAST_ROOT: &str = "radcast";
 
 fn default_filler_removal_mode() -> FillerRemovalMode {
@@ -89,7 +91,10 @@ pub struct ProcessRadcastAudioRequest {
     #[serde(default)]
     pub project_id: Option<radsuite_core::ProjectId>,
     pub source_id: String,
+    #[serde(default = "default_output_format")]
     pub output_format: AudioOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
     pub cleanup_enabled: bool,
@@ -113,6 +118,12 @@ pub struct ProcessRadcastAudioRequest {
     pub filler_removal_mode: FillerRemovalMode,
 }
 
+impl ProcessRadcastAudioRequest {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RadcastTrimRange {
     pub clip_start_seconds: f64,
@@ -123,6 +134,8 @@ pub struct RadcastTrimRange {
 pub struct RadcastProjectSettings {
     #[serde(default = "default_output_format")]
     pub output_format: AudioOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
     #[serde(default)]
     pub caption_format: Option<CaptionFormat>,
     #[serde(default = "default_caption_language")]
@@ -151,6 +164,7 @@ impl Default for RadcastProjectSettings {
     fn default() -> Self {
         Self {
             output_format: default_output_format(),
+            media_format: Some(MediaOutputFormat::default()),
             caption_format: None,
             caption_language: default_caption_language(),
             caption_quality_mode: default_caption_quality_mode(),
@@ -167,9 +181,15 @@ impl Default for RadcastProjectSettings {
 }
 
 impl RadcastProjectSettings {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
+
     pub fn from_request(request: &ProcessRadcastAudioRequest) -> Self {
+        let media_format = request.normalized_media_format();
         Self {
-            output_format: request.output_format,
+            output_format: media_format.audio_format(),
+            media_format: Some(media_format),
             caption_format: request.caption_format,
             caption_language: request.caption_language.clone(),
             caption_quality_mode: request.caption_quality_mode,
@@ -202,7 +222,10 @@ pub struct RadcastAudioOutput {
     pub filename: String,
     pub path: String,
     pub duration_seconds: f64,
+    #[serde(default = "default_output_format")]
     pub output_format: AudioOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
     pub cleanup_enabled: bool,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
@@ -241,6 +264,12 @@ pub struct RadcastAudioOutput {
     #[serde(default)]
     pub removed_pause_count: usize,
     pub created_at: String,
+}
+
+impl RadcastAudioOutput {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -381,6 +410,10 @@ pub(crate) fn save_settings(
     project_id: radsuite_core::ProjectId,
     settings: RadcastProjectSettings,
 ) -> Result<RadcastProjectSettings, RadcastStorageError> {
+    let media_format = settings.normalized_media_format();
+    let mut settings = settings;
+    settings.media_format = Some(media_format);
+    settings.output_format = media_format.audio_format();
     let mut manifest = load_manifest(data_dir, project_id)?;
     manifest.settings = settings.clone();
     write_manifest(data_dir, project_id, &manifest)?;
@@ -597,11 +630,13 @@ where
     }
 
     let output_id = Uuid::new_v4().to_string();
+    let media_format = request.normalized_media_format();
+    let audio_format = media_format.audio_format();
     let output_filename = format!(
         "{}-radcast-{}.{}",
         safe_stem(&source.original_filename),
         &output_id[..8],
-        request.output_format.extension()
+        audio_format.extension()
     );
     let output_path = project_root(data_dir, project_id)
         .join("outputs")
@@ -772,7 +807,7 @@ where
         AudioProcessingRequest {
             input_path: processing_input_path,
             output_path: output_path.clone(),
-            output_format: request.output_format,
+            output_format: audio_format,
             clip_start_seconds,
             clip_end_seconds,
             max_silence_seconds: None,
@@ -853,6 +888,7 @@ where
         path: result.output_path.to_string_lossy().into_owned(),
         duration_seconds: result.duration_seconds,
         output_format: result.output_format,
+        media_format: Some(media_format),
         cleanup_enabled,
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,

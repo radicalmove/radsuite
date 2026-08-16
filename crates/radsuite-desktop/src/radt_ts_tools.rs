@@ -16,7 +16,7 @@ use tokio::{
 use uuid::Uuid;
 
 use crate::{
-    DesktopState,
+    DesktopState, MediaOutputFormat,
     process_group::{ManagedChild, ManagedProcessGroup},
     radt_ts::{
         RadtTsCapabilityStatus, RadtTsOutputFormat, contained_file, discover_radt_ts_cli,
@@ -60,7 +60,15 @@ pub struct RadtTsMediaOutput {
     pub primary_path: String,
     pub artifacts: Vec<RadtTsMediaArtifact>,
     pub output_format: Option<RadtTsOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
     pub warnings: Vec<String>,
+}
+
+impl RadtTsMediaOutput {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, self.output_format)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -113,7 +121,20 @@ pub struct StartRadtTsClipRequest {
     pub start_phrase: Option<String>,
     pub end_phrase: Option<String>,
     pub verification_mode: RadtTsVerificationMode,
+    #[serde(default = "default_output_format")]
     pub output_format: RadtTsOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
+}
+
+fn default_output_format() -> RadtTsOutputFormat {
+    RadtTsOutputFormat::Mp3
+}
+
+impl StartRadtTsClipRequest {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -407,6 +428,7 @@ pub(crate) fn build_clip_args(
     segments_path: PathBuf,
 ) -> Result<Vec<String>, RadtTsMediaError> {
     validate_clip_request(request)?;
+    let output_format: RadtTsOutputFormat = request.normalized_media_format().into();
     let mut args = vec![
         "--projects-root".to_string(),
         projects_root.display().to_string(),
@@ -437,7 +459,7 @@ pub(crate) fn build_clip_args(
             RadtTsVerificationMode::Lenient => "lenient".to_string(),
         },
         "--output-format".to_string(),
-        request.output_format.as_cli_value().to_string(),
+        output_format.as_cli_value().to_string(),
     ]);
     Ok(args)
 }
@@ -677,6 +699,7 @@ fn parse_media_output(
                     },
                 ],
                 output_format: None,
+                media_format: None,
                 warnings: Vec::new(),
             })
         }
@@ -697,6 +720,14 @@ fn parse_media_output(
                 .and_then(|value| value.to_str())
                 .ok_or_else(|| RadtTsMediaError::InvalidOutput(result.clip_path.clone()))?
                 .to_string();
+            let output_format = clip_path
+                .extension()
+                .and_then(|value| value.to_str())
+                .and_then(|value| match value {
+                    "wav" => Some(RadtTsOutputFormat::Wav),
+                    "mp3" => Some(RadtTsOutputFormat::Mp3),
+                    _ => None,
+                });
             Ok(RadtTsMediaOutput {
                 id: job_id.to_string(),
                 kind: RadtTsMediaJobKind::Clip,
@@ -706,14 +737,8 @@ fn parse_media_output(
                     label: "Boundary report".to_string(),
                     path: report_path.display().to_string(),
                 }],
-                output_format: clip_path
-                    .extension()
-                    .and_then(|value| value.to_str())
-                    .and_then(|value| match value {
-                        "wav" => Some(RadtTsOutputFormat::Wav),
-                        "mp3" => Some(RadtTsOutputFormat::Mp3),
-                        _ => None,
-                    }),
+                media_format: output_format.map(MediaOutputFormat::from),
+                output_format,
                 warnings,
             })
         }
@@ -937,6 +962,7 @@ fn list_transcripts(root: &Path) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaEr
                 },
             ],
             output_format: None,
+            media_format: None,
             warnings: Vec::new(),
         });
     }
@@ -966,6 +992,14 @@ fn list_clips(root: &Path) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaError> {
         let Some(clip_path) = clip_path else { continue };
         let clip_path = contained_media_file(root, &clip_path)?;
         let report_path = contained_media_file(root, &report_path)?;
+        let output_format = clip_path
+            .extension()
+            .and_then(|value| value.to_str())
+            .and_then(|value| match value {
+                "wav" => Some(RadtTsOutputFormat::Wav),
+                "mp3" => Some(RadtTsOutputFormat::Mp3),
+                _ => None,
+            });
         outputs.push(RadtTsMediaOutput {
             id: format!("clip:{name}"),
             kind: RadtTsMediaJobKind::Clip,
@@ -975,14 +1009,8 @@ fn list_clips(root: &Path) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaError> {
                 label: "Boundary report".to_string(),
                 path: report_path.display().to_string(),
             }],
-            output_format: clip_path
-                .extension()
-                .and_then(|value| value.to_str())
-                .and_then(|value| match value {
-                    "wav" => Some(RadtTsOutputFormat::Wav),
-                    "mp3" => Some(RadtTsOutputFormat::Mp3),
-                    _ => None,
-                }),
+            output_format,
+            media_format: output_format.map(MediaOutputFormat::from),
             warnings: report.warnings,
         });
     }
@@ -1042,9 +1070,10 @@ mod tests {
     use radsuite_core::ProjectId;
 
     use super::{
-        RadtTsMediaError, RadtTsOutputFormat, RadtTsVerificationMode, StartRadtTsClipRequest,
-        StartRadtTsTranscriptionRequest, build_clip_args, build_transcription_args,
-        parse_clip_result, parse_transcription_result, validate_clip_request,
+        MediaOutputFormat, RadtTsMediaError, RadtTsOutputFormat, RadtTsVerificationMode,
+        StartRadtTsClipRequest, StartRadtTsTranscriptionRequest, build_clip_args,
+        build_transcription_args, parse_clip_result, parse_transcription_result,
+        validate_clip_request,
     };
 
     #[test]
@@ -1082,6 +1111,7 @@ mod tests {
             end_phrase: Some("That is all for today".to_string()),
             verification_mode: RadtTsVerificationMode::Lenient,
             output_format: RadtTsOutputFormat::Wav,
+            media_format: None,
         };
         let args = build_clip_args(
             &request,
@@ -1098,6 +1128,33 @@ mod tests {
     }
 
     #[test]
+    fn maps_mp4_clip_requests_to_wav_for_the_audio_only_cli() {
+        let request = StartRadtTsClipRequest {
+            project_id: None,
+            audio_path: "/tmp/lecture.mp3".to_string(),
+            segments_json_path: "/tmp/lecture.segments.json".to_string(),
+            output_name: "video-clip".to_string(),
+            start_time: Some(0.0),
+            end_time: Some(1.0),
+            start_phrase: None,
+            end_phrase: None,
+            verification_mode: RadtTsVerificationMode::Strict,
+            output_format: RadtTsOutputFormat::Mp3,
+            media_format: Some(MediaOutputFormat::Mp4),
+        };
+        let args = build_clip_args(
+            &request,
+            ProjectId::new(),
+            PathBuf::from("/tmp/projects"),
+            PathBuf::from("/tmp/lecture.mp3"),
+            PathBuf::from("/tmp/lecture.segments.json"),
+        )
+        .expect("valid MP4 clip request should build");
+        assert!(args.contains(&"wav".to_string()));
+        assert!(!args.contains(&"mp4".to_string()));
+    }
+
+    #[test]
     fn rejects_clip_without_boundaries() {
         let request = StartRadtTsClipRequest {
             project_id: None,
@@ -1110,6 +1167,7 @@ mod tests {
             end_phrase: None,
             verification_mode: RadtTsVerificationMode::Strict,
             output_format: RadtTsOutputFormat::Mp3,
+            media_format: None,
         };
         assert!(matches!(
             validate_clip_request(&request),
@@ -1130,6 +1188,7 @@ mod tests {
             end_phrase: None,
             verification_mode: RadtTsVerificationMode::Strict,
             output_format: RadtTsOutputFormat::Mp3,
+            media_format: None,
         };
         assert!(matches!(
             validate_clip_request(&request),
@@ -1178,6 +1237,7 @@ mod tests {
             end_phrase: None,
             verification_mode: RadtTsVerificationMode::Strict,
             output_format: RadtTsOutputFormat::Mp3,
+            media_format: None,
         };
         assert!(super::validate_segments_input(&file).is_err());
         assert!(
