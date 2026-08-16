@@ -6,6 +6,7 @@
     browserStorage,
     readRadtTsProjectPreferences,
     writeRadtTsProjectPreferences,
+    type RadtTsProjectPreferences,
     type StorageLike,
   } from "../lib/storage";
   import type {
@@ -18,6 +19,7 @@
     buildTranscriptionRequest,
     canStartClip,
     canStartTranscription,
+    mergeRadtTsClipPreferences,
     type RadtTsClipDraft,
     type RadtTsTranscriptionDraft,
   } from "../lib/radtTsToolsWorkflow";
@@ -61,6 +63,7 @@
     endTime: 30,
     verificationMode: "strict",
     outputFormat: "mp3",
+    mediaFormat: "mp3",
   });
   let loading = $state(false);
   let checkingCapability = $state(true);
@@ -91,9 +94,12 @@
   $effect(() => {
     const projectId = selectedProjectId;
     if (!settingsLoaded || !projectId || processing) return;
-    const preferences = {
+    const preferences: RadtTsProjectPreferences = {
       transcription: { ...transcription },
-      clip: { ...clip },
+      clip: {
+        ...clip,
+        outputFormat: clip.mediaFormat === "mp3" ? "mp3" : "wav",
+      },
     };
     if (settingsSaveTimer !== null) window.clearTimeout(settingsSaveTimer);
     settingsSaveTimer = window.setTimeout(() => {
@@ -155,7 +161,7 @@
       preferenceStorage = browserStorage();
       const preferences = readRadtTsProjectPreferences(preferenceStorage, selectedProjectId);
       transcription = { ...transcription, ...preferences.transcription };
-      clip = { ...clip, ...preferences.clip };
+      clip = mergeRadtTsClipPreferences(clip, preferences.clip);
       capability = await invoke<RadtTsCapabilityStatus>("get_radt_ts_capabilities");
       const listing = await invoke<{ outputs: RadtTsMediaOutput[] }>(
         "list_radt_ts_media_outputs",
@@ -371,7 +377,7 @@
       {:else}
         <div class="radtts-boundary-fields"><label class="stack"><span>Start seconds</span><input type="number" min="0" step="0.1" bind:value={clip.startTime} /></label><label class="stack"><span>End seconds</span><input type="number" min="0.1" step="0.1" bind:value={clip.endTime} /></label></div>
       {/if}
-      <div class="radtts-tools-fields"><label class="stack"><span>Verification</span><select bind:value={clip.verificationMode}><option value="strict">Strict</option><option value="lenient">Lenient</option></select></label><label class="stack"><span>Format</span><select bind:value={clip.outputFormat}><option value="mp3">MP3</option><option value="wav">WAV</option></select></label></div>
+      <div class="radtts-tools-fields"><label class="stack"><span>Verification</span><select bind:value={clip.verificationMode}><option value="strict">Strict</option><option value="lenient">Lenient</option></select></label><label class="stack"><span>Format</span><select bind:value={clip.mediaFormat}><option value="mp3">MP3</option><option value="wav">WAV</option></select></label></div>
       <small class="field-note">Phrase boundaries snap to recognised transcript segments and include a small speech-safe margin.</small>
       <button class="primary-button radtts-process-button" type="button" disabled={!canClip} onclick={() => void startClip()}>Create verified clip</button>
     </section>

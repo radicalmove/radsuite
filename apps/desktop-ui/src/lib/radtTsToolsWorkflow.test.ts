@@ -5,6 +5,7 @@ import {
   buildTranscriptionRequest,
   canStartClip,
   canStartTranscription,
+  mergeRadtTsClipPreferences,
   type RadtTsClipDraft,
   type RadtTsTranscriptionDraft,
 } from "./radtTsToolsWorkflow";
@@ -36,6 +37,7 @@ const clip: RadtTsClipDraft = {
   endTime: 10,
   verificationMode: "strict",
   outputFormat: "mp3",
+  mediaFormat: "mp3",
 };
 
 describe("RADTTS transcription and clip workflow", () => {
@@ -59,6 +61,8 @@ describe("RADTTS transcription and clip workflow", () => {
       end_phrase: "Goodbye",
       start_time: null,
       end_time: null,
+      media_format: "mp3",
+      output_format: "mp3",
     });
     const timed = { ...clip, boundaryMode: "times" as const };
     expect(buildClipRequest(timed, "project-1")).toMatchObject({
@@ -68,5 +72,19 @@ describe("RADTTS transcription and clip workflow", () => {
       end_time: 10,
     });
     expect(canStartClip({ ...timed, endTime: 0 }, capability)).toBe(false);
+  });
+
+  test("keeps MP4 authoritative while sending WAV to the legacy CLI field", () => {
+    expect(
+      buildClipRequest({ ...clip, mediaFormat: "mp4", outputFormat: "mp3" }, "project-1"),
+    ).toMatchObject({ media_format: "mp4", output_format: "wav" });
+  });
+
+  test("migrates a saved legacy WAV preference into media format", () => {
+    const migrated = mergeRadtTsClipPreferences({ ...clip, mediaFormat: "mp3" }, {
+      outputFormat: "wav",
+    });
+    expect(migrated.mediaFormat).toBe("wav");
+    expect(migrated.outputFormat).toBe("wav");
   });
 });

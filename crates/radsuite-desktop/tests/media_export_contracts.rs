@@ -125,6 +125,12 @@ fn all_workflows_normalize_mp3_wav_and_mp4_without_widening_audio_enums() {
         }))
         .unwrap();
         assert_eq!(voice.normalized_media_format(), media_format);
+        let voice_wire = serde_json::to_value(&voice).unwrap();
+        assert_eq!(
+            voice_wire["media_format"],
+            serde_json::to_value(media_format).unwrap()
+        );
+        assert_eq!(voice_wire["output_format"], Value::from(legacy));
 
         let clip: StartRadtTsClipRequest = serde_json::from_value(json!({
             "audio_path": "/tmp/lecture.mp3",
@@ -138,6 +144,12 @@ fn all_workflows_normalize_mp3_wav_and_mp4_without_widening_audio_enums() {
         }))
         .unwrap();
         assert_eq!(clip.normalized_media_format(), media_format);
+        let clip_wire = serde_json::to_value(&clip).unwrap();
+        assert_eq!(
+            clip_wire["media_format"],
+            serde_json::to_value(media_format).unwrap()
+        );
+        assert_eq!(clip_wire["output_format"], Value::from(legacy));
     }
 }
 
@@ -262,4 +274,69 @@ fn legacy_output_records_remain_readable_and_normalize_to_audio_formats() {
     let serialized = serde_json::to_value(new_clip).unwrap();
     assert_eq!(serialized["media_format"], Value::from("mp4"));
     assert_eq!(serialized["output_format"], Value::from("wav"));
+}
+
+#[test]
+fn all_workflow_output_records_preserve_requested_media_format() {
+    for media_format in [
+        MediaOutputFormat::Mp3,
+        MediaOutputFormat::Wav,
+        MediaOutputFormat::Mp4,
+    ] {
+        let legacy = legacy_output_format(media_format);
+        let radcast: RadcastAudioOutput = serde_json::from_value(json!({
+            "id": "radcast-output",
+            "source_id": "source-1",
+            "filename": "lesson.wav",
+            "path": "/tmp/lesson.wav",
+            "duration_seconds": 12.5,
+            "output_format": legacy,
+            "media_format": media_format,
+            "cleanup_enabled": false,
+            "clip_start_seconds": null,
+            "clip_end_seconds": null,
+            "created_at": "2026-08-17T00:00:00Z"
+        }))
+        .unwrap();
+        assert_eq!(radcast.normalized_media_format(), media_format);
+
+        let voice = RadtTsAudioOutput {
+            id: "voice-output".to_string(),
+            filename: "voice.wav".to_string(),
+            path: "/tmp/voice.wav".to_string(),
+            output_format: match media_format {
+                MediaOutputFormat::Mp3 => RadtTsOutputFormat::Mp3,
+                MediaOutputFormat::Wav | MediaOutputFormat::Mp4 => RadtTsOutputFormat::Wav,
+            },
+            media_format: Some(media_format),
+            caption_paths: Vec::new(),
+            duration_seconds: Some(4.0),
+            created_at: None,
+        };
+        assert_eq!(voice.normalized_media_format(), media_format);
+
+        let clip = RadtTsMediaOutput {
+            id: "clip-output".to_string(),
+            kind: RadtTsMediaJobKind::Clip,
+            name: "opening".to_string(),
+            primary_path: "/tmp/opening.wav".to_string(),
+            artifacts: Vec::new(),
+            output_format: Some(voice.output_format),
+            media_format: Some(media_format),
+            warnings: Vec::new(),
+        };
+        assert_eq!(clip.normalized_media_format(), media_format);
+
+        for serialized in [
+            serde_json::to_value(&radcast).unwrap(),
+            serde_json::to_value(&voice).unwrap(),
+            serde_json::to_value(&clip).unwrap(),
+        ] {
+            assert_eq!(
+                serialized["media_format"],
+                serde_json::to_value(media_format).unwrap()
+            );
+            assert_eq!(serialized["output_format"], Value::from(legacy));
+        }
+    }
 }

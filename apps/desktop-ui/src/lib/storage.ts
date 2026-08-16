@@ -30,6 +30,7 @@ export type RadtTsProjectPreferences = {
     pauseSeed?: string;
     maxNewTokens?: number;
     outputFormat?: "mp3" | "wav";
+    mediaFormat?: "mp3" | "wav" | "mp4";
     outputName?: string;
   };
   transcription?: {
@@ -50,6 +51,7 @@ export type RadtTsProjectPreferences = {
     endTime?: number;
     verificationMode?: "strict" | "lenient";
     outputFormat?: "mp3" | "wav";
+    mediaFormat?: "mp3" | "wav" | "mp4";
   };
 };
 

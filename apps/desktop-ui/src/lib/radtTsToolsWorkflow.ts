@@ -1,5 +1,6 @@
 import type {
   RadtTsCapabilityStatus,
+  MediaOutputFormat,
   RadtTsOutputFormat,
   RadtTsVerificationMode,
 } from "../types";
@@ -23,6 +24,7 @@ export type RadtTsClipDraft = {
   endTime: number;
   verificationMode: RadtTsVerificationMode;
   outputFormat: RadtTsOutputFormat;
+  mediaFormat: MediaOutputFormat;
 };
 
 export function canStartTranscription(
@@ -57,6 +59,19 @@ export function canStartClip(
   );
 }
 
+export function mergeRadtTsClipPreferences(
+  draft: RadtTsClipDraft,
+  preferences: Partial<RadtTsClipDraft> | undefined,
+): RadtTsClipDraft {
+  const mediaFormat = preferences?.mediaFormat ?? preferences?.outputFormat ?? draft.mediaFormat;
+  return {
+    ...draft,
+    ...preferences,
+    mediaFormat,
+    outputFormat: mediaFormat === "mp3" ? "mp3" : "wav",
+  };
+}
+
 export function buildTranscriptionRequest(
   draft: RadtTsTranscriptionDraft,
   projectId: string | null,
@@ -72,6 +87,7 @@ export function buildTranscriptionRequest(
 }
 
 export function buildClipRequest(draft: RadtTsClipDraft, projectId: string | null) {
+  const mediaFormat = draft.mediaFormat ?? draft.outputFormat;
   return {
     project_id: projectId,
     audio_path: draft.audioPath.trim(),
@@ -82,6 +98,7 @@ export function buildClipRequest(draft: RadtTsClipDraft, projectId: string | nul
     start_phrase: draft.boundaryMode === "phrases" ? draft.startPhrase.trim() : null,
     end_phrase: draft.boundaryMode === "phrases" ? draft.endPhrase.trim() : null,
     verification_mode: draft.verificationMode,
-    output_format: draft.outputFormat,
+    output_format: mediaFormat === "mp3" ? "mp3" : "wav",
+    media_format: mediaFormat,
   };
 }

@@ -33,11 +33,21 @@ const draft: RadtTsDraft = {
   pauseSeed: "",
   maxNewTokens: 1200,
   outputFormat: "mp3",
+  mediaFormat: "mp3",
   outputName: "lesson-intro",
   acknowledgeVoiceClone: true,
 };
 
 describe("RAD TTS workflow", () => {
+  it("defaults new voice drafts and requests to MP3", () => {
+    const fresh = createDefaultRadtTsDraft();
+    expect(fresh.mediaFormat).toBe("mp3");
+    expect(buildRadtTsRequest(fresh, null)).toMatchObject({
+      media_format: "mp3",
+      output_format: "mp3",
+    });
+  });
+
   it("builds the native request with trimmed text and output name", () => {
     expect(buildRadtTsRequest({ ...draft, text: "  A short script.  ", outputName: "  lesson-intro  " }, "project-1")).toEqual({
       project_id: "project-1",
@@ -53,6 +63,7 @@ describe("RAD TTS workflow", () => {
       pause_max_seconds: 1.1,
       pause_seed: null,
       max_new_tokens: 1200,
+      media_format: "mp3",
       output_format: "mp3",
       output_name: "lesson-intro",
       acknowledge_voice_clone: true,
@@ -64,6 +75,12 @@ describe("RAD TTS workflow", () => {
       "Hello there.",
     );
     expect(buildRadtTsRequest({ ...draft, referenceText: "   " }, "project-1").reference_text).toBeNull();
+  });
+
+  it("keeps MP4 authoritative while sending WAV to the legacy CLI field", () => {
+    expect(
+      buildRadtTsRequest({ ...draft, mediaFormat: "mp4", outputFormat: "mp3" }, "project-1"),
+    ).toMatchObject({ media_format: "mp4", output_format: "wav" });
   });
 
   it("starts a new project from blank voice settings instead of carrying prior text", () => {
@@ -94,6 +111,14 @@ describe("RAD TTS workflow", () => {
     expect(
       mergeRadtTsVoicePreferences(freshDraft, { maxNewTokens: 9000 }).maxNewTokens,
     ).toBe(8192);
+  });
+
+  it("migrates a saved legacy WAV preference into media format", () => {
+    const migrated = mergeRadtTsVoicePreferences(createDefaultRadtTsDraft(), {
+      outputFormat: "wav",
+    });
+    expect(migrated.mediaFormat).toBe("wav");
+    expect(migrated.outputFormat).toBe("wav");
   });
 
   it("preserves a saved built-in voice preference", () => {

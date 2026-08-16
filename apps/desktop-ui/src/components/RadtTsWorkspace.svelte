@@ -6,6 +6,7 @@
     browserStorage,
     readRadtTsProjectPreferences,
     writeRadtTsProjectPreferences,
+    type RadtTsProjectPreferences,
     type StorageLike,
   } from "../lib/storage";
   import type {
@@ -74,7 +75,7 @@
   $effect(() => {
     const projectId = selectedProjectId;
     if (!settingsLoaded || !projectId || processing) return;
-    const preferences = {
+    const preferences: RadtTsProjectPreferences = {
       voice: {
         voiceSource: draft.voiceSource,
         referenceAudioPath: draft.referenceAudioPath,
@@ -87,7 +88,8 @@
         pauseMaxSeconds: draft.pauseMaxSeconds,
         pauseSeed: draft.pauseSeed,
         maxNewTokens: draft.maxNewTokens,
-        outputFormat: draft.outputFormat,
+        outputFormat: draft.mediaFormat === "mp3" ? "mp3" : "wav",
+        mediaFormat: draft.mediaFormat,
         outputName: draft.outputName,
       },
     };
@@ -448,7 +450,7 @@
       </div>
       <label class="stack">
         <span>Output format</span>
-        <select bind:value={draft.outputFormat}>
+        <select bind:value={draft.mediaFormat}>
           <option value="mp3">MP3</option>
           <option value="wav">WAV</option>
         </select>

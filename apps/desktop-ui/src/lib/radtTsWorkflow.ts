@@ -1,6 +1,7 @@
 import type {
   RadtTsCapabilityStatus,
   RadtTsChunkMode,
+  MediaOutputFormat,
   RadtTsOutputFormat,
   RadtTsQuality,
   RadtTsVoiceSource,
@@ -24,6 +25,7 @@ export type RadtTsDraft = {
   pauseSeed: string;
   maxNewTokens: number;
   outputFormat: RadtTsOutputFormat;
+  mediaFormat: MediaOutputFormat;
   outputName: string;
   acknowledgeVoiceClone: boolean;
 };
@@ -43,6 +45,7 @@ export type RadtTsVoicePreferences = Partial<
     | "pauseSeed"
     | "maxNewTokens"
     | "outputFormat"
+    | "mediaFormat"
     | "outputName"
   >
 >;
@@ -62,6 +65,7 @@ export function createDefaultRadtTsDraft(): RadtTsDraft {
     pauseSeed: "",
     maxNewTokens: RADTTS_DEFAULT_NEW_TOKENS,
     outputFormat: "mp3",
+    mediaFormat: "mp3",
     outputName: "voice-generation",
     acknowledgeVoiceClone: false,
   };
@@ -72,10 +76,13 @@ export function mergeRadtTsVoicePreferences(
   preferences: RadtTsVoicePreferences | undefined,
 ): RadtTsDraft {
   const voiceSource: RadtTsVoiceSource = preferences?.voiceSource ?? draft.voiceSource;
+  const mediaFormat = preferences?.mediaFormat ?? preferences?.outputFormat ?? draft.mediaFormat;
   return {
     ...draft,
     ...preferences,
     voiceSource,
+    mediaFormat,
+    outputFormat: mediaFormat === "mp3" ? "mp3" : "wav",
     pauseSeed: preferences?.pauseSeed === undefined
       ? draft.pauseSeed
       : normalizeRadtTsPauseSeedText(preferences.pauseSeed),
@@ -101,6 +108,7 @@ export type RadtTsRequest = {
   pause_seed: number | null;
   max_new_tokens: number;
   output_format: RadtTsOutputFormat;
+  media_format: MediaOutputFormat;
   output_name: string;
   acknowledge_voice_clone: boolean;
 };
@@ -151,6 +159,7 @@ export function buildRadtTsRequest(
   draft: RadtTsDraft,
   projectId: string | null,
 ): RadtTsRequest {
+  const mediaFormat = draft.mediaFormat ?? draft.outputFormat;
   return {
     project_id: projectId,
     text: draft.text.trim(),
@@ -165,7 +174,8 @@ export function buildRadtTsRequest(
     pause_max_seconds: draft.pauseMaxSeconds,
     pause_seed: parseRadtTsPauseSeed(draft.pauseSeed),
     max_new_tokens: clampRadtTsMaxNewTokens(draft.maxNewTokens),
-    output_format: draft.outputFormat,
+    output_format: mediaFormat === "mp3" ? "mp3" : "wav",
+    media_format: mediaFormat,
     output_name: draft.outputName.trim(),
     acknowledge_voice_clone: draft.acknowledgeVoiceClone,
   };

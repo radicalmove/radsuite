@@ -205,6 +205,8 @@ struct ClipCliResult {
 struct ClipBoundaryReport {
     #[serde(default)]
     warnings: Vec<String>,
+    #[serde(default)]
+    media_format: Option<MediaOutputFormat>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -216,6 +218,7 @@ enum MediaCommandKind {
 struct MediaJobContext {
     project_id: ProjectId,
     kind: MediaCommandKind,
+    media_format: Option<MediaOutputFormat>,
     project_root: PathBuf,
     child_handle: RadtTsMediaChildHandle,
     jobs: Arc<Mutex<std::collections::HashMap<String, RadtTsMediaJobStatus>>>,
@@ -249,6 +252,7 @@ pub async fn start_radt_ts_transcription(
         state,
         project_id,
         MediaCommandKind::Transcription,
+        None,
         project_root,
         executable,
         args,
@@ -268,17 +272,20 @@ pub async fn start_radt_ts_clip(
     let audio_path = validate_audio_input(Path::new(&request.audio_path))?;
     let segments_path = validate_segments_input(Path::new(&request.segments_json_path))?;
     validate_clip_request(&request)?;
+    let media_format = request.normalized_media_format();
     let args = build_clip_args(
         &request,
         project_id,
         projects_root,
         audio_path,
         segments_path,
+        media_format.into(),
     )?;
     start_media_process(
         state,
         project_id,
         MediaCommandKind::Clip,
+        Some(media_format),
         project_root,
         executable,
         args,
@@ -426,9 +433,9 @@ pub(crate) fn build_clip_args(
     projects_root: PathBuf,
     audio_path: PathBuf,
     segments_path: PathBuf,
+    output_format: RadtTsOutputFormat,
 ) -> Result<Vec<String>, RadtTsMediaError> {
     validate_clip_request(request)?;
-    let output_format: RadtTsOutputFormat = request.normalized_media_format().into();
     let mut args = vec![
         "--projects-root".to_string(),
         projects_root.display().to_string(),
@@ -478,6 +485,7 @@ async fn start_media_process(
     state: &DesktopState,
     project_id: ProjectId,
     kind: MediaCommandKind,
+    media_format: Option<MediaOutputFormat>,
     project_root: PathBuf,
     executable: PathBuf,
     args: Vec<String>,
@@ -544,6 +552,7 @@ async fn start_media_process(
     let context = MediaJobContext {
         project_id,
         kind,
+        media_format,
         project_root,
         child_handle,
         jobs: state.radt_ts_media_jobs.clone(),
@@ -559,6 +568,7 @@ async fn run_media_job(job_id: String, context: MediaJobContext) {
     let MediaJobContext {
         project_id,
         kind,
+        media_format,
         project_root,
         child_handle,
         jobs,
@@ -636,7 +646,14 @@ async fn run_media_job(job_id: String, context: MediaJobContext) {
                         detail
                     }))
                 } else {
-                    parse_media_output(kind, &stdout, &project_root, project_id, &job_id)
+                    parse_media_output(
+                        kind,
+                        &stdout,
+                        &project_root,
+                        project_id,
+                        &job_id,
+                        media_format,
+                    )
                 };
                 finish_media_job(
                     &jobs,
@@ -670,6 +687,7 @@ fn parse_media_output(
     project_root: &Path,
     _project_id: ProjectId,
     job_id: &str,
+    requested_media_format: Option<MediaOutputFormat>,
 ) -> Result<RadtTsMediaOutput, RadtTsMediaError> {
     match kind {
         MediaCommandKind::Transcription => {
@@ -708,10 +726,20 @@ fn parse_media_output(
             let clip_path = contained_media_file(project_root, Path::new(&result.clip_path))?;
             let report_path = contained_media_file(project_root, Path::new(&result.report_path))?;
             let mut warnings = result.warnings;
-            if let Ok(report) =
+            let report = if let Ok(report) =
                 serde_json::from_slice::<ClipBoundaryReport>(&fs::read(&report_path)?)
             {
+                Some(report)
+            } else {
+                None
+            };
+            let report_media_format = report.as_ref().and_then(|report| report.media_format);
+            let report_is_valid = report.is_some();
+            if let Some(report) = report {
                 warnings.extend(report.warnings);
+            }
+            if let Some(media_format) = requested_media_format.filter(|_| report_is_valid) {
+                persist_clip_media_format(&report_path, media_format)?;
             }
             warnings.sort();
             warnings.dedup();
@@ -737,7 +765,10 @@ fn parse_media_output(
                     label: "Boundary report".to_string(),
                     path: report_path.display().to_string(),
                 }],
-                media_format: output_format.map(MediaOutputFormat::from),
+                media_format: Some(MediaOutputFormat::from_request(
+                    requested_media_format.or(report_media_format),
+                    output_format,
+                )),
                 output_format,
                 warnings,
             })
@@ -1010,11 +1041,38 @@ fn list_clips(root: &Path) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaError> {
                 path: report_path.display().to_string(),
             }],
             output_format,
-            media_format: output_format.map(MediaOutputFormat::from),
+            media_format: Some(MediaOutputFormat::from_request(
+                report.media_format,
+                output_format,
+            )),
             warnings: report.warnings,
         });
     }
     Ok(outputs)
+}
+
+fn persist_clip_media_format(
+    report_path: &Path,
+    media_format: MediaOutputFormat,
+) -> Result<(), RadtTsMediaError> {
+    let mut value: serde_json::Value = serde_json::from_slice(&fs::read(report_path)?)
+        .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?;
+    let object = value.as_object_mut().ok_or_else(|| {
+        RadtTsMediaError::InvalidCliResult(
+            "RADTTS clip boundary report must be a JSON object".to_string(),
+        )
+    })?;
+    object.insert(
+        "media_format".to_string(),
+        serde_json::to_value(media_format)
+            .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?,
+    );
+    fs::write(
+        report_path,
+        serde_json::to_vec_pretty(&value)
+            .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?,
+    )?;
+    Ok(())
 }
 
 fn contained_media_file(root: &Path, path: &Path) -> Result<PathBuf, RadtTsMediaError> {
@@ -1070,10 +1128,10 @@ mod tests {
     use radsuite_core::ProjectId;
 
     use super::{
-        MediaOutputFormat, RadtTsMediaError, RadtTsOutputFormat, RadtTsVerificationMode,
-        StartRadtTsClipRequest, StartRadtTsTranscriptionRequest, build_clip_args,
-        build_transcription_args, parse_clip_result, parse_transcription_result,
-        validate_clip_request,
+        MediaCommandKind, MediaOutputFormat, RadtTsMediaError, RadtTsOutputFormat,
+        RadtTsVerificationMode, StartRadtTsClipRequest, StartRadtTsTranscriptionRequest,
+        build_clip_args, build_transcription_args, list_clips, parse_clip_result,
+        parse_media_output, parse_transcription_result, validate_clip_request,
     };
 
     #[test]
@@ -1119,6 +1177,7 @@ mod tests {
             PathBuf::from("/tmp/projects"),
             PathBuf::from("/tmp/lecture.mp3"),
             PathBuf::from("/tmp/lecture.segments.json"),
+            RadtTsOutputFormat::Wav,
         )
         .expect("valid clip request should build");
         assert!(args.contains(&"--start-phrase".to_string()));
@@ -1148,6 +1207,7 @@ mod tests {
             PathBuf::from("/tmp/projects"),
             PathBuf::from("/tmp/lecture.mp3"),
             PathBuf::from("/tmp/lecture.segments.json"),
+            RadtTsOutputFormat::Wav,
         )
         .expect("valid MP4 clip request should build");
         assert!(args.contains(&"wav".to_string()));
@@ -1220,6 +1280,63 @@ mod tests {
     }
 
     #[test]
+    fn reconstructs_requested_mp4_clip_output_from_wav_cli_artifact() {
+        let root =
+            std::env::temp_dir().join(format!("radsuite-radt-ts-tools-{}", uuid::Uuid::new_v4()));
+        let clip_path = root.join("assets/source_audio/video-clip.wav");
+        let report_path = root.join("manifests/video-clip.clip.boundary.json");
+        fs::create_dir_all(clip_path.parent().expect("clip parent")).expect("create clip dir");
+        fs::create_dir_all(report_path.parent().expect("report parent"))
+            .expect("create report dir");
+        fs::write(&clip_path, [0_u8; 8]).expect("create clip artifact");
+        fs::write(&report_path, r#"{"warnings":[],"media_format":"wav"}"#)
+            .expect("create boundary report");
+        let root = root.canonicalize().expect("canonicalize test directory");
+        let stdout = br#"{"clip_path":"assets/source_audio/video-clip.wav","report_path":"manifests/video-clip.clip.boundary.json","warnings":[]}"#;
+
+        let output = parse_media_output(
+            MediaCommandKind::Clip,
+            stdout,
+            &root,
+            ProjectId::new(),
+            "job-1",
+            Some(MediaOutputFormat::Mp4),
+        )
+        .expect("clip output should reconstruct");
+
+        assert_eq!(output.output_format, Some(RadtTsOutputFormat::Wav));
+        assert_eq!(output.media_format, Some(MediaOutputFormat::Mp4));
+        let persisted: serde_json::Value = serde_json::from_slice(
+            &fs::read(root.join("manifests/video-clip.clip.boundary.json"))
+                .expect("read persisted boundary report"),
+        )
+        .expect("parse persisted boundary report");
+        assert_eq!(persisted["media_format"], "mp4");
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn lists_persisted_mp4_clip_format_instead_of_inferring_from_wav_path() {
+        let root =
+            std::env::temp_dir().join(format!("radsuite-radt-ts-tools-{}", uuid::Uuid::new_v4()));
+        let clip_path = root.join("assets/source_audio/video-clip.wav");
+        let report_path = root.join("manifests/video-clip.clip.boundary.json");
+        fs::create_dir_all(clip_path.parent().expect("clip parent")).expect("create clip dir");
+        fs::create_dir_all(report_path.parent().expect("report parent"))
+            .expect("create report dir");
+        fs::write(&clip_path, [0_u8; 8]).expect("create clip artifact");
+        fs::write(&report_path, r#"{"warnings":[],"media_format":"mp4"}"#)
+            .expect("create boundary report");
+        let root = root.canonicalize().expect("canonicalize test directory");
+
+        let outputs = list_clips(&root).expect("clips should list");
+        assert_eq!(outputs.len(), 1);
+        assert_eq!(outputs[0].output_format, Some(RadtTsOutputFormat::Wav));
+        assert_eq!(outputs[0].media_format, Some(MediaOutputFormat::Mp4));
+        fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
     fn validates_transcript_input_extension() {
         let root =
             std::env::temp_dir().join(format!("radsuite-radt-ts-tools-{}", uuid::Uuid::new_v4()));
@@ -1247,6 +1364,7 @@ mod tests {
                 PathBuf::from("/tmp/projects"),
                 PathBuf::from("/tmp/audio.mp3"),
                 file,
+                RadtTsOutputFormat::Mp3,
             )
             .is_ok()
         );

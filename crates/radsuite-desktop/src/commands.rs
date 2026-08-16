@@ -211,6 +211,7 @@ pub async fn start_radt_ts_synthesis(
         pause_seed: request.pause_seed,
         max_new_tokens: request.max_new_tokens,
         output_format: media_format.into(),
+        media_format,
         output_name: request.output_name,
         acknowledge_voice_clone: request.acknowledge_voice_clone,
     };
@@ -258,6 +259,9 @@ pub async fn start_radt_ts_clip(
     let project = load_requested_or_local_radcite_project(state, request.project_id)
         .await
         .map_err(|error| error.to_string())?;
+    let media_format = request.normalized_media_format();
+    request.media_format = Some(media_format);
+    request.output_format = media_format.into();
     request.project_id = Some(project.id);
     crate::radt_ts_tools::start_radt_ts_clip(state, request)
         .await
