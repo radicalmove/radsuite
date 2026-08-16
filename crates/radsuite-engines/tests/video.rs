@@ -1,12 +1,19 @@
+use std::path::Path;
+
+#[cfg(unix)]
 use std::{
     fs,
-    path::{Path, PathBuf},
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    path::PathBuf,
+    time::{SystemTime, UNIX_EPOCH},
 };
 
-use radsuite_engines::{
-    ProcessError, VideoExportRequest, VideoExporter, VideoProbeError, run_process,
-};
+#[cfg(unix)]
+use std::time::{Duration, Instant};
+
+use radsuite_engines::{VideoExportRequest, VideoExporter, VideoProbeError};
+
+#[cfg(unix)]
+use radsuite_engines::{ProcessError, run_process};
 
 #[test]
 fn video_arguments_use_the_approved_fixed_mp4_contract() {
@@ -184,10 +191,14 @@ fn process_runner_cancels_a_temporary_executable_without_waiting_for_completion(
 #[test]
 fn video_export_parses_ffmpeg_progress_relative_to_audio_duration() {
     let dir = test_dir("export-progress");
+    let ffmpeg_output_path = dir.join("ffmpeg-output-path");
     let ffmpeg = write_executable(
         &dir,
         "ffmpeg.sh",
-        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'out_time_us=6250000\\nprogress=continue\\n'\nprintf 'fake mp4' > \"$output\"\n",
+        &format!(
+            "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf '%s' \"$output\" > '{}'\nprintf 'out_time_us=6250000\\nprogress=continue\\n'\nprintf 'fake mp4' > \"$output\"\n",
+            ffmpeg_output_path.display()
+        ),
     );
     let ffprobe = write_executable(
         &dir,
@@ -215,6 +226,154 @@ fn video_export_parses_ffmpeg_progress_relative_to_audio_duration() {
             .iter()
             .any(|value| (*value - 0.5).abs() < f64::EPSILON)
     );
+    let rendered_path = fs::read_to_string(&ffmpeg_output_path).expect("read partial path");
+    assert!(rendered_path.contains(".partial-"));
+    assert!(output.is_file());
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn process_runner_reports_non_zero_exit_and_stderr() {
+    let dir = test_dir("failure");
+    let script = write_executable(
+        &dir,
+        "failure.sh",
+        "#!/bin/sh\nprintf 'diagnostic from stderr\\n' >&2\nexit 7\n",
+    );
+
+    let result = run_process(&script, &[], || false, |_| {});
+
+    match result {
+        Err(ProcessError::Failed { message, .. }) => {
+            assert!(message.contains("diagnostic from stderr"));
+        }
+        other => panic!("expected failed process, got {other:?}"),
+    }
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn process_runner_emits_progress_after_a_partial_line_is_completed() {
+    let dir = test_dir("partial-progress");
+    let script = write_executable(
+        &dir,
+        "progress.sh",
+        "#!/bin/sh\nprintf 'out_time_us=1000000'\nsleep 0.05\nprintf '\\n'\n",
+    );
+    let mut lines = Vec::new();
+
+    run_process(&script, &[], || false, |line| lines.push(line.to_string()))
+        .expect("partial progress script should finish");
+
+    assert!(lines.iter().any(|line| line == "out_time_us=1000000"));
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn video_export_rejects_existing_output_without_spawning_or_overwriting_it() {
+    let dir = test_dir("existing-output");
+    let marker = dir.join("spawned");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        &format!("#!/bin/sh\ntouch '{}'\n", marker.display()),
+    );
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nexit 0\n");
+    let image = dir.join("cover.png");
+    let audio = dir.join("final.wav");
+    let output = dir.join("output.mp4");
+    fs::write(&image, b"image").expect("write image fixture");
+    fs::write(&audio, b"audio").expect("write audio fixture");
+    fs::write(&output, b"caller-owned output").expect("write existing output");
+
+    let result = VideoExporter::from_commands(ffmpeg, ffprobe)
+        .export(VideoExportRequest::new(&image, &audio, &output, 12.5));
+
+    assert!(matches!(
+        result,
+        Err(radsuite_engines::VideoExportError::OutputExists { .. })
+    ));
+    assert_eq!(
+        fs::read(&output).expect("read existing output"),
+        b"caller-owned output"
+    );
+    assert!(!marker.exists());
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn video_export_does_not_replace_output_created_during_probe() {
+    let dir = test_dir("output-race");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'fake mp4' > \"$output\"\n",
+    );
+    let output = dir.join("output.mp4");
+    let ffprobe = write_executable(
+        &dir,
+        "ffprobe.sh",
+        &format!(
+            "#!/bin/sh\nprintf 'caller-owned output' > '{}'\nprintf '%s\\n' '{{\"streams\":[{{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"}},{{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}}],\"format\":{{\"duration\":12.5}}}}'\n",
+            output.display()
+        ),
+    );
+    let image = dir.join("cover.png");
+    let audio = dir.join("final.wav");
+    fs::write(&image, b"image").expect("write image fixture");
+    fs::write(&audio, b"audio").expect("write audio fixture");
+
+    let result = VideoExporter::from_commands(ffmpeg, ffprobe)
+        .export(VideoExportRequest::new(&image, &audio, &output, 12.5));
+
+    assert!(matches!(
+        result,
+        Err(radsuite_engines::VideoExportError::OutputExists { .. })
+    ));
+    assert_eq!(
+        fs::read(&output).expect("read caller-owned output"),
+        b"caller-owned output"
+    );
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn video_export_reports_partial_cleanup_failures() {
+    let dir = test_dir("cleanup-failure");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nmkdir \"$output\"\nprintf 'mux failed\\n' >&2\nexit 7\n",
+    );
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nexit 0\n");
+    let image = dir.join("cover.png");
+    let audio = dir.join("final.wav");
+    let output = dir.join("output.mp4");
+    fs::write(&image, b"image").expect("write image fixture");
+    fs::write(&audio, b"audio").expect("write audio fixture");
+
+    let result = VideoExporter::from_commands(ffmpeg, ffprobe)
+        .export(VideoExportRequest::new(&image, &audio, &output, 12.5));
+
+    match result {
+        Err(radsuite_engines::VideoExportError::Cleanup {
+            cleanup_failures, ..
+        }) => {
+            assert_eq!(cleanup_failures.len(), 1);
+            assert!(
+                cleanup_failures[0]
+                    .path
+                    .to_string_lossy()
+                    .contains(".partial-")
+            );
+        }
+        other => panic!("expected cleanup failure, got {other:?}"),
+    }
     remove_dir(dir);
 }
 
@@ -297,6 +456,7 @@ fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
     path
 }
 
+#[cfg(unix)]
 fn test_dir(label: &str) -> PathBuf {
     let suffix = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -307,6 +467,7 @@ fn test_dir(label: &str) -> PathBuf {
     path
 }
 
+#[cfg(unix)]
 fn remove_dir(path: PathBuf) {
     let _ = fs::remove_dir_all(path);
 }

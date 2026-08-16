@@ -2,6 +2,8 @@ use std::{
     ffi::OsString,
     fs,
     path::{Path, PathBuf},
+    process,
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use serde::Deserialize;
@@ -21,6 +23,7 @@ pub const WAVEFORM_Y: u32 = 500;
 pub const VIDEO_AUDIO_TOLERANCE_SECONDS: f64 = 0.10;
 
 const FILTER_GRAPH: &str = "[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720:(iw-1280)/2:(ih-720)/2[background];[background]drawbox=x=0:y=500:w=1280:h=220:color=black@0.70:t=fill[band];[1:a]showwaves=s=1280x220:mode=cline:rate=30:colors=white,format=rgba,colorkey=black:0.01:0.0[waveform];[band][waveform]overlay=0:500,fps=30,format=yuv420p[video]";
+static PARTIAL_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct VideoExportRequest {
@@ -57,6 +60,12 @@ pub struct VideoProbe {
     pub duration_seconds: f64,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CleanupFailure {
+    pub path: PathBuf,
+    pub message: String,
+}
+
 #[derive(Debug, Error)]
 pub enum VideoProbeError {
     #[error("ffprobe returned invalid JSON: {message}")]
@@ -90,10 +99,27 @@ pub enum VideoExportError {
         #[source]
         source: std::io::Error,
     },
+    #[error("video output already exists: {path}")]
+    OutputExists { path: PathBuf },
     #[error(transparent)]
     Process(#[from] ProcessError),
     #[error(transparent)]
     Probe(#[from] VideoProbeError),
+    #[error("failed to promote partial video output: {source}")]
+    PromoteOutput {
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("video export cleanup failed after promotion: {cleanup_failures:?}")]
+    CleanupAfterPromotion {
+        cleanup_failures: Vec<CleanupFailure>,
+    },
+    #[error("{cause}; cleanup failures: {cleanup_failures:?}")]
+    Cleanup {
+        #[source]
+        cause: Box<VideoExportError>,
+        cleanup_failures: Vec<CleanupFailure>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -190,6 +216,11 @@ impl VideoExporter {
         P: FnMut(f64),
     {
         validate_request(&request)?;
+        if request.output_path.exists() {
+            return Err(VideoExportError::OutputExists {
+                path: request.output_path,
+            });
+        }
         let parent =
             request
                 .output_path
@@ -198,33 +229,32 @@ impl VideoExporter {
                     path: request.output_path.clone(),
                 })?;
         fs::create_dir_all(parent).map_err(|source| VideoExportError::PrepareOutput { source })?;
+        let partial_path = unique_partial_path(&request.output_path);
 
-        let args = Self::ffmpeg_arguments(
-            &request.image_path,
-            &request.audio_path,
-            &request.output_path,
-        );
+        let args = Self::ffmpeg_arguments(&request.image_path, &request.audio_path, &partial_path);
         let result = run_process(&self.ffmpeg_command, &args, &mut is_cancelled, |line| {
             if let Some(progress) = parse_progress_line(line, request.audio_duration_seconds) {
                 on_progress(progress);
             }
         });
         if let Err(error) = result {
-            let _ = fs::remove_file(&request.output_path);
-            return Err(VideoExportError::Process(error));
+            return Err(with_cleanup(
+                VideoExportError::Process(error),
+                &[partial_path.as_path()],
+            ));
         }
 
         let probe = match self.probe_with_callbacks(
-            &request.output_path,
+            &partial_path,
             request.audio_duration_seconds,
             &mut is_cancelled,
         ) {
             Ok(probe) => probe,
             Err(error) => {
-                let _ = fs::remove_file(&request.output_path);
-                return Err(error);
+                return Err(with_cleanup(error, &[partial_path.as_path()]));
             }
         };
+        promote_partial_output(&partial_path, &request.output_path)?;
         Ok(VideoExportResult {
             output_path: request.output_path,
             duration_seconds: probe.duration_seconds,
@@ -370,6 +400,81 @@ fn validate_request(request: &VideoExportRequest) -> Result<(), VideoExportError
         });
     }
     Ok(())
+}
+
+fn unique_partial_path(output_path: &Path) -> PathBuf {
+    let stem = output_path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("video");
+    loop {
+        let counter = PARTIAL_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let path = output_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(format!("{stem}.partial-{}-{counter}.mp4", process::id()));
+        if !path.exists() {
+            return path;
+        }
+    }
+}
+
+fn promote_partial_output(partial_path: &Path, output_path: &Path) -> Result<(), VideoExportError> {
+    if output_path.exists() {
+        return Err(with_cleanup(
+            VideoExportError::OutputExists {
+                path: output_path.to_path_buf(),
+            },
+            &[partial_path],
+        ));
+    }
+
+    if let Err(source) = fs::hard_link(partial_path, output_path) {
+        let cause = if source.kind() == std::io::ErrorKind::AlreadyExists {
+            VideoExportError::OutputExists {
+                path: output_path.to_path_buf(),
+            }
+        } else {
+            VideoExportError::PromoteOutput { source }
+        };
+        return Err(with_cleanup(cause, &[partial_path]));
+    }
+
+    if let Err(source) = fs::remove_file(partial_path) {
+        let mut cleanup_failures = vec![CleanupFailure {
+            path: partial_path.to_path_buf(),
+            message: source.to_string(),
+        }];
+        cleanup_failures.extend(cleanup_owned_paths(&[output_path]));
+        return Err(VideoExportError::CleanupAfterPromotion { cleanup_failures });
+    }
+    Ok(())
+}
+
+fn with_cleanup(cause: VideoExportError, paths: &[&Path]) -> VideoExportError {
+    let cleanup_failures = cleanup_owned_paths(paths);
+    if cleanup_failures.is_empty() {
+        cause
+    } else {
+        VideoExportError::Cleanup {
+            cause: Box::new(cause),
+            cleanup_failures,
+        }
+    }
+}
+
+fn cleanup_owned_paths(paths: &[&Path]) -> Vec<CleanupFailure> {
+    paths
+        .iter()
+        .filter_map(|path| match fs::remove_file(path) {
+            Ok(()) => None,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => Some(CleanupFailure {
+                path: (*path).to_path_buf(),
+                message: error.to_string(),
+            }),
+        })
+        .collect()
 }
 
 fn is_supported_image(path: &Path) -> bool {

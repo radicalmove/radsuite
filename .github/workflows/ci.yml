@@ -26,6 +26,21 @@ jobs:
       - run: cargo clippy --workspace --all-targets --all-features -- -D warnings
       - run: cargo test --workspace --all-features
 
+  windows-engines:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify Windows engine runner and exporter
+        run: |
+          cargo fmt --all --check
+          cargo clippy -p radsuite-engines --lib --all-features -- -D warnings
+          cargo test -p radsuite-engines --lib --all-features
+          cargo test -p radsuite-engines --test audio --test video --all-features
+
   desktop-ui:
     runs-on: ubuntu-latest
     defaults:
