@@ -218,6 +218,46 @@ fn video_export_parses_ffmpeg_progress_relative_to_audio_duration() {
     remove_dir(dir);
 }
 
+#[cfg(unix)]
+#[test]
+fn video_export_cancellation_during_ffprobe_stops_without_succeeding() {
+    let dir = test_dir("probe-cancel");
+    let ffprobe_started = dir.join("ffprobe-started");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'fake mp4' > \"$output\"\nprintf 'out_time_us=12500000\\n'\n",
+    );
+    let ffprobe = write_executable(
+        &dir,
+        "ffprobe.sh",
+        &format!(
+            "#!/bin/sh\ntouch '{}'\nsleep 1\nprintf '%s\\n' '{{\"streams\":[] ,\"format\":{{\"duration\":12.5}}}}'\n",
+            ffprobe_started.display()
+        ),
+    );
+    let image = dir.join("cover.png");
+    let audio = dir.join("final.wav");
+    let output = dir.join("output.mp4");
+    fs::write(&image, b"image").expect("write image fixture");
+    fs::write(&audio, b"audio").expect("write audio fixture");
+    let result = VideoExporter::from_commands(ffmpeg, ffprobe).export_with_callbacks(
+        VideoExportRequest::new(&image, &audio, &output, 12.5),
+        || ffprobe_started.is_file(),
+        |_| {},
+    );
+
+    assert!(matches!(
+        result,
+        Err(radsuite_engines::VideoExportError::Process(
+            ProcessError::Cancelled { .. }
+        ))
+    ));
+    assert!(ffprobe_started.is_file());
+    assert!(!output.exists());
+    remove_dir(dir);
+}
+
 fn valid_probe_json() -> String {
     r#"{
         "streams": [

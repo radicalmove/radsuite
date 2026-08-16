@@ -96,12 +96,19 @@ where
     })?;
 
     #[cfg(windows)]
-    process_job
-        .assign(&child)
-        .map_err(|source| ProcessError::Start {
-            executable: executable.clone(),
-            source,
-        })?;
+    if let Err(assignment_error) = process_job.assign(&child) {
+        let source = match terminate_and_wait_after_job_assignment_failure(&mut child, &process_job)
+        {
+            Ok(()) => assignment_error,
+            Err(cleanup_error) => io::Error::new(
+                cleanup_error.kind(),
+                format!(
+                    "job assignment failed: {assignment_error}; child cleanup failed: {cleanup_error}"
+                ),
+            ),
+        };
+        return Err(ProcessError::Start { executable, source });
+    }
 
     let stdout = child.stdout.take().ok_or_else(|| ProcessError::Io {
         executable: executable.clone(),
@@ -291,6 +298,19 @@ fn command_output(stdout: &[u8], stderr: &[u8]) -> String {
     }
 }
 
+fn kill_and_wait(child: &mut Child) -> io::Result<ExitStatus> {
+    match child.kill() {
+        Ok(()) => {}
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::InvalidInput | io::ErrorKind::NotFound
+            ) => {}
+        Err(error) => return Err(error),
+    }
+    child.wait()
+}
+
 #[cfg(unix)]
 fn configure_unix_process_group(command: &mut Command) {
     use std::os::unix::process::CommandExt;
@@ -314,11 +334,13 @@ fn terminate_child(child: &mut Child, executable: &Path) -> Result<(), ProcessEr
         if source.raw_os_error() == Some(libc::ESRCH) {
             return Ok(());
         }
-        child.kill().map_err(|fallback| ProcessError::Terminate {
+        kill_and_wait(child).map_err(|fallback| ProcessError::Terminate {
             executable: executable.to_path_buf(),
             source: io::Error::new(
                 fallback.kind(),
-                format!("process group termination failed ({source}); child termination failed: {fallback}"),
+                format!(
+                    "process group termination failed ({source}); child termination failed: {fallback}"
+                ),
             ),
         })?;
     }
@@ -327,10 +349,21 @@ fn terminate_child(child: &mut Child, executable: &Path) -> Result<(), ProcessEr
 
 #[cfg(not(any(unix, windows)))]
 fn terminate_child(child: &mut Child, executable: &Path) -> Result<(), ProcessError> {
-    child.kill().map_err(|source| ProcessError::Terminate {
-        executable: executable.to_path_buf(),
-        source,
-    })
+    kill_and_wait(child)
+        .map(|_| ())
+        .map_err(|source| ProcessError::Terminate {
+            executable: executable.to_path_buf(),
+            source,
+        })
+}
+
+#[cfg(windows)]
+fn terminate_and_wait_after_job_assignment_failure(
+    child: &mut Child,
+    process_job: &WindowsProcessJob,
+) -> io::Result<()> {
+    let _ = process_job.terminate();
+    kill_and_wait(child).map(|_| ())
 }
 
 #[cfg(windows)]
@@ -418,5 +451,25 @@ impl WindowsProcessJob {
 impl Drop for WindowsProcessJob {
     fn drop(&mut self) {
         unsafe { windows_sys::Win32::Foundation::CloseHandle(self.handle) };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn kill_and_wait_helper_reaps_a_running_child() {
+        let started = std::time::Instant::now();
+        let mut child = Command::new("sh")
+            .args(["-c", "sleep 30"])
+            .spawn()
+            .expect("spawn test child");
+
+        let status = kill_and_wait(&mut child).expect("kill and wait for test child");
+
+        assert!(!status.success());
+        assert!(started.elapsed() < Duration::from_secs(5));
     }
 }

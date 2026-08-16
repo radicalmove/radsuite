@@ -182,7 +182,7 @@ impl VideoExporter {
     pub fn export_with_callbacks<C, P>(
         &self,
         request: VideoExportRequest,
-        is_cancelled: C,
+        mut is_cancelled: C,
         mut on_progress: P,
     ) -> Result<VideoExportResult, VideoExportError>
     where
@@ -204,7 +204,7 @@ impl VideoExporter {
             &request.audio_path,
             &request.output_path,
         );
-        let result = run_process(&self.ffmpeg_command, &args, is_cancelled, |line| {
+        let result = run_process(&self.ffmpeg_command, &args, &mut is_cancelled, |line| {
             if let Some(progress) = parse_progress_line(line, request.audio_duration_seconds) {
                 on_progress(progress);
             }
@@ -214,7 +214,11 @@ impl VideoExporter {
             return Err(VideoExportError::Process(error));
         }
 
-        let probe = match self.probe(&request.output_path, request.audio_duration_seconds) {
+        let probe = match self.probe_with_callbacks(
+            &request.output_path,
+            request.audio_duration_seconds,
+            &mut is_cancelled,
+        ) {
             Ok(probe) => probe,
             Err(error) => {
                 let _ = fs::remove_file(&request.output_path);
@@ -232,6 +236,18 @@ impl VideoExporter {
         path: &Path,
         audio_duration_seconds: f64,
     ) -> Result<VideoProbe, VideoExportError> {
+        self.probe_with_callbacks(path, audio_duration_seconds, || false)
+    }
+
+    pub fn probe_with_callbacks<C>(
+        &self,
+        path: &Path,
+        audio_duration_seconds: f64,
+        mut is_cancelled: C,
+    ) -> Result<VideoProbe, VideoExportError>
+    where
+        C: FnMut() -> bool,
+    {
         if !audio_duration_seconds.is_finite() || audio_duration_seconds <= 0.0 {
             return Err(VideoExportError::InvalidAudioDuration {
                 duration: audio_duration_seconds,
@@ -247,7 +263,7 @@ impl VideoExporter {
             OsString::from("-show_format"),
             path.as_os_str().to_owned(),
         ];
-        let output = run_process(&self.ffprobe_command, &args, || false, |_| {})?;
+        let output = run_process(&self.ffprobe_command, &args, &mut is_cancelled, |_| {})?;
         let json = String::from_utf8_lossy(&output.stdout);
         Ok(Self::validate_probe_json(&json, audio_duration_seconds)?)
     }
