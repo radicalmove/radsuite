@@ -145,9 +145,21 @@ pub struct RadtTsSynthesisRequest {
     #[serde(default = "default_output_format")]
     pub output_format: RadtTsOutputFormat,
     #[serde(default)]
-    pub media_format: MediaOutputFormat,
+    pub media_format: Option<MediaOutputFormat>,
     pub output_name: String,
     pub acknowledge_voice_clone: bool,
+}
+
+impl RadtTsSynthesisRequest {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
+
+    fn normalize_media_format(&mut self) {
+        let media_format = self.normalized_media_format();
+        self.media_format = Some(media_format);
+        self.output_format = media_format.into();
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -327,8 +339,9 @@ const TERMINATION_GRACE: Duration = Duration::from_secs(2);
 
 pub async fn start_radt_ts_synthesis(
     state: &DesktopState,
-    request: RadtTsSynthesisRequest,
+    mut request: RadtTsSynthesisRequest,
 ) -> Result<RadtTsJobStatus, RadtTsError> {
+    request.normalize_media_format();
     let capability = discover_radt_ts_cli_async().await;
     let supports_builtin_voices = capability.supports_builtin_voices;
     let executable = capability
@@ -740,7 +753,7 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
                         output_from_cli_result(
                             &project_root,
                             request.project_id,
-                            request.media_format,
+                            request.normalized_media_format(),
                             result,
                         )
                     });
@@ -998,8 +1011,6 @@ fn output_from_cli_result(
             "output identity did not match the active project".to_string(),
         ));
     }
-    persist_output_media_format(&metadata_path, requested_media_format)?;
-    persist_output_manifest_media_format(project_root, &metadata, requested_media_format)?;
     output_from_metadata(project_root, &metadata, Some(requested_media_format))
 }
 
@@ -1042,74 +1053,6 @@ fn output_from_metadata(
         duration_seconds: metadata.duration_seconds,
         created_at: metadata.created_at.clone(),
     })
-}
-
-fn persist_output_media_format(
-    metadata_path: &Path,
-    media_format: MediaOutputFormat,
-) -> Result<(), RadtTsError> {
-    let mut value: serde_json::Value = serde_json::from_slice(&fs::read(metadata_path)?)
-        .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?;
-    let object = value.as_object_mut().ok_or_else(|| {
-        RadtTsError::InvalidCliResult("RADTTS output metadata must be a JSON object".to_string())
-    })?;
-    object.insert(
-        "media_format".to_string(),
-        serde_json::to_value(media_format)
-            .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?,
-    );
-    fs::write(
-        metadata_path,
-        serde_json::to_vec_pretty(&value)
-            .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?,
-    )?;
-    Ok(())
-}
-
-fn persist_output_manifest_media_format(
-    project_root: &Path,
-    metadata: &RadtTsOutputMetadata,
-    media_format: MediaOutputFormat,
-) -> Result<(), RadtTsError> {
-    let manifest_path = project_root.join("manifests").join("outputs.json");
-    let raw = match fs::read(&manifest_path) {
-        Ok(raw) => raw,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(()),
-        Err(error) => return Err(RadtTsError::Io(error)),
-    };
-    let mut value: serde_json::Value = serde_json::from_slice(&raw)
-        .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?;
-    let outputs = value.as_array_mut().ok_or_else(|| {
-        RadtTsError::InvalidCliResult("RADTTS outputs manifest must be a JSON array".to_string())
-    })?;
-    let mut updated = false;
-    for item in outputs.iter_mut() {
-        let Some(object) = item.as_object_mut() else {
-            continue;
-        };
-        let matches_job = object.get("job_id").and_then(serde_json::Value::as_str)
-            == Some(metadata.job_id.as_str());
-        let matches_output = object
-            .get("output_file")
-            .and_then(serde_json::Value::as_str)
-            == Some(metadata.output_file.as_str());
-        if matches_job || matches_output {
-            object.insert(
-                "media_format".to_string(),
-                serde_json::to_value(media_format)
-                    .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?,
-            );
-            updated = true;
-        }
-    }
-    if updated {
-        fs::write(
-            &manifest_path,
-            serde_json::to_vec_pretty(&value)
-                .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?,
-        )?;
-    }
-    Ok(())
 }
 
 pub(crate) fn contained_file(root: &Path, path: &Path) -> Result<PathBuf, RadtTsError> {
@@ -1213,7 +1156,9 @@ pub fn build_synthesis_args(
         "--pause-max".to_string(),
         request.pause_max_seconds.to_string(),
         "--output-format".to_string(),
-        request.output_format.as_cli_value().to_string(),
+        RadtTsOutputFormat::from(request.normalized_media_format())
+            .as_cli_value()
+            .to_string(),
         "--output-name".to_string(),
         request.output_name.clone(),
     ];
@@ -1516,7 +1461,7 @@ mod tests {
     }
 
     #[test]
-    fn persists_requested_mp4_voice_format_for_later_listing() {
+    fn does_not_rewrite_legacy_voice_artifacts_when_reconstructing_mp4() {
         let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
         let output_path = root.join("outputs/voice.wav");
         let metadata_path = root.join("manifests/voice.metadata.json");
@@ -1535,16 +1480,12 @@ mod tests {
             project_id: project_id.to_string(),
             job_id: "job-1".to_string(),
         };
-        fs::write(
-            &metadata_path,
-            serde_json::to_vec(&metadata).expect("serialize metadata"),
-        )
-        .expect("write metadata");
-        fs::write(
-            root.join("manifests/outputs.json"),
-            serde_json::to_vec(&vec![metadata.clone()]).expect("serialize outputs manifest"),
-        )
-        .expect("write outputs manifest");
+        let metadata_bytes = serde_json::to_vec(&metadata).expect("serialize metadata");
+        fs::write(&metadata_path, &metadata_bytes).expect("write metadata");
+        let outputs_bytes =
+            serde_json::to_vec(&vec![metadata.clone()]).expect("serialize outputs manifest");
+        fs::write(root.join("manifests/outputs.json"), &outputs_bytes)
+            .expect("write outputs manifest");
         let result = RadtTsCliResult {
             job_id: "job-1".to_string(),
             status: "completed".to_string(),
@@ -1560,16 +1501,67 @@ mod tests {
             .expect("voice output should reconstruct");
         assert_eq!(output.media_format, Some(MediaOutputFormat::Mp4));
 
-        let persisted: Vec<RadtTsOutputMetadata> = serde_json::from_slice(
-            &fs::read(root.join("manifests/outputs.json")).expect("read outputs manifest"),
-        )
-        .expect("parse outputs manifest");
-        assert_eq!(persisted[0].media_format, Some(MediaOutputFormat::Mp4));
-        let listed = output_from_metadata(&root, &persisted[0], None)
-            .expect("persisted voice output should list");
-        assert_eq!(listed.output_format, RadtTsOutputFormat::Wav);
-        assert_eq!(listed.media_format, Some(MediaOutputFormat::Mp4));
+        assert_eq!(
+            fs::read(&metadata_path).expect("read metadata"),
+            metadata_bytes
+        );
+        assert_eq!(
+            fs::read(root.join("manifests/outputs.json")).expect("read outputs manifest"),
+            outputs_bytes
+        );
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn lower_level_voice_api_normalizes_media_before_cli_arguments() {
+        let mut request = RadtTsSynthesisRequest {
+            project_id: ProjectId::new(),
+            text: "A short script.".to_string(),
+            voice_source: RadtTsVoiceSource::Builtin,
+            reference_audio_path: None,
+            reference_text: None,
+            built_in_speaker: Some("Vivian".to_string()),
+            built_in_instruct: None,
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Sentence,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.75,
+            pause_seed: None,
+            max_new_tokens: 1200,
+            output_format: RadtTsOutputFormat::Mp3,
+            media_format: Some(MediaOutputFormat::Mp4),
+            output_name: "intro".to_string(),
+            acknowledge_voice_clone: false,
+        };
+        request.normalize_media_format();
+        assert_eq!(request.media_format, Some(MediaOutputFormat::Mp4));
+        assert_eq!(request.output_format, RadtTsOutputFormat::Wav);
+        let args = build_synthesis_args(
+            &request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+            true,
+        )
+        .expect("normalized request should build");
+        assert!(args.contains(&"wav".to_string()));
+        assert!(!args.contains(&"mp4".to_string()));
+
+        let mut legacy_request = request;
+        legacy_request.media_format = None;
+        legacy_request.output_format = RadtTsOutputFormat::Wav;
+        legacy_request.normalize_media_format();
+        assert_eq!(legacy_request.media_format, Some(MediaOutputFormat::Wav));
+        assert_eq!(legacy_request.output_format, RadtTsOutputFormat::Wav);
+        let legacy_args = build_synthesis_args(
+            &legacy_request,
+            PathBuf::from("/tmp/project"),
+            PathBuf::from("/tmp/script.txt"),
+            None,
+            true,
+        )
+        .expect("legacy request should build");
+        assert!(legacy_args.contains(&"wav".to_string()));
     }
 
     #[test]
@@ -1602,7 +1594,7 @@ mod tests {
             pause_seed: Some(42),
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Wav,
-            media_format: MediaOutputFormat::Wav,
+            media_format: Some(MediaOutputFormat::Wav),
             output_name: "intro_v2".to_string(),
             acknowledge_voice_clone: true,
         };
@@ -1661,7 +1653,7 @@ mod tests {
             pause_seed: None,
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
-            media_format: MediaOutputFormat::Mp3,
+            media_format: Some(MediaOutputFormat::Mp3),
             output_name: "intro".to_string(),
             acknowledge_voice_clone: true,
         };
@@ -1696,7 +1688,7 @@ mod tests {
             pause_seed: None,
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
-            media_format: MediaOutputFormat::Mp3,
+            media_format: Some(MediaOutputFormat::Mp3),
             output_name: "intro".to_string(),
             acknowledge_voice_clone: false,
         };
@@ -1730,7 +1722,7 @@ mod tests {
             pause_seed: None,
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
-            media_format: MediaOutputFormat::Mp3,
+            media_format: Some(MediaOutputFormat::Mp3),
             output_name: "intro".to_string(),
             acknowledge_voice_clone: false,
         };
@@ -1775,7 +1767,7 @@ mod tests {
             pause_seed: None,
             max_new_tokens: 63,
             output_format: RadtTsOutputFormat::Mp3,
-            media_format: MediaOutputFormat::Mp3,
+            media_format: Some(MediaOutputFormat::Mp3),
             output_name: "intro".to_string(),
             acknowledge_voice_clone: true,
         };

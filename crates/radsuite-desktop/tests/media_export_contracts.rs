@@ -185,6 +185,19 @@ fn legacy_requests_and_settings_fall_back_to_output_format() {
     }))
     .unwrap();
     assert_eq!(voice.normalized_media_format(), MediaOutputFormat::Wav);
+
+    let clip: StartRadtTsClipRequest = serde_json::from_value(json!({
+        "audio_path": "/tmp/lecture.mp3",
+        "segments_json_path": "/tmp/lecture.segments.json",
+        "output_name": "clip",
+        "start_time": 0.0,
+        "end_time": 1.0,
+        "verification_mode": "strict",
+        "output_format": "wav"
+    }))
+    .unwrap();
+    assert_eq!(clip.media_format, None);
+    assert_eq!(clip.normalized_media_format(), MediaOutputFormat::Wav);
 }
 
 #[test]
@@ -206,9 +219,11 @@ fn new_wire_values_emit_both_fields_with_wav_placeholder_for_mp4() {
     assert_eq!(settings.media_format, Some(MediaOutputFormat::Mp4));
     assert_eq!(settings.output_format, AudioOutputFormat::Wav);
 
-    let mut settings = RadcastProjectSettings::default();
-    settings.media_format = Some(MediaOutputFormat::Mp4);
-    settings.output_format = AudioOutputFormat::Wav;
+    let settings = RadcastProjectSettings {
+        media_format: Some(MediaOutputFormat::Mp4),
+        output_format: AudioOutputFormat::Wav,
+        ..RadcastProjectSettings::default()
+    };
     let serialized = serde_json::to_value(&settings).unwrap();
     assert_eq!(serialized["media_format"], Value::from("mp4"));
     assert_eq!(serialized["output_format"], Value::from("wav"));

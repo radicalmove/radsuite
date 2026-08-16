@@ -726,20 +726,11 @@ fn parse_media_output(
             let clip_path = contained_media_file(project_root, Path::new(&result.clip_path))?;
             let report_path = contained_media_file(project_root, Path::new(&result.report_path))?;
             let mut warnings = result.warnings;
-            let report = if let Ok(report) =
-                serde_json::from_slice::<ClipBoundaryReport>(&fs::read(&report_path)?)
-            {
-                Some(report)
-            } else {
-                None
-            };
+            let report =
+                serde_json::from_slice::<ClipBoundaryReport>(&fs::read(&report_path)?).ok();
             let report_media_format = report.as_ref().and_then(|report| report.media_format);
-            let report_is_valid = report.is_some();
             if let Some(report) = report {
                 warnings.extend(report.warnings);
-            }
-            if let Some(media_format) = requested_media_format.filter(|_| report_is_valid) {
-                persist_clip_media_format(&report_path, media_format)?;
             }
             warnings.sort();
             warnings.dedup();
@@ -1051,30 +1042,6 @@ fn list_clips(root: &Path) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaError> {
     Ok(outputs)
 }
 
-fn persist_clip_media_format(
-    report_path: &Path,
-    media_format: MediaOutputFormat,
-) -> Result<(), RadtTsMediaError> {
-    let mut value: serde_json::Value = serde_json::from_slice(&fs::read(report_path)?)
-        .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?;
-    let object = value.as_object_mut().ok_or_else(|| {
-        RadtTsMediaError::InvalidCliResult(
-            "RADTTS clip boundary report must be a JSON object".to_string(),
-        )
-    })?;
-    object.insert(
-        "media_format".to_string(),
-        serde_json::to_value(media_format)
-            .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?,
-    );
-    fs::write(
-        report_path,
-        serde_json::to_vec_pretty(&value)
-            .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?,
-    )?;
-    Ok(())
-}
-
 fn contained_media_file(root: &Path, path: &Path) -> Result<PathBuf, RadtTsMediaError> {
     contained_file(root, path).map_err(|error| RadtTsMediaError::InvalidOutput(error.to_string()))
 }
@@ -1280,7 +1247,7 @@ mod tests {
     }
 
     #[test]
-    fn reconstructs_requested_mp4_clip_output_from_wav_cli_artifact() {
+    fn does_not_rewrite_legacy_clip_reports_when_reconstructing_mp4() {
         let root =
             std::env::temp_dir().join(format!("radsuite-radt-ts-tools-{}", uuid::Uuid::new_v4()));
         let clip_path = root.join("assets/source_audio/video-clip.wav");
@@ -1289,8 +1256,8 @@ mod tests {
         fs::create_dir_all(report_path.parent().expect("report parent"))
             .expect("create report dir");
         fs::write(&clip_path, [0_u8; 8]).expect("create clip artifact");
-        fs::write(&report_path, r#"{"warnings":[],"media_format":"wav"}"#)
-            .expect("create boundary report");
+        let report_bytes = br#"{"warnings":[],"media_format":"wav"}"#.to_vec();
+        fs::write(&report_path, &report_bytes).expect("create boundary report");
         let root = root.canonicalize().expect("canonicalize test directory");
         let stdout = br#"{"clip_path":"assets/source_audio/video-clip.wav","report_path":"manifests/video-clip.clip.boundary.json","warnings":[]}"#;
 
@@ -1306,12 +1273,11 @@ mod tests {
 
         assert_eq!(output.output_format, Some(RadtTsOutputFormat::Wav));
         assert_eq!(output.media_format, Some(MediaOutputFormat::Mp4));
-        let persisted: serde_json::Value = serde_json::from_slice(
-            &fs::read(root.join("manifests/video-clip.clip.boundary.json"))
-                .expect("read persisted boundary report"),
-        )
-        .expect("parse persisted boundary report");
-        assert_eq!(persisted["media_format"], "mp4");
+        assert_eq!(
+            fs::read(root.join("manifests/video-clip.clip.boundary.json"))
+                .expect("read boundary report"),
+            report_bytes
+        );
         fs::remove_dir_all(root).expect("remove test directory");
     }
 
