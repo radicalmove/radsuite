@@ -36,8 +36,11 @@ pub enum ProcessError {
         #[source]
         source: io::Error,
     },
-    #[error("{executable} was cancelled")]
-    Cancelled { executable: PathBuf },
+    #[error("{executable} was cancelled (cleanup diagnostics: {diagnostics:?})")]
+    Cancelled {
+        executable: PathBuf,
+        diagnostics: Vec<String>,
+    },
     #[error("could not terminate {executable} (pid {pid}): {source}")]
     Terminate {
         executable: PathBuf,
@@ -223,9 +226,10 @@ where
                 Err(error) => {
                     termination_diagnostics.push(format!("child status polling failed: {error}"));
                     cancelled = true;
-                    if termination_retry_allowed(termination_attempts)
-                        && termination_deadline.is_some_and(|deadline| Instant::now() < deadline)
-                    {
+                    if termination_deadline.is_none() {
+                        termination_deadline = Some(Instant::now() + CLEANUP_TIMEOUT);
+                    }
+                    if termination_retry_allowed(termination_attempts) {
                         termination_attempts += 1;
                         #[cfg(windows)]
                         {
@@ -302,6 +306,25 @@ where
     if let Some(error) = reader_error {
         output_diagnostics.push(format!("output reader failed: {error}"));
     }
+    if cancelled {
+        termination_diagnostics.extend(output_diagnostics);
+        if status.is_some() {
+            return Err(ProcessError::Cancelled {
+                executable,
+                diagnostics: termination_diagnostics,
+            });
+        }
+        if termination_diagnostics.is_empty() {
+            termination_diagnostics.push(format!(
+                "child pid {child_pid} cancellation did not produce a terminal status"
+            ));
+        }
+        return Err(ProcessError::Terminate {
+            executable,
+            pid: child_pid,
+            source: io::Error::other(combine_diagnostics(&termination_diagnostics)),
+        });
+    }
     if !termination_diagnostics.is_empty() {
         termination_diagnostics.extend(output_diagnostics);
         return Err(ProcessError::Terminate {
@@ -316,10 +339,6 @@ where
             source: io::Error::other(combine_diagnostics(&output_diagnostics)),
         });
     }
-    if cancelled {
-        return Err(ProcessError::Cancelled { executable });
-    }
-
     let status = status.ok_or_else(|| ProcessError::Io {
         executable: executable.clone(),
         source: io::Error::other("child exited without an exit status"),
@@ -656,6 +675,15 @@ impl WindowsProcessControl {
     fn terminate(&self, child: &Child, diagnostics: &mut Vec<String>) {
         let diagnostic_count = diagnostics.len();
         let mut job_terminated = false;
+
+        // taskkill must run while the original root is alive. Checking the process handle's
+        // identity first prevents a reused numeric PID from targeting an unrelated process.
+        let taskkill_error = match windows_process_is_alive(child) {
+            Ok(true) => terminate_windows_process_tree(child.id()).err(),
+            Ok(false) => None,
+            Err(error) => Some(error),
+        };
+
         if !self.use_pid_tree {
             if let Some(job) = self.job.as_ref() {
                 match job.terminate() {
@@ -667,9 +695,7 @@ impl WindowsProcessControl {
             }
         }
 
-        // The PID-tree action closes the race between Job Object assignment and descendant
-        // creation, and is also the fallback when assignment was unavailable.
-        if let Err(error) = terminate_windows_process_tree(child.id()) {
+        if let Some(error) = taskkill_error {
             if !job_terminated {
                 diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
             }
@@ -678,6 +704,34 @@ impl WindowsProcessControl {
         if diagnostics.len() > diagnostic_count {
             diagnostics.extend(self.diagnostics.iter().cloned());
         }
+    }
+}
+
+#[cfg(windows)]
+fn windows_process_is_alive(child: &Child) -> io::Result<bool> {
+    use std::os::windows::io::AsRawHandle;
+    use windows_sys::Win32::Foundation::{WAIT_FAILED, WAIT_OBJECT_0, WAIT_TIMEOUT};
+    use windows_sys::Win32::System::Threading::{GetProcessId, WaitForSingleObject};
+
+    let handle = child.as_raw_handle() as windows_sys::Win32::Foundation::HANDLE;
+    let process_id = unsafe { GetProcessId(handle) };
+    if process_id == 0 {
+        return Err(io::Error::last_os_error());
+    }
+    if process_id != child.id() {
+        return Err(io::Error::other(format!(
+            "child process handle PID {process_id} does not match expected PID {}",
+            child.id()
+        )));
+    }
+
+    match unsafe { WaitForSingleObject(handle, 0) } {
+        WAIT_TIMEOUT => Ok(true),
+        WAIT_OBJECT_0 => Ok(false),
+        WAIT_FAILED => Err(io::Error::last_os_error()),
+        result => Err(io::Error::other(format!(
+            "unexpected process wait result: {result}"
+        ))),
     }
 }
 
@@ -814,14 +868,14 @@ mod tests {
 
     #[test]
     fn reader_join_does_not_block_past_its_deadline() {
-        let handle = thread::spawn(|| thread::sleep(Duration::from_secs(30)));
+        let handle = thread::spawn(|| thread::sleep(Duration::from_millis(25)));
         let started = Instant::now();
         let mut diagnostics = Vec::new();
 
         join_reader_thread(
             handle,
             "stdout",
-            Instant::now() + Duration::from_millis(20),
+            Instant::now() + Duration::from_millis(1),
             &mut diagnostics,
         );
 

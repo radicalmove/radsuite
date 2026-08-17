@@ -261,6 +261,7 @@ impl VideoExporter {
             return Err(with_cleanup(
                 VideoExportError::Process(ProcessError::Cancelled {
                     executable: self.ffprobe_command.clone(),
+                    diagnostics: Vec::new(),
                 }),
                 &[partial_path.as_path()],
             ));
@@ -498,7 +499,7 @@ fn promote_partial_output(partial_path: &Path, output_path: &Path) -> Result<(),
         return Err(with_cleanup(cause, &paths));
     }
 
-    finish_promotion(&promotion_path, partial_path)
+    finish_promotion(&promotion_path, partial_path, output_path)
 }
 
 fn stage_partial_output(
@@ -549,26 +550,40 @@ fn stage_partial_output(
     Ok(promotion_path)
 }
 
-fn finish_promotion(promotion_path: &Path, partial_path: &Path) -> Result<(), VideoExportError> {
-    if let Err(source) = fs::remove_file(promotion_path) {
-        return Err(VideoExportError::CleanupAfterPromotion {
-            partial_path: partial_path.to_path_buf(),
-            cleanup_failures: vec![CleanupFailure {
-                path: promotion_path.to_path_buf(),
-                message: source.to_string(),
-            }],
-        });
+fn finish_promotion(
+    promotion_path: &Path,
+    partial_path: &Path,
+    output_path: &Path,
+) -> Result<(), VideoExportError> {
+    let mut cleanup_failures = Vec::new();
+    for path in [promotion_path, partial_path] {
+        match fs::remove_file(path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => cleanup_failures.push(CleanupFailure {
+                path: path.to_path_buf(),
+                message: error.to_string(),
+            }),
+        }
     }
-    if let Err(source) = fs::remove_file(partial_path) {
-        return Err(VideoExportError::CleanupAfterPromotion {
-            partial_path: partial_path.to_path_buf(),
-            cleanup_failures: vec![CleanupFailure {
-                path: partial_path.to_path_buf(),
-                message: source.to_string(),
-            }],
-        });
+    if cleanup_failures.is_empty() {
+        return Ok(());
     }
-    Ok(())
+
+    // The canonical entry was created by this exporter. Roll it back on every post-promotion
+    // cleanup failure so a retry cannot be blocked by an output that was reported as failed.
+    match fs::remove_file(output_path) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+        Err(error) => cleanup_failures.push(CleanupFailure {
+            path: output_path.to_path_buf(),
+            message: format!("canonical output rollback failed: {error}"),
+        }),
+    }
+    Err(VideoExportError::CleanupAfterPromotion {
+        partial_path: partial_path.to_path_buf(),
+        cleanup_failures,
+    })
 }
 
 fn with_cleanup(cause: VideoExportError, paths: &[&Path]) -> VideoExportError {
@@ -687,6 +702,58 @@ mod tests {
         );
         assert!(partial.exists());
         assert!(!output.exists());
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn post_promotion_cleanup_failure_rolls_back_canonical_output() {
+        let suffix = process::id();
+        let directory =
+            std::env::temp_dir().join(format!("radsuite-video-promotion-rollback-{suffix}"));
+        fs::create_dir_all(&directory).expect("create promotion test directory");
+        let promotion = directory.join(".output.promotion.tmp");
+        let partial = directory.join("output.partial.mp4");
+        let output = directory.join("output.mp4");
+        fs::write(&promotion, b"complete staged output").expect("write staged output");
+        fs::create_dir(&partial).expect("create cleanup-failing partial path");
+        fs::write(&output, b"complete canonical output").expect("write canonical output");
+
+        let error = finish_promotion(&promotion, &partial, &output)
+            .expect_err("partial cleanup should fail");
+
+        assert!(matches!(
+            error,
+            VideoExportError::CleanupAfterPromotion { .. }
+        ));
+        assert!(!output.exists(), "canonical output must be rolled back");
+        assert!(!promotion.exists());
+        assert!(partial.exists());
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn post_promotion_sibling_cleanup_failure_rolls_back_canonical_output() {
+        let suffix = process::id();
+        let directory =
+            std::env::temp_dir().join(format!("radsuite-video-promotion-sibling-{suffix}"));
+        fs::create_dir_all(&directory).expect("create promotion test directory");
+        let promotion = directory.join(".output.promotion.tmp");
+        let partial = directory.join("output.partial.mp4");
+        let output = directory.join("output.mp4");
+        fs::create_dir(&promotion).expect("create cleanup-failing promotion path");
+        fs::write(&partial, b"complete partial output").expect("write partial output");
+        fs::write(&output, b"complete canonical output").expect("write canonical output");
+
+        let error = finish_promotion(&promotion, &partial, &output)
+            .expect_err("promotion sibling cleanup should fail");
+
+        assert!(matches!(
+            error,
+            VideoExportError::CleanupAfterPromotion { .. }
+        ));
+        assert!(!output.exists(), "canonical output must be rolled back");
+        assert!(promotion.exists());
+        assert!(!partial.exists());
         let _ = fs::remove_dir_all(directory);
     }
 }

@@ -197,6 +197,76 @@ fn process_runner_cancels_a_temporary_executable_without_waiting_for_completion(
 
 #[cfg(unix)]
 #[test]
+fn process_runner_repeated_cancellation_is_deterministic() {
+    let dir = test_dir("repeated-cancel");
+    let script = write_executable(&dir, "long.sh", "#!/bin/sh\nsleep 30\n");
+
+    for _ in 0..8 {
+        let mut polls = 0;
+        let result = run_process(
+            &script,
+            &[],
+            || {
+                polls += 1;
+                polls > 3
+            },
+            |_| {},
+        );
+        assert!(matches!(result, Err(ProcessError::Cancelled { .. })));
+    }
+
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn process_runner_keeps_cancellation_primary_when_a_reader_times_out() {
+    let dir = test_dir("cancel-reader-timeout");
+    let detached_pid = dir.join("detached.pid");
+    let script = write_executable(
+        &dir,
+        "detached.sh",
+        &format!(
+            "#!/bin/sh\npython3 -c 'import os,time; os.setsid(); open(\"{}\",\"w\").write(str(os.getpid())); time.sleep(2)' &\nsleep 30\n",
+            detached_pid.display()
+        ),
+    );
+    let mut polls = 0;
+
+    let result = run_process(
+        &script,
+        &[],
+        || {
+            polls += 1;
+            detached_pid.is_file() || polls > 100
+        },
+        |_| {},
+    );
+
+    match result {
+        Err(ProcessError::Cancelled { diagnostics, .. }) => {
+            assert!(
+                diagnostics
+                    .iter()
+                    .any(|message| message.contains("reader thread"))
+            );
+        }
+        other => panic!("expected cancellation with reader diagnostics, got {other:?}"),
+    }
+
+    let pid = fs::read_to_string(&detached_pid)
+        .expect("detached process should publish its PID")
+        .trim()
+        .to_string();
+    let _ = std::process::Command::new("kill")
+        .args(["-9", &pid])
+        .status();
+    std::thread::sleep(Duration::from_millis(50));
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
 fn video_export_parses_ffmpeg_progress_relative_to_audio_duration() {
     let dir = test_dir("export-progress");
     let ffmpeg_output_path = dir.join("ffmpeg-output-path");
@@ -467,14 +537,16 @@ fn video_export_cancellation_during_ffprobe_stops_without_succeeding() {
 
 #[cfg(windows)]
 #[test]
-fn process_runner_cancels_a_cmd_descendant_tree() {
+fn process_runner_cancels_a_powershell_descendant_tree() {
     let dir = test_dir("windows-tree");
-    let script = dir.join("tree.cmd");
+    let script = dir.join("tree.ps1");
     let descendant_pid = dir.join("descendant.pid");
+    let root_pid = dir.join("root.pid");
     fs::write(
         &script,
         &format!(
-            "@echo off\r\npowershell.exe -NoProfile -Command \"$p = Start-Process ping.exe -ArgumentList '127.0.0.1','-n','30' -PassThru; Set-Content -LiteralPath '{}' -Value $p.Id; Wait-Process -Id $p.Id\"\r\nping 127.0.0.1 -n 30 >NUL\r\n",
+            "Set-Content -LiteralPath '{}' -Value $PID\n$p = Start-Process ping.exe -ArgumentList '127.0.0.1','-n','30' -PassThru\nSet-Content -LiteralPath '{}' -Value $p.Id\nWait-Process -Id $p.Id\n",
+            root_pid.display(),
             descendant_pid.display()
         ),
     )
@@ -483,10 +555,12 @@ fn process_runner_cancels_a_cmd_descendant_tree() {
     let mut polls = 0;
 
     let result = run_process(
-        Path::new("cmd.exe"),
+        Path::new("powershell.exe"),
         &[
-            OsString::from("/D"),
-            OsString::from("/C"),
+            OsString::from("-NoProfile"),
+            OsString::from("-ExecutionPolicy"),
+            OsString::from("Bypass"),
+            OsString::from("-File"),
             script.as_os_str().to_owned(),
         ],
         || {
@@ -498,26 +572,39 @@ fn process_runner_cancels_a_cmd_descendant_tree() {
 
     assert!(matches!(result, Err(ProcessError::Cancelled { .. })));
     assert!(started.elapsed() < Duration::from_secs(5));
+    let root_pid = fs::read_to_string(&root_pid)
+        .expect("root should publish its PID")
+        .trim()
+        .parse::<u32>()
+        .expect("root PID should be numeric");
     let descendant_pid = fs::read_to_string(&descendant_pid)
         .expect("descendant should publish its PID")
         .trim()
         .parse::<u32>()
         .expect("descendant PID should be numeric");
-    let pid_filter = format!("PID eq {descendant_pid}");
-    let mut descendant_still_running = true;
+    let pid_filters = [root_pid, descendant_pid]
+        .into_iter()
+        .map(|pid| format!("PID eq {pid}"))
+        .collect::<Vec<_>>();
+    let mut processes_still_running = true;
     for _ in 0..40 {
-        let tasklist = std::process::Command::new("tasklist")
-            .args(["/FI", &pid_filter, "/FO", "CSV", "/NH"])
-            .output()
-            .expect("query descendant process");
-        let tasklist_output = String::from_utf8_lossy(&tasklist.stdout);
-        if !tasklist_output.contains(&format!("\"{descendant_pid}\"")) {
-            descendant_still_running = false;
+        let tasklist_output = pid_filters
+            .iter()
+            .map(|pid_filter| {
+                std::process::Command::new("tasklist")
+                    .args(["/FI", pid_filter, "/FO", "CSV", "/NH"])
+                    .output()
+                    .expect("query process")
+            })
+            .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
+            .collect::<Vec<_>>();
+        if tasklist_output.iter().all(|output| !output.contains('"')) {
+            processes_still_running = false;
             break;
         }
         std::thread::sleep(Duration::from_millis(50));
     }
-    assert!(!descendant_still_running);
+    assert!(!processes_still_running);
     remove_dir(dir);
 }
 
