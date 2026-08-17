@@ -110,8 +110,11 @@ pub enum VideoExportError {
         #[source]
         source: std::io::Error,
     },
-    #[error("video export cleanup failed after promotion: {cleanup_failures:?}")]
+    #[error(
+        "video export cleanup failed after promotion (partial retained at {partial_path}): {cleanup_failures:?}"
+    )]
     CleanupAfterPromotion {
+        partial_path: PathBuf,
         cleanup_failures: Vec<CleanupFailure>,
     },
     #[error("{cause}; cleanup failures: {cleanup_failures:?}")]
@@ -427,6 +430,26 @@ fn unique_partial_path(output_path: &Path) -> PathBuf {
     }
 }
 
+fn unique_promotion_path(output_path: &Path) -> PathBuf {
+    let filename = output_path
+        .file_name()
+        .and_then(|value| value.to_str())
+        .unwrap_or("video.mp4");
+    loop {
+        let counter = PARTIAL_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let path = output_path
+            .parent()
+            .unwrap_or_else(|| Path::new("."))
+            .join(format!(
+                ".{filename}.promotion-{}-{counter}.tmp",
+                process::id()
+            ));
+        if !path.exists() {
+            return path;
+        }
+    }
+}
+
 fn promote_partial_output(partial_path: &Path, output_path: &Path) -> Result<(), VideoExportError> {
     if output_path.exists() {
         return Err(with_cleanup(
@@ -437,51 +460,68 @@ fn promote_partial_output(partial_path: &Path, output_path: &Path) -> Result<(),
         ));
     }
 
-    if let Err(hard_link_error) = fs::hard_link(partial_path, output_path) {
-        let cause = if hard_link_error.kind() == std::io::ErrorKind::AlreadyExists {
+    let promotion_path = stage_partial_output(partial_path, output_path)?;
+
+    if output_path.exists() {
+        return Err(with_cleanup(
+            VideoExportError::OutputExists {
+                path: output_path.to_path_buf(),
+            },
+            &[promotion_path.as_path(), partial_path],
+        ));
+    }
+
+    // A hard link is an atomic, no-replace directory-entry operation on the same filesystem.
+    // The staged copy remains available if this operation fails, so the canonical output is
+    // never exposed until the complete file has been promoted.
+    if let Err(source) = fs::hard_link(&promotion_path, output_path) {
+        let cause = if source.kind() == io::ErrorKind::AlreadyExists {
             VideoExportError::OutputExists {
                 path: output_path.to_path_buf(),
             }
         } else {
-            return promote_by_no_replace_copy(partial_path, output_path, hard_link_error);
+            VideoExportError::PromoteOutput {
+                source: io::Error::new(
+                    source.kind(),
+                    format!(
+                        "atomic no-replace promotion of partial video {} failed: {source}",
+                        partial_path.display()
+                    ),
+                ),
+            }
         };
-        return Err(with_cleanup(cause, &[partial_path]));
+        let paths = if matches!(&cause, VideoExportError::OutputExists { .. }) {
+            vec![promotion_path.as_path(), partial_path]
+        } else {
+            vec![promotion_path.as_path()]
+        };
+        return Err(with_cleanup(cause, &paths));
     }
 
-    finish_promotion(partial_path, output_path)
+    finish_promotion(&promotion_path, partial_path)
 }
 
-fn promote_by_no_replace_copy(
+fn stage_partial_output(
     partial_path: &Path,
     output_path: &Path,
-    hard_link_error: io::Error,
-) -> Result<(), VideoExportError> {
+) -> Result<PathBuf, VideoExportError> {
+    let promotion_path = unique_promotion_path(output_path);
     let mut destination = match fs::OpenOptions::new()
         .write(true)
         .create_new(true)
-        .open(output_path)
+        .open(&promotion_path)
     {
         Ok(destination) => destination,
-        Err(error) if error.kind() == io::ErrorKind::AlreadyExists => {
-            return Err(with_cleanup(
-                VideoExportError::OutputExists {
-                    path: output_path.to_path_buf(),
-                },
-                &[partial_path],
-            ));
-        }
         Err(error) => {
-            return Err(with_cleanup(
-                VideoExportError::PromoteOutput {
-                    source: io::Error::new(
-                        error.kind(),
-                        format!(
-                            "hard-link promotion failed: {hard_link_error}; no-replace copy destination failed: {error}"
-                        ),
+            return Err(VideoExportError::PromoteOutput {
+                source: io::Error::new(
+                    error.kind(),
+                    format!(
+                        "failed to create promotion sibling for partial video {}: {error}",
+                        partial_path.display()
                     ),
-                },
-                &[partial_path],
-            ));
+                ),
+            });
         }
     };
 
@@ -496,25 +536,37 @@ fn promote_by_no_replace_copy(
             source: io::Error::new(
                 error.kind(),
                 format!(
-                    "hard-link promotion failed: {hard_link_error}; no-replace copy failed: {error}"
+                    "failed to stage partial video {} in {}: {error}",
+                    partial_path.display(),
+                    promotion_path.display()
                 ),
             ),
         };
-        return Err(with_cleanup(cause, &[output_path]));
+        return Err(with_cleanup(cause, &[promotion_path.as_path()]));
     }
 
     drop(destination);
-    finish_promotion(partial_path, output_path)
+    Ok(promotion_path)
 }
 
-fn finish_promotion(partial_path: &Path, output_path: &Path) -> Result<(), VideoExportError> {
+fn finish_promotion(promotion_path: &Path, partial_path: &Path) -> Result<(), VideoExportError> {
+    if let Err(source) = fs::remove_file(promotion_path) {
+        return Err(VideoExportError::CleanupAfterPromotion {
+            partial_path: partial_path.to_path_buf(),
+            cleanup_failures: vec![CleanupFailure {
+                path: promotion_path.to_path_buf(),
+                message: source.to_string(),
+            }],
+        });
+    }
     if let Err(source) = fs::remove_file(partial_path) {
-        let mut cleanup_failures = vec![CleanupFailure {
-            path: partial_path.to_path_buf(),
-            message: source.to_string(),
-        }];
-        cleanup_failures.extend(cleanup_owned_paths(&[output_path]));
-        return Err(VideoExportError::CleanupAfterPromotion { cleanup_failures });
+        return Err(VideoExportError::CleanupAfterPromotion {
+            partial_path: partial_path.to_path_buf(),
+            cleanup_failures: vec![CleanupFailure {
+                path: partial_path.to_path_buf(),
+                message: source.to_string(),
+            }],
+        });
     }
     Ok(())
 }
@@ -605,16 +657,34 @@ mod tests {
         let output = directory.join("output.mp4");
         fs::create_dir(&partial).expect("create invalid partial source");
 
-        let result = promote_by_no_replace_copy(
-            &partial,
-            &output,
-            io::Error::other("hard links unavailable"),
-        );
+        let result = stage_partial_output(&partial, &output);
 
         assert!(matches!(
             result,
             Err(VideoExportError::PromoteOutput { .. })
         ));
+        assert!(partial.exists());
+        assert!(!output.exists());
+        let _ = fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn promotion_staging_failure_reports_the_partial_source() {
+        let suffix = process::id();
+        let directory =
+            std::env::temp_dir().join(format!("radsuite-video-promotion-report-{suffix}"));
+        fs::create_dir_all(&directory).expect("create promotion test directory");
+        let partial = directory.join("output.partial.mp4");
+        let output = directory.join("output.mp4");
+        fs::create_dir(&partial).expect("create invalid partial source");
+
+        let error = promote_partial_output(&partial, &output).expect_err("staging should fail");
+
+        assert!(
+            error
+                .to_string()
+                .contains(partial.to_string_lossy().as_ref())
+        );
         assert!(partial.exists());
         assert!(!output.exists());
         let _ = fs::remove_dir_all(directory);

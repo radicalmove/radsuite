@@ -470,9 +470,13 @@ fn video_export_cancellation_during_ffprobe_stops_without_succeeding() {
 fn process_runner_cancels_a_cmd_descendant_tree() {
     let dir = test_dir("windows-tree");
     let script = dir.join("tree.cmd");
+    let descendant_pid = dir.join("descendant.pid");
     fs::write(
         &script,
-        "@echo off\r\nstart \"\" /b cmd /c \"ping 127.0.0.1 -n 30 >NUL\"\r\nping 127.0.0.1 -n 30 >NUL\r\n",
+        &format!(
+            "@echo off\r\npowershell.exe -NoProfile -Command \"$p = Start-Process ping.exe -ArgumentList '127.0.0.1','-n','30' -PassThru; Set-Content -LiteralPath '{}' -Value $p.Id; Wait-Process -Id $p.Id\"\r\nping 127.0.0.1 -n 30 >NUL\r\n",
+            descendant_pid.display()
+        ),
     )
     .expect("write Windows process tree script");
     let started = std::time::Instant::now();
@@ -487,13 +491,33 @@ fn process_runner_cancels_a_cmd_descendant_tree() {
         ],
         || {
             polls += 1;
-            polls > 3
+            descendant_pid.is_file() || polls > 100
         },
         |_| {},
     );
 
     assert!(matches!(result, Err(ProcessError::Cancelled { .. })));
     assert!(started.elapsed() < Duration::from_secs(5));
+    let descendant_pid = fs::read_to_string(&descendant_pid)
+        .expect("descendant should publish its PID")
+        .trim()
+        .parse::<u32>()
+        .expect("descendant PID should be numeric");
+    let pid_filter = format!("PID eq {descendant_pid}");
+    let mut descendant_still_running = true;
+    for _ in 0..40 {
+        let tasklist = std::process::Command::new("tasklist")
+            .args(["/FI", &pid_filter, "/FO", "CSV", "/NH"])
+            .output()
+            .expect("query descendant process");
+        let tasklist_output = String::from_utf8_lossy(&tasklist.stdout);
+        if !tasklist_output.contains(&format!("\"{descendant_pid}\"")) {
+            descendant_still_running = false;
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(50));
+    }
+    assert!(!descendant_still_running);
     remove_dir(dir);
 }
 

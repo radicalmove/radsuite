@@ -5,13 +5,15 @@ use std::{
     process::{Child, Command, ExitStatus, Stdio},
     sync::mpsc::{self, Receiver, Sender},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use thiserror::Error;
 
 const POLL_INTERVAL: Duration = Duration::from_millis(10);
 const MAX_TERMINATION_ATTEMPTS: usize = 3;
+const CLEANUP_TIMEOUT: Duration = Duration::from_millis(500);
+const READER_JOIN_TIMEOUT: Duration = Duration::from_millis(500);
 
 #[derive(Debug)]
 pub struct ProcessOutput {
@@ -36,9 +38,10 @@ pub enum ProcessError {
     },
     #[error("{executable} was cancelled")]
     Cancelled { executable: PathBuf },
-    #[error("could not terminate {executable}: {source}")]
+    #[error("could not terminate {executable} (pid {pid}): {source}")]
     Terminate {
         executable: PathBuf,
+        pid: u32,
         #[source]
         source: io::Error,
     },
@@ -92,6 +95,7 @@ where
         executable: executable.clone(),
         source,
     })?;
+    let child_pid = child.id();
 
     #[cfg(windows)]
     process_control.assign(&child);
@@ -145,6 +149,8 @@ where
     let mut termination_diagnostics = Vec::new();
     let mut termination_attempts = 0;
     let mut cleanup_exhausted = false;
+    let mut termination_deadline = None;
+    let mut reader_deadline = None;
 
     while status.is_none() || reader_count < 2 {
         drain_events(
@@ -158,16 +164,25 @@ where
         );
 
         if status.is_none() && !cancelled && is_cancelled() {
+            termination_deadline = Some(Instant::now() + CLEANUP_TIMEOUT);
             #[cfg(windows)]
             {
                 termination_attempts += 1;
-                status =
-                    terminate_child(&mut child, &process_control, &mut termination_diagnostics);
+                status = terminate_child(
+                    &mut child,
+                    &process_control,
+                    &mut termination_diagnostics,
+                    termination_deadline.expect("termination deadline was set"),
+                );
             }
             #[cfg(not(windows))]
             {
                 termination_attempts += 1;
-                status = terminate_child(&mut child, &mut termination_diagnostics);
+                status = terminate_child(
+                    &mut child,
+                    &mut termination_diagnostics,
+                    termination_deadline.expect("termination deadline was set"),
+                );
             }
             cancelled = true;
         }
@@ -176,7 +191,9 @@ where
             match child.try_wait() {
                 Ok(Some(next_status)) => status = Some(next_status),
                 Ok(None) if cancelled => {
-                    if termination_retry_allowed(termination_attempts) {
+                    if termination_retry_allowed(termination_attempts)
+                        && termination_deadline.is_some_and(|deadline| Instant::now() < deadline)
+                    {
                         termination_attempts += 1;
                         #[cfg(windows)]
                         {
@@ -184,16 +201,21 @@ where
                                 &mut child,
                                 &process_control,
                                 &mut termination_diagnostics,
+                                termination_deadline.expect("termination deadline was set"),
                             );
                         }
                         #[cfg(not(windows))]
                         {
-                            status = terminate_child(&mut child, &mut termination_diagnostics);
+                            status = terminate_child(
+                                &mut child,
+                                &mut termination_diagnostics,
+                                termination_deadline.expect("termination deadline was set"),
+                            );
                         }
                     } else {
                         cleanup_exhausted = true;
                         termination_diagnostics.push(format!(
-                            "child termination did not reap after {MAX_TERMINATION_ATTEMPTS} attempts"
+                            "child pid {child_pid} termination did not reap before the bounded cleanup deadline after {MAX_TERMINATION_ATTEMPTS} attempts"
                         ));
                     }
                 }
@@ -201,7 +223,9 @@ where
                 Err(error) => {
                     termination_diagnostics.push(format!("child status polling failed: {error}"));
                     cancelled = true;
-                    if termination_retry_allowed(termination_attempts) {
+                    if termination_retry_allowed(termination_attempts)
+                        && termination_deadline.is_some_and(|deadline| Instant::now() < deadline)
+                    {
                         termination_attempts += 1;
                         #[cfg(windows)]
                         {
@@ -209,29 +233,36 @@ where
                                 &mut child,
                                 &process_control,
                                 &mut termination_diagnostics,
+                                termination_deadline.expect("termination deadline was set"),
                             );
                         }
                         #[cfg(not(windows))]
                         {
-                            status = terminate_child(&mut child, &mut termination_diagnostics);
+                            status = terminate_child(
+                                &mut child,
+                                &mut termination_diagnostics,
+                                termination_deadline.expect("termination deadline was set"),
+                            );
                         }
                     } else {
                         cleanup_exhausted = true;
                         termination_diagnostics.push(format!(
-                            "child termination did not reap after {MAX_TERMINATION_ATTEMPTS} attempts"
+                            "child pid {child_pid} termination did not reap before the bounded cleanup deadline after {MAX_TERMINATION_ATTEMPTS} attempts"
                         ));
                     }
                 }
             }
         }
 
-        if cleanup_exhausted && status.is_none() {
-            match child.wait() {
-                Ok(next_status) => status = Some(next_status),
-                Err(error) => termination_diagnostics.push(format!(
-                    "final child wait after termination retry budget failed: {error}"
-                )),
-            }
+        if status.is_some() && reader_deadline.is_none() {
+            reader_deadline = Some(Instant::now() + READER_JOIN_TIMEOUT);
+        }
+
+        if cleanup_exhausted {
+            break;
+        }
+
+        if reader_deadline.is_some_and(|deadline| reader_count < 2 && Instant::now() >= deadline) {
             break;
         }
 
@@ -241,12 +272,19 @@ where
     }
 
     let mut output_diagnostics = Vec::new();
-    if stdout_thread.join().is_err() {
-        output_diagnostics.push("stdout reader thread panicked".to_string());
-    }
-    if stderr_thread.join().is_err() {
-        output_diagnostics.push("stderr reader thread panicked".to_string());
-    }
+    let join_deadline = reader_deadline.unwrap_or_else(|| Instant::now() + READER_JOIN_TIMEOUT);
+    join_reader_thread(
+        stdout_thread,
+        "stdout",
+        join_deadline,
+        &mut output_diagnostics,
+    );
+    join_reader_thread(
+        stderr_thread,
+        "stderr",
+        join_deadline,
+        &mut output_diagnostics,
+    );
 
     drain_events(
         &receiver,
@@ -268,6 +306,7 @@ where
         termination_diagnostics.extend(output_diagnostics);
         return Err(ProcessError::Terminate {
             executable,
+            pid: child_pid,
             source: io::Error::other(combine_diagnostics(&termination_diagnostics)),
         });
     }
@@ -331,6 +370,26 @@ where
             }
         }
     })
+}
+
+fn join_reader_thread(
+    handle: thread::JoinHandle<()>,
+    stream_name: &str,
+    deadline: Instant,
+    diagnostics: &mut Vec<String>,
+) {
+    while !handle.is_finished() && Instant::now() < deadline {
+        thread::sleep(POLL_INTERVAL);
+    }
+    if handle.is_finished() {
+        if handle.join().is_err() {
+            diagnostics.push(format!("{stream_name} reader thread panicked"));
+        }
+    } else {
+        diagnostics.push(format!(
+            "{stream_name} reader thread did not exit before the bounded cleanup deadline"
+        ));
+    }
 }
 
 fn drain_events<P>(
@@ -407,7 +466,8 @@ fn combine_setup_diagnostics(message: &str, cleanup_diagnostics: &[String]) -> S
     }
 }
 
-fn kill_and_wait(child: &mut Child) -> io::Result<ExitStatus> {
+fn kill_and_wait(child: &mut Child, deadline: Instant) -> io::Result<ExitStatus> {
+    let pid = child.id();
     let kill_error = match child.kill() {
         Ok(()) => None,
         Err(error)
@@ -420,25 +480,45 @@ fn kill_and_wait(child: &mut Child) -> io::Result<ExitStatus> {
         }
         Err(error) => Some(error),
     };
-    let wait_result = child.wait();
-    match (kill_error, wait_result) {
-        (None, Ok(status)) => Ok(status),
-        (Some(kill_error), Ok(_)) => Err(io::Error::new(
-            kill_error.kind(),
-            format!("child kill failed but child was reaped: {kill_error}"),
-        )),
-        (None, Err(wait_error)) => Err(wait_error),
-        (Some(kill_error), Err(wait_error)) => Err(io::Error::new(
-            wait_error.kind(),
-            format!("child kill failed: {kill_error}; child wait failed: {wait_error}"),
-        )),
+
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => {
+                return match kill_error {
+                    None => Ok(status),
+                    Some(kill_error) => Err(io::Error::new(
+                        kill_error.kind(),
+                        format!("child pid {pid} kill failed but child was reaped: {kill_error}"),
+                    )),
+                };
+            }
+            Ok(None) if Instant::now() < deadline => thread::sleep(POLL_INTERVAL),
+            Ok(None) => {
+                let reap_error = io::Error::new(
+                    io::ErrorKind::TimedOut,
+                    format!("child pid {pid} was not reaped before the cleanup deadline"),
+                );
+                return Err(combine_cleanup_errors(kill_error, reap_error));
+            }
+            Err(reap_error) => return Err(combine_cleanup_errors(kill_error, reap_error)),
+        }
+    }
+}
+
+fn combine_cleanup_errors(kill_error: Option<io::Error>, reap_error: io::Error) -> io::Error {
+    match kill_error {
+        Some(kill_error) => io::Error::new(
+            reap_error.kind(),
+            format!("child kill failed: {kill_error}; child reap failed: {reap_error}"),
+        ),
+        None => reap_error,
     }
 }
 
 #[cfg(unix)]
 fn cleanup_spawned_child(child: &mut Child) -> Vec<String> {
     let mut diagnostics = Vec::new();
-    let _ = terminate_child(child, &mut diagnostics);
+    let _ = terminate_child(child, &mut diagnostics, Instant::now() + CLEANUP_TIMEOUT);
     diagnostics
 }
 
@@ -448,14 +528,19 @@ fn cleanup_spawned_child(
     process_control: &WindowsProcessControl,
 ) -> Vec<String> {
     let mut diagnostics = Vec::new();
-    let _ = terminate_child(child, process_control, &mut diagnostics);
+    let _ = terminate_child(
+        child,
+        process_control,
+        &mut diagnostics,
+        Instant::now() + CLEANUP_TIMEOUT,
+    );
     diagnostics
 }
 
 #[cfg(not(any(unix, windows)))]
 fn cleanup_spawned_child(child: &mut Child) -> Vec<String> {
     let mut diagnostics = Vec::new();
-    let _ = terminate_child(child, &mut diagnostics);
+    let _ = terminate_child(child, &mut diagnostics, Instant::now() + CLEANUP_TIMEOUT);
     diagnostics
 }
 
@@ -474,7 +559,11 @@ fn configure_windows_process_group(command: &mut Command) {
 }
 
 #[cfg(unix)]
-fn terminate_child(child: &mut Child, diagnostics: &mut Vec<String>) -> Option<ExitStatus> {
+fn terminate_child(
+    child: &mut Child,
+    diagnostics: &mut Vec<String>,
+    deadline: Instant,
+) -> Option<ExitStatus> {
     let pid = child.id() as libc::pid_t;
     let result = unsafe { libc::kill(-pid, libc::SIGKILL) };
     if result != 0 {
@@ -483,7 +572,7 @@ fn terminate_child(child: &mut Child, diagnostics: &mut Vec<String>) -> Option<E
             diagnostics.push(format!("Unix process-group termination failed: {source}"));
         }
     }
-    match kill_and_wait(child) {
+    match kill_and_wait(child, deadline) {
         Ok(status) => Some(status),
         Err(error) => {
             diagnostics.push(format!("Unix child kill/wait failed: {error}"));
@@ -493,8 +582,12 @@ fn terminate_child(child: &mut Child, diagnostics: &mut Vec<String>) -> Option<E
 }
 
 #[cfg(not(any(unix, windows)))]
-fn terminate_child(child: &mut Child, diagnostics: &mut Vec<String>) -> Option<ExitStatus> {
-    match kill_and_wait(child) {
+fn terminate_child(
+    child: &mut Child,
+    diagnostics: &mut Vec<String>,
+    deadline: Instant,
+) -> Option<ExitStatus> {
+    match kill_and_wait(child, deadline) {
         Ok(status) => Some(status),
         Err(error) => {
             diagnostics.push(format!("child kill/wait failed: {error}"));
@@ -508,9 +601,10 @@ fn terminate_child(
     child: &mut Child,
     process_control: &WindowsProcessControl,
     diagnostics: &mut Vec<String>,
+    deadline: Instant,
 ) -> Option<ExitStatus> {
     process_control.terminate(child, diagnostics);
-    match kill_and_wait(child) {
+    match kill_and_wait(child, deadline) {
         Ok(status) => Some(status),
         Err(error) => {
             diagnostics.push(format!("Windows child kill/wait failed: {error}"));
@@ -561,20 +655,22 @@ impl WindowsProcessControl {
 
     fn terminate(&self, child: &Child, diagnostics: &mut Vec<String>) {
         let diagnostic_count = diagnostics.len();
-        if self.use_pid_tree {
-            if let Err(error) = terminate_windows_process_tree(child.id()) {
-                diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
-                if let Some(job) = self.job.as_ref()
-                    && let Err(error) = job.terminate()
-                {
-                    diagnostics.push(format!("Windows Job Object termination failed: {error}"));
+        let mut job_terminated = false;
+        if !self.use_pid_tree {
+            if let Some(job) = self.job.as_ref() {
+                match job.terminate() {
+                    Ok(()) => job_terminated = true,
+                    Err(error) => {
+                        diagnostics.push(format!("Windows Job Object termination failed: {error}"))
+                    }
                 }
             }
-        } else if let Some(job) = self.job.as_ref()
-            && let Err(error) = job.terminate()
-        {
-            diagnostics.push(format!("Windows Job Object termination failed: {error}"));
-            if let Err(error) = terminate_windows_process_tree(child.id()) {
+        }
+
+        // The PID-tree action closes the race between Job Object assignment and descendant
+        // creation, and is also the fallback when assignment was unavailable.
+        if let Err(error) = terminate_windows_process_tree(child.id()) {
+            if !job_terminated {
                 diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
             }
         }
@@ -680,6 +776,7 @@ impl Drop for WindowsProcessJob {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
 
     #[cfg(unix)]
     #[test]
@@ -690,10 +787,50 @@ mod tests {
             .spawn()
             .expect("spawn test child");
 
-        let status = kill_and_wait(&mut child).expect("kill and wait for test child");
+        let status = kill_and_wait(&mut child, Instant::now() + Duration::from_secs(2))
+            .expect("kill and wait for test child");
 
         assert!(!status.success());
         assert!(started.elapsed() < Duration::from_secs(5));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn kill_and_wait_does_not_block_past_an_expired_deadline() {
+        let mut child = Command::new("sh")
+            .args(["-c", "sleep 30"])
+            .spawn()
+            .expect("spawn test child");
+        let started = std::time::Instant::now();
+
+        let error = kill_and_wait(&mut child, Instant::now() - Duration::from_millis(1))
+            .expect_err("expired cleanup deadline should be terminal");
+
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert!(error.to_string().contains("cleanup deadline"));
+        let _ = child.kill();
+        let _ = child.try_wait();
+    }
+
+    #[test]
+    fn reader_join_does_not_block_past_its_deadline() {
+        let handle = thread::spawn(|| thread::sleep(Duration::from_secs(30)));
+        let started = Instant::now();
+        let mut diagnostics = Vec::new();
+
+        join_reader_thread(
+            handle,
+            "stdout",
+            Instant::now() + Duration::from_millis(20),
+            &mut diagnostics,
+        );
+
+        assert!(started.elapsed() < Duration::from_secs(2));
+        assert!(
+            diagnostics
+                .iter()
+                .any(|message| message.contains("reader thread did not exit"))
+        );
     }
 
     #[test]
@@ -740,7 +877,8 @@ mod tests {
 
         let mut diagnostics = Vec::new();
         control.terminate(&child, &mut diagnostics);
-        let status = kill_and_wait(&mut child).expect("reap Windows test child");
+        let status = kill_and_wait(&mut child, Instant::now() + CLEANUP_TIMEOUT)
+            .expect("reap Windows test child");
         assert!(!status.success());
     }
 
@@ -754,7 +892,7 @@ mod tests {
         let started = std::time::Instant::now();
 
         terminate_windows_process_tree(child.id()).expect("terminate Windows process tree");
-        let _ = child.wait();
+        let _ = kill_and_wait(&mut child, Instant::now() + CLEANUP_TIMEOUT);
 
         assert!(started.elapsed() < Duration::from_secs(5));
     }
