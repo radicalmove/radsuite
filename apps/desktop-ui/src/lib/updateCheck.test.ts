@@ -16,28 +16,36 @@ describe("performStableUpdateCheck", () => {
   test("skips a non-forced check inside the daily interval without calling the API", async () => {
     const now = 10_000;
     const check = vi.fn(async () => update);
-    const result = await performStableUpdateCheck({ force: false, now, storage: memoryStorage(now - UPDATE_CHECK_INTERVAL_MS + 1), check });
-    expect(result).toEqual({ status: "skipped" });
+    const result = await performStableUpdateCheck({ force: false, now: () => now, storage: memoryStorage(now - UPDATE_CHECK_INTERVAL_MS + 1), check });
+    expect(result).toEqual({ kind: "skipped" });
     expect(check).not.toHaveBeenCalled();
   });
 
   test("a forced check bypasses the daily interval", async () => {
     const check = vi.fn(async () => null);
-    await expect(performStableUpdateCheck({ force: true, now: 10_000, storage: memoryStorage(9_999), check })).resolves.toEqual({ status: "current" });
+    await expect(performStableUpdateCheck({ force: true, now: () => 10_000, storage: memoryStorage(9_999), check })).resolves.toEqual({ kind: "current" });
     expect(check).toHaveBeenCalledOnce();
   });
 
   test("returns current when the API reports no update", async () => {
-    await expect(performStableUpdateCheck({ force: false, now: 10_000, storage: memoryStorage(null), check: async () => null })).resolves.toEqual({ status: "current" });
+    await expect(performStableUpdateCheck({ force: false, now: () => 10_000, storage: memoryStorage(null), check: async () => null })).resolves.toEqual({ kind: "current" });
   });
 
   test("returns an available dismissed update when the check is forced", async () => {
-    await expect(performStableUpdateCheck({ force: true, now: 10_000, storage: memoryStorage(null, "0.3.0"), check: async () => update })).resolves.toEqual({ status: "available", update });
+    await expect(performStableUpdateCheck({ force: true, now: () => 10_000, storage: memoryStorage(null, "0.3.0"), check: async () => update })).resolves.toEqual({ kind: "available", update });
   });
 
   test("rejects a failed check without recording a successful timestamp", async () => {
     const storage = memoryStorage(100);
-    await expect(performStableUpdateCheck({ force: true, now: 10_000, storage, check: async () => { throw new Error("offline"); } })).rejects.toThrow("offline");
+    await expect(performStableUpdateCheck({ force: true, now: () => 10_000, storage, check: async () => { throw new Error("offline"); } })).rejects.toThrow("offline");
     expect(readUpdateStorageState(storage).lastCheckedAt).toBe(100);
+  });
+
+  test("records the timestamp at successful check completion", async () => {
+    const storage = memoryStorage(null);
+    const now = vi.fn().mockReturnValueOnce(1_000).mockReturnValueOnce(2_000);
+    await performStableUpdateCheck({ force: false, now, storage, check: async () => null });
+    expect(now).toHaveBeenCalledTimes(2);
+    expect(readUpdateStorageState(storage).lastCheckedAt).toBe(2_000);
   });
 });

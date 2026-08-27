@@ -10,12 +10,12 @@ describe("stable update presentation", () => {
   });
 
   test("shows the installed version as current only for a manual check", () => {
-    expect(presentStableUpdateCheck({ status: "current" }, true, "0.2.7")).toEqual({ availableUpdate: null, currentMessage: "RADsuite 0.2.7 is up to date." });
-    expect(presentStableUpdateCheck({ status: "current" }, false, "0.2.7").currentMessage).toBeNull();
+    expect(presentStableUpdateCheck({ kind: "current" }, true, "0.2.7")).toEqual({ availableUpdate: null, currentMessage: "RADsuite 0.2.7 is up to date." });
+    expect(presentStableUpdateCheck({ kind: "current" }, false, "0.2.7").currentMessage).toBeNull();
   });
 
   test("preserves an available update and clears the current message", () => {
-    expect(presentStableUpdateCheck({ status: "available", update }, true, "0.2.7")).toEqual({ availableUpdate: update, currentMessage: null });
+    expect(presentStableUpdateCheck({ kind: "available", update }, true, "0.2.7")).toEqual({ availableUpdate: update, currentMessage: null });
   });
 
   test("formats update errors with one consistent prefix", () => {

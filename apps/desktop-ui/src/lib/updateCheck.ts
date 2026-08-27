@@ -8,13 +8,13 @@ import {
 } from "./updateState";
 
 export type StableUpdateCheckResult =
-  | { status: "skipped" }
-  | { status: "current" }
-  | { status: "available"; update: Update };
+  | { kind: "skipped" }
+  | { kind: "current" }
+  | { kind: "available"; update: Update };
 
 type StableUpdateCheckOptions = {
   force: boolean;
-  now: number;
+  now: () => number;
   storage: StorageLike | null;
   check: () => Promise<Update | null>;
 };
@@ -26,14 +26,14 @@ export async function performStableUpdateCheck({
   check,
 }: StableUpdateCheckOptions): Promise<StableUpdateCheckResult> {
   const state = readUpdateStorageState(storage);
-  if (!force && !shouldCheckForUpdate(now, state.lastCheckedAt)) {
-    return { status: "skipped" };
+  if (!force && !shouldCheckForUpdate(now(), state.lastCheckedAt)) {
+    return { kind: "skipped" };
   }
 
   const update = await check();
-  recordUpdateCheck(storage, now);
+  recordUpdateCheck(storage, now());
   if (update && shouldShowUpdateVersion(update.version, state.dismissedVersion, force)) {
-    return { status: "available", update };
+    return { kind: "available", update };
   }
-  return { status: "current" };
+  return { kind: "current" };
 }

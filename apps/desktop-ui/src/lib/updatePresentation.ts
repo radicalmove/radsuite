@@ -13,10 +13,10 @@ export function presentStableUpdateCheck(
   manual: boolean,
   installedVersion: string,
 ): StableUpdatePresentation {
-  if (result.status === "available") {
+  if (result.kind === "available") {
     return { availableUpdate: result.update, currentMessage: null };
   }
-  if (result.status === "current" && manual) {
+  if (result.kind === "current" && manual) {
     return {
       availableUpdate: null,
       currentMessage: `RADsuite ${installedVersion} is up to date.`,

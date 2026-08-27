@@ -945,11 +945,11 @@
     try {
       const result = await performStableUpdateCheck({
         force,
-        now: Date.now(),
+        now: Date.now,
         storage: browserStorage(),
         check: updaterApi.check,
       });
-      if (result.status === "skipped") return;
+      if (result.kind === "skipped") return;
       const presentation = presentStableUpdateCheck(
         result,
         force,
