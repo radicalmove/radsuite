@@ -36,6 +36,8 @@ The menu closes when:
 
 When opened, focus moves to the first actionable item. Arrow-key menu semantics are not required; normal Tab and Shift+Tab navigation is sufficient. Focus returns to the hamburger after Escape closes the menu.
 
+Outside-click dismissal leaves focus where the user clicked. Choosing a menu action allows that action to determine the next focus target; it does not force focus back to the hamburger.
+
 Selecting Help closes the menu and opens the existing Help modal. The moon button continues to switch appearance directly without opening the menu.
 
 ## Manual Update Check
@@ -47,7 +49,7 @@ The menu action is disabled and labelled **Checking for updates…** while a che
 The user receives one of three outcomes:
 
 - **Update available:** the existing update notice appears with **Update now** and **Later** actions.
-- **Already current:** a concise transient notice states that the installed RADsuite version is up to date.
+- **Already current:** a concise notice states that the installed RADsuite version is up to date, then dismisses automatically after five seconds. A subsequent check or update state replaces it immediately.
 - **Check failed:** the existing visible error-notice pattern explains that RADsuite could not check for updates.
 
 Opening an available update must not automatically install it. Installation continues through the existing signed Tauri updater flow and existing progress UI.
