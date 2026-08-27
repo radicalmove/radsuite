@@ -10,17 +10,18 @@
 
   let { version, checkingForUpdate, onCheckForUpdates, onOpenHelp }: Props = $props();
 
-  const menuId = "application-menu";
+  const menuId = `application-menu-${crypto.randomUUID()}`;
   let open = $state(false);
   let container = $state<HTMLDivElement>();
   let hamburger = $state<HTMLButtonElement>();
   let firstAction = $state<HTMLButtonElement>();
+  let helpAction = $state<HTMLButtonElement>();
 
   async function toggleMenu() {
     open = !open;
     if (open) {
       await tick();
-      firstAction?.focus();
+      (checkingForUpdate ? helpAction : firstAction)?.focus();
     }
   }
 
@@ -28,15 +29,28 @@
     if (open && !container?.contains(event.target as Node)) open = false;
   }
 
-  async function handleWindowKeydown(event: KeyboardEvent) {
+  function handleWindowKeydown(event: KeyboardEvent) {
     if (!open || event.key !== "Escape") return;
     open = false;
-    await tick();
     hamburger?.focus();
   }
-</script>
 
-<svelte:window onclick={handleWindowClick} onkeydown={handleWindowKeydown} />
+  async function runAction(callback: () => void) {
+    open = false;
+    await tick();
+    callback();
+  }
+
+  $effect(() => {
+    if (!open) return;
+    window.addEventListener("click", handleWindowClick);
+    window.addEventListener("keydown", handleWindowKeydown);
+    return () => {
+      window.removeEventListener("click", handleWindowClick);
+      window.removeEventListener("keydown", handleWindowKeydown);
+    };
+  });
+</script>
 
 <div class="application-menu" bind:this={container}>
   <button
@@ -58,12 +72,17 @@
         type="button"
         role="menuitem"
         disabled={checkingForUpdate}
-        onclick={onCheckForUpdates}
+        onclick={() => runAction(onCheckForUpdates)}
       >
         {checkingForUpdate ? "Checking for updates…" : "Check for updates"}
       </button>
-      <button type="button" role="menuitem" onclick={onOpenHelp}>Help</button>
-      <footer>Version {version}</footer>
+      <button
+        bind:this={helpAction}
+        type="button"
+        role="menuitem"
+        onclick={() => runAction(onOpenHelp)}>Help</button
+      >
+      <footer role="presentation">Version {version}</footer>
     </div>
   {/if}
 </div>

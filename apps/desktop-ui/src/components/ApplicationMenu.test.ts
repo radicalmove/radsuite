@@ -1,9 +1,6 @@
 // @vitest-environment happy-dom
 
-// Vitest resolves Svelte's public entry to its server build unless the whole Vite app is
-// configured for browser-only tests. Import the client runtime directly for this Happy DOM test.
-// @ts-expect-error Svelte does not publish declarations for its concrete client entry point.
-import { flushSync, mount, tick, unmount } from "../../node_modules/svelte/src/index-client.js";
+import { flushSync, mount, tick, unmount } from "svelte";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import ApplicationMenu from "./ApplicationMenu.svelte";
 
@@ -15,8 +12,10 @@ function render(overrides: Partial<{
   onCheckForUpdates: () => void;
   onOpenHelp: () => void;
 }> = {}) {
+  const target = document.createElement("div");
+  document.body.append(target);
   const component = mount(ApplicationMenu, {
-    target: document.body,
+    target,
     props: {
       version: "0.2.7",
       checkingForUpdate: false,
@@ -27,7 +26,7 @@ function render(overrides: Partial<{
   });
   mounted.push(component);
   return {
-    hamburger: document.querySelector<HTMLButtonElement>(
+    hamburger: target.querySelector<HTMLButtonElement>(
       'button[aria-label="Open application menu"]',
     )!,
   };
@@ -94,26 +93,40 @@ describe("ApplicationMenu", () => {
     expect(document.activeElement).toBe(hamburger);
   });
 
-  test("calls the Help callback", async () => {
-    const onOpenHelp = vi.fn();
-    const { hamburger } = render({ onOpenHelp });
+  test("closes before calling the Help callback without restoring trigger focus", async () => {
+    let hamburger: HTMLButtonElement;
+    const onOpenHelp = vi.fn(() => {
+      expect(hamburger.getAttribute("aria-expanded")).toBe("false");
+      expect(document.querySelector('[role="menu"]')).toBeNull();
+    });
+    ({ hamburger } = render({ onOpenHelp }));
     await click(hamburger);
-    await click(Array.from(document.querySelectorAll("button")).find(
+    const helpAction = Array.from(document.querySelectorAll("button")).find(
       (button) => button.textContent?.trim() === "Help",
-    )!);
+    )!;
+    await click(helpAction);
 
     expect(onOpenHelp).toHaveBeenCalledOnce();
+    expect(hamburger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).not.toBe(hamburger);
   });
 
-  test("calls the forced update callback", async () => {
-    const onCheckForUpdates = vi.fn();
-    const { hamburger } = render({ onCheckForUpdates });
+  test("closes before calling the forced update callback without restoring trigger focus", async () => {
+    let hamburger: HTMLButtonElement;
+    const onCheckForUpdates = vi.fn(() => {
+      expect(hamburger.getAttribute("aria-expanded")).toBe("false");
+      expect(document.querySelector('[role="menu"]')).toBeNull();
+    });
+    ({ hamburger } = render({ onCheckForUpdates }));
     await click(hamburger);
-    await click(Array.from(document.querySelectorAll("button")).find(
+    const updateAction = Array.from(document.querySelectorAll("button")).find(
       (button) => button.textContent?.trim() === "Check for updates",
-    )!);
+    )!;
+    await click(updateAction);
 
     expect(onCheckForUpdates).toHaveBeenCalledOnce();
+    expect(hamburger.getAttribute("aria-expanded")).toBe("false");
+    expect(document.activeElement).not.toBe(hamburger);
   });
 
   test("disables the update action while checking", async () => {
@@ -126,10 +139,42 @@ describe("ApplicationMenu", () => {
     expect(updateAction.disabled).toBe(true);
   });
 
+  test("focuses Help when the update action is disabled", async () => {
+    const { hamburger } = render({ checkingForUpdate: true });
+    await click(hamburger);
+    const helpAction = Array.from(document.querySelectorAll("button")).find(
+      (button) => button.textContent?.trim() === "Help",
+    );
+
+    expect(document.activeElement).toBe(helpAction);
+  });
+
+  test("uses a distinct menu id for each instance", async () => {
+    const first = render();
+    const second = render();
+
+    expect(first.hamburger.getAttribute("aria-controls")).not.toBe(
+      second.hamburger.getAttribute("aria-controls"),
+    );
+  });
+
+  test("removes window listeners when the menu closes", async () => {
+    const removeListener = vi.spyOn(window, "removeEventListener");
+    const { hamburger } = render();
+    await click(hamburger);
+    await click(hamburger);
+
+    expect(removeListener).toHaveBeenCalledWith("click", expect.any(Function));
+    expect(removeListener).toHaveBeenCalledWith("keydown", expect.any(Function));
+    removeListener.mockRestore();
+  });
+
   test("renders the application version", async () => {
     const { hamburger } = render({ version: "1.4.2" });
     await click(hamburger);
 
-    expect(document.querySelector('[role="menu"]')?.textContent).toContain("Version 1.4.2");
+    const footer = document.querySelector('[role="menu"] footer');
+    expect(footer?.textContent).toContain("Version 1.4.2");
+    expect(footer?.getAttribute("role")).toBe("presentation");
   });
 });
