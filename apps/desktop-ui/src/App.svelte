@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import CitationActionsPanel from "./components/CitationActionsPanel.svelte";
+  import ApplicationMenu from "./components/ApplicationMenu.svelte";
   import HelpModal from "./components/HelpModal.svelte";
   import ProjectSidebar from "./components/ProjectSidebar.svelte";
   import RadcastWorkspace from "./components/RadcastWorkspace.svelte";
@@ -40,13 +41,15 @@
   import { displayAppVersion } from "./lib/appVersion";
   import { setupLocalRuntimes } from "./lib/runtimeSetup";
   import { installUpdate, updaterApi, type UpdateProgress } from "./lib/updateCommands";
+  import { performStableUpdateCheck } from "./lib/updateCheck";
+  import {
+    UPDATE_CURRENT_NOTICE_MS,
+    formatUpdateCheckError,
+    presentStableUpdateCheck,
+  } from "./lib/updatePresentation";
   import {
     UPDATE_CHECK_INTERVAL_MS,
     dismissUpdateVersion,
-    readUpdateStorageState,
-    recordUpdateCheck,
-    shouldCheckForUpdate,
-    shouldShowUpdateVersion,
   } from "./lib/updateState";
   import {
     addModuleReading,
@@ -163,6 +166,8 @@
   let updateInstalling = $state(false);
   let updateProgress = $state<UpdateProgress | null>(null);
   let updateError = $state<string | null>(null);
+  let currentUpdateMessage = $state<string | null>(null);
+  let currentUpdateMessageTimer: number | null = null;
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? emptyProject,
@@ -925,23 +930,41 @@
     writeThemeStorage(browserStorage(), nextTheme);
   }
 
-  async function checkForStableUpdate(force = false) {
-    const storage = browserStorage();
-    const updateState = readUpdateStorageState(storage);
-    if (!force && !shouldCheckForUpdate(Date.now(), updateState.lastCheckedAt)) {
-      return;
+  function clearCurrentUpdateMessage() {
+    if (currentUpdateMessageTimer !== null) {
+      window.clearTimeout(currentUpdateMessageTimer);
+      currentUpdateMessageTimer = null;
     }
+    currentUpdateMessage = null;
+  }
 
+  async function checkForStableUpdate(force = false) {
+    clearCurrentUpdateMessage();
     updateChecking = true;
     updateError = null;
     try {
-      const update = await updaterApi.check();
-      recordUpdateCheck(storage, Date.now());
-      availableUpdate = shouldShowUpdateVersion(update?.version, updateState.dismissedVersion, true)
-        ? update
-        : null;
+      const result = await performStableUpdateCheck({
+        force,
+        now: Date.now(),
+        storage: browserStorage(),
+        check: updaterApi.check,
+      });
+      if (result.status === "skipped") return;
+      const presentation = presentStableUpdateCheck(
+        result,
+        force,
+        displayAppVersion(status.version),
+      );
+      availableUpdate = presentation.availableUpdate;
+      currentUpdateMessage = presentation.currentMessage;
+      if (currentUpdateMessage) {
+        currentUpdateMessageTimer = window.setTimeout(
+          clearCurrentUpdateMessage,
+          UPDATE_CURRENT_NOTICE_MS,
+        );
+      }
     } catch (reason: unknown) {
-      updateError = `Could not check for updates: ${toErrorMessage(reason)}`;
+      updateError = formatUpdateCheckError(reason);
     } finally {
       updateChecking = false;
     }
@@ -985,7 +1008,10 @@
       () => void checkForStableUpdate(),
       UPDATE_CHECK_INTERVAL_MS,
     );
-    return () => window.clearInterval(updateTimer);
+    return () => {
+      window.clearInterval(updateTimer);
+      clearCurrentUpdateMessage();
+    };
   });
 </script>
 
@@ -1043,46 +1069,12 @@
         <h2>{selectedProjectId ? `${selectedProject.code} · ${selectedProject.title}` : "Create a project to begin"}</h2>
       </div>
       <div class="status-strip" aria-label="Application status">
-        <span
-          class="version-chip"
-          title={`RADsuite application version ${displayAppVersion(status.version)}`}
-          aria-label={`RADsuite application version ${displayAppVersion(status.version)}`}
-        >
-          {displayAppVersion(status.version)}
-        </span>
-        <span
-          class="status-chip"
-          class:is-ready={status.database_ready}
-          title={status.database_ready
-            ? "Your work is saved locally and remains available offline."
-            : "RADsuite cannot currently save your work locally."}
-          aria-label={status.database_ready
-            ? "Saved locally"
-            : "Local saving unavailable"}
-        >
-          <span class="status-dot"></span>
-          <span>{status.database_ready ? "Saved locally" : "Local saving unavailable"}</span>
-        </span>
-        <span
-          class="status-chip"
-          class:is-ready={status.sync_configured}
-          title={status.sync_configured
-            ? "Cloud backup is connected."
-            : "Cloud backup is off; your work remains saved locally and is not copied to another device."}
-          aria-label={status.sync_configured ? "Cloud backup on" : "Cloud backup off"}
-        >
-          <span class="status-dot"></span>
-          <span>{status.sync_configured ? "Cloud backup on" : "Cloud backup off"}</span>
-        </span>
-        <button
-          class="help-button"
-          type="button"
-          aria-label="Open help"
-          title="Open help"
-          onclick={() => (helpOpen = true)}
-        >
-          Help
-        </button>
+        <ApplicationMenu
+          version={displayAppVersion(status.version)}
+          checkingForUpdate={updateChecking}
+          onCheckForUpdates={() => void checkForStableUpdate(true)}
+          onOpenHelp={() => (helpOpen = true)}
+        />
         <button
           class="theme-toggle"
           type="button"
@@ -1131,6 +1123,9 @@
     {/if}
     {#if updateError}
       <div class="notice">{updateError}</div>
+    {/if}
+    {#if currentUpdateMessage}
+      <div class="notice" role="status">{currentUpdateMessage}</div>
     {/if}
 
     {#if !selectedProjectId}
