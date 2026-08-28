@@ -47,6 +47,9 @@ describe("ApplicationMenu", () => {
   test("starts closed with menu button accessibility attributes", () => {
     const { hamburger } = render();
 
+    expect(hamburger.closest(".application-menu")).not.toBeNull();
+    expect(hamburger.classList.contains("application-menu-trigger")).toBe(true);
+    expect(hamburger.querySelectorAll(".application-menu-trigger-line")).toHaveLength(3);
     expect(hamburger.getAttribute("aria-haspopup")).toBe("menu");
     expect(hamburger.getAttribute("aria-expanded")).toBe("false");
     expect(hamburger.getAttribute("aria-controls")).toBeTruthy();
@@ -59,6 +62,9 @@ describe("ApplicationMenu", () => {
 
     const menu = document.querySelector<HTMLElement>('[role="menu"]')!;
     const firstAction = menu.querySelector<HTMLButtonElement>("button")!;
+    expect(menu.classList.contains("application-menu-panel")).toBe(true);
+    expect(menu.querySelector(".application-menu-actions")).not.toBeNull();
+    expect(menu.querySelectorAll(".application-menu-action")).toHaveLength(2);
     expect(hamburger.getAttribute("aria-expanded")).toBe("true");
     expect(menu.id).toBe(hamburger.getAttribute("aria-controls"));
     expect(firstAction.textContent).toContain("Check for updates");
@@ -174,6 +180,7 @@ describe("ApplicationMenu", () => {
     await click(hamburger);
 
     const footer = document.querySelector('[role="menu"] footer');
+    expect(footer?.classList.contains("application-menu-version")).toBe(true);
     expect(footer?.textContent).toContain("Version 1.4.2");
     expect(footer?.getAttribute("role")).toBe("presentation");
   });
