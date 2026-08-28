@@ -652,6 +652,15 @@ button:disabled {
   margin-left: auto;
 }
 
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--radcite-red);
+  box-shadow: 0 0 0 3px rgba(206, 62, 46, 0.14);
+  flex-shrink: 0;
+}
+
 .theme-toggle {
   display: inline-grid;
   place-items: center;

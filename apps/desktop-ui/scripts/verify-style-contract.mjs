@@ -18,6 +18,10 @@ const actionsPanel = readFileSync(
   "utf8",
 );
 const helpModal = readFileSync(resolve(root, "src/components/HelpModal.svelte"), "utf8");
+const applicationMenu = readFileSync(
+  resolve(root, "src/components/ApplicationMenu.svelte"),
+  "utf8",
+);
 const referencesWorkspace = readFileSync(
   resolve(root, "src/components/RadciteReferencesWorkspace.svelte"),
   "utf8",
@@ -50,9 +54,12 @@ const checks = [
   ["missing-citation warning uses red tint", ".status-warning"],
   ["warning references danger tint", "background: var(--danger-tint)"],
   ["selected paragraph has red edge", "border-left-color: var(--radcite-red)"],
-  ["status chip styling", ".status-chip"],
-  ["status dot styling", ".status-dot"],
-  ["help button styling", ".help-button"],
+  ["status dot base styling", ".status-dot {\n  width: 7px;"],
+  ["status dot keeps its circular shape", "border-radius: 50%"],
+  ["status dot ready styling", ".status-dot.is-ready"],
+  ["application menu styling", ".application-menu"],
+  ["application menu trigger styling", ".application-menu-trigger"],
+  ["application menu panel styling", ".application-menu-panel"],
   ["help modal styling", ".help-dialog"],
   ["help backdrop styling", ".help-backdrop"],
   ["status chips use square radius", "border-radius: var(--r-sm)"],
@@ -199,23 +206,32 @@ for (const needle of [
   }
 }
 
-for (const needle of [
-  "Saved locally",
-  "Local saving unavailable",
-  "Cloud backup on",
-  "Cloud backup off",
-  "title={",
-  "aria-label=",
-]) {
+for (const needle of ["title={", "aria-label="]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
   }
 }
 
-for (const needle of ["HelpModal", "helpOpen", "Open help"]) {
+for (const needle of ["HelpModal", "helpOpen"]) {
   if (!app.includes(needle)) {
     missing.push(`app includes ${needle}`);
   }
+}
+
+for (const needle of [
+  'class="application-menu"',
+  'class="application-menu-trigger"',
+  'class="application-menu-panel"',
+  'class="application-menu-actions"',
+  'class="application-menu-version"',
+]) {
+  if (!applicationMenu.includes(needle)) {
+    missing.push(`application menu includes ${needle}`);
+  }
+}
+
+if ((applicationMenu.match(/application-menu-trigger-line/g) ?? []).length !== 3) {
+  missing.push("application menu renders three hamburger lines");
 }
 
 for (const needle of ["Help and quick guide", "Frequently asked questions", "aria-modal=\"true\""]) {
