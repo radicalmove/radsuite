@@ -41,6 +41,7 @@
   import { displayAppVersion } from "./lib/appVersion";
   import { setupLocalRuntimes } from "./lib/runtimeSetup";
   import { installUpdate, updaterApi, type UpdateProgress } from "./lib/updateCommands";
+  import { createAsyncRequestGuard } from "./lib/asyncRequestGuard";
   import { performStableUpdateCheck } from "./lib/updateCheck";
   import {
     UPDATE_CURRENT_NOTICE_MS,
@@ -168,6 +169,7 @@
   let updateError = $state<string | null>(null);
   let currentUpdateMessage = $state<string | null>(null);
   let currentUpdateMessageTimer: number | null = null;
+  const updateCheckGuard = createAsyncRequestGuard();
 
   let selectedProject = $derived(
     projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? emptyProject,
@@ -939,6 +941,7 @@
   }
 
   async function checkForStableUpdate(force = false) {
+    const isCurrent = updateCheckGuard.begin();
     clearCurrentUpdateMessage();
     updateChecking = true;
     updateError = null;
@@ -949,6 +952,7 @@
         storage: browserStorage(),
         check: updaterApi.check,
       });
+      if (!isCurrent()) return;
       if (result.kind === "skipped") return;
       const presentation = presentStableUpdateCheck(
         result,
@@ -964,8 +968,10 @@
         );
       }
     } catch (reason: unknown) {
+      if (!isCurrent()) return;
       updateError = formatUpdateCheckError(reason);
     } finally {
+      if (!isCurrent()) return;
       updateChecking = false;
     }
   }
@@ -1009,6 +1015,7 @@
       UPDATE_CHECK_INTERVAL_MS,
     );
     return () => {
+      updateCheckGuard.dispose();
       window.clearInterval(updateTimer);
       clearCurrentUpdateMessage();
     };
