@@ -26,4 +26,8 @@ describe("application header source contract", () => {
     expect(source).toContain("UPDATE_CURRENT_NOTICE_MS");
     expect(source).toContain("currentUpdateMessage");
   });
+
+  test("uses the current release as the fallback display version", () => {
+    expect(source).toContain('version: "0.2.8"');
+  });
 });
