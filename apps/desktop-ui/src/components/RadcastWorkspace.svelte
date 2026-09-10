@@ -30,7 +30,7 @@
     normalizeRadcastTrimRange,
     shouldRestartRadcastPlayback,
   } from "../lib/radcastSettings";
-  import { saveLocalArtifact } from "../lib/fileDownload";
+  import { filenameFromPath, saveLocalArtifact } from "../lib/fileDownload";
 
   type Props = {
     selectedProjectId: string | null;
@@ -1172,7 +1172,7 @@
                   class="secondary-button compact-button"
                   type="button"
                   disabled={downloadingArtifact !== null}
-                  onclick={() => void downloadArtifact(output.caption_path!, `${output.filename}.${output.caption_format}`, "Caption file", output.caption_format!, output.caption_format!.toUpperCase())}
+                  onclick={() => void downloadArtifact(output.caption_path!, filenameFromPath(output.caption_path!, `captions.${output.caption_format}`), "Caption file", output.caption_format!, output.caption_format!.toUpperCase())}
                 >Download {output.caption_format.toUpperCase()}</button>
               {/if}
               {#if output.caption_review_path}
@@ -1180,7 +1180,7 @@
                   class="secondary-button compact-button"
                   type="button"
                   disabled={downloadingArtifact !== null}
-                  onclick={() => void downloadArtifact(output.caption_review_path!, `${output.filename}.review.txt`, "Caption review", "txt", "Caption review")}
+                  onclick={() => void downloadArtifact(output.caption_review_path!, filenameFromPath(output.caption_review_path!, `${output.filename}.review.txt`), "Caption review", "txt", "Caption review")}
                 >Download caption review</button>
               {/if}
             </div>
