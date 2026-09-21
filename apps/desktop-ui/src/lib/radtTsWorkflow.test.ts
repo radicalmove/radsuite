@@ -34,6 +34,8 @@ const draft: RadtTsDraft = {
   maxNewTokens: 1200,
   outputFormat: "mp3",
   mediaFormat: "mp3",
+  presenterImagePath: "",
+  savePresenterImageAsProjectDefault: false,
   outputName: "lesson-intro",
   acknowledgeVoiceClone: true,
 };
@@ -45,6 +47,8 @@ describe("RAD TTS workflow", () => {
     expect(buildRadtTsRequest(fresh, null)).toMatchObject({
       media_format: "mp3",
       output_format: "mp3",
+      presenter_image_path: null,
+      save_presenter_image_as_project_default: false,
     });
   });
 
@@ -65,6 +69,8 @@ describe("RAD TTS workflow", () => {
       max_new_tokens: 1200,
       media_format: "mp3",
       output_format: "mp3",
+      presenter_image_path: null,
+      save_presenter_image_as_project_default: false,
       output_name: "lesson-intro",
       acknowledge_voice_clone: true,
     });
@@ -79,8 +85,26 @@ describe("RAD TTS workflow", () => {
 
   it("keeps MP4 authoritative while sending WAV to the legacy CLI field", () => {
     expect(
-      buildRadtTsRequest({ ...draft, mediaFormat: "mp4", outputFormat: "mp3" }, "project-1"),
-    ).toMatchObject({ media_format: "mp4", output_format: "wav" });
+      buildRadtTsRequest({
+        ...draft,
+        mediaFormat: "mp4",
+        outputFormat: "mp3",
+        presenterImagePath: " /tmp/avatar.png ",
+        savePresenterImageAsProjectDefault: true,
+      }, "project-1"),
+    ).toMatchObject({
+      media_format: "mp4",
+      output_format: "wav",
+      presenter_image_path: "/tmp/avatar.png",
+      save_presenter_image_as_project_default: true,
+    });
+    expect(canStartRadtTs({ ...draft, mediaFormat: "mp4" }, capability)).toBe(false);
+    expect(
+      canStartRadtTs(
+        { ...draft, mediaFormat: "mp4", presenterImagePath: "/tmp/avatar.png" },
+        capability,
+      ),
+    ).toBe(true);
   });
 
   it("starts a new project from blank voice settings instead of carrying prior text", () => {

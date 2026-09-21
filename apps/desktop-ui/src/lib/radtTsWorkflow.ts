@@ -26,6 +26,8 @@ export type RadtTsDraft = {
   maxNewTokens: number;
   outputFormat: RadtTsOutputFormat;
   mediaFormat: MediaOutputFormat;
+  presenterImagePath: string;
+  savePresenterImageAsProjectDefault: boolean;
   outputName: string;
   acknowledgeVoiceClone: boolean;
 };
@@ -46,6 +48,8 @@ export type RadtTsVoicePreferences = Partial<
     | "maxNewTokens"
     | "outputFormat"
     | "mediaFormat"
+    | "presenterImagePath"
+    | "savePresenterImageAsProjectDefault"
     | "outputName"
   >
 >;
@@ -66,6 +70,8 @@ export function createDefaultRadtTsDraft(): RadtTsDraft {
     maxNewTokens: RADTTS_DEFAULT_NEW_TOKENS,
     outputFormat: "mp3",
     mediaFormat: "mp3",
+    presenterImagePath: "",
+    savePresenterImageAsProjectDefault: false,
     outputName: "voice-generation",
     acknowledgeVoiceClone: false,
   };
@@ -109,6 +115,8 @@ export type RadtTsRequest = {
   max_new_tokens: number;
   output_format: RadtTsOutputFormat;
   media_format: MediaOutputFormat;
+  presenter_image_path: string | null;
+  save_presenter_image_as_project_default: boolean;
   output_name: string;
   acknowledge_voice_clone: boolean;
 };
@@ -123,6 +131,7 @@ export function canStartRadtTs(
     draft.outputName.trim().length > 0 &&
     draft.pauseMinSeconds > 0 &&
     draft.pauseMaxSeconds >= draft.pauseMinSeconds &&
+    (draft.mediaFormat !== "mp4" || draft.presenterImagePath.trim().length > 0) &&
     (draft.voiceSource === "builtin"
       ? capability.supports_builtin_voices && draft.builtInSpeaker.trim().length > 0
       : draft.referenceAudioPath.trim().length > 0 && draft.acknowledgeVoiceClone)
@@ -176,6 +185,9 @@ export function buildRadtTsRequest(
     max_new_tokens: clampRadtTsMaxNewTokens(draft.maxNewTokens),
     output_format: mediaFormat === "mp3" ? "mp3" : "wav",
     media_format: mediaFormat,
+    presenter_image_path: mediaFormat === "mp4" ? draft.presenterImagePath.trim() : null,
+    save_presenter_image_as_project_default:
+      mediaFormat === "mp4" && draft.savePresenterImageAsProjectDefault,
     output_name: draft.outputName.trim(),
     acknowledge_voice_clone: draft.acknowledgeVoiceClone,
   };

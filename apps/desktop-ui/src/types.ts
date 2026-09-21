@@ -93,6 +93,7 @@ export type RadcastAudioOutput = {
   duration_seconds: number;
   output_format: AudioOutputFormat;
   media_format?: MediaOutputFormat;
+  image_path?: string;
   cleanup_enabled: boolean;
   clip_start_seconds: number | null;
   clip_end_seconds: number | null;
@@ -193,7 +194,7 @@ export type RadtTsCapabilityStatus = {
 
 export type RadtTsJobState = "starting" | "running" | "completed" | "failed" | "cancelled";
 
-export type RadtTsProcessingPhase = "preparing" | "generating" | "saving_output";
+export type RadtTsProcessingPhase = "preparing" | "generating" | "rendering_video" | "saving_output";
 
 export type RadtTsAudioOutput = {
   id: string;
@@ -201,6 +202,7 @@ export type RadtTsAudioOutput = {
   path: string;
   output_format: RadtTsOutputFormat;
   media_format?: MediaOutputFormat;
+  image_path?: string;
   caption_paths: string[];
   duration_seconds: number | null;
   created_at: string | null;

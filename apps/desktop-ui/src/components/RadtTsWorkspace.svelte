@@ -90,6 +90,8 @@
         maxNewTokens: draft.maxNewTokens,
         outputFormat: draft.mediaFormat === "mp3" ? "mp3" : "wav",
         mediaFormat: draft.mediaFormat,
+        presenterImagePath: draft.presenterImagePath,
+        savePresenterImageAsProjectDefault: draft.savePresenterImageAsProjectDefault,
         outputName: draft.outputName,
       },
     };
@@ -113,6 +115,7 @@
   function phaseLabel(value: RadtTsJobStatus["phase"]): string {
     if (value === "preparing") return "Preparing voice generation";
     if (value === "generating") return "Generating locally";
+    if (value === "rendering_video") return "Creating waveform video";
     return "Saving output";
   }
 
@@ -201,6 +204,21 @@
       if (path) draft.referenceAudioPath = path;
     } catch (reason: unknown) {
       error = `Could not choose reference audio: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function choosePresenterImage() {
+    error = null;
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "Presenter image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+      });
+      const path = typeof selected === "string" ? selected : selected?.[0];
+      if (path) draft.presenterImagePath = path;
+    } catch (reason: unknown) {
+      error = `Could not choose presenter image: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -453,14 +471,22 @@
         <select bind:value={draft.mediaFormat}>
           <option value="mp3">MP3</option>
           <option value="wav">WAV</option>
+          <option value="mp4">MP4 video</option>
         </select>
       </label>
+      {#if draft.mediaFormat === "mp4"}
+        <div class="radtts-video-options">
+          <label class="stack"><span>Presenter or avatar image</span><div class="radtts-reference-row"><input type="text" bind:value={draft.presenterImagePath} placeholder="Choose a PNG, JPEG, or WebP image" /><button class="secondary-button compact-button" type="button" disabled={processing} onclick={() => void choosePresenterImage()}>Choose image</button></div></label>
+          <label class="radtts-checkbox"><input type="checkbox" bind:checked={draft.savePresenterImageAsProjectDefault} /><span>Use this image for future videos in this project</span></label>
+          <small class="field-note">The exported video places the image beside a neutral white waveform that moves with the generated voice.</small>
+        </div>
+      {/if}
       <div class="radtts-processing-note">
         <span class="status-dot" class:is-ready={capability.available}></span>
         <span>{capability.available ? (capability.supports_builtin_voices ? "Reference and built-in voices are available locally." : "Reference voice generation is available locally.") : capabilityNotice(checkingCapability, capability)}</span>
       </div>
       <button class="primary-button radtts-process-button" type="button" disabled={startDisabled} onclick={() => void synthesize()}>
-        {processing ? "Generating" : "Generate voice audio"}
+        {processing ? "Generating" : draft.mediaFormat === "mp4" ? "Generate voice video" : "Generate voice audio"}
       </button>
     </section>
   </div>
@@ -479,18 +505,21 @@
           <article class="radtts-output-row">
             <div class="radtts-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}</span>
+              <span>{(output.media_format ?? output.output_format).toUpperCase()} · {formatDuration(output.duration_seconds)}</span>
             </div>
-            <audio controls src={convertFileSrc(output.path)}>
-              Your browser does not support audio playback.
-            </audio>
+            {#if output.media_format === "mp4"}
+              <!-- svelte-ignore a11y_media_has_caption: captions are generated separately when available -->
+              <video controls src={convertFileSrc(output.path)}>Your browser does not support video playback.</video>
+            {:else}
+              <audio controls src={convertFileSrc(output.path)}>Your browser does not support audio playback.</audio>
+            {/if}
             <div class="radtts-output-actions">
               <button
                 class="secondary-button compact-button"
                 type="button"
                 disabled={downloadingArtifact !== null}
-                onclick={() => void downloadArtifact(output.path, output.filename, "Audio", [output.output_format], "Audio")}
-              >Download audio</button>
+                onclick={() => void downloadArtifact(output.path, output.filename, output.media_format === "mp4" ? "Video" : "Audio", [output.media_format ?? output.output_format], output.media_format === "mp4" ? "Video" : "Audio")}
+              >Download {output.media_format === "mp4" ? "video" : "audio"}</button>
               {#each output.caption_paths as captionPath (captionPath)}
                 {@const captionFilename = filenameFromPath(captionPath, "captions.vtt")}
                 <button

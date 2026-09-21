@@ -31,6 +31,8 @@ export type RadtTsProjectPreferences = {
     maxNewTokens?: number;
     outputFormat?: "mp3" | "wav";
     mediaFormat?: "mp3" | "wav" | "mp4";
+    presenterImagePath?: string;
+    savePresenterImageAsProjectDefault?: boolean;
     outputName?: string;
   };
   transcription?: {
@@ -52,6 +54,8 @@ export type RadtTsProjectPreferences = {
     verificationMode?: "strict" | "lenient";
     outputFormat?: "mp3" | "wav";
     mediaFormat?: "mp3" | "wav" | "mp4";
+    presenterImagePath?: string;
+    savePresenterImageAsProjectDefault?: boolean;
   };
 };
 
