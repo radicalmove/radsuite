@@ -551,11 +551,18 @@
     settingsLoaded = false;
     error = null;
     try {
-      const result = await invoke<RadcastAudioListing>("list_radcast_audio", {
-        request: { project_id: selectedProjectId },
-      });
-      const capabilities = await invoke<RadcastCapabilityStatus>("get_radcast_capabilities");
+      presenterImagePath = "";
+      const [result, capabilities, savedPresenterImage] = await Promise.all([
+        invoke<RadcastAudioListing>("list_radcast_audio", {
+          request: { project_id: selectedProjectId },
+        }),
+        invoke<RadcastCapabilityStatus>("get_radcast_capabilities"),
+        invoke<string | null>("get_project_presenter_image", {
+          request: { project_id: selectedProjectId },
+        }),
+      ]);
       captionCapability = capabilities;
+      presenterImagePath = savedPresenterImage ?? "";
       outputFormat = result.settings.output_format;
       mediaFormat = result.settings.output_format;
       captionFormat = result.settings.caption_format;

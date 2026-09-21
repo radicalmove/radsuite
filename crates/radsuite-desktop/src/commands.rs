@@ -34,6 +34,7 @@ use crate::{
     DesktopState,
     document_store::{DocumentStorageError, store_source, validate_source},
     library_links::build_uc_library_link,
+    media_assets::ProjectMediaStore,
 };
 
 pub use crate::radcast::{
@@ -84,6 +85,25 @@ pub struct SaveRadcastSettingsRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
     pub settings: RadcastProjectSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectMediaRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+}
+
+pub async fn get_project_presenter_image(
+    state: &DesktopState,
+    request: ProjectMediaRequest,
+) -> Result<Option<String>, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    ProjectMediaStore::new(&state.paths.data_dir)
+        .saved_cover(&project.id.to_string())
+        .map(|image| image.map(|image| image.path().to_string_lossy().into_owned()))
+        .map_err(|error| error.to_string())
 }
 
 pub fn get_radcast_capabilities() -> RadcastCapabilityStatus {

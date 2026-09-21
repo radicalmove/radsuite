@@ -170,6 +170,12 @@
         "list_radt_ts_media_outputs",
         { request: { project_id: selectedProjectId } },
       );
+      const savedPresenterImage = await invoke<string | null>("get_project_presenter_image", {
+        request: { project_id: selectedProjectId },
+      });
+      if (!clip.presenterImagePath && savedPresenterImage) {
+        clip.presenterImagePath = savedPresenterImage;
+      }
       outputs = listing.outputs;
       if (!clip.segmentsJsonPath && listing.outputs.length > 0) {
         const latest = listing.outputs.find((output) => output.kind === "transcription");

@@ -19,15 +19,15 @@ use radsuite_desktop::{
     ModuleReadingImportCandidateSummary, ModuleReadingSummary, ModuleReadingsExport,
     ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
-    RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem, RadciteProjectSummary,
-    RadciteReviewReportExport, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsMediaJobStatus,
-    RadtTsMediaOutputListing, RadtTsOutputListing, RestoreRadciteArchiveItemRequest,
-    RestoreRadciteProjectRequest, SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest,
-    SavedRadciteReviewSummary, StartRadtTsClipRequest, StartRadtTsSynthesisRequest,
-    StartRadtTsTranscriptionRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
-    UpdateRadciteProjectRequest,
+    ProcessRadcastAudioRequest, ProjectMediaRequest, RadcastAudioListing, RadcastAudioOutput,
+    RadcastAudioSource, RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem,
+    RadciteProjectSummary, RadciteReviewReportExport, RadtTsCapabilityStatus, RadtTsJobStatus,
+    RadtTsMediaJobStatus, RadtTsMediaOutputListing, RadtTsOutputListing,
+    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
+    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
+    StartRadtTsClipRequest, StartRadtTsSynthesisRequest, StartRadtTsTranscriptionRequest,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, UpdateRadciteProjectRequest,
 };
 
 #[tauri::command]
@@ -299,6 +299,14 @@ async fn list_radt_ts_media_outputs(
     request: ListRadtTsOutputsRequest,
 ) -> Result<RadtTsMediaOutputListing, String> {
     radsuite_desktop::list_radt_ts_media_outputs(&state, request).await
+}
+
+#[tauri::command]
+async fn get_project_presenter_image(
+    state: tauri::State<'_, DesktopState>,
+    request: ProjectMediaRequest,
+) -> Result<Option<String>, String> {
+    radsuite_desktop::get_project_presenter_image(&state, request).await
 }
 
 #[tauri::command]
@@ -729,6 +737,7 @@ fn main() {
             get_radt_ts_job,
             cancel_radt_ts_job,
             list_radt_ts_media_outputs,
+            get_project_presenter_image,
             start_radt_ts_transcription,
             start_radt_ts_clip,
             get_radt_ts_media_job,

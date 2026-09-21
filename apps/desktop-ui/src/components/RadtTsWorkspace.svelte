@@ -165,6 +165,12 @@
       const listing = await invoke<{ outputs: RadtTsAudioOutput[] }>("list_radt_ts_outputs", {
         request: { project_id: selectedProjectId },
       });
+      const savedPresenterImage = await invoke<string | null>("get_project_presenter_image", {
+        request: { project_id: selectedProjectId },
+      });
+      if (!draft.presenterImagePath && savedPresenterImage) {
+        draft.presenterImagePath = savedPresenterImage;
+      }
       outputs = listing.outputs;
       settingsLoaded = true;
     } catch (reason: unknown) {
