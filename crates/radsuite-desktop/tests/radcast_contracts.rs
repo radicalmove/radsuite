@@ -229,6 +229,69 @@ async fn radcast_mp4_persists_video_and_managed_presenter_image_only() {
 }
 
 #[tokio::test]
+async fn radcast_mp4_failure_removes_scratch_audio_image_and_output_record() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = list_radcite_projects(&state).await.unwrap()[0].id;
+    let dir = test_dir("mp4-failure");
+    let source_path = dir.join("lecture.wav");
+    let image_path = dir.join("presenter.png");
+    fs::write(&source_path, b"source audio").unwrap();
+    fs::write(&image_path, b"\x89PNG\r\n\x1a\n").unwrap();
+    let audio = fake_processor(&dir);
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(project),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("lecture.wav".to_string()),
+        },
+        audio.clone(),
+    )
+    .await
+    .unwrap();
+
+    let error = process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video(
+        &state.paths.data_dir,
+        project,
+        mp4_request(project, source.id, &image_path),
+        audio,
+        CaptionProcessor::default(),
+        EnhancementProcessor::default(),
+        failing_video_exporter(&dir),
+        |_| {},
+        || false,
+    )
+    .expect_err("video failure must fail the RADcast job");
+    assert!(matches!(error, RadcastStorageError::VideoExport(_)));
+
+    let listing = list_radcast_audio(
+        &state,
+        ListRadcastAudioRequest {
+            project_id: Some(project),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(listing.outputs.is_empty());
+    let project_root = state
+        .paths
+        .data_dir
+        .join("radcast/projects")
+        .join(project.0.to_string());
+    let leaked: Vec<_> = walk_files(&project_root)
+        .into_iter()
+        .filter(|path| {
+            path.extension()
+                .and_then(|value| value.to_str())
+                .is_some_and(|ext| matches!(ext, "wav" | "mp4" | "png"))
+                && !path.to_string_lossy().contains("/sources/")
+        })
+        .collect();
+    assert!(leaked.is_empty(), "failed MP4 job leaked files: {leaked:?}");
+    remove_dir(dir);
+}
+
+#[tokio::test]
 async fn radcast_link_import_rejects_non_onedrive_urls_before_network_access() {
     let state = desktop_state_with_migrated_pool().await;
     let dir = test_dir("link-validation");
@@ -1092,6 +1155,54 @@ fn fake_video_exporter(dir: &Path) -> VideoExporter {
         "#!/bin/sh\nprintf '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"duration\":12.5}}'\n",
     );
     VideoExporter::from_commands(ffmpeg, ffprobe)
+}
+
+fn failing_video_exporter(dir: &Path) -> VideoExporter {
+    let ffmpeg = write_executable(dir, "failing-video-ffmpeg.sh", "#!/bin/sh\nexit 9\n");
+    VideoExporter::from_commands(ffmpeg, dir.join("unused-ffprobe"))
+}
+
+fn mp4_request(
+    project_id: radsuite_core::ProjectId,
+    source_id: String,
+    image_path: &Path,
+) -> ProcessRadcastAudioRequest {
+    ProcessRadcastAudioRequest {
+        project_id: Some(project_id),
+        source_id,
+        output_format: AudioOutputFormat::Wav,
+        media_format: Some(MediaOutputFormat::Mp4),
+        presenter_image_path: Some(image_path.to_string_lossy().into_owned()),
+        save_presenter_image_as_project_default: true,
+        clip_start_seconds: None,
+        clip_end_seconds: None,
+        cleanup_enabled: false,
+        max_silence_seconds: None,
+        caption_format: None,
+        caption_language: "en".to_string(),
+        caption_quality_mode: CaptionQualityMode::Reviewed,
+        caption_glossary: None,
+        enhancement_model: EnhancementModel::None,
+        enhancement_quality: EnhancementQuality::Standard,
+        remove_filler_words: false,
+        filler_removal_mode: FillerRemovalMode::Aggressive,
+    }
+}
+
+fn walk_files(root: &Path) -> Vec<PathBuf> {
+    if !root.exists() {
+        return Vec::new();
+    }
+    let mut files = Vec::new();
+    for entry in fs::read_dir(root).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            files.extend(walk_files(&path));
+        } else {
+            files.push(path);
+        }
+    }
+    files
 }
 
 fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {

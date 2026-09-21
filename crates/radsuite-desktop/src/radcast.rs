@@ -944,7 +944,7 @@ where
             phase: RadcastProcessingPhase::RenderingVideo,
             percent: 90,
         });
-        let video = video_exporter.export_with_callbacks(
+        let video_result = video_exporter.export_with_callbacks(
             VideoExportRequest::new(
                 staged.path(),
                 &audio_output_path,
@@ -958,7 +958,22 @@ where
                     percent: (90.0 + progress.clamp(0.0, 1.0) * 9.0).round() as u8,
                 });
             },
-        )?;
+        );
+        let video = match video_result {
+            Ok(video) => video,
+            Err(error) => {
+                let _ = fs::remove_file(&audio_output_path);
+                let _ = fs::remove_file(staged.path());
+                let _ = fs::remove_file(&output_path);
+                if let Some(path) = caption_path.as_deref() {
+                    let _ = fs::remove_file(path);
+                }
+                if let Some(path) = caption_quality.review_path.as_deref() {
+                    let _ = fs::remove_file(path);
+                }
+                return Err(error.into());
+            }
+        };
         let pending = media_store.prepare_commit(
             staged,
             Uuid::parse_str(&output_id).expect("RADcast output IDs are UUIDs"),
