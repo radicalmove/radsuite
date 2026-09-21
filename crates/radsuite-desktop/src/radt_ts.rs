@@ -146,6 +146,10 @@ pub struct RadtTsSynthesisRequest {
     pub output_format: RadtTsOutputFormat,
     #[serde(default)]
     pub media_format: Option<MediaOutputFormat>,
+    #[serde(default)]
+    pub presenter_image_path: Option<PathBuf>,
+    #[serde(default)]
+    pub save_presenter_image_as_project_default: bool,
     pub output_name: String,
     pub acknowledge_voice_clone: bool,
 }
@@ -198,6 +202,8 @@ pub struct RadtTsAudioOutput {
     pub output_format: RadtTsOutputFormat,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_path: Option<String>,
     pub caption_paths: Vec<String>,
     pub duration_seconds: Option<f64>,
     pub created_at: Option<String>,
@@ -253,6 +259,10 @@ pub struct StartRadtTsSynthesisRequest {
     pub output_format: RadtTsOutputFormat,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presenter_image_path: Option<String>,
+    #[serde(default)]
+    pub save_presenter_image_as_project_default: bool,
     pub output_name: String,
     pub acknowledge_voice_clone: bool,
 }
@@ -1049,6 +1059,7 @@ fn output_from_metadata(
             requested_media_format.or(metadata.media_format),
             Some(output_format),
         )),
+        image_path: None,
         caption_paths,
         duration_seconds: metadata.duration_seconds,
         created_at: metadata.created_at.clone(),
@@ -1530,6 +1541,8 @@ mod tests {
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: Some(MediaOutputFormat::Mp4),
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             output_name: "intro".to_string(),
             acknowledge_voice_clone: false,
         };
@@ -1595,6 +1608,8 @@ mod tests {
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Wav,
             media_format: Some(MediaOutputFormat::Wav),
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             output_name: "intro_v2".to_string(),
             acknowledge_voice_clone: true,
         };
@@ -1654,6 +1669,8 @@ mod tests {
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: Some(MediaOutputFormat::Mp3),
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             output_name: "intro".to_string(),
             acknowledge_voice_clone: true,
         };
@@ -1689,6 +1706,8 @@ mod tests {
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: Some(MediaOutputFormat::Mp3),
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             output_name: "intro".to_string(),
             acknowledge_voice_clone: false,
         };
@@ -1723,6 +1742,8 @@ mod tests {
             max_new_tokens: 1200,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: Some(MediaOutputFormat::Mp3),
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             output_name: "intro".to_string(),
             acknowledge_voice_clone: false,
         };
@@ -1768,6 +1789,8 @@ mod tests {
             max_new_tokens: 63,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: Some(MediaOutputFormat::Mp3),
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             output_name: "intro".to_string(),
             acknowledge_voice_clone: true,
         };

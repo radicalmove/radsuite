@@ -273,6 +273,46 @@ fn radcast_mp4_request_and_output_preserve_presenter_image_intent() {
 }
 
 #[test]
+fn radtts_mp4_request_and_output_preserve_presenter_image_intent() {
+    let request: StartRadtTsSynthesisRequest = serde_json::from_value(json!({
+        "text": "A short script.",
+        "quality": "high",
+        "chunk_mode": "sentence",
+        "pause_min_seconds": 0.25,
+        "pause_max_seconds": 0.75,
+        "media_format": "mp4",
+        "output_format": "wav",
+        "presenter_image_path": "/managed/staged-image.png",
+        "save_presenter_image_as_project_default": true,
+        "output_name": "intro",
+        "acknowledge_voice_clone": true
+    }))
+    .unwrap();
+    assert_eq!(
+        request.presenter_image_path.as_deref(),
+        Some("/managed/staged-image.png")
+    );
+    assert!(request.save_presenter_image_as_project_default);
+
+    let output: RadtTsAudioOutput = serde_json::from_value(json!({
+        "id": "voice-1",
+        "filename": "voice.mp4",
+        "path": "/managed/voice.mp4",
+        "output_format": "wav",
+        "media_format": "mp4",
+        "image_path": "/managed/cover/cover.png",
+        "caption_paths": [],
+        "duration_seconds": 4.0,
+        "created_at": null
+    }))
+    .unwrap();
+    assert_eq!(
+        output.image_path.as_deref(),
+        Some("/managed/cover/cover.png")
+    );
+}
+
+#[test]
 fn legacy_output_records_remain_readable_and_normalize_to_audio_formats() {
     let radcast: RadcastAudioOutput = serde_json::from_value(json!({
         "id": "output-1",
@@ -367,6 +407,7 @@ fn all_workflow_output_records_preserve_requested_media_format() {
                 MediaOutputFormat::Wav | MediaOutputFormat::Mp4 => RadtTsOutputFormat::Wav,
             },
             media_format: Some(media_format),
+            image_path: None,
             caption_paths: Vec::new(),
             duration_seconds: Some(4.0),
             created_at: None,

@@ -211,6 +211,8 @@ pub async fn start_radt_ts_synthesis(
         max_new_tokens: request.max_new_tokens,
         output_format: request.output_format,
         media_format: request.media_format,
+        presenter_image_path: request.presenter_image_path.map(PathBuf::from),
+        save_presenter_image_as_project_default: request.save_presenter_image_as_project_default,
         output_name: request.output_name,
         acknowledge_voice_clone: request.acknowledge_voice_clone,
     };
