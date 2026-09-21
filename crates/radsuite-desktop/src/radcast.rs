@@ -95,6 +95,10 @@ pub struct ProcessRadcastAudioRequest {
     pub output_format: AudioOutputFormat,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presenter_image_path: Option<String>,
+    #[serde(default)]
+    pub save_presenter_image_as_project_default: bool,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
     pub cleanup_enabled: bool,
@@ -226,6 +230,8 @@ pub struct RadcastAudioOutput {
     pub output_format: AudioOutputFormat,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_path: Option<String>,
     pub cleanup_enabled: bool,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
@@ -889,6 +895,7 @@ where
         duration_seconds: result.duration_seconds,
         output_format: result.output_format,
         media_format: Some(media_format),
+        image_path: None,
         cleanup_enabled,
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,

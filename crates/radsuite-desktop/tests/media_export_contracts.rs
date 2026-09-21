@@ -233,6 +233,46 @@ fn new_wire_values_emit_both_fields_with_wav_placeholder_for_mp4() {
 }
 
 #[test]
+fn radcast_mp4_request_and_output_preserve_presenter_image_intent() {
+    let request: ProcessRadcastAudioRequest = serde_json::from_value(json!({
+        "source_id": "source-1",
+        "media_format": "mp4",
+        "output_format": "wav",
+        "presenter_image_path": "/managed/staged-image.png",
+        "save_presenter_image_as_project_default": true,
+        "clip_start_seconds": null,
+        "clip_end_seconds": null,
+        "cleanup_enabled": true
+    }))
+    .unwrap();
+    assert_eq!(
+        request.presenter_image_path.as_deref(),
+        Some("/managed/staged-image.png")
+    );
+    assert!(request.save_presenter_image_as_project_default);
+
+    let output: RadcastAudioOutput = serde_json::from_value(json!({
+        "id": "output-1",
+        "source_id": "source-1",
+        "filename": "lesson.mp4",
+        "path": "/managed/lesson.mp4",
+        "duration_seconds": 12.5,
+        "output_format": "wav",
+        "media_format": "mp4",
+        "image_path": "/managed/cover/cover.png",
+        "cleanup_enabled": false,
+        "clip_start_seconds": null,
+        "clip_end_seconds": null,
+        "created_at": "2026-08-17T00:00:00Z"
+    }))
+    .unwrap();
+    assert_eq!(
+        output.image_path.as_deref(),
+        Some("/managed/cover/cover.png")
+    );
+}
+
+#[test]
 fn legacy_output_records_remain_readable_and_normalize_to_audio_formats() {
     let radcast: RadcastAudioOutput = serde_json::from_value(json!({
         "id": "output-1",
