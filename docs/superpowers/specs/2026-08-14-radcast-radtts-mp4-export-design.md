@@ -9,7 +9,7 @@ RADsuite currently exports audio from RADcast and RADTTS as MP3 or WAV. Echo360 
 - Add MP4 as an optional output format in both RADcast and RADTTS.
 - Keep MP3 and WAV available with their current defaults, processing paths, and output behavior.
 - Use a shared local video-export module for both workflows. It runs after the existing audio-producing step, so RADcast cleanup/trim/caption timing and RADTTS synthesis remain unchanged.
-- Build the MP4 with the selected still image as a 16:9 background, the final audio as AAC, and a subtle audio-responsive waveform rendered in white over a translucent black waveform band. Do not use RADsuite red or another course-specific accent.
+- Build the MP4 as a neutral split composition: the selected presenter image occupies the left 540 pixels (approximately 42% of the frame), while a dark charcoal panel occupies the remaining 740 pixels and contains a subtle audio-responsive white waveform. The final audio is encoded as AAC. Do not use RADsuite red or another course-specific accent.
 - Use a standard H.264/AAC MP4 suitable for Echo360 and ordinary desktop media players. The video is fixed at 1280x720, 30 fps, H.264 `libx264` with `yuv420p`, CRF 23, and AAC at 192 kbps. The output ends when the final audio ends.
 - Require an image only when MP4 is selected. Audio-only exports must not need an image.
 - Support a project-level reusable image plus a per-export override. A user can choose the saved project image, choose a different image for one export, or save the newly selected image as the project image.
@@ -23,15 +23,16 @@ RADsuite currently exports audio from RADcast and RADTTS as MP3 or WAV. Echo360 
 1. The user imports or selects source audio as today.
 2. The user applies the existing cleanup, enhancement, trim, pause, filler, and caption settings.
 3. The user chooses MP3, WAV, or MP4.
-4. When MP4 is selected, the image panel shows the saved project image if available and offers `Use this image`, `Choose a different image`, and `Save as project image` actions.
-5. The user creates the version. RADsuite renders the final RADcast audio first, then creates the image-backed MP4 from that exact rendered audio.
-6. The output list exposes the MP4 as a playable/downloadable video while preserving caption artifacts and any separately-created audio outputs.
+4. When MP4 is selected, a required `Presenter image` panel appears. It asks the user to choose a photograph or avatar of the speaker. If a saved project image exists it is selected automatically; otherwise the panel shows `Choose presenter image` and the create action remains disabled until an image is selected. The panel also offers `Use saved project image`, `Choose a different image`, and `Save this image for future MP4s` actions as applicable.
+5. The panel previews the fixed split composition with the selected presenter image on the left and a representative white waveform on the right. RADsuite recommends a clear square, portrait, or presenter-focused image but does not attempt face detection or reject other valid images.
+6. The user creates the version. RADsuite renders the final RADcast audio first, then creates the image-backed MP4 from that exact rendered audio.
+7. The output list exposes the MP4 as a playable/downloadable video while preserving caption artifacts and any separately-created audio outputs.
 
 ### RADTTS
 
 1. The user generates a voice version or creates a verified clip using the existing RADTTS workflow.
 2. The user chooses MP3, WAV, or MP4 where the current workflow offers an audio output format.
-3. When MP4 is selected, the same project-image and per-export image controls are shown.
+3. When MP4 is selected, the same required presenter-image prompt, saved-image reuse, per-export override, and split-composition preview are shown.
 4. RADsuite lets RADTTS finish its normal audio output, then creates the MP4 from that output.
 5. The output listing identifies the video format and keeps captions/timed-segment artifacts available separately.
 
@@ -55,18 +56,19 @@ The desktop boundary introduces a media format with `mp3`, `wav`, and `mp4` vari
 The exporter should use a two-stage workflow rather than embedding the existing cleanup graph inside the video graph:
 
 1. Existing RADcast or RADTTS code produces the final audio artifact.
-2. The shared exporter loops/scales the still image, renders the waveform from the final audio, overlays the waveform, maps the video and audio streams, and writes the MP4.
+2. The shared exporter loops and centre-crops the presenter image into the left panel, creates the neutral waveform panel, renders the waveform from the final audio, joins the panels, maps the video and audio streams, and writes the MP4.
 
 The fixed visual constants and filter graph are:
 
-- background: 1280x720 cover crop using `scale` with `force_original_aspect_ratio=increase`, followed by a centered crop;
-- waveform band: 1280x220 at the bottom of the frame, with a 70% opaque black backing;
-- waveform: white `showwaves` line, 1280x220, `cline` mode, 30 fps;
+- frame: 1280x720, divided into a 540x720 presenter panel and a 740x720 waveform panel;
+- presenter image: scaled with `force_original_aspect_ratio=increase` and centre-cropped to 540x720 so the panel is always filled without stretching;
+- waveform panel: solid neutral charcoal (`0x101214`) at 740x720 with no course-specific accent colour;
+- waveform: white `showwaves` line, 660x240, `cline` mode, 30 fps, centred in the waveform panel with 40-pixel horizontal margins;
 - video: `libx264`, CRF 23, `yuv420p`, 30 fps;
 - audio: AAC, 192 kbps;
 - duration: `-shortest`, bounded by the final audio stream.
 
-The command uses the image as input 0 with `-loop 1 -framerate 30`, the final audio as input 1, and the following filter graph semantics: scale/crop input 0 to `[background]`; draw the black band at `y=500` on `[background]`; render input 1 with `showwaves=s=1280x220:mode=cline:rate=30:colors=white,format=rgba,colorkey=black:0.01:0.0` so the waveform background is transparent; overlay that waveform at `x=0:y=500`; apply `fps=30,format=yuv420p`; map the composed video and `1:a:0`; encode with `-c:v libx264 -crf 23 -pix_fmt yuv420p -r 30 -c:a aac -b:a 192k -shortest -movflags +faststart`. The exporter uses fixed 1280x720 and 1280x220 constants; requests cannot override dimensions in this slice.
+The command uses the image as input 0 with `-loop 1 -framerate 30`, the final audio as input 1, and the following filter graph semantics: scale/crop input 0 to 540x720 as `[presenter]`; create a 740x720 charcoal colour source as `[panel]`; render input 1 with `showwaves=s=660x240:mode=cline:rate=30:colors=white,format=rgba,colorkey=black:0.01:0.0` so the waveform background is transparent; overlay the waveform at `x=40:y=240` on `[panel]`; join `[presenter]` and the completed waveform panel with `hstack`; apply `fps=30,format=yuv420p`; map the composed video and `1:a:0`; encode with `-c:v libx264 -crf 23 -pix_fmt yuv420p -r 30 -c:a aac -b:a 192k -shortest -movflags +faststart`. The exporter uses fixed 1280x720, 540x720, and 660x240 constants; requests cannot override dimensions or placement in this slice.
 
 The post-export probe invokes `ffprobe -v error -print_format json -show_streams -show_format` and requires exactly one stream with `codec_type=video`, one with `codec_type=audio`, video width 1280, video height 720, video codec `h264`, video pixel format `yuv420p`, video `r_frame_rate=30/1` and `avg_frame_rate=30/1`, audio codec `aac`, and `format.duration` finite and greater than zero. The output duration must be within 0.10 seconds of the intermediate audio duration.
 
@@ -137,7 +139,7 @@ A failed video export must not create a completed MP4 output record. The tempora
 
 ### Automated tests
 
-- Shared exporter tests build deterministic FFmpeg arguments for image looping, input ordering, the exact 1280x720 cover crop and 1280x220 white waveform filter graph over a black band, transparent waveform compositing, H.264/AAC mapping, `fps=30`, `-progress pipe:1`, `-shortest`, and output path handling. Probe tests parse fixed ffprobe JSON fixtures and reject missing/duplicate streams, wrong codecs/dimensions/pixel format/frame rate, non-finite or zero duration, and duration mismatch above 0.10 seconds.
+- Shared exporter tests build deterministic FFmpeg arguments for image looping, input ordering, the exact 540x720 presenter crop, 740x720 charcoal panel, centred 660x240 white waveform, split-panel composition, H.264/AAC mapping, `fps=30`, `-progress pipe:1`, `-shortest`, and output path handling. Probe tests parse fixed ffprobe JSON fixtures and reject missing/duplicate streams, wrong codecs/dimensions/pixel format/frame rate, non-finite or zero duration, and duration mismatch above 0.10 seconds.
 - Image-storage tests cover supported extensions, rejected files, the 50-MB limit, managed copies in the shared project-media root, project reuse, and per-export overrides.
 - RADcast tests verify MP3/WAV requests are unchanged and MP4 requests render from the final audio stage without changing the selected cleanup/enhancement filters.
 - RADTTS tests verify MP3/WAV CLI arguments remain unchanged; both voice-generation and verified-clip flows use an isolated WAV/scratch manifest for MP4 and add only the post-generation mux step to the normal workflow.
@@ -145,15 +147,15 @@ A failed video export must not create a completed MP4 output record. The tempora
 - Output-listing tests verify MP4 records deserialize/list alongside legacy MP3/WAV records and captions for RADcast, RADTTS voice generation, and RADTTS verified clips, including legacy file-scan compatibility.
 - Failure tests verify no completed output is persisted after a failed mux, partial/promoted-orphan MP4 files are not listed, temporary audio and images are cleaned or reported with paths as cleanup failures, cancellation terminates the active process runner, and manifest rollback is retried at startup.
 - Deletion tests verify output-scoped images are removed with their last owning MP4, reusable project covers are retained, and media manifests are updated atomically.
-- UI tests verify MP4 reveals image controls, audio-only formats do not require images, project-image reuse works, and per-export overrides do not overwrite the saved project image unless explicitly requested.
+- UI tests verify MP4 reveals the required `Presenter image` controls, prevents creation without an image, shows the split-composition preview, automatically reuses a saved project image, and preserves that image when a per-export override is used unless the user explicitly saves the replacement. Audio-only formats do not show or require the image controls.
 
 ### Real acceptance smoke
 
-Using a short local lecture clip and a 16:9 PNG:
+Using a short local lecture clip and a presenter-focused PNG or JPEG, including at least one non-16:9 image:
 
 1. Create a RADcast MP4 using the RADcast Optimized profile and the existing trim range.
 2. Confirm the result contains one video stream, one audio stream, and the expected duration.
-3. Confirm the waveform changes with the audio and the image remains visible throughout.
+3. Confirm the waveform changes with the audio, the presenter image remains visible in the left panel throughout, and no stretching or overlap occurs.
 4. Create a RADTTS MP4 from a generated voice clip using the same saved project image.
 5. Confirm both outputs play locally and can be imported into Echo360 as MP4 files.
 6. Repeat with a per-export image override and confirm the project default remains unchanged.
@@ -161,4 +163,4 @@ Using a short local lecture clip and a 16:9 PNG:
 
 ## Scope exclusions
 
-This slice does not add animated image editing, course-specific theme packs, cloud rendering, online image storage, automatic Echo360 upload, custom waveform colours, arbitrary video resolutions, or changes to the RADcast enhancement algorithms and RADTTS voice models.
+This slice does not add animated image editing, manual crop positioning, face detection, course-specific theme packs, cloud rendering, online image storage, automatic Echo360 upload, custom waveform colours, arbitrary video resolutions, or changes to the RADcast enhancement algorithms and RADTTS voice models.
