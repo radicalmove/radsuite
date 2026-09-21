@@ -53,7 +53,7 @@ fn video_arguments_use_the_approved_fixed_mp4_contract() {
     let graph = args[13].clone();
     assert_eq!(
         graph,
-        "[0:v]scale=540:720:force_original_aspect_ratio=increase,crop=540:720:(iw-540)/2:(ih-720)/2[presenter];color=c=0x101214:s=740x720:r=30[panel];[1:a]showwaves=s=660x240:mode=cline:rate=30:colors=white,format=rgba,colorkey=black:0.01:0.0[waveform];[panel][waveform]overlay=40:240[wave_panel];[presenter][wave_panel]hstack=inputs=2,fps=30,format=yuv420p[video]"
+        "[0:v]scale=540:720:force_original_aspect_ratio=increase,crop=540:720:(iw-540)/2:(ih-720)/2[presenter];color=c=0x101214:s=740x720:r=30[panel];[1:a]showwaves=s=660x240:mode=cline:rate=30:colors=white:draw=full,format=rgba,colorkey=black:0.01:0.0[waveform];[panel][waveform]overlay=40:240[wave_panel];[presenter][wave_panel]hstack=inputs=2,fps=30,format=yuv420p[video]"
     );
     assert_eq!(
         &args[14..],
