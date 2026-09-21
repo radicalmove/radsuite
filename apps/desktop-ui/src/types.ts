@@ -222,6 +222,7 @@ export type RadtTsMediaProcessingPhase =
   | "preparing"
   | "transcribing"
   | "extracting_clip"
+  | "rendering_video"
   | "saving_output";
 
 export type RadtTsVerificationMode = "strict" | "lenient";
@@ -239,6 +240,7 @@ export type RadtTsMediaOutput = {
   artifacts: RadtTsMediaArtifact[];
   output_format: RadtTsOutputFormat | null;
   media_format?: MediaOutputFormat;
+  image_path?: string;
   warnings: string[];
 };
 

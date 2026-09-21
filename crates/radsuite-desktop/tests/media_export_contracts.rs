@@ -313,6 +313,28 @@ fn radtts_mp4_request_and_output_preserve_presenter_image_intent() {
 }
 
 #[test]
+fn radtts_clip_mp4_contract_preserves_presenter_image_intent() {
+    let request: StartRadtTsClipRequest = serde_json::from_value(json!({
+        "audio_path": "/tmp/lecture.wav",
+        "segments_json_path": "/tmp/lecture.segments.json",
+        "output_name": "clip",
+        "start_time": 0.0,
+        "end_time": 4.0,
+        "verification_mode": "strict",
+        "output_format": "wav",
+        "media_format": "mp4",
+        "presenter_image_path": "/managed/presenter.png",
+        "save_presenter_image_as_project_default": false
+    }))
+    .unwrap();
+    assert_eq!(
+        request.presenter_image_path.as_deref(),
+        Some("/managed/presenter.png")
+    );
+    assert!(!request.save_presenter_image_as_project_default);
+}
+
+#[test]
 fn legacy_output_records_remain_readable_and_normalize_to_audio_formats() {
     let radcast: RadcastAudioOutput = serde_json::from_value(json!({
         "id": "output-1",
@@ -367,6 +389,7 @@ fn legacy_output_records_remain_readable_and_normalize_to_audio_formats() {
         }],
         output_format: Some(RadtTsOutputFormat::Wav),
         media_format: Some(MediaOutputFormat::Mp4),
+        image_path: None,
         warnings: Vec::new(),
     };
     let serialized = serde_json::to_value(new_clip).unwrap();
@@ -422,6 +445,7 @@ fn all_workflow_output_records_preserve_requested_media_format() {
             artifacts: Vec::new(),
             output_format: Some(voice.output_format),
             media_format: Some(media_format),
+            image_path: None,
             warnings: Vec::new(),
         };
         assert_eq!(clip.normalized_media_format(), media_format);

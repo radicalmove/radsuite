@@ -38,6 +38,8 @@ const clip: RadtTsClipDraft = {
   verificationMode: "strict",
   outputFormat: "mp3",
   mediaFormat: "mp3",
+  presenterImagePath: "",
+  savePresenterImageAsProjectDefault: false,
 };
 
 describe("RADTTS transcription and clip workflow", () => {
@@ -76,8 +78,20 @@ describe("RADTTS transcription and clip workflow", () => {
 
   test("keeps MP4 authoritative while sending WAV to the legacy CLI field", () => {
     expect(
-      buildClipRequest({ ...clip, mediaFormat: "mp4", outputFormat: "mp3" }, "project-1"),
-    ).toMatchObject({ media_format: "mp4", output_format: "wav" });
+      buildClipRequest({
+        ...clip,
+        mediaFormat: "mp4",
+        outputFormat: "mp3",
+        presenterImagePath: " /tmp/avatar.png ",
+        savePresenterImageAsProjectDefault: true,
+      }, "project-1"),
+    ).toMatchObject({
+      media_format: "mp4",
+      output_format: "wav",
+      presenter_image_path: "/tmp/avatar.png",
+      save_presenter_image_as_project_default: true,
+    });
+    expect(canStartClip({ ...clip, mediaFormat: "mp4" }, capability)).toBe(false);
   });
 
   test("migrates a saved legacy WAV preference into media format", () => {

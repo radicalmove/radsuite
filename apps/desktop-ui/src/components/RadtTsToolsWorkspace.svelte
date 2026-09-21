@@ -64,6 +64,8 @@
     verificationMode: "strict",
     outputFormat: "mp3",
     mediaFormat: "mp3",
+    presenterImagePath: "",
+    savePresenterImageAsProjectDefault: false,
   });
   let loading = $state(false);
   let checkingCapability = $state(true);
@@ -116,6 +118,7 @@
     if (value === "preparing") return "Preparing local media tool";
     if (value === "transcribing") return "Transcribing audio";
     if (value === "extracting_clip") return "Extracting verified clip";
+    if (value === "rendering_video") return "Creating waveform video";
     return "Saving output";
   }
 
@@ -223,6 +226,21 @@
       if (path) clip.segmentsJsonPath = path;
     } catch (reason: unknown) {
       error = `Could not choose transcript segments: ${toErrorMessage(reason)}`;
+    }
+  }
+
+  async function choosePresenterImage() {
+    error = null;
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "Presenter image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+      });
+      const path = typeof selected === "string" ? selected : selected?.[0];
+      if (path) clip.presenterImagePath = path;
+    } catch (reason: unknown) {
+      error = `Could not choose presenter image: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -344,7 +362,7 @@
   {#if processing && job}
     <div class="radtts-progress" aria-live="polite">
       <div class="radtts-progress-heading"><strong>{phaseLabel(job.phase)}</strong><span>Running locally</span></div>
-      <progress></progress>
+      <progress value={job.percent ?? undefined} max="100"></progress>
       <small>Transcription and clip extraction run on this computer.</small>
       <button class="secondary-button compact-button" type="button" disabled={cancelling} onclick={() => void cancel()}>
         {cancelling ? "Cancelling..." : "Cancel processing"}
@@ -377,7 +395,14 @@
       {:else}
         <div class="radtts-boundary-fields"><label class="stack"><span>Start seconds</span><input type="number" min="0" step="0.1" bind:value={clip.startTime} /></label><label class="stack"><span>End seconds</span><input type="number" min="0.1" step="0.1" bind:value={clip.endTime} /></label></div>
       {/if}
-      <div class="radtts-tools-fields"><label class="stack"><span>Verification</span><select bind:value={clip.verificationMode}><option value="strict">Strict</option><option value="lenient">Lenient</option></select></label><label class="stack"><span>Format</span><select bind:value={clip.mediaFormat}><option value="mp3">MP3</option><option value="wav">WAV</option></select></label></div>
+      <div class="radtts-tools-fields"><label class="stack"><span>Verification</span><select bind:value={clip.verificationMode}><option value="strict">Strict</option><option value="lenient">Lenient</option></select></label><label class="stack"><span>Format</span><select bind:value={clip.mediaFormat}><option value="mp3">MP3</option><option value="wav">WAV</option><option value="mp4">MP4 video</option></select></label></div>
+      {#if clip.mediaFormat === "mp4"}
+        <div class="radtts-video-options">
+          <label class="stack"><span>Presenter or avatar image</span><div class="radtts-reference-row"><input type="text" bind:value={clip.presenterImagePath} placeholder="Choose a PNG, JPEG, or WebP image" /><button class="secondary-button compact-button" type="button" disabled={processing} onclick={() => void choosePresenterImage()}>Choose image</button></div></label>
+          <label class="radtts-checkbox"><input type="checkbox" bind:checked={clip.savePresenterImageAsProjectDefault} /><span>Use this image for future videos in this project</span></label>
+          <small class="field-note">The video places the image beside a white waveform that moves with the audio.</small>
+        </div>
+      {/if}
       <small class="field-note">Phrase boundaries snap to recognised transcript segments and include a small speech-safe margin.</small>
       <button class="primary-button radtts-process-button" type="button" disabled={!canClip} onclick={() => void startClip()}>Create verified clip</button>
     </section>
@@ -388,16 +413,19 @@
     {#if outputs.length}
       <div class="radtts-output-list">
         {#each outputs as output (output.id)}
-          {@const primaryFilename = filenameFromPath(output.primary_path, `${output.name}.${output.output_format ?? (output.kind === "transcription" ? "txt" : "mp3")}`)}
+          {@const primaryFilename = filenameFromPath(output.primary_path, `${output.name}.${output.media_format ?? output.output_format ?? (output.kind === "transcription" ? "txt" : "mp3")}`)}
           <article class="radtts-output-row radtts-tools-output-row">
-            <div class="radtts-output-copy"><strong>{output.name}</strong><span>{outputLabel(output)}{output.output_format ? ` · ${output.output_format.toUpperCase()}` : ""}</span>{#each output.warnings as warning}<small>{warning}</small>{/each}</div>
-            {#if output.kind === "clip"}<audio controls src={convertFileSrc(output.primary_path)}>Your browser does not support audio playback.</audio>{/if}
+            <div class="radtts-output-copy"><strong>{output.name}</strong><span>{outputLabel(output)}{output.media_format || output.output_format ? ` · ${(output.media_format ?? output.output_format)?.toUpperCase()}` : ""}</span>{#each output.warnings as warning}<small>{warning}</small>{/each}</div>
+            {#if output.kind === "clip" && output.media_format === "mp4"}
+              <!-- svelte-ignore a11y_media_has_caption: verified clips do not always include a caption artifact -->
+              <video controls src={convertFileSrc(output.primary_path)}>Your browser does not support video playback.</video>
+            {:else if output.kind === "clip"}<audio controls src={convertFileSrc(output.primary_path)}>Your browser does not support audio playback.</audio>{/if}
             <div class="radtts-output-actions">
               <button
                 class="secondary-button compact-button"
                 type="button"
                 disabled={downloadingArtifact !== null}
-                onclick={() => void downloadArtifact(output.primary_path, primaryFilename, output.kind === "transcription" ? "Transcript" : "Audio", [output.output_format ?? (output.kind === "transcription" ? "txt" : "mp3")], output.kind === "transcription" ? "Transcript" : "Clip")}
+                  onclick={() => void downloadArtifact(output.primary_path, primaryFilename, output.kind === "transcription" ? "Transcript" : output.media_format === "mp4" ? "Video" : "Audio", [output.media_format ?? output.output_format ?? (output.kind === "transcription" ? "txt" : "mp3")], output.kind === "transcription" ? "Transcript" : "Clip")}
               >Download {output.kind === "transcription" ? "transcript" : "clip"}</button>
               {#each output.artifacts as artifact (artifact.path)}
                 {@const artifactFilename = filenameFromPath(artifact.path, `${output.name}.json`)}

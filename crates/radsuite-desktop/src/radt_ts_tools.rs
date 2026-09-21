@@ -17,6 +17,7 @@ use uuid::Uuid;
 
 use crate::{
     DesktopState, MediaOutputFormat,
+    media_assets::ProjectMediaStore,
     process_group::{ManagedChild, ManagedProcessGroup},
     radt_ts::{
         RadtTsCapabilityStatus, RadtTsOutputFormat, contained_file, discover_radt_ts_cli,
@@ -43,6 +44,7 @@ pub enum RadtTsMediaProcessingPhase {
     Preparing,
     Transcribing,
     ExtractingClip,
+    RenderingVideo,
     SavingOutput,
 }
 
@@ -62,6 +64,8 @@ pub struct RadtTsMediaOutput {
     pub output_format: Option<RadtTsOutputFormat>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_path: Option<String>,
     pub warnings: Vec<String>,
 }
 
@@ -125,6 +129,10 @@ pub struct StartRadtTsClipRequest {
     pub output_format: RadtTsOutputFormat,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presenter_image_path: Option<String>,
+    #[serde(default)]
+    pub save_presenter_image_as_project_default: bool,
 }
 
 fn default_output_format() -> RadtTsOutputFormat {
@@ -184,6 +192,12 @@ pub enum RadtTsMediaError {
     InvalidOutput(String),
     #[error("RADTTS local storage error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("presenter image error: {0}")]
+    MediaAsset(#[from] crate::media_assets::MediaAssetError),
+    #[error("could not inspect clip audio: {0}")]
+    AudioProbe(#[from] radsuite_engines::AudioProcessingError),
+    #[error("could not render clip video: {0}")]
+    VideoExport(#[from] radsuite_engines::VideoExportError),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -220,11 +234,36 @@ struct MediaJobContext {
     kind: MediaCommandKind,
     media_format: Option<MediaOutputFormat>,
     project_root: PathBuf,
+    data_dir: PathBuf,
+    clip_request: Option<StartRadtTsClipRequest>,
     child_handle: RadtTsMediaChildHandle,
     jobs: Arc<Mutex<std::collections::HashMap<String, RadtTsMediaJobStatus>>>,
     children: Arc<Mutex<std::collections::HashMap<String, RadtTsMediaChildHandle>>>,
     cancellations: Arc<Mutex<std::collections::HashSet<String>>>,
     active_projects: Arc<Mutex<std::collections::HashSet<String>>>,
+}
+
+struct MediaProcessRequest {
+    project_id: ProjectId,
+    kind: MediaCommandKind,
+    media_format: Option<MediaOutputFormat>,
+    project_root: PathBuf,
+    executable: PathBuf,
+    args: Vec<String>,
+    clip_request: Option<StartRadtTsClipRequest>,
+}
+
+struct ClipVideoInput<'a> {
+    data_dir: &'a Path,
+    project_root: &'a Path,
+    project_id: ProjectId,
+    request: &'a StartRadtTsClipRequest,
+    audio: RadtTsMediaOutput,
+}
+
+struct ClipVideoTools {
+    audio_processor: radsuite_engines::AudioProcessor,
+    video_exporter: radsuite_engines::VideoExporter,
 }
 
 pub fn get_radt_ts_media_capabilities() -> RadtTsCapabilityStatus {
@@ -250,12 +289,15 @@ pub async fn start_radt_ts_transcription(
     let args = build_transcription_args(&request, project_id, projects_root, audio_path)?;
     start_media_process(
         state,
-        project_id,
-        MediaCommandKind::Transcription,
-        None,
-        project_root,
-        executable,
-        args,
+        MediaProcessRequest {
+            project_id,
+            kind: MediaCommandKind::Transcription,
+            media_format: None,
+            project_root,
+            executable,
+            args,
+            clip_request: None,
+        },
     )
     .await
 }
@@ -283,12 +325,15 @@ pub async fn start_radt_ts_clip(
     )?;
     start_media_process(
         state,
-        project_id,
-        MediaCommandKind::Clip,
-        Some(media_format),
-        project_root,
-        executable,
-        args,
+        MediaProcessRequest {
+            project_id,
+            kind: MediaCommandKind::Clip,
+            media_format: Some(media_format),
+            project_root,
+            executable,
+            args,
+            clip_request: Some(request),
+        },
     )
     .await
 }
@@ -352,7 +397,17 @@ pub fn list_radt_ts_media_outputs(
     let root = ensure_project_root(&state.paths.data_dir.join("radt-ts-projects"), project_id)
         .map_err(|error| RadtTsMediaError::Io(std::io::Error::other(error.to_string())))?;
     let mut outputs = list_transcripts(&root)?;
-    outputs.extend(list_clips(&root)?);
+    let persisted_clips = read_persisted_clip_outputs(&root)?;
+    let persisted_names = persisted_clips
+        .iter()
+        .map(|output| output.name.as_str())
+        .collect::<std::collections::HashSet<_>>();
+    outputs.extend(persisted_clips.clone());
+    outputs.extend(
+        list_clips(&root)?
+            .into_iter()
+            .filter(|output| !persisted_names.contains(output.name.as_str())),
+    );
     outputs.sort_by(|left, right| left.name.cmp(&right.name));
     Ok(RadtTsMediaOutputListing { outputs })
 }
@@ -483,13 +538,17 @@ fn parse_clip_result(stdout: &[u8]) -> Result<ClipCliResult, RadtTsMediaError> {
 
 async fn start_media_process(
     state: &DesktopState,
-    project_id: ProjectId,
-    kind: MediaCommandKind,
-    media_format: Option<MediaOutputFormat>,
-    project_root: PathBuf,
-    executable: PathBuf,
-    args: Vec<String>,
+    request: MediaProcessRequest,
 ) -> Result<RadtTsMediaJobStatus, RadtTsMediaError> {
+    let MediaProcessRequest {
+        project_id,
+        kind,
+        media_format,
+        project_root,
+        executable,
+        args,
+        clip_request,
+    } = request;
     {
         let mut active = state
             .radt_ts_active_projects
@@ -554,6 +613,8 @@ async fn start_media_process(
         kind,
         media_format,
         project_root,
+        data_dir: state.paths.data_dir.clone(),
+        clip_request,
         child_handle,
         jobs: state.radt_ts_media_jobs.clone(),
         children: state.radt_ts_media_children.clone(),
@@ -570,6 +631,8 @@ async fn run_media_job(job_id: String, context: MediaJobContext) {
         kind,
         media_format,
         project_root,
+        data_dir,
+        clip_request,
         child_handle,
         jobs,
         children,
@@ -646,14 +709,55 @@ async fn run_media_job(job_id: String, context: MediaJobContext) {
                         detail
                     }))
                 } else {
-                    parse_media_output(
+                    let parsed = parse_media_output(
                         kind,
                         &stdout,
                         &project_root,
                         project_id,
                         &job_id,
-                        media_format,
-                    )
+                        if media_format == Some(MediaOutputFormat::Mp4) {
+                            Some(MediaOutputFormat::Wav)
+                        } else {
+                            media_format
+                        },
+                    );
+                    match (parsed, clip_request.as_ref()) {
+                        (Ok(output), Some(request))
+                            if request.normalized_media_format() == MediaOutputFormat::Mp4 =>
+                        {
+                            update_job(&jobs, &job_id, |job| {
+                                job.phase = RadtTsMediaProcessingPhase::RenderingVideo;
+                                job.percent = Some(90);
+                            });
+                            finalize_clip_video(
+                                ClipVideoInput {
+                                    data_dir: &data_dir,
+                                    project_root: &project_root,
+                                    project_id,
+                                    request,
+                                    audio: output,
+                                },
+                                ClipVideoTools {
+                                    audio_processor: radsuite_engines::AudioProcessor::default(),
+                                    video_exporter: radsuite_engines::VideoExporter::default(),
+                                },
+                                || {
+                                    cancellations
+                                        .lock()
+                                        .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                        .contains(&job_id)
+                                },
+                                |progress| {
+                                    update_job(&jobs, &job_id, |job| {
+                                        job.percent =
+                                            Some((90.0 + progress.clamp(0.0, 1.0) * 9.0).round()
+                                                as u8);
+                                    });
+                                },
+                            )
+                        }
+                        (result, _) => result,
+                    }
                 };
                 finish_media_job(
                     &jobs,
@@ -718,6 +822,7 @@ fn parse_media_output(
                 ],
                 output_format: None,
                 media_format: None,
+                image_path: None,
                 warnings: Vec::new(),
             })
         }
@@ -760,11 +865,125 @@ fn parse_media_output(
                     requested_media_format.or(report_media_format),
                     output_format,
                 )),
+                image_path: None,
                 output_format,
                 warnings,
             })
         }
     }
+}
+
+fn finalize_clip_video<C, P>(
+    input: ClipVideoInput<'_>,
+    tools: ClipVideoTools,
+    mut is_cancelled: C,
+    mut on_progress: P,
+) -> Result<RadtTsMediaOutput, RadtTsMediaError>
+where
+    C: FnMut() -> bool,
+    P: FnMut(f64),
+{
+    let ClipVideoInput {
+        data_dir,
+        project_root,
+        project_id,
+        request,
+        audio,
+    } = input;
+    let ClipVideoTools {
+        audio_processor,
+        video_exporter,
+    } = tools;
+    let audio_path = PathBuf::from(&audio.primary_path);
+    let duration = audio_processor.probe_duration(&audio_path)?;
+    let store = ProjectMediaStore::new(data_dir);
+    let selected_image = request
+        .presenter_image_path
+        .clone()
+        .map(PathBuf::from)
+        .or_else(|| {
+            store
+                .saved_cover(&project_id.to_string())
+                .ok()
+                .flatten()
+                .map(|image| image.path().to_path_buf())
+        })
+        .ok_or_else(|| {
+            RadtTsMediaError::InvalidOutput("MP4 output requires a presenter image".to_string())
+        })?;
+    let staged = store.stage_image(&project_id.to_string(), &selected_image)?;
+    let video_path = audio_path.with_extension("mp4");
+    let rendered = match video_exporter.export_with_callbacks(
+        radsuite_engines::VideoExportRequest::new(
+            staged.path(),
+            &audio_path,
+            &video_path,
+            duration,
+        ),
+        &mut is_cancelled,
+        &mut on_progress,
+    ) {
+        Ok(rendered) => rendered,
+        Err(error) => {
+            let _ = fs::remove_file(staged.path());
+            let _ = fs::remove_file(&video_path);
+            return Err(error.into());
+        }
+    };
+    let output_id = Uuid::parse_str(&audio.id).unwrap_or_else(|_| Uuid::new_v4());
+    let pending = match store.prepare_commit(
+        staged,
+        output_id,
+        request.save_presenter_image_as_project_default,
+    ) {
+        Ok(pending) => pending,
+        Err(error) => {
+            let _ = fs::remove_file(&video_path);
+            return Err(error.into());
+        }
+    };
+    let mut output = audio.clone();
+    output.primary_path = rendered.output_path.to_string_lossy().into_owned();
+    output.output_format = Some(RadtTsOutputFormat::Wav);
+    output.media_format = Some(MediaOutputFormat::Mp4);
+    output.image_path = Some(pending.managed().path().to_string_lossy().into_owned());
+
+    let manifest_path = project_root.join("manifests/clip-media-outputs.json");
+    let mut outputs = read_persisted_clip_outputs(project_root)?;
+    outputs.retain(|item| item.id != output.id && item.name != output.name);
+    outputs.insert(0, output.clone());
+    if let Err(error) = write_media_json_atomic(&manifest_path, &outputs) {
+        let _ = store.rollback_commit(pending);
+        let _ = fs::remove_file(&video_path);
+        return Err(error);
+    }
+    store.finalize_commit(pending)?;
+    let _ = fs::remove_file(audio_path);
+    Ok(output)
+}
+
+fn read_persisted_clip_outputs(
+    project_root: &Path,
+) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaError> {
+    let path = project_root.join("manifests/clip-media-outputs.json");
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let mut outputs: Vec<RadtTsMediaOutput> = serde_json::from_slice(&fs::read(&path)?)
+        .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?;
+    outputs.retain(|output| Path::new(&output.primary_path).is_file());
+    Ok(outputs)
+}
+
+fn write_media_json_atomic(path: &Path, value: &impl Serialize) -> Result<(), RadtTsMediaError> {
+    let temporary = path.with_extension(format!("partial-{}", Uuid::new_v4()));
+    fs::write(
+        &temporary,
+        serde_json::to_vec_pretty(value)
+            .map_err(|error| RadtTsMediaError::InvalidCliResult(error.to_string()))?,
+    )?;
+    fs::rename(temporary, path)?;
+    Ok(())
 }
 
 fn finish_media_job(
@@ -985,6 +1204,7 @@ fn list_transcripts(root: &Path) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaEr
             ],
             output_format: None,
             media_format: None,
+            image_path: None,
             warnings: Vec::new(),
         });
     }
@@ -1036,6 +1256,7 @@ fn list_clips(root: &Path) -> Result<Vec<RadtTsMediaOutput>, RadtTsMediaError> {
                 report.media_format,
                 output_format,
             )),
+            image_path: None,
             warnings: report.warnings,
         });
     }
@@ -1092,13 +1313,18 @@ fn remove_active_project(state: &DesktopState, project_id: ProjectId) {
 mod tests {
     use std::{fs, path::PathBuf};
 
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
+
     use radsuite_core::ProjectId;
 
     use super::{
-        MediaCommandKind, MediaOutputFormat, RadtTsMediaError, RadtTsOutputFormat,
+        ClipVideoInput, ClipVideoTools, MediaCommandKind, MediaOutputFormat, RadtTsMediaArtifact,
+        RadtTsMediaError, RadtTsMediaJobKind, RadtTsMediaOutput, RadtTsOutputFormat,
         RadtTsVerificationMode, StartRadtTsClipRequest, StartRadtTsTranscriptionRequest,
-        build_clip_args, build_transcription_args, list_clips, parse_clip_result,
-        parse_media_output, parse_transcription_result, validate_clip_request,
+        build_clip_args, build_transcription_args, finalize_clip_video, list_clips,
+        parse_clip_result, parse_media_output, parse_transcription_result,
+        read_persisted_clip_outputs, validate_clip_request,
     };
 
     #[test]
@@ -1137,6 +1363,8 @@ mod tests {
             verification_mode: RadtTsVerificationMode::Lenient,
             output_format: RadtTsOutputFormat::Wav,
             media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
         };
         let args = build_clip_args(
             &request,
@@ -1167,6 +1395,8 @@ mod tests {
             verification_mode: RadtTsVerificationMode::Strict,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: Some(MediaOutputFormat::Mp4),
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
         };
         let args = build_clip_args(
             &request,
@@ -1195,6 +1425,8 @@ mod tests {
             verification_mode: RadtTsVerificationMode::Strict,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
         };
         assert!(matches!(
             validate_clip_request(&request),
@@ -1216,6 +1448,8 @@ mod tests {
             verification_mode: RadtTsVerificationMode::Strict,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
         };
         assert!(matches!(
             validate_clip_request(&request),
@@ -1321,6 +1555,8 @@ mod tests {
             verification_mode: RadtTsVerificationMode::Strict,
             output_format: RadtTsOutputFormat::Mp3,
             media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
         };
         assert!(super::validate_segments_input(&file).is_err());
         assert!(
@@ -1335,5 +1571,104 @@ mod tests {
             .is_ok()
         );
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn renders_and_persists_verified_clip_mp4() {
+        let data = std::env::temp_dir().join(format!(
+            "radsuite-radt-ts-clip-video-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let project_id = ProjectId::new();
+        let root = data.join("radt-ts-projects").join(project_id.to_string());
+        let audio = root.join("assets/source_audio/opening.wav");
+        let report = root.join("manifests/opening.clip.boundary.json");
+        let image = data.join("presenter.png");
+        fs::create_dir_all(audio.parent().unwrap()).unwrap();
+        fs::create_dir_all(report.parent().unwrap()).unwrap();
+        fs::write(&audio, b"wav").unwrap();
+        fs::write(&report, br#"{"warnings":[]}"#).unwrap();
+        fs::write(&image, b"\x89PNG\r\n\x1a\n").unwrap();
+        let probe = write_test_executable(&data, "audio-probe.sh", "#!/bin/sh\nprintf '4.0\\n'\n");
+        let ffmpeg = write_test_executable(
+            &data,
+            "video-ffmpeg.sh",
+            "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf video > \"$output\"\nprintf 'out_time_us=4000000\\nprogress=end\\n'\n",
+        );
+        let ffprobe = write_test_executable(
+            &data,
+            "video-ffprobe.sh",
+            "#!/bin/sh\nprintf '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"duration\":4.0}}'\n",
+        );
+        let request = StartRadtTsClipRequest {
+            project_id: Some(project_id),
+            audio_path: audio.to_string_lossy().into_owned(),
+            segments_json_path: report.to_string_lossy().into_owned(),
+            output_name: "opening".to_string(),
+            start_time: Some(0.0),
+            end_time: Some(4.0),
+            start_phrase: None,
+            end_phrase: None,
+            verification_mode: RadtTsVerificationMode::Strict,
+            output_format: RadtTsOutputFormat::Wav,
+            media_format: Some(MediaOutputFormat::Mp4),
+            presenter_image_path: Some(image.to_string_lossy().into_owned()),
+            save_presenter_image_as_project_default: true,
+        };
+        let source = RadtTsMediaOutput {
+            id: uuid::Uuid::new_v4().to_string(),
+            kind: RadtTsMediaJobKind::Clip,
+            name: "opening".to_string(),
+            primary_path: audio.to_string_lossy().into_owned(),
+            artifacts: vec![RadtTsMediaArtifact {
+                label: "Boundary report".to_string(),
+                path: report.to_string_lossy().into_owned(),
+            }],
+            output_format: Some(RadtTsOutputFormat::Wav),
+            media_format: Some(MediaOutputFormat::Wav),
+            image_path: None,
+            warnings: Vec::new(),
+        };
+
+        let output = finalize_clip_video(
+            ClipVideoInput {
+                data_dir: &data,
+                project_root: &root,
+                project_id,
+                request: &request,
+                audio: source,
+            },
+            ClipVideoTools {
+                audio_processor: radsuite_engines::AudioProcessor::from_commands(&ffmpeg, probe),
+                video_exporter: radsuite_engines::VideoExporter::from_commands(ffmpeg, ffprobe),
+            },
+            || false,
+            |_| {},
+        )
+        .unwrap();
+
+        assert!(output.primary_path.ends_with(".mp4"));
+        assert!(PathBuf::from(&output.primary_path).is_file());
+        assert!(!audio.exists());
+        assert!(
+            output
+                .image_path
+                .as_ref()
+                .is_some_and(|path| PathBuf::from(path).is_file())
+        );
+        assert_eq!(read_persisted_clip_outputs(&root).unwrap(), vec![output]);
+        fs::remove_dir_all(data).unwrap();
+    }
+
+    #[cfg(unix)]
+    fn write_test_executable(root: &std::path::Path, name: &str, body: &str) -> PathBuf {
+        let path = root.join(name);
+        fs::create_dir_all(root).unwrap();
+        fs::write(&path, body).unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).unwrap();
+        path
     }
 }
