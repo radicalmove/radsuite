@@ -13,6 +13,7 @@ use radsuite_desktop::radcast::{
     RadcastProcessingPhase, RadcastProjectSettings, RadcastTrimRange,
     process_audio_with_processors_and_enhancement_with_progress,
     process_audio_with_processors_and_enhancement_with_progress_and_cancellation,
+    process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video,
 };
 use radsuite_desktop::{
     CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
@@ -27,7 +28,7 @@ use radsuite_desktop::{
 };
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
-    EnhancementModel, EnhancementProcessor, EnhancementQuality, FillerRemovalMode,
+    EnhancementModel, EnhancementProcessor, EnhancementQuality, FillerRemovalMode, VideoExporter,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 
@@ -161,6 +162,69 @@ async fn radcast_import_process_and_list_are_project_scoped() {
     assert!(!Path::new(&source_path).exists());
     assert!(Path::new(&output.path).is_file());
 
+    remove_dir(dir);
+}
+
+#[tokio::test]
+async fn radcast_mp4_persists_video_and_managed_presenter_image_only() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = list_radcite_projects(&state).await.unwrap()[0].id;
+    let dir = test_dir("mp4-output");
+    let source_path = dir.join("lecture.wav");
+    let image_path = dir.join("presenter.png");
+    fs::write(&source_path, b"source audio").unwrap();
+    fs::write(&image_path, b"\x89PNG\r\n\x1a\n").unwrap();
+    let audio = fake_processor(&dir);
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(project),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("lecture.wav".to_string()),
+        },
+        audio.clone(),
+    )
+    .await
+    .unwrap();
+
+    let output =
+        process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video(
+            &state.paths.data_dir,
+            project,
+            ProcessRadcastAudioRequest {
+                project_id: Some(project),
+                source_id: source.id,
+                output_format: AudioOutputFormat::Wav,
+                media_format: Some(MediaOutputFormat::Mp4),
+                presenter_image_path: Some(image_path.to_string_lossy().into_owned()),
+                save_presenter_image_as_project_default: true,
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+                cleanup_enabled: false,
+                max_silence_seconds: None,
+                caption_format: None,
+                caption_language: "en".to_string(),
+                caption_quality_mode: CaptionQualityMode::Reviewed,
+                caption_glossary: None,
+                enhancement_model: EnhancementModel::None,
+                enhancement_quality: EnhancementQuality::Standard,
+                remove_filler_words: false,
+                filler_removal_mode: FillerRemovalMode::Aggressive,
+            },
+            audio,
+            CaptionProcessor::default(),
+            EnhancementProcessor::default(),
+            fake_video_exporter(&dir),
+            |_| {},
+            || false,
+        )
+        .unwrap();
+
+    assert_eq!(output.normalized_media_format(), MediaOutputFormat::Mp4);
+    assert!(output.path.ends_with(".mp4"));
+    assert!(Path::new(&output.path).is_file());
+    assert!(Path::new(output.image_path.as_deref().unwrap()).is_file());
+    assert!(!Path::new(&output.path).with_extension("wav").exists());
     remove_dir(dir);
 }
 
@@ -1014,6 +1078,20 @@ fn fake_caption_processor(dir: &Path) -> CaptionProcessor {
     let model = dir.join("caption-model.bin");
     fs::write(&model, b"model").expect("write caption model");
     CaptionProcessor::from_commands(whisper, model)
+}
+
+fn fake_video_exporter(dir: &Path) -> VideoExporter {
+    let ffmpeg = write_executable(
+        dir,
+        "video-ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nmkdir -p \"$(dirname \"$output\")\"\nprintf 'fake mp4' > \"$output\"\nprintf 'out_time_us=12500000\\nprogress=end\\n'\n",
+    );
+    let ffprobe = write_executable(
+        dir,
+        "video-ffprobe.sh",
+        "#!/bin/sh\nprintf '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"duration\":12.5}}'\n",
+    );
+    VideoExporter::from_commands(ffmpeg, ffprobe)
 }
 
 fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {

@@ -63,6 +63,12 @@ pub struct PendingImageCommit {
     backups: Vec<(PathBuf, PathBuf)>,
 }
 
+impl PendingImageCommit {
+    pub fn managed(&self) -> &ManagedImage {
+        &self.managed
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct CleanupFailure {
     pub path: PathBuf,
