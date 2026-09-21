@@ -1,6 +1,6 @@
 use std::{
     fs, io,
-    path::{Path, PathBuf},
+    path::{Component, Path, PathBuf},
 };
 
 use serde::{Deserialize, Serialize};
@@ -21,6 +21,8 @@ pub enum MediaAssetError {
     ImageTooLarge { path: PathBuf },
     #[error("project identifier is invalid: {project_id}")]
     InvalidProjectId { project_id: String },
+    #[error("cleanup path is outside project media storage: {path}")]
+    PathOutsideProject { path: PathBuf },
     #[error("could not prepare presenter image storage at {path}: {source}")]
     Storage {
         path: PathBuf,
@@ -59,6 +61,18 @@ pub struct PendingImageCommit {
     managed: ManagedImage,
     metadata_path: Option<PathBuf>,
     backups: Vec<(PathBuf, PathBuf)>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CleanupFailure {
+    pub path: PathBuf,
+    pub message: String,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RecoveryReport {
+    pub removed: Vec<PathBuf>,
+    pub unresolved: Vec<CleanupFailure>,
 }
 
 impl StagedImage {
@@ -117,7 +131,7 @@ impl ProjectMediaStore {
             path: scratch.clone(),
             source: source_error,
         })?;
-        let path = scratch.join(format!("{}.{}", Uuid::new_v4(), extension));
+        let path = scratch.join(format!(".partial-{}.{}", Uuid::new_v4(), extension));
         fs::copy(source, &path).map_err(|source_error| MediaAssetError::Storage {
             path: path.clone(),
             source: source_error,
@@ -247,12 +261,166 @@ impl ProjectMediaStore {
         Ok(())
     }
 
+    pub fn record_orphans(
+        &self,
+        project_id: &str,
+        paths: &[PathBuf],
+    ) -> Result<(), MediaAssetError> {
+        validate_project_id(project_id)?;
+        let root = self.project_root(project_id);
+        for path in paths {
+            ensure_contained(&root, path)?;
+        }
+        fs::create_dir_all(&root).map_err(|source| storage_error(&root, source))?;
+        let ledger = self.orphan_ledger(project_id);
+        let mut recorded = read_orphans(&ledger)?;
+        for path in paths {
+            if !recorded.contains(path) {
+                recorded.push(path.clone());
+            }
+        }
+        write_json_atomic(&ledger, &recorded)
+    }
+
+    pub fn recover_project(&self, project_id: &str) -> Result<RecoveryReport, MediaAssetError> {
+        validate_project_id(project_id)?;
+        let root = self.project_root(project_id);
+        let ledger = self.orphan_ledger(project_id);
+        let paths = read_orphans(&ledger)?;
+        let mut report = RecoveryReport::default();
+        for path in paths {
+            if let Err(error) = ensure_contained(&root, &path) {
+                report.unresolved.push(CleanupFailure {
+                    path,
+                    message: error.to_string(),
+                });
+                continue;
+            }
+            if !path.exists() {
+                report.removed.push(path);
+                continue;
+            }
+            let result = if path.is_dir() {
+                fs::remove_dir_all(&path)
+            } else {
+                fs::remove_file(&path)
+            };
+            match result {
+                Ok(()) => report.removed.push(path),
+                Err(error) => report.unresolved.push(CleanupFailure {
+                    path,
+                    message: error.to_string(),
+                }),
+            }
+        }
+        if report.unresolved.is_empty() {
+            if ledger.exists() {
+                fs::remove_file(&ledger).map_err(|source| storage_error(&ledger, source))?;
+            }
+        } else {
+            let remaining: Vec<_> = report
+                .unresolved
+                .iter()
+                .map(|failure| failure.path.clone())
+                .collect();
+            write_json_atomic(&ledger, &remaining)?;
+        }
+        Ok(report)
+    }
+
+    pub fn recover_all(&self) -> Result<Vec<RecoveryReport>, MediaAssetError> {
+        let projects = self.data_dir.join("media/projects");
+        if !projects.exists() {
+            return Ok(Vec::new());
+        }
+        let mut reports = Vec::new();
+        for entry in fs::read_dir(&projects).map_err(|source| storage_error(&projects, source))? {
+            let entry = entry.map_err(|source| storage_error(&projects, source))?;
+            if !entry
+                .file_type()
+                .map_err(|source| storage_error(&entry.path(), source))?
+                .is_dir()
+            {
+                continue;
+            }
+            let project_id = entry.file_name().to_string_lossy().into_owned();
+            let mut report = self.recover_project(&project_id)?;
+            let mut partials = Vec::new();
+            collect_partial_files(&entry.path(), &mut partials)?;
+            for path in partials {
+                match fs::remove_file(&path) {
+                    Ok(()) => report.removed.push(path),
+                    Err(error) => report.unresolved.push(CleanupFailure {
+                        path,
+                        message: error.to_string(),
+                    }),
+                }
+            }
+            if !report.unresolved.is_empty() {
+                let paths: Vec<_> = report
+                    .unresolved
+                    .iter()
+                    .map(|failure| failure.path.clone())
+                    .collect();
+                self.record_orphans(&project_id, &paths)?;
+            }
+            reports.push(report);
+        }
+        Ok(reports)
+    }
+
     fn project_root(&self, project_id: &str) -> PathBuf {
         self.data_dir
             .join("media")
             .join("projects")
             .join(project_id)
     }
+
+    fn orphan_ledger(&self, project_id: &str) -> PathBuf {
+        self.project_root(project_id).join("orphan-cleanup.json")
+    }
+}
+
+fn collect_partial_files(root: &Path, output: &mut Vec<PathBuf>) -> Result<(), MediaAssetError> {
+    for entry in fs::read_dir(root).map_err(|source| storage_error(root, source))? {
+        let entry = entry.map_err(|source| storage_error(root, source))?;
+        let path = entry.path();
+        if entry
+            .file_type()
+            .map_err(|source| storage_error(&path, source))?
+            .is_dir()
+        {
+            collect_partial_files(&path, output)?;
+        } else if path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .is_some_and(|name| name.contains(".partial-"))
+        {
+            output.push(path);
+        }
+    }
+    Ok(())
+}
+
+fn read_orphans(path: &Path) -> Result<Vec<PathBuf>, MediaAssetError> {
+    if !path.exists() {
+        return Ok(Vec::new());
+    }
+    let bytes = fs::read(path).map_err(|source| storage_error(path, source))?;
+    serde_json::from_slice(&bytes)
+        .map_err(|source| storage_error(path, io::Error::new(io::ErrorKind::InvalidData, source)))
+}
+
+fn ensure_contained(root: &Path, path: &Path) -> Result<(), MediaAssetError> {
+    let has_parent = path
+        .components()
+        .any(|component| component == Component::ParentDir);
+    if has_parent || !path.starts_with(root) {
+        return Err(MediaAssetError::PathOutsideProject {
+            path: path.to_path_buf(),
+        });
+    }
+    Ok(())
 }
 
 fn write_json_atomic(path: &Path, value: &impl Serialize) -> Result<(), MediaAssetError> {

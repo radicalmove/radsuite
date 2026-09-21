@@ -439,6 +439,65 @@ fn media_assets_roll_back_and_finalize_project_cover_replacement() {
     fs::remove_dir_all(root).unwrap();
 }
 
+#[test]
+fn media_assets_persist_and_recover_orphan_cleanup_paths() {
+    let root = test_root("orphan-recovery");
+    let data = root.join("data");
+    let orphan = data.join("media/projects/course-1/exports/output-1.partial.mp4");
+    fs::create_dir_all(orphan.parent().unwrap()).unwrap();
+    fs::write(&orphan, b"partial").unwrap();
+    let store = ProjectMediaStore::new(&data);
+
+    store
+        .record_orphans("course-1", std::slice::from_ref(&orphan))
+        .unwrap();
+    let report = store.recover_project("course-1").unwrap();
+
+    assert_eq!(report.removed, vec![orphan.clone()]);
+    assert!(report.unresolved.is_empty());
+    assert!(!orphan.exists());
+    assert!(
+        !data
+            .join("media/projects/course-1/orphan-cleanup.json")
+            .exists()
+    );
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn media_assets_reject_orphan_paths_outside_the_project_root() {
+    let root = test_root("orphan-containment");
+    let store = ProjectMediaStore::new(root.join("data"));
+    let outside = root.join("outside.mp4");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(&outside, b"do not remove").unwrap();
+
+    assert!(matches!(
+        store.record_orphans("course-1", std::slice::from_ref(&outside)),
+        Err(MediaAssetError::PathOutsideProject { .. })
+    ));
+    assert!(outside.exists());
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn media_assets_startup_recovery_scans_projects_and_partial_files() {
+    let root = test_root("startup-recovery");
+    let data = root.join("data");
+    let project = data.join("media/projects/course-1");
+    let partial = project.join("exports/lesson.partial-123.mp4");
+    fs::create_dir_all(partial.parent().unwrap()).unwrap();
+    fs::write(&partial, b"partial").unwrap();
+    let store = ProjectMediaStore::new(&data);
+
+    let reports = store.recover_all().unwrap();
+
+    assert_eq!(reports.len(), 1);
+    assert!(reports[0].removed.contains(&partial));
+    assert!(!partial.exists());
+    fs::remove_dir_all(root).unwrap();
+}
+
 fn test_root(label: &str) -> std::path::PathBuf {
     std::env::temp_dir().join(format!("radsuite-media-assets-{label}-{}", Uuid::new_v4()))
 }
