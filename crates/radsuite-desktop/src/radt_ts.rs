@@ -583,22 +583,36 @@ pub fn list_radt_ts_outputs_for_project(
     project_id: ProjectId,
 ) -> Result<RadtTsOutputListing, RadtTsError> {
     let root = ensure_project_root(&state.paths.data_dir.join("radt-ts-projects"), project_id)?;
+    list_outputs_from_root(&root)
+}
+
+fn list_outputs_from_root(root: &Path) -> Result<RadtTsOutputListing, RadtTsError> {
     let outputs_path = root.join("manifests").join("outputs.json");
     let raw = match fs::read(&outputs_path) {
         Ok(value) => value,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
-            return Ok(RadtTsOutputListing {
-                outputs: Vec::new(),
-            });
-        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => b"[]".to_vec(),
         Err(error) => return Err(RadtTsError::Io(error)),
     };
     let metadata: Vec<RadtTsOutputMetadata> = serde_json::from_slice(&raw)
         .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?;
-    let outputs = metadata
+    let mut outputs: Vec<_> = metadata
         .into_iter()
-        .filter_map(|item| output_from_metadata(&root, &item, None).ok())
+        .filter_map(|item| output_from_metadata(root, &item, None).ok())
         .collect();
+    let media_path = root.join("manifests/media-outputs.json");
+    match fs::read(&media_path) {
+        Ok(raw) => {
+            let mut media: Vec<RadtTsAudioOutput> = serde_json::from_slice(&raw)
+                .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?;
+            media.retain(|output| {
+                Path::new(&output.path).is_file()
+                    && output.normalized_media_format() == MediaOutputFormat::Mp4
+            });
+            outputs.extend(media);
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(RadtTsError::Io(error)),
+    }
     Ok(RadtTsOutputListing { outputs })
 }
 
@@ -1438,10 +1452,10 @@ mod tests {
     use super::{
         MediaOutputFormat, RadtTsChunkMode, RadtTsCliOutput, RadtTsCliResult, RadtTsOutputFormat,
         RadtTsOutputMetadata, RadtTsQuality, RadtTsSynthesisRequest, RadtTsVoiceSource,
-        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, output_from_cli_result,
-        output_from_metadata, parse_cli_result, probe_radt_ts_cli, probe_radt_ts_cli_with_timeout,
-        remove_temp_text_files, shutdown_radt_ts_jobs, validate_output_name,
-        validate_reference_audio,
+        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, list_outputs_from_root,
+        output_from_cli_result, output_from_metadata, parse_cli_result, probe_radt_ts_cli,
+        probe_radt_ts_cli_with_timeout, remove_temp_text_files, shutdown_radt_ts_jobs,
+        validate_output_name, validate_reference_audio,
     };
     use crate::state::DesktopState;
 
@@ -1469,6 +1483,36 @@ mod tests {
         assert_eq!(output.output_format, RadtTsOutputFormat::Wav);
         assert_eq!(output.media_format, Some(MediaOutputFormat::Mp4));
         fs::remove_dir_all(root).expect("remove test directory");
+    }
+
+    #[test]
+    fn lists_durable_mp4_voice_records_alongside_legacy_outputs() {
+        let root = std::env::temp_dir().join(format!("radsuite-radt-ts-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(root.join("manifests")).unwrap();
+        fs::write(root.join("manifests/outputs.json"), b"[]").unwrap();
+        let video = root.join("assets/generated_audio/voice.mp4");
+        fs::create_dir_all(video.parent().unwrap()).unwrap();
+        fs::write(&video, b"video").unwrap();
+        let output = super::RadtTsAudioOutput {
+            id: "voice-1".to_string(),
+            filename: "voice.mp4".to_string(),
+            path: video.to_string_lossy().into_owned(),
+            output_format: RadtTsOutputFormat::Wav,
+            media_format: Some(MediaOutputFormat::Mp4),
+            image_path: Some("/managed/cover.png".to_string()),
+            caption_paths: Vec::new(),
+            duration_seconds: Some(4.0),
+            created_at: None,
+        };
+        fs::write(
+            root.join("manifests/media-outputs.json"),
+            serde_json::to_vec(&vec![output.clone()]).unwrap(),
+        )
+        .unwrap();
+
+        let listing = list_outputs_from_root(&root).unwrap();
+        assert_eq!(listing.outputs, vec![output]);
+        fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
