@@ -412,6 +412,98 @@ pub fn list_radt_ts_media_outputs(
     Ok(RadtTsMediaOutputListing { outputs })
 }
 
+pub fn delete_radt_ts_clip_video(
+    state: &DesktopState,
+    project_id: ProjectId,
+    output_id: &str,
+) -> Result<(), RadtTsMediaError> {
+    let root = ensure_project_root(&state.paths.data_dir.join("radt-ts-projects"), project_id)
+        .map_err(|error| RadtTsMediaError::Io(std::io::Error::other(error.to_string())))?;
+    delete_radt_ts_clip_video_from_root(&root, output_id)
+}
+
+fn delete_radt_ts_clip_video_from_root(
+    root: &Path,
+    output_id: &str,
+) -> Result<(), RadtTsMediaError> {
+    let manifest = root.join("manifests/clip-media-outputs.json");
+    let mut outputs = read_persisted_clip_outputs(root)?;
+    let index = outputs
+        .iter()
+        .position(|output| output.id == output_id)
+        .ok_or_else(|| {
+            RadtTsMediaError::InvalidOutput(format!("output {output_id} was not found"))
+        })?;
+    let output = outputs.remove(index);
+    let mut owned = vec![contained_clip_deletion_file(
+        root,
+        Path::new(&output.primary_path),
+    )?];
+    for artifact in &output.artifacts {
+        owned.push(contained_clip_deletion_file(
+            root,
+            Path::new(&artifact.path),
+        )?);
+    }
+    let renamed = stage_clip_files_for_deletion(&owned, output_id)?;
+    if let Err(error) = write_media_json_atomic(&manifest, &outputs) {
+        restore_clip_files(&renamed);
+        return Err(error);
+    }
+    for (_, staged) in renamed {
+        if staged.exists() {
+            fs::remove_file(staged)?;
+        }
+    }
+    Ok(())
+}
+
+fn contained_clip_deletion_file(root: &Path, path: &Path) -> Result<PathBuf, RadtTsMediaError> {
+    let canonical_root = root.canonicalize()?;
+    let candidate = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        root.join(path)
+    };
+    let canonical = candidate
+        .canonicalize()
+        .map_err(|_| RadtTsMediaError::InvalidOutput(path.display().to_string()))?;
+    let contained = canonical.starts_with(&canonical_root)
+        || macos_private_alias(&canonical).starts_with(macos_private_alias(&canonical_root));
+    if !canonical.is_file() || !contained {
+        return Err(RadtTsMediaError::InvalidOutput(path.display().to_string()));
+    }
+    Ok(canonical)
+}
+
+fn macos_private_alias(path: &Path) -> &Path {
+    path.strip_prefix("/private").unwrap_or(path)
+}
+
+fn stage_clip_files_for_deletion(
+    paths: &[PathBuf],
+    output_id: &str,
+) -> Result<Vec<(PathBuf, PathBuf)>, RadtTsMediaError> {
+    let mut renamed = Vec::new();
+    for path in paths.iter().filter(|path| path.exists()) {
+        let staged = path.with_extension(format!("delete-{output_id}"));
+        if let Err(error) = fs::rename(path, &staged) {
+            restore_clip_files(&renamed);
+            return Err(error.into());
+        }
+        renamed.push((path.clone(), staged));
+    }
+    Ok(renamed)
+}
+
+fn restore_clip_files(paths: &[(PathBuf, PathBuf)]) {
+    for (original, staged) in paths.iter().rev() {
+        if staged.exists() {
+            let _ = fs::rename(staged, original);
+        }
+    }
+}
+
 pub fn shutdown_radt_ts_media_jobs(state: &DesktopState) {
     let handles = state
         .radt_ts_media_children
@@ -1322,9 +1414,9 @@ mod tests {
         ClipVideoInput, ClipVideoTools, MediaCommandKind, MediaOutputFormat, RadtTsMediaArtifact,
         RadtTsMediaError, RadtTsMediaJobKind, RadtTsMediaOutput, RadtTsOutputFormat,
         RadtTsVerificationMode, StartRadtTsClipRequest, StartRadtTsTranscriptionRequest,
-        build_clip_args, build_transcription_args, finalize_clip_video, list_clips,
-        parse_clip_result, parse_media_output, parse_transcription_result,
-        read_persisted_clip_outputs, validate_clip_request,
+        build_clip_args, build_transcription_args, delete_radt_ts_clip_video_from_root,
+        finalize_clip_video, list_clips, parse_clip_result, parse_media_output,
+        parse_transcription_result, read_persisted_clip_outputs, validate_clip_request,
     };
 
     #[test]
@@ -1651,13 +1743,17 @@ mod tests {
         assert!(output.primary_path.ends_with(".mp4"));
         assert!(PathBuf::from(&output.primary_path).is_file());
         assert!(!audio.exists());
-        assert!(
-            output
-                .image_path
-                .as_ref()
-                .is_some_and(|path| PathBuf::from(path).is_file())
+        let image_path = PathBuf::from(output.image_path.as_ref().unwrap());
+        assert!(image_path.is_file());
+        assert_eq!(
+            read_persisted_clip_outputs(&root).unwrap(),
+            vec![output.clone()]
         );
-        assert_eq!(read_persisted_clip_outputs(&root).unwrap(), vec![output]);
+        delete_radt_ts_clip_video_from_root(&root, &output.id).unwrap();
+        assert!(!PathBuf::from(&output.primary_path).exists());
+        assert!(!report.exists());
+        assert!(image_path.exists());
+        assert!(read_persisted_clip_outputs(&root).unwrap().is_empty());
         fs::remove_dir_all(data).unwrap();
     }
 

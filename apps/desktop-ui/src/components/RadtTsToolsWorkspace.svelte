@@ -75,6 +75,7 @@
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
   let downloadingArtifact = $state<string | null>(null);
+  let deletingOutput = $state<string | null>(null);
   let preferenceStorage = $state<StorageLike | null>(null);
   let settingsLoaded = $state(false);
   let settingsSaveTimer: number | null = null;
@@ -320,6 +321,24 @@
     }
   }
 
+  async function deleteClipVideo(output: RadtTsMediaOutput) {
+    if (deletingOutput || output.kind !== "clip" || output.media_format !== "mp4") return;
+    if (!window.confirm(`Delete ${output.name}? The exported video and its boundary report will be removed.`)) return;
+    deletingOutput = output.id;
+    error = null;
+    try {
+      await invoke<void>("delete_radt_ts_media_output", {
+        request: { project_id: selectedProjectId, output_id: output.id, kind: "clip" },
+      });
+      outputs = outputs.filter((item) => item.id !== output.id);
+      status = "Video clip deleted";
+    } catch (reason: unknown) {
+      error = `Could not delete video clip: ${toErrorMessage(reason)}`;
+    } finally {
+      deletingOutput = null;
+    }
+  }
+
   async function cancel() {
     if (!job || !processing || cancelling) return;
     cancelling = true;
@@ -433,6 +452,9 @@
                 disabled={downloadingArtifact !== null}
                   onclick={() => void downloadArtifact(output.primary_path, primaryFilename, output.kind === "transcription" ? "Transcript" : output.media_format === "mp4" ? "Video" : "Audio", [output.media_format ?? output.output_format ?? (output.kind === "transcription" ? "txt" : "mp3")], output.kind === "transcription" ? "Transcript" : "Clip")}
               >Download {output.kind === "transcription" ? "transcript" : "clip"}</button>
+              {#if output.kind === "clip" && output.media_format === "mp4"}
+                <button class="secondary-button compact-button danger-button" type="button" disabled={deletingOutput !== null} onclick={() => void deleteClipVideo(output)}>{deletingOutput === output.id ? "Deleting..." : "Delete video"}</button>
+              {/if}
               {#each output.artifacts as artifact (artifact.path)}
                 {@const artifactFilename = filenameFromPath(artifact.path, `${output.name}.json`)}
                 <button

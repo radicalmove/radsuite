@@ -93,6 +93,21 @@ pub struct ProjectMediaRequest {
     pub project_id: Option<ProjectId>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeleteRadtTsMediaKind {
+    Voice,
+    Clip,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeleteRadtTsMediaOutputRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub output_id: String,
+    pub kind: DeleteRadtTsMediaKind,
+}
+
 pub async fn get_project_presenter_image(
     state: &DesktopState,
     request: ProjectMediaRequest,
@@ -104,6 +119,25 @@ pub async fn get_project_presenter_image(
         .saved_cover(&project.id.to_string())
         .map(|image| image.map(|image| image.path().to_string_lossy().into_owned()))
         .map_err(|error| error.to_string())
+}
+
+pub async fn delete_radt_ts_media_output(
+    state: &DesktopState,
+    request: DeleteRadtTsMediaOutputRequest,
+) -> Result<(), String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    match request.kind {
+        DeleteRadtTsMediaKind::Voice => {
+            crate::radt_ts::delete_radt_ts_video_output(state, project.id, &request.output_id)
+                .map_err(|error| error.to_string())
+        }
+        DeleteRadtTsMediaKind::Clip => {
+            crate::radt_ts_tools::delete_radt_ts_clip_video(state, project.id, &request.output_id)
+                .map_err(|error| error.to_string())
+        }
+    }
 }
 
 pub fn get_radcast_capabilities() -> RadcastCapabilityStatus {

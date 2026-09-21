@@ -592,6 +592,67 @@ pub fn list_radt_ts_outputs_for_project(
     list_outputs_from_root(&root)
 }
 
+pub fn delete_radt_ts_video_output(
+    state: &DesktopState,
+    project_id: ProjectId,
+    output_id: &str,
+) -> Result<(), RadtTsError> {
+    let root = ensure_project_root(&state.paths.data_dir.join("radt-ts-projects"), project_id)?;
+    delete_radt_ts_video_output_from_root(&root, output_id)
+}
+
+fn delete_radt_ts_video_output_from_root(root: &Path, output_id: &str) -> Result<(), RadtTsError> {
+    let manifest = root.join("manifests/media-outputs.json");
+    let mut outputs: Vec<RadtTsAudioOutput> = fs::read(&manifest)
+        .ok()
+        .and_then(|raw| serde_json::from_slice(&raw).ok())
+        .unwrap_or_default();
+    let index = outputs
+        .iter()
+        .position(|output| output.id == output_id)
+        .ok_or_else(|| RadtTsError::InvalidOutput(format!("output {output_id} was not found")))?;
+    let output = outputs.remove(index);
+    let mut owned = vec![contained_file(root, Path::new(&output.path))?];
+    for caption in &output.caption_paths {
+        owned.push(contained_file(root, Path::new(caption))?);
+    }
+    let renamed = stage_files_for_deletion(&owned, output_id)?;
+    if let Err(error) = write_json_file_atomic(&manifest, &outputs) {
+        restore_staged_files(&renamed);
+        return Err(error);
+    }
+    for (_, staged) in renamed {
+        if staged.exists() {
+            fs::remove_file(staged)?;
+        }
+    }
+    Ok(())
+}
+
+fn stage_files_for_deletion(
+    paths: &[PathBuf],
+    output_id: &str,
+) -> Result<Vec<(PathBuf, PathBuf)>, RadtTsError> {
+    let mut renamed = Vec::new();
+    for path in paths.iter().filter(|path| path.exists()) {
+        let staged = path.with_extension(format!("delete-{output_id}"));
+        if let Err(error) = fs::rename(path, &staged) {
+            restore_staged_files(&renamed);
+            return Err(error.into());
+        }
+        renamed.push((path.clone(), staged));
+    }
+    Ok(renamed)
+}
+
+fn restore_staged_files(paths: &[(PathBuf, PathBuf)]) {
+    for (original, staged) in paths.iter().rev() {
+        if staged.exists() {
+            let _ = fs::rename(staged, original);
+        }
+    }
+}
+
 fn list_outputs_from_root(root: &Path) -> Result<RadtTsOutputListing, RadtTsError> {
     let outputs_path = root.join("manifests").join("outputs.json");
     let raw = match fs::read(&outputs_path) {
@@ -1600,10 +1661,11 @@ mod tests {
     use super::{
         MediaOutputFormat, RadtTsChunkMode, RadtTsCliOutput, RadtTsCliResult, RadtTsOutputFormat,
         RadtTsOutputMetadata, RadtTsQuality, RadtTsSynthesisRequest, RadtTsVoiceSource,
-        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, finalize_voice_output,
-        list_outputs_from_root, output_from_cli_result, output_from_metadata, parse_cli_result,
-        probe_radt_ts_cli, probe_radt_ts_cli_with_timeout, remove_temp_text_files,
-        shutdown_radt_ts_jobs, validate_output_name, validate_reference_audio,
+        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file,
+        delete_radt_ts_video_output_from_root, finalize_voice_output, list_outputs_from_root,
+        output_from_cli_result, output_from_metadata, parse_cli_result, probe_radt_ts_cli,
+        probe_radt_ts_cli_with_timeout, remove_temp_text_files, shutdown_radt_ts_jobs,
+        validate_output_name, validate_reference_audio,
     };
     use crate::state::DesktopState;
 
@@ -1747,13 +1809,16 @@ mod tests {
         .unwrap();
         assert!(output.path.ends_with(".mp4"));
         assert!(!audio.exists());
-        assert!(
-            output
-                .image_path
-                .as_ref()
-                .is_some_and(|path| PathBuf::from(path).is_file())
+        let image_path = PathBuf::from(output.image_path.as_ref().unwrap());
+        assert!(image_path.is_file());
+        assert_eq!(
+            list_outputs_from_root(&root).unwrap().outputs,
+            vec![output.clone()]
         );
-        assert_eq!(list_outputs_from_root(&root).unwrap().outputs, vec![output]);
+        delete_radt_ts_video_output_from_root(&root, &output.id).unwrap();
+        assert!(!PathBuf::from(&output.path).exists());
+        assert!(image_path.exists());
+        assert!(list_outputs_from_root(&root).unwrap().outputs.is_empty());
         fs::remove_dir_all(data).unwrap();
     }
 

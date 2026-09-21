@@ -57,6 +57,7 @@
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
   let downloadingArtifact = $state<string | null>(null);
+  let deletingOutput = $state<string | null>(null);
   let preferenceStorage = $state<StorageLike | null>(null);
   let settingsLoaded = $state(false);
   let loadedProjectId = $state<string | null>(null);
@@ -266,6 +267,24 @@
     } finally {
       processing = false;
       job = null;
+    }
+  }
+
+  async function deleteVideoOutput(output: RadtTsAudioOutput) {
+    if (deletingOutput || output.media_format !== "mp4") return;
+    if (!window.confirm(`Delete ${output.filename}? The exported video will be removed from this project.`)) return;
+    deletingOutput = output.id;
+    error = null;
+    try {
+      await invoke<void>("delete_radt_ts_media_output", {
+        request: { project_id: selectedProjectId, output_id: output.id, kind: "voice" },
+      });
+      outputs = outputs.filter((item) => item.id !== output.id);
+      status = "Video deleted";
+    } catch (reason: unknown) {
+      error = `Could not delete video: ${toErrorMessage(reason)}`;
+    } finally {
+      deletingOutput = null;
     }
   }
 
@@ -526,6 +545,9 @@
                 disabled={downloadingArtifact !== null}
                 onclick={() => void downloadArtifact(output.path, output.filename, output.media_format === "mp4" ? "Video" : "Audio", [output.media_format ?? output.output_format], output.media_format === "mp4" ? "Video" : "Audio")}
               >Download {output.media_format === "mp4" ? "video" : "audio"}</button>
+              {#if output.media_format === "mp4"}
+                <button class="secondary-button compact-button danger-button" type="button" disabled={deletingOutput !== null} onclick={() => void deleteVideoOutput(output)}>{deletingOutput === output.id ? "Deleting..." : "Delete video"}</button>
+              {/if}
               {#each output.caption_paths as captionPath (captionPath)}
                 {@const captionFilename = filenameFromPath(captionPath, "captions.vtt")}
                 <button

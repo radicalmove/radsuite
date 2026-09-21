@@ -9,15 +9,15 @@ use radsuite_desktop::{
     ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest,
     AssignCourseReferenceModuleRequest, CourseModuleSummary, CourseReferenceSummary,
     CourseReferencesExport, CreateRadciteProjectRequest, DeleteRadcastAudioRequest,
-    DeleteRadcastOutputRequest, DesktopState, ExportCourseReferencesRequest,
-    ExportModuleReadingsRequest, ExportRadciteReviewReportRequest, ImportDocumentReadingsRequest,
-    ImportDocumentReadingsResponse, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
-    LegacyRadciteImportRequest, LegacyRadciteImportResult, LinkCitationReferenceRequest,
-    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadcastAudioRequest,
-    ListRadciteArchiveRequest, ListRadciteModulesRequest, ListRadtTsOutputsRequest,
-    ListSavedReviewsRequest, LoadSavedReviewRequest, MergeCourseReferencesRequest,
-    ModuleReadingImportCandidateSummary, ModuleReadingSummary, ModuleReadingsExport,
-    ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
+    DeleteRadcastOutputRequest, DeleteRadtTsMediaOutputRequest, DesktopState,
+    ExportCourseReferencesRequest, ExportModuleReadingsRequest, ExportRadciteReviewReportRequest,
+    ImportDocumentReadingsRequest, ImportDocumentReadingsResponse, ImportRadcastAudioLinkRequest,
+    ImportRadcastAudioRequest, LegacyRadciteImportRequest, LegacyRadciteImportResult,
+    LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
+    ListRadcastAudioRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
+    ListRadtTsOutputsRequest, ListSavedReviewsRequest, LoadSavedReviewRequest,
+    MergeCourseReferencesRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
+    ModuleReadingsExport, ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
     ProcessRadcastAudioRequest, ProjectMediaRequest, RadcastAudioListing, RadcastAudioOutput,
     RadcastAudioSource, RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem,
@@ -307,6 +307,14 @@ async fn get_project_presenter_image(
     request: ProjectMediaRequest,
 ) -> Result<Option<String>, String> {
     radsuite_desktop::get_project_presenter_image(&state, request).await
+}
+
+#[tauri::command]
+async fn delete_radt_ts_media_output(
+    state: tauri::State<'_, DesktopState>,
+    request: DeleteRadtTsMediaOutputRequest,
+) -> Result<(), String> {
+    radsuite_desktop::delete_radt_ts_media_output(&state, request).await
 }
 
 #[tauri::command]
@@ -738,6 +746,7 @@ fn main() {
             cancel_radt_ts_job,
             list_radt_ts_media_outputs,
             get_project_presenter_image,
+            delete_radt_ts_media_output,
             start_radt_ts_transcription,
             start_radt_ts_clip,
             get_radt_ts_media_job,
