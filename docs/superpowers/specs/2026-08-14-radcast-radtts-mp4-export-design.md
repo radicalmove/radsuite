@@ -33,7 +33,7 @@ RADsuite currently exports audio from RADcast and RADTTS as MP3 or WAV. Echo360 
 1. The user generates a voice version or creates a verified clip using the existing RADTTS workflow.
 2. The user chooses MP3, WAV, or MP4 where the current workflow offers an audio output format.
 3. When MP4 is selected, the same required presenter-image prompt, saved-image reuse, per-export override, and split-composition preview are shown.
-4. RADsuite lets RADTTS finish its normal audio output, then creates the MP4 from that output.
+4. For MP4, RADTTS runs its normal synthesis or verified-clip algorithm into an isolated scratch WAV, then creates the MP4 from that exact WAV. The scratch WAV is never persisted or shown as an output.
 5. The output listing identifies the video format and keeps captions/timed-segment artifacts available separately.
 
 MP4 applies to both the normal voice-generation path and the verified-clip path wherever that path currently produces an audio output. It does not add video output to metadata-only or non-media actions. Each path uses the same isolated WAV scratch workspace and shared video exporter; only the completed MP4 is added to its normal output listing.
@@ -70,13 +70,13 @@ The fixed visual constants and filter graph are:
 
 The command uses the image as input 0 with `-loop 1 -framerate 30`, the final audio as input 1, and the following filter graph semantics: scale/crop input 0 to 540x720 as `[presenter]`; create a 740x720 charcoal colour source as `[panel]`; render input 1 with `showwaves=s=660x240:mode=cline:rate=30:colors=white,format=rgba,colorkey=black:0.01:0.0` so the waveform background is transparent; overlay the waveform at `x=40:y=240` on `[panel]`; join `[presenter]` and the completed waveform panel with `hstack`; apply `fps=30,format=yuv420p`; map the composed video and `1:a:0`; encode with `-c:v libx264 -crf 23 -pix_fmt yuv420p -r 30 -c:a aac -b:a 192k -shortest -movflags +faststart`. The exporter uses fixed 1280x720, 540x720, and 660x240 constants; requests cannot override dimensions or placement in this slice.
 
-The post-export probe invokes `ffprobe -v error -print_format json -show_streams -show_format` and requires exactly one stream with `codec_type=video`, one with `codec_type=audio`, video width 1280, video height 720, video codec `h264`, video pixel format `yuv420p`, video `r_frame_rate=30/1` and `avg_frame_rate=30/1`, audio codec `aac`, and `format.duration` finite and greater than zero. The output duration must be within 0.10 seconds of the intermediate audio duration.
+The post-export probe invokes `ffprobe -v error -print_format json -show_streams -show_format` and requires exactly one stream with `codec_type=video`, one with `codec_type=audio`, video width 1280, video height 720, video codec `h264`, video pixel format `yuv420p`, video `r_frame_rate=30/1` and `avg_frame_rate=30/1`, audio codec `aac`, and `format.duration` finite and greater than zero. The output duration must be within an absolute 0.10 seconds of the intermediate audio duration. This absolute tolerance, rather than a percentage, also applies to very short audio and accommodates normal AAC encoder padding; both probed durations must independently be finite and greater than zero.
 
 This boundary avoids changing the researched RADcast filter chains or the RADTTS CLI contract. A temporary intermediate audio file may be used when the requested primary output is MP4; it must be cleaned up on success, failure, and cancellation.
 
 When MP4 is selected, both workflows expose a distinct `Rendering video` progress phase between audio generation and manifest persistence. The video process is started with `-progress pipe:1 -nostats`; the exporter parses `out_time_us` against the known intermediate-audio duration. The UI reports 90-99% during this phase and 100% only after the output manifest is persisted. If duration is unavailable, the phase is indeterminate until the probe completes. Audio-only requests retain their current progress phases.
 
-The cancellation-capable path uses a shared spawned-process runner for both audio and video FFmpeg/FFprobe work. The existing `AudioProcessor` public methods keep their current signatures and return types but delegate to this runner with a no-op cancellation token; new cancellation-aware methods are used by RADcast and RADTTS jobs. The runner polls the child, reads progress/output without blocking, and on cancellation terminates the child process tree using a platform-specific process-group helper (Unix process group; Windows new process group and numeric-PID tree termination), then waits for exit before cleanup. No shell command is built from user-provided paths.
+The implementation reuses the already-provided shared spawned-process runner for cancellation-capable audio and video FFmpeg/FFprobe work. The existing `AudioProcessor` public methods retain their signatures and return types and delegate to this runner with a no-op cancellation token; RADcast and RADTTS jobs use its cancellation-aware methods. The remaining MP4 work does not introduce a second cancellation system. The runner polls the child, reads progress/output without blocking, and on cancellation terminates the child process tree using a platform-specific process-group helper (Unix process group; Windows new process group and numeric-PID tree termination), then waits for exit before cleanup. No shell command is built from user-provided paths.
 
 ### Image storage
 
@@ -84,7 +84,7 @@ Use one shared project-media root for both workflows: `<data_dir>/media/projects
 
 The storage helper must:
 
-- accept PNG, JPEG, and WebP inputs;
+- accept PNG, JPEG, and static WebP inputs, and reject animated WebP with an actionable message because an MP4 presenter image is intentionally still;
 - copy the selected file into managed storage with the stable `cover/cover.<ext>` filename for a saved project image;
 - use a temporary UUID-named copy under the same project-media root while rendering a per-export override;
 - retain the selected override as an output-scoped copy at `exports/<output_id>/image.<ext>` when it is not saved as the project image, so completed MP4 metadata never points at a deleted file; remove that copy only when the associated MP4 output is deleted;
@@ -98,14 +98,14 @@ The initial implementation does not need image editing, multiple image libraries
 
 Extend the existing Rust and Svelte request/output types so MP4 is explicit rather than inferred from a filename. The desktop request uses `media_format`; audio-engine and RADTTS CLI requests continue to use `AudioOutputFormat`/`RadtTsOutputFormat` with only MP3/WAV. For MP4, the request also carries the selected managed image and whether it becomes the project default. The existing serialized settings and output manifests must continue to deserialize with their current defaults.
 
-The durable primary-output record uses `media_format: mp3 | wav | mp4`, `path`, `duration_seconds`, optional `audio_source_path`, optional `image_path`, and workflow-specific caption/timed-segment artifact paths. Legacy RADcast records infer `media_format` from their existing `output_format` field. Legacy RADTTS voice records continue to load from `manifests/outputs.json`, and legacy verified clips continue to be discovered from their existing MP3/WAV files and boundary reports. New RADTTS MP4 voice and clip records are written to `manifests/media-outputs.json` using the same primary-output fields plus `kind` (`voice` or `clip`) and are merged into both RADTTS listings. This avoids rewriting legacy manifests while making MP4 records durable and explicit.
+The durable primary-output record uses `media_format: mp3 | wav | mp4`, `path`, `duration_seconds`, optional `image_path`, and workflow-specific caption/timed-segment artifact paths. It never records a scratch WAV path. Legacy RADcast records infer `media_format` from their existing `output_format` field. Legacy RADTTS voice records continue to load from `manifests/outputs.json`, and legacy verified clips continue to be discovered from their existing MP3/WAV files and boundary reports. New RADTTS MP4 voice and clip records are written to `manifests/media-outputs.json` using the same primary-output fields plus `kind` (`voice` or `clip`) and are merged into both RADTTS listings. This avoids rewriting legacy manifests while making MP4 records durable and explicit.
 
 For a requested MP4, the final MP4 is the only durable primary output created by that request. The intermediate cleaned or synthesized WAV is created under an isolated per-job scratch directory and is never sent through the normal output-manifest persistence path. For RADTTS, this scratch directory includes any CLI-generated temporary manifest and is deleted with the scratch job directory; the normal RADTTS `outputs.json` receives no temporary entry, and `media-outputs.json` receives only the completed MP4 record. For verified clips, the MP4 record retains the boundary report and timed-segment artifacts as separate paths. The source audio, previously-created MP3/WAV outputs, captions, and other artifacts are not changed or removed.
 
 Output metadata must identify:
 
 - the MP4 path and format;
-- the source audio/output relationship;
+- the meaningful workflow source relationship without retaining temporary paths: RADcast keeps its existing managed `source_id`; RADTTS voice uses `kind=voice` and its existing generation/job provenance; RADTTS verified clips use `kind=clip` and retain their existing boundary report and timed-segment artifacts. No workflow records the intermediate scratch WAV as a source;
 - the managed image path used for the export, either the reusable project cover or the durable output-scoped image copy;
 - the final duration.
 
@@ -143,7 +143,6 @@ A failed video export must not create a completed MP4 output record. The tempora
 - Image-storage tests cover supported extensions, rejected files, the 50-MB limit, managed copies in the shared project-media root, project reuse, and per-export overrides.
 - RADcast tests verify MP3/WAV requests are unchanged and MP4 requests render from the final audio stage without changing the selected cleanup/enhancement filters.
 - RADTTS tests verify MP3/WAV CLI arguments remain unchanged; both voice-generation and verified-clip flows use an isolated WAV/scratch manifest for MP4 and add only the post-generation mux step to the normal workflow.
-- Output-listing tests verify MP4 records deserialize/list alongside legacy MP3/WAV records and captions.
 - Output-listing tests verify MP4 records deserialize/list alongside legacy MP3/WAV records and captions for RADcast, RADTTS voice generation, and RADTTS verified clips, including legacy file-scan compatibility.
 - Failure tests verify no completed output is persisted after a failed mux, partial/promoted-orphan MP4 files are not listed, temporary audio and images are cleaned or reported with paths as cleanup failures, cancellation terminates the active process runner, and manifest rollback is retried at startup.
 - Deletion tests verify output-scoped images are removed with their last owning MP4, reusable project covers are retained, and media manifests are updated atomically.
