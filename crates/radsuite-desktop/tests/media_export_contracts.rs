@@ -1,5 +1,6 @@
 use radsuite_desktop::{
     MediaOutputFormat,
+    media_assets::{MediaAssetError, ProjectMediaStore},
     radcast::{ProcessRadcastAudioRequest, RadcastAudioOutput, RadcastProjectSettings},
     radt_ts::{RadtTsAudioOutput, RadtTsOutputFormat, StartRadtTsSynthesisRequest},
     radt_ts_tools::{
@@ -8,6 +9,8 @@ use radsuite_desktop::{
 };
 use radsuite_engines::AudioOutputFormat;
 use serde_json::{Value, json};
+use std::fs;
+use uuid::Uuid;
 
 fn legacy_output_format(media_format: MediaOutputFormat) -> &'static str {
     match media_format {
@@ -354,4 +357,88 @@ fn all_workflow_output_records_preserve_requested_media_format() {
             assert_eq!(serialized["output_format"], Value::from(legacy));
         }
     }
+}
+
+#[test]
+fn media_assets_stage_supported_presenter_images_inside_project_storage() {
+    let root = test_root("stage");
+    let source = root.join("presenter.png");
+    fs::create_dir_all(&root).unwrap();
+    fs::write(&source, b"\x89PNG\r\n\x1a\n").unwrap();
+    let store = ProjectMediaStore::new(root.join("data"));
+
+    let staged = store.stage_image("course-1", &source).unwrap();
+
+    assert!(staged.path().is_file());
+    assert!(
+        staged
+            .path()
+            .starts_with(root.join("data/media/projects/course-1"))
+    );
+    assert_eq!(staged.extension(), "png");
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn media_assets_reject_unsupported_and_animated_images() {
+    let root = test_root("reject");
+    fs::create_dir_all(&root).unwrap();
+    let store = ProjectMediaStore::new(root.join("data"));
+    let gif = root.join("presenter.gif");
+    fs::write(&gif, b"GIF89a").unwrap();
+    assert!(matches!(
+        store.stage_image("course-1", &gif),
+        Err(MediaAssetError::UnsupportedImage { .. })
+    ));
+
+    let webp = root.join("animated.webp");
+    fs::write(&webp, b"RIFF\x10\0\0\0WEBPVP8XANIM").unwrap();
+    assert!(matches!(
+        store.stage_image("course-1", &webp),
+        Err(MediaAssetError::AnimatedWebp { .. })
+    ));
+    fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn media_assets_roll_back_and_finalize_project_cover_replacement() {
+    let root = test_root("cover-transaction");
+    fs::create_dir_all(&root).unwrap();
+    let png = root.join("first.png");
+    let jpeg = root.join("replacement.jpg");
+    fs::write(&png, b"\x89PNG\r\n\x1a\nfirst").unwrap();
+    fs::write(&jpeg, b"\xff\xd8\xffreplacement").unwrap();
+    let store = ProjectMediaStore::new(root.join("data"));
+
+    let first = store.stage_image("course-1", &png).unwrap();
+    let first_pending = store.prepare_commit(first, Uuid::new_v4(), true).unwrap();
+    let first_saved = store.finalize_commit(first_pending).unwrap();
+    assert_eq!(first_saved.extension(), "png");
+
+    let replacement = store.stage_image("course-1", &jpeg).unwrap();
+    let pending = store
+        .prepare_commit(replacement, Uuid::new_v4(), true)
+        .unwrap();
+    assert_eq!(
+        store.saved_cover("course-1").unwrap().unwrap().extension(),
+        "jpg"
+    );
+    store.rollback_commit(pending).unwrap();
+    assert_eq!(
+        store.saved_cover("course-1").unwrap().unwrap().extension(),
+        "png"
+    );
+
+    let replacement = store.stage_image("course-1", &jpeg).unwrap();
+    let pending = store
+        .prepare_commit(replacement, Uuid::new_v4(), true)
+        .unwrap();
+    let saved = store.finalize_commit(pending).unwrap();
+    assert_eq!(saved.extension(), "jpg");
+    assert!(!saved.path().with_file_name("cover.png").exists());
+    fs::remove_dir_all(root).unwrap();
+}
+
+fn test_root(label: &str) -> std::path::PathBuf {
+    std::env::temp_dir().join(format!("radsuite-media-assets-{label}-{}", Uuid::new_v4()))
 }

@@ -4,6 +4,7 @@ pub mod document_store;
 pub mod file_export;
 pub mod legacy_import;
 pub mod library_links;
+pub mod media_assets;
 pub mod media_export;
 pub(crate) mod process_group;
 pub mod radcast;
