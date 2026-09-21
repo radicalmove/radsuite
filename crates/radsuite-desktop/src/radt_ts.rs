@@ -1112,7 +1112,7 @@ where
         })?;
     let staged = store.stage_image(&request.project_id.to_string(), &selected_image)?;
     let video_path = PathBuf::from(&audio.path).with_extension("mp4");
-    let video = video_exporter.export_with_callbacks(
+    let video_result = video_exporter.export_with_callbacks(
         radsuite_engines::VideoExportRequest::new(
             staged.path(),
             &audio.path,
@@ -1121,7 +1121,15 @@ where
         ),
         &mut is_cancelled,
         &mut on_progress,
-    )?;
+    );
+    let video = match video_result {
+        Ok(video) => video,
+        Err(error) => {
+            let _ = fs::remove_file(staged.path());
+            let _ = fs::remove_file(&video_path);
+            return Err(error.into());
+        }
+    };
     let output_id = Uuid::parse_str(&audio.id).unwrap_or_else(|_| Uuid::new_v4());
     let pending = store.prepare_commit(
         staged,
@@ -1747,6 +1755,109 @@ mod tests {
         );
         assert_eq!(list_outputs_from_root(&root).unwrap().outputs, vec![output]);
         fs::remove_dir_all(data).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn failed_voice_video_render_keeps_wav_and_removes_staged_image() {
+        let data = std::env::temp_dir().join(format!(
+            "radsuite-radt-ts-failed-media-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let project_id = ProjectId::new();
+        let root = data.join("radt-ts-projects").join(project_id.to_string());
+        let audio = root.join("assets/generated_audio/voice.wav");
+        let metadata_path = root.join("manifests/voice.metadata.json");
+        let image = data.join("presenter.png");
+        fs::create_dir_all(audio.parent().unwrap()).unwrap();
+        fs::create_dir_all(metadata_path.parent().unwrap()).unwrap();
+        fs::write(&audio, b"wav").unwrap();
+        fs::write(&image, b"\x89PNG\r\n\x1a\n").unwrap();
+        let metadata = RadtTsOutputMetadata {
+            output_file: audio.to_string_lossy().into_owned(),
+            duration_seconds: Some(4.0),
+            output_format: Some(RadtTsOutputFormat::Wav),
+            media_format: Some(MediaOutputFormat::Wav),
+            created_at: None,
+            captions: None,
+            project_id: project_id.to_string(),
+            job_id: "voice-1".to_string(),
+        };
+        fs::write(&metadata_path, serde_json::to_vec(&metadata).unwrap()).unwrap();
+        fs::write(
+            root.join("manifests/outputs.json"),
+            serde_json::to_vec(&vec![metadata]).unwrap(),
+        )
+        .unwrap();
+        let root = root.canonicalize().unwrap();
+        let result = RadtTsCliResult {
+            job_id: "voice-1".to_string(),
+            status: "completed".to_string(),
+            stage: "completed".to_string(),
+            outputs: RadtTsCliOutput {
+                output_file: Some(audio.to_string_lossy().into_owned()),
+                metadata_path: Some(metadata_path.to_string_lossy().into_owned()),
+            },
+        };
+        let request = RadtTsSynthesisRequest {
+            project_id,
+            text: "Hello".to_string(),
+            voice_source: RadtTsVoiceSource::Builtin,
+            reference_audio_path: None,
+            reference_text: None,
+            built_in_speaker: Some("Aiden".to_string()),
+            built_in_instruct: None,
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Single,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.5,
+            pause_seed: None,
+            max_new_tokens: 700,
+            output_format: RadtTsOutputFormat::Wav,
+            media_format: Some(MediaOutputFormat::Mp4),
+            presenter_image_path: Some(image),
+            save_presenter_image_as_project_default: true,
+            output_name: "voice".to_string(),
+            acknowledge_voice_clone: true,
+        };
+        let ffmpeg = write_test_executable(&data, "failed-video.sh", "#!/bin/sh\nexit 7\n");
+        let error = finalize_voice_output(
+            &data,
+            &root,
+            &request,
+            result,
+            radsuite_engines::VideoExporter::from_commands(ffmpeg, data.join("unused-probe")),
+            || false,
+            |_| {},
+        )
+        .unwrap_err();
+        assert!(matches!(error, super::RadtTsError::VideoExport(_)));
+        assert!(audio.exists());
+        assert!(metadata_path.exists());
+        let media_root = data.join("media/projects").join(project_id.to_string());
+        let staged_files = if media_root.exists() {
+            walk_test_files(&media_root)
+        } else {
+            Vec::new()
+        };
+        assert!(
+            staged_files.is_empty(),
+            "failed render leaked files: {staged_files:?}"
+        );
+        fs::remove_dir_all(data).unwrap();
+    }
+
+    fn walk_test_files(root: &std::path::Path) -> Vec<PathBuf> {
+        let mut files = Vec::new();
+        for entry in fs::read_dir(root).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                files.extend(walk_test_files(&path));
+            } else {
+                files.push(path);
+            }
+        }
+        files
     }
 
     #[cfg(unix)]
