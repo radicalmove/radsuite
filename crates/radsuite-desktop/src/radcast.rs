@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fs,
+    fs, io,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -85,6 +85,13 @@ pub struct DeleteRadcastAudioRequest {
     #[serde(default)]
     pub project_id: Option<radsuite_core::ProjectId>,
     pub source_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeleteRadcastOutputRequest {
+    #[serde(default)]
+    pub project_id: Option<radsuite_core::ProjectId>,
+    pub output_id: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -416,6 +423,72 @@ pub(crate) fn delete_audio(
         fs::remove_file(resolved_path)?;
     }
 
+    Ok(())
+}
+
+pub(crate) fn delete_output(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: DeleteRadcastOutputRequest,
+) -> Result<(), RadcastStorageError> {
+    let mut manifest = load_manifest(data_dir, project_id)?;
+    let index = manifest
+        .outputs
+        .iter()
+        .position(|output| output.id == request.output_id)
+        .ok_or_else(|| RadcastStorageError::MissingSource(request.output_id.clone()))?;
+    let output = manifest.outputs.remove(index);
+    let image_is_shared = output.image_path.as_ref().is_some_and(|image| {
+        manifest
+            .outputs
+            .iter()
+            .any(|other| other.image_path.as_ref() == Some(image))
+    });
+    write_manifest(data_dir, project_id, &manifest)?;
+
+    let radcast_root = project_root(data_dir, project_id);
+    for path in [
+        Some(output.path.as_str()),
+        output.caption_path.as_deref(),
+        output.caption_review_path.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        remove_contained_file(Path::new(path), &radcast_root)?;
+    }
+
+    if !image_is_shared && let Some(image_path) = output.image_path.as_deref() {
+        let media_store = ProjectMediaStore::new(data_dir);
+        let is_cover = media_store
+            .saved_cover(&project_id.to_string())?
+            .is_some_and(|cover| cover.path() == Path::new(image_path));
+        if !is_cover {
+            let media_root = data_dir.join("media/projects").join(project_id.to_string());
+            remove_contained_file(Path::new(image_path), &media_root)?;
+        }
+    }
+    Ok(())
+}
+
+fn remove_contained_file(path: &Path, root: &Path) -> Result<(), RadcastStorageError> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let resolved_path = path.canonicalize()?;
+    let resolved_root = root.canonicalize()?;
+    if !resolved_path.starts_with(&resolved_root) {
+        return Err(RadcastStorageError::Io(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            format!(
+                "refusing to delete path outside project storage: {}",
+                path.display()
+            ),
+        )));
+    }
+    if resolved_path.is_file() {
+        fs::remove_file(resolved_path)?;
+    }
     Ok(())
 }
 

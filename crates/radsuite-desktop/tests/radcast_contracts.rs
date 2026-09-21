@@ -16,15 +16,16 @@ use radsuite_desktop::radcast::{
     process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video,
 };
 use radsuite_desktop::{
-    CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
-    ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest, ListRadcastAudioRequest,
-    MediaOutputFormat, ProcessRadcastAudioRequest, RadcastAudioError, RadcastJobStatus,
-    RadcastStorageError, SaveRadcastSettingsRequest, cancel_radcast_audio, create_radcite_project,
-    delete_radcast_audio, get_radcast_capabilities_with_processor,
-    get_radcast_capabilities_with_processors, import_radcast_audio_from_link_with_processor,
-    import_radcast_audio_with_processor, list_radcast_audio, list_radcite_projects,
-    process_radcast_audio_with_processor, process_radcast_audio_with_processors,
-    process_radcast_audio_with_processors_and_enhancement, save_radcast_settings,
+    CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DeleteRadcastOutputRequest,
+    DesktopState, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
+    ListRadcastAudioRequest, MediaOutputFormat, ProcessRadcastAudioRequest, RadcastAudioError,
+    RadcastJobStatus, RadcastStorageError, SaveRadcastSettingsRequest, cancel_radcast_audio,
+    create_radcite_project, delete_radcast_audio, delete_radcast_output,
+    get_radcast_capabilities_with_processor, get_radcast_capabilities_with_processors,
+    import_radcast_audio_from_link_with_processor, import_radcast_audio_with_processor,
+    list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
+    process_radcast_audio_with_processors, process_radcast_audio_with_processors_and_enhancement,
+    save_radcast_settings,
 };
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
@@ -225,6 +226,18 @@ async fn radcast_mp4_persists_video_and_managed_presenter_image_only() {
     assert!(Path::new(&output.path).is_file());
     assert!(Path::new(output.image_path.as_deref().unwrap()).is_file());
     assert!(!Path::new(&output.path).with_extension("wav").exists());
+    let cover_path = output.image_path.clone().unwrap();
+    delete_radcast_output(
+        &state,
+        DeleteRadcastOutputRequest {
+            project_id: Some(project),
+            output_id: output.id,
+        },
+    )
+    .await
+    .unwrap();
+    assert!(!Path::new(&output.path).exists());
+    assert!(Path::new(&cover_path).exists());
     remove_dir(dir);
 }
 

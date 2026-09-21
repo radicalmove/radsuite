@@ -37,9 +37,10 @@ use crate::{
 };
 
 pub use crate::radcast::{
-    DeleteRadcastAudioRequest, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
-    ListRadcastAudioRequest, ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput,
-    RadcastAudioSource, RadcastProcessingPhase, RadcastProjectSettings, RadcastStorageError,
+    DeleteRadcastAudioRequest, DeleteRadcastOutputRequest, ImportRadcastAudioLinkRequest,
+    ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
+    RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastProcessingPhase,
+    RadcastProjectSettings, RadcastStorageError,
 };
 pub use crate::radt_ts::{
     ListRadtTsOutputsRequest, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing,
@@ -1314,6 +1315,19 @@ pub async fn delete_radcast_audio(
     let data_dir = state.paths.data_dir.clone();
     tokio::task::spawn_blocking(move || {
         crate::radcast::delete_audio(&data_dir, project.id, request)
+    })
+    .await?
+    .map_err(Into::into)
+}
+
+pub async fn delete_radcast_output(
+    state: &DesktopState,
+    request: DeleteRadcastOutputRequest,
+) -> Result<(), RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::delete_output(&data_dir, project.id, request)
     })
     .await?
     .map_err(Into::into)
