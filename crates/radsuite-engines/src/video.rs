@@ -17,12 +17,15 @@ use crate::{
 pub const VIDEO_WIDTH: u32 = 1280;
 pub const VIDEO_HEIGHT: u32 = 720;
 pub const VIDEO_FRAME_RATE: u32 = 30;
-pub const WAVEFORM_WIDTH: u32 = 1280;
-pub const WAVEFORM_HEIGHT: u32 = 220;
-pub const WAVEFORM_Y: u32 = 500;
+pub const PRESENTER_WIDTH: u32 = 540;
+pub const WAVEFORM_PANEL_WIDTH: u32 = 740;
+pub const WAVEFORM_WIDTH: u32 = 660;
+pub const WAVEFORM_HEIGHT: u32 = 240;
+pub const WAVEFORM_X: u32 = 40;
+pub const WAVEFORM_Y: u32 = 240;
 pub const VIDEO_AUDIO_TOLERANCE_SECONDS: f64 = 0.10;
 
-const FILTER_GRAPH: &str = "[0:v]scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720:(iw-1280)/2:(ih-720)/2[background];[background]drawbox=x=0:y=500:w=1280:h=220:color=black@0.70:t=fill[band];[1:a]showwaves=s=1280x220:mode=cline:rate=30:colors=white,format=rgba,colorkey=black:0.01:0.0[waveform];[band][waveform]overlay=0:500,fps=30,format=yuv420p[video]";
+const FILTER_GRAPH: &str = "[0:v]scale=540:720:force_original_aspect_ratio=increase,crop=540:720:(iw-540)/2:(ih-720)/2[presenter];color=c=0x101214:s=740x720:r=30[panel];[1:a]showwaves=s=660x240:mode=cline:rate=30:colors=white,format=rgba,colorkey=black:0.01:0.0[waveform];[panel][waveform]overlay=40:240[wave_panel];[presenter][wave_panel]hstack=inputs=2,fps=30,format=yuv420p[video]";
 static PARTIAL_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, Clone, PartialEq)]
