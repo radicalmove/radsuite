@@ -19,6 +19,7 @@ use uuid::Uuid;
 
 use crate::{
     DesktopState, MediaOutputFormat,
+    media_assets::ProjectMediaStore,
     process_group::{ManagedChild, ManagedProcessGroup},
 };
 
@@ -190,6 +191,7 @@ pub enum RadtTsJobState {
 pub enum RadtTsProcessingPhase {
     Preparing,
     Generating,
+    RenderingVideo,
     SavingOutput,
 }
 
@@ -314,6 +316,10 @@ pub enum RadtTsError {
     InvalidOutput(String),
     #[error("RADTTS local storage error: {0}")]
     Io(#[from] std::io::Error),
+    #[error("failed to prepare the presenter image: {0}")]
+    MediaAsset(#[from] crate::media_assets::MediaAssetError),
+    #[error("failed to render MP4 video: {0}")]
+    VideoExport(#[from] radsuite_engines::VideoExportError),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -773,12 +779,37 @@ async fn run_radt_ts_job(job_id: String, context: RadtTsJobContext) {
                         })),
                     );
                 } else {
+                    if request.normalized_media_format() == MediaOutputFormat::Mp4 {
+                        update_job(&jobs, &job_id, |job| {
+                            job.phase = RadtTsProcessingPhase::RenderingVideo;
+                            job.percent = Some(90);
+                        });
+                    }
+                    let data_dir = project_root
+                        .parent()
+                        .and_then(Path::parent)
+                        .unwrap_or(&project_root)
+                        .to_path_buf();
                     let result = parse_cli_result(&stdout).and_then(|result| {
-                        output_from_cli_result(
+                        finalize_voice_output(
+                            &data_dir,
                             &project_root,
-                            request.project_id,
-                            request.normalized_media_format(),
+                            &request,
                             result,
+                            radsuite_engines::VideoExporter::default(),
+                            || {
+                                cancellations
+                                    .lock()
+                                    .unwrap_or_else(|poisoned| poisoned.into_inner())
+                                    .contains(&job_id)
+                            },
+                            |progress| {
+                                update_job(&jobs, &job_id, |job| {
+                                    job.phase = RadtTsProcessingPhase::RenderingVideo;
+                                    job.percent =
+                                        Some((90.0 + progress.clamp(0.0, 1.0) * 9.0).round() as u8);
+                                });
+                            },
                         )
                     });
                     finish_radt_ts_job(
@@ -1036,6 +1067,113 @@ fn output_from_cli_result(
         ));
     }
     output_from_metadata(project_root, &metadata, Some(requested_media_format))
+}
+
+fn finalize_voice_output<C, P>(
+    data_dir: &Path,
+    project_root: &Path,
+    request: &RadtTsSynthesisRequest,
+    result: RadtTsCliResult,
+    video_exporter: radsuite_engines::VideoExporter,
+    mut is_cancelled: C,
+    mut on_progress: P,
+) -> Result<RadtTsAudioOutput, RadtTsError>
+where
+    C: FnMut() -> bool,
+    P: FnMut(f64),
+{
+    let metadata_path = result.outputs.metadata_path.as_deref().map(PathBuf::from);
+    let audio = output_from_cli_result(
+        project_root,
+        request.project_id,
+        request.normalized_media_format(),
+        result,
+    )?;
+    if request.normalized_media_format() != MediaOutputFormat::Mp4 {
+        return Ok(audio);
+    }
+    let duration = audio
+        .duration_seconds
+        .filter(|value| value.is_finite() && *value > 0.0)
+        .ok_or_else(|| RadtTsError::InvalidOutput("voice duration is missing".to_string()))?;
+    let store = ProjectMediaStore::new(data_dir);
+    let selected_image = request
+        .presenter_image_path
+        .clone()
+        .or_else(|| {
+            store
+                .saved_cover(&request.project_id.to_string())
+                .ok()
+                .flatten()
+                .map(|image| image.path().to_path_buf())
+        })
+        .ok_or_else(|| {
+            RadtTsError::InvalidOutput("MP4 output requires a presenter image".to_string())
+        })?;
+    let staged = store.stage_image(&request.project_id.to_string(), &selected_image)?;
+    let video_path = PathBuf::from(&audio.path).with_extension("mp4");
+    let video = video_exporter.export_with_callbacks(
+        radsuite_engines::VideoExportRequest::new(
+            staged.path(),
+            &audio.path,
+            &video_path,
+            duration,
+        ),
+        &mut is_cancelled,
+        &mut on_progress,
+    )?;
+    let output_id = Uuid::parse_str(&audio.id).unwrap_or_else(|_| Uuid::new_v4());
+    let pending = store.prepare_commit(
+        staged,
+        output_id,
+        request.save_presenter_image_as_project_default,
+    )?;
+    let output = RadtTsAudioOutput {
+        id: audio.id.clone(),
+        filename: video_path
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned(),
+        path: video.output_path.to_string_lossy().into_owned(),
+        output_format: RadtTsOutputFormat::Wav,
+        media_format: Some(MediaOutputFormat::Mp4),
+        image_path: Some(pending.managed().path().to_string_lossy().into_owned()),
+        caption_paths: audio.caption_paths.clone(),
+        duration_seconds: Some(video.duration_seconds),
+        created_at: audio.created_at.clone(),
+    };
+    let media_path = project_root.join("manifests/media-outputs.json");
+    let mut media: Vec<RadtTsAudioOutput> = fs::read(&media_path)
+        .ok()
+        .and_then(|raw| serde_json::from_slice(&raw).ok())
+        .unwrap_or_default();
+    media.insert(0, output.clone());
+    write_json_file_atomic(&media_path, &media)?;
+
+    let outputs_path = project_root.join("manifests/outputs.json");
+    let mut legacy: Vec<RadtTsOutputMetadata> =
+        serde_json::from_slice(&fs::read(&outputs_path)?)
+            .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?;
+    legacy.retain(|item| item.job_id != audio.id);
+    write_json_file_atomic(&outputs_path, &legacy)?;
+    let _ = fs::remove_file(&audio.path);
+    if let Some(path) = metadata_path {
+        let _ = fs::remove_file(path);
+    }
+    store.finalize_commit(pending)?;
+    Ok(output)
+}
+
+fn write_json_file_atomic(path: &Path, value: &impl Serialize) -> Result<(), RadtTsError> {
+    let temporary = path.with_extension(format!("partial-{}", Uuid::new_v4()));
+    fs::write(
+        &temporary,
+        serde_json::to_vec_pretty(value)
+            .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))?,
+    )?;
+    fs::rename(temporary, path)?;
+    Ok(())
 }
 
 fn output_from_metadata(
@@ -1445,6 +1583,8 @@ fn radt_ts_home_path() -> Option<PathBuf> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
+    use std::os::unix::fs::PermissionsExt;
     use std::{fs, path::PathBuf};
 
     use radsuite_core::ProjectId;
@@ -1452,10 +1592,10 @@ mod tests {
     use super::{
         MediaOutputFormat, RadtTsChunkMode, RadtTsCliOutput, RadtTsCliResult, RadtTsOutputFormat,
         RadtTsOutputMetadata, RadtTsQuality, RadtTsSynthesisRequest, RadtTsVoiceSource,
-        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, list_outputs_from_root,
-        output_from_cli_result, output_from_metadata, parse_cli_result, probe_radt_ts_cli,
-        probe_radt_ts_cli_with_timeout, remove_temp_text_files, shutdown_radt_ts_jobs,
-        validate_output_name, validate_reference_audio,
+        StartRadtTsSynthesisRequest, build_synthesis_args, contained_file, finalize_voice_output,
+        list_outputs_from_root, output_from_cli_result, output_from_metadata, parse_cli_result,
+        probe_radt_ts_cli, probe_radt_ts_cli_with_timeout, remove_temp_text_files,
+        shutdown_radt_ts_jobs, validate_output_name, validate_reference_audio,
     };
     use crate::state::DesktopState;
 
@@ -1513,6 +1653,110 @@ mod tests {
         let listing = list_outputs_from_root(&root).unwrap();
         assert_eq!(listing.outputs, vec![output]);
         fs::remove_dir_all(root).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn finalizes_cli_wav_as_durable_mp4_voice_output() {
+        let data =
+            std::env::temp_dir().join(format!("radsuite-radt-ts-media-{}", uuid::Uuid::new_v4()));
+        let project_id = ProjectId::new();
+        let root = data.join("radt-ts-projects").join(project_id.to_string());
+        let audio = root.join("assets/generated_audio/voice.wav");
+        let metadata_path = root.join("manifests/voice.metadata.json");
+        let image = data.join("presenter.png");
+        fs::create_dir_all(audio.parent().unwrap()).unwrap();
+        fs::create_dir_all(metadata_path.parent().unwrap()).unwrap();
+        fs::write(&audio, b"wav").unwrap();
+        fs::write(&image, b"\x89PNG\r\n\x1a\n").unwrap();
+        let metadata = RadtTsOutputMetadata {
+            output_file: audio.to_string_lossy().into_owned(),
+            duration_seconds: Some(4.0),
+            output_format: Some(RadtTsOutputFormat::Wav),
+            media_format: Some(MediaOutputFormat::Wav),
+            created_at: None,
+            captions: None,
+            project_id: project_id.to_string(),
+            job_id: "voice-1".to_string(),
+        };
+        fs::write(&metadata_path, serde_json::to_vec(&metadata).unwrap()).unwrap();
+        fs::write(
+            root.join("manifests/outputs.json"),
+            serde_json::to_vec(&vec![metadata]).unwrap(),
+        )
+        .unwrap();
+        let root = root.canonicalize().unwrap();
+        let result = RadtTsCliResult {
+            job_id: "voice-1".to_string(),
+            status: "completed".to_string(),
+            stage: "completed".to_string(),
+            outputs: RadtTsCliOutput {
+                output_file: Some(audio.to_string_lossy().into_owned()),
+                metadata_path: Some(metadata_path.to_string_lossy().into_owned()),
+            },
+        };
+        let request = RadtTsSynthesisRequest {
+            project_id,
+            text: "Hello".to_string(),
+            voice_source: RadtTsVoiceSource::Builtin,
+            reference_audio_path: None,
+            reference_text: None,
+            built_in_speaker: Some("Aiden".to_string()),
+            built_in_instruct: None,
+            quality: RadtTsQuality::Fast,
+            chunk_mode: RadtTsChunkMode::Single,
+            pause_min_seconds: 0.25,
+            pause_max_seconds: 0.5,
+            pause_seed: None,
+            max_new_tokens: 700,
+            output_format: RadtTsOutputFormat::Wav,
+            media_format: Some(MediaOutputFormat::Mp4),
+            presenter_image_path: Some(image),
+            save_presenter_image_as_project_default: true,
+            output_name: "voice".to_string(),
+            acknowledge_voice_clone: true,
+        };
+        let ffmpeg = write_test_executable(
+            &data,
+            "video-ffmpeg.sh",
+            "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf video > \"$output\"\nprintf 'out_time_us=4000000\\nprogress=end\\n'\n",
+        );
+        let ffprobe = write_test_executable(
+            &data,
+            "video-ffprobe.sh",
+            "#!/bin/sh\nprintf '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"duration\":4.0}}'\n",
+        );
+
+        let output = finalize_voice_output(
+            &data,
+            &root,
+            &request,
+            result,
+            radsuite_engines::VideoExporter::from_commands(ffmpeg, ffprobe),
+            || false,
+            |_| {},
+        )
+        .unwrap();
+        assert!(output.path.ends_with(".mp4"));
+        assert!(!audio.exists());
+        assert!(
+            output
+                .image_path
+                .as_ref()
+                .is_some_and(|path| PathBuf::from(path).is_file())
+        );
+        assert_eq!(list_outputs_from_root(&root).unwrap().outputs, vec![output]);
+        fs::remove_dir_all(data).unwrap();
+    }
+
+    #[cfg(unix)]
+    fn write_test_executable(root: &std::path::Path, name: &str, contents: &str) -> PathBuf {
+        let path = root.join(name);
+        fs::write(&path, contents).unwrap();
+        let mut permissions = fs::metadata(&path).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&path, permissions).unwrap();
+        path
     }
 
     #[test]
