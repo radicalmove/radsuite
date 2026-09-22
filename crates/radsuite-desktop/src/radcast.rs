@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fs,
+    fs, io,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -13,7 +13,8 @@ use radsuite_engines::{
     EnhancementProcessor, EnhancementQuality, FillerRemovalMode,
     RADCAST_NATURAL_DOUBLE_PLUS_POSTFILTER, RADCAST_NATURAL_PLUS_POSTFILTER,
     RADCAST_NATURAL_POSTFILTER, RADCAST_OPTIMIZED_POSTFILTER, RADCAST_STANDARD_POSTFILTER,
-    RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER, SpeechCleanupError,
+    RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER, SpeechCleanupError, VideoExportRequest,
+    VideoExporter,
 };
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
@@ -21,6 +22,8 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 use uuid::Uuid;
+
+use crate::{MediaOutputFormat, media_assets::ProjectMediaStore};
 
 const RADCAST_ROOT: &str = "radcast";
 
@@ -84,12 +87,26 @@ pub struct DeleteRadcastAudioRequest {
     pub source_id: String,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeleteRadcastOutputRequest {
+    #[serde(default)]
+    pub project_id: Option<radsuite_core::ProjectId>,
+    pub output_id: String,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ProcessRadcastAudioRequest {
     #[serde(default)]
     pub project_id: Option<radsuite_core::ProjectId>,
     pub source_id: String,
+    #[serde(default = "default_output_format")]
     pub output_format: AudioOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub presenter_image_path: Option<String>,
+    #[serde(default)]
+    pub save_presenter_image_as_project_default: bool,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
     pub cleanup_enabled: bool,
@@ -113,6 +130,12 @@ pub struct ProcessRadcastAudioRequest {
     pub filler_removal_mode: FillerRemovalMode,
 }
 
+impl ProcessRadcastAudioRequest {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RadcastTrimRange {
     pub clip_start_seconds: f64,
@@ -123,6 +146,8 @@ pub struct RadcastTrimRange {
 pub struct RadcastProjectSettings {
     #[serde(default = "default_output_format")]
     pub output_format: AudioOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
     #[serde(default)]
     pub caption_format: Option<CaptionFormat>,
     #[serde(default = "default_caption_language")]
@@ -151,6 +176,7 @@ impl Default for RadcastProjectSettings {
     fn default() -> Self {
         Self {
             output_format: default_output_format(),
+            media_format: Some(MediaOutputFormat::default()),
             caption_format: None,
             caption_language: default_caption_language(),
             caption_quality_mode: default_caption_quality_mode(),
@@ -167,9 +193,15 @@ impl Default for RadcastProjectSettings {
 }
 
 impl RadcastProjectSettings {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
+
     pub fn from_request(request: &ProcessRadcastAudioRequest) -> Self {
+        let media_format = request.normalized_media_format();
         Self {
-            output_format: request.output_format,
+            output_format: media_format.audio_format(),
+            media_format: Some(media_format),
             caption_format: request.caption_format,
             caption_language: request.caption_language.clone(),
             caption_quality_mode: request.caption_quality_mode,
@@ -202,7 +234,12 @@ pub struct RadcastAudioOutput {
     pub filename: String,
     pub path: String,
     pub duration_seconds: f64,
+    #[serde(default = "default_output_format")]
     pub output_format: AudioOutputFormat,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub media_format: Option<MediaOutputFormat>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub image_path: Option<String>,
     pub cleanup_enabled: bool,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
@@ -243,6 +280,12 @@ pub struct RadcastAudioOutput {
     pub created_at: String,
 }
 
+impl RadcastAudioOutput {
+    pub fn normalized_media_format(&self) -> MediaOutputFormat {
+        MediaOutputFormat::from_request(self.media_format, Some(self.output_format))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct RadcastAudioListing {
     pub sources: Vec<RadcastAudioSource>,
@@ -259,6 +302,7 @@ pub enum RadcastProcessingPhase {
     EnhancingAudio,
     RenderingAudio,
     GeneratingCaptions,
+    RenderingVideo,
     SavingOutput,
 }
 
@@ -320,6 +364,12 @@ pub enum RadcastStorageError {
     SpeechCleanup(#[from] SpeechCleanupError),
     #[error("failed to enhance audio: {0}")]
     EnhancementProcessing(#[from] radsuite_engines::EnhancementProcessingError),
+    #[error("MP4 output requires a presenter image")]
+    MissingPresenterImage,
+    #[error("failed to prepare the presenter image: {0}")]
+    MediaAsset(#[from] crate::media_assets::MediaAssetError),
+    #[error("failed to render MP4 video: {0}")]
+    VideoExport(#[from] radsuite_engines::VideoExportError),
     #[error("local RADcast processing was cancelled")]
     Cancelled,
 }
@@ -376,11 +426,81 @@ pub(crate) fn delete_audio(
     Ok(())
 }
 
+pub(crate) fn delete_output(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: DeleteRadcastOutputRequest,
+) -> Result<(), RadcastStorageError> {
+    let mut manifest = load_manifest(data_dir, project_id)?;
+    let index = manifest
+        .outputs
+        .iter()
+        .position(|output| output.id == request.output_id)
+        .ok_or_else(|| RadcastStorageError::MissingSource(request.output_id.clone()))?;
+    let output = manifest.outputs.remove(index);
+    let image_is_shared = output.image_path.as_ref().is_some_and(|image| {
+        manifest
+            .outputs
+            .iter()
+            .any(|other| other.image_path.as_ref() == Some(image))
+    });
+    write_manifest(data_dir, project_id, &manifest)?;
+
+    let radcast_root = project_root(data_dir, project_id);
+    for path in [
+        Some(output.path.as_str()),
+        output.caption_path.as_deref(),
+        output.caption_review_path.as_deref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        remove_contained_file(Path::new(path), &radcast_root)?;
+    }
+
+    if !image_is_shared && let Some(image_path) = output.image_path.as_deref() {
+        let media_store = ProjectMediaStore::new(data_dir);
+        let is_cover = media_store
+            .saved_cover(&project_id.to_string())?
+            .is_some_and(|cover| cover.path() == Path::new(image_path));
+        if !is_cover {
+            let media_root = data_dir.join("media/projects").join(project_id.to_string());
+            remove_contained_file(Path::new(image_path), &media_root)?;
+        }
+    }
+    Ok(())
+}
+
+fn remove_contained_file(path: &Path, root: &Path) -> Result<(), RadcastStorageError> {
+    if !path.exists() {
+        return Ok(());
+    }
+    let resolved_path = path.canonicalize()?;
+    let resolved_root = root.canonicalize()?;
+    if !resolved_path.starts_with(&resolved_root) {
+        return Err(RadcastStorageError::Io(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            format!(
+                "refusing to delete path outside project storage: {}",
+                path.display()
+            ),
+        )));
+    }
+    if resolved_path.is_file() {
+        fs::remove_file(resolved_path)?;
+    }
+    Ok(())
+}
+
 pub(crate) fn save_settings(
     data_dir: &Path,
     project_id: radsuite_core::ProjectId,
     settings: RadcastProjectSettings,
 ) -> Result<RadcastProjectSettings, RadcastStorageError> {
+    let media_format = settings.normalized_media_format();
+    let mut settings = settings;
+    settings.media_format = Some(media_format);
+    settings.output_format = media_format.audio_format();
     let mut manifest = load_manifest(data_dir, project_id)?;
     manifest.settings = settings.clone();
     write_manifest(data_dir, project_id, &manifest)?;
@@ -554,6 +674,35 @@ pub fn process_audio_with_processors_and_enhancement_with_progress_and_cancellat
     processor: AudioProcessor,
     caption_processor: CaptionProcessor,
     enhancement_processor: EnhancementProcessor,
+    report_progress: F,
+    is_cancelled: C,
+) -> Result<RadcastAudioOutput, RadcastStorageError>
+where
+    F: FnMut(RadcastProcessingProgress),
+    C: FnMut() -> bool,
+{
+    process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video(
+        data_dir,
+        project_id,
+        request,
+        processor,
+        caption_processor,
+        enhancement_processor,
+        VideoExporter::default(),
+        report_progress,
+        is_cancelled,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video<F, C>(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: ProcessRadcastAudioRequest,
+    processor: AudioProcessor,
+    caption_processor: CaptionProcessor,
+    enhancement_processor: EnhancementProcessor,
+    video_exporter: VideoExporter,
     mut report_progress: F,
     mut is_cancelled: C,
 ) -> Result<RadcastAudioOutput, RadcastStorageError>
@@ -597,15 +746,22 @@ where
     }
 
     let output_id = Uuid::new_v4().to_string();
+    let media_format = request.normalized_media_format();
+    let audio_format = media_format.audio_format();
     let output_filename = format!(
         "{}-radcast-{}.{}",
         safe_stem(&source.original_filename),
         &output_id[..8],
-        request.output_format.extension()
+        media_format.extension()
     );
     let output_path = project_root(data_dir, project_id)
         .join("outputs")
         .join(&output_filename);
+    let audio_output_path = if media_format == MediaOutputFormat::Mp4 {
+        output_path.with_file_name(format!(".{output_id}-video-source.wav"))
+    } else {
+        output_path.clone()
+    };
     let cleanup_plan = if request.max_silence_seconds.is_some() || request.remove_filler_words {
         report_progress(RadcastProcessingProgress {
             phase: RadcastProcessingPhase::RemovingFillerWords,
@@ -771,8 +927,8 @@ where
     let result = match processor.process_with_additional_filter(
         AudioProcessingRequest {
             input_path: processing_input_path,
-            output_path: output_path.clone(),
-            output_format: request.output_format,
+            output_path: audio_output_path.clone(),
+            output_format: audio_format,
             clip_start_seconds,
             clip_end_seconds,
             max_silence_seconds: None,
@@ -788,7 +944,7 @@ where
         }
     };
     if is_cancelled() {
-        let _ = fs::remove_file(&output_path);
+        let _ = fs::remove_file(&audio_output_path);
         cleanup_temporary_paths(&temporary_paths);
         return Err(RadcastStorageError::Cancelled);
     }
@@ -803,7 +959,7 @@ where
             let path = output_path.with_extension(format.extension());
             let caption_result = caption_processor.process_with_options(
                 CaptionProcessingRequest {
-                    input_path: output_path.clone(),
+                    input_path: audio_output_path.clone(),
                     output_path: path.clone(),
                     caption_format: format,
                     language: request.caption_language.trim().to_string(),
@@ -821,7 +977,7 @@ where
                     caption_result.quality,
                 ),
                 Err(error) => {
-                    let _ = fs::remove_file(&output_path);
+                    let _ = fs::remove_file(&audio_output_path);
                     let _ = fs::remove_file(path);
                     cleanup_temporary_paths(&temporary_paths);
                     return Err(error.into());
@@ -831,7 +987,7 @@ where
             (None, None, 0, CaptionQualitySummary::default())
         };
     if is_cancelled() {
-        let _ = fs::remove_file(&output_path);
+        let _ = fs::remove_file(&audio_output_path);
         if let Some(caption_path) = caption_path.as_deref() {
             let _ = fs::remove_file(caption_path);
         }
@@ -840,6 +996,72 @@ where
         }
         return Err(RadcastStorageError::Cancelled);
     }
+
+    let media_store = ProjectMediaStore::new(data_dir);
+    let mut pending_image = None;
+    let (primary_path, duration_seconds, image_path) = if media_format == MediaOutputFormat::Mp4 {
+        let selected_image = request
+            .presenter_image_path
+            .as_deref()
+            .map(PathBuf::from)
+            .or_else(|| {
+                media_store
+                    .saved_cover(&project_id.to_string())
+                    .ok()
+                    .flatten()
+                    .map(|image| image.path().to_path_buf())
+            })
+            .ok_or(RadcastStorageError::MissingPresenterImage)?;
+        let staged = media_store.stage_image(&project_id.to_string(), &selected_image)?;
+        report_progress(RadcastProcessingProgress {
+            phase: RadcastProcessingPhase::RenderingVideo,
+            percent: 90,
+        });
+        let video_result = video_exporter.export_with_callbacks(
+            VideoExportRequest::new(
+                staged.path(),
+                &audio_output_path,
+                &output_path,
+                result.duration_seconds,
+            ),
+            &mut is_cancelled,
+            |progress| {
+                report_progress(RadcastProcessingProgress {
+                    phase: RadcastProcessingPhase::RenderingVideo,
+                    percent: (90.0 + progress.clamp(0.0, 1.0) * 9.0).round() as u8,
+                });
+            },
+        );
+        let video = match video_result {
+            Ok(video) => video,
+            Err(error) => {
+                let _ = fs::remove_file(&audio_output_path);
+                let _ = fs::remove_file(staged.path());
+                let _ = fs::remove_file(&output_path);
+                if let Some(path) = caption_path.as_deref() {
+                    let _ = fs::remove_file(path);
+                }
+                if let Some(path) = caption_quality.review_path.as_deref() {
+                    let _ = fs::remove_file(path);
+                }
+                return Err(error.into());
+            }
+        };
+        let pending = media_store.prepare_commit(
+            staged,
+            Uuid::parse_str(&output_id).expect("RADcast output IDs are UUIDs"),
+            request.save_presenter_image_as_project_default,
+        )?;
+        let managed_path = pending.managed().path().to_string_lossy().into_owned();
+        pending_image = Some(pending);
+        (
+            video.output_path,
+            video.duration_seconds,
+            Some(managed_path),
+        )
+    } else {
+        (result.output_path.clone(), result.duration_seconds, None)
+    };
 
     report_progress(RadcastProcessingProgress {
         phase: RadcastProcessingPhase::SavingOutput,
@@ -850,9 +1072,11 @@ where
         id: output_id,
         source_id: source.id,
         filename: output_filename,
-        path: result.output_path.to_string_lossy().into_owned(),
-        duration_seconds: result.duration_seconds,
+        path: primary_path.to_string_lossy().into_owned(),
+        duration_seconds,
         output_format: result.output_format,
+        media_format: Some(media_format),
+        image_path,
         cleanup_enabled,
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,
@@ -882,6 +1106,10 @@ where
     manifest.settings = project_settings;
     if let Err(error) = write_manifest(data_dir, project_id, &manifest) {
         let _ = fs::remove_file(output_path);
+        let _ = fs::remove_file(&audio_output_path);
+        if let Some(pending) = pending_image {
+            let _ = media_store.rollback_commit(pending);
+        }
         cleanup_temporary_paths(&temporary_paths);
         if let Some(caption_path) = output.caption_path.as_deref() {
             let _ = fs::remove_file(caption_path);
@@ -890,6 +1118,12 @@ where
             let _ = fs::remove_file(review_path);
         }
         return Err(error);
+    }
+    if let Some(pending) = pending_image {
+        media_store.finalize_commit(pending)?;
+    }
+    if media_format == MediaOutputFormat::Mp4 {
+        let _ = fs::remove_file(audio_output_path);
     }
     Ok(output)
 }

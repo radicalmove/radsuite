@@ -13,7 +13,10 @@ use sqlx::{
 };
 use thiserror::Error;
 
-use crate::AppPaths;
+use crate::{
+    AppPaths,
+    media_assets::{CleanupFailure, ProjectMediaStore},
+};
 
 use crate::radcast::{RadcastAudioOutput, RadcastProcessingPhase, RadcastProcessingProgress};
 use crate::radt_ts::{
@@ -61,6 +64,7 @@ pub struct DesktopState {
     pub radt_ts_media_jobs: Arc<Mutex<HashMap<String, RadtTsMediaJobStatus>>>,
     pub radt_ts_media_children: Arc<Mutex<HashMap<String, RadtTsMediaChildHandle>>>,
     pub radt_ts_media_cancel_requests: Arc<Mutex<HashSet<String>>>,
+    pub startup_media_cleanup_failures: Vec<CleanupFailure>,
 }
 
 #[derive(Debug, Error)]
@@ -89,6 +93,8 @@ impl DesktopState {
             source,
         })?;
 
+        let media_recovery = ProjectMediaStore::new(&paths.data_dir).recover_all();
+
         let database_path = paths.data_dir.join("radsuite.sqlite3");
         let connect_options = SqliteConnectOptions::new()
             .filename(database_path)
@@ -100,13 +106,18 @@ impl DesktopState {
 
         radsuite_db::migrate(&database_pool).await?;
 
-        Ok(Self::new(
-            app_name.to_string(),
-            paths,
-            true,
-            false,
-            database_pool,
-        ))
+        let mut state = Self::new(app_name.to_string(), paths, true, false, database_pool);
+        state.startup_media_cleanup_failures = match media_recovery {
+            Ok(reports) => reports
+                .into_iter()
+                .flat_map(|report| report.unresolved)
+                .collect(),
+            Err(error) => vec![CleanupFailure {
+                path: state.paths.data_dir.join("media/projects"),
+                message: error.to_string(),
+            }],
+        };
+        Ok(state)
     }
 
     pub fn for_tests() -> Self {
@@ -149,6 +160,7 @@ impl DesktopState {
             radt_ts_media_jobs: Arc::new(Mutex::new(HashMap::new())),
             radt_ts_media_children: Arc::new(Mutex::new(HashMap::new())),
             radt_ts_media_cancel_requests: Arc::new(Mutex::new(HashSet::new())),
+            startup_media_cleanup_failures: Vec::new(),
         }
     }
 }

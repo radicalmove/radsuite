@@ -6,6 +6,7 @@
     browserStorage,
     readRadtTsProjectPreferences,
     writeRadtTsProjectPreferences,
+    type RadtTsProjectPreferences,
     type StorageLike,
   } from "../lib/storage";
   import type {
@@ -56,6 +57,7 @@
   let error = $state<string | null>(null);
   let status = $state<string | null>(null);
   let downloadingArtifact = $state<string | null>(null);
+  let deletingOutput = $state<string | null>(null);
   let preferenceStorage = $state<StorageLike | null>(null);
   let settingsLoaded = $state(false);
   let loadedProjectId = $state<string | null>(null);
@@ -74,7 +76,7 @@
   $effect(() => {
     const projectId = selectedProjectId;
     if (!settingsLoaded || !projectId || processing) return;
-    const preferences = {
+    const preferences: RadtTsProjectPreferences = {
       voice: {
         voiceSource: draft.voiceSource,
         referenceAudioPath: draft.referenceAudioPath,
@@ -87,7 +89,10 @@
         pauseMaxSeconds: draft.pauseMaxSeconds,
         pauseSeed: draft.pauseSeed,
         maxNewTokens: draft.maxNewTokens,
-        outputFormat: draft.outputFormat,
+        outputFormat: draft.mediaFormat === "mp3" ? "mp3" : "wav",
+        mediaFormat: draft.mediaFormat,
+        presenterImagePath: draft.presenterImagePath,
+        savePresenterImageAsProjectDefault: draft.savePresenterImageAsProjectDefault,
         outputName: draft.outputName,
       },
     };
@@ -111,6 +116,7 @@
   function phaseLabel(value: RadtTsJobStatus["phase"]): string {
     if (value === "preparing") return "Preparing voice generation";
     if (value === "generating") return "Generating locally";
+    if (value === "rendering_video") return "Creating waveform video";
     return "Saving output";
   }
 
@@ -160,6 +166,12 @@
       const listing = await invoke<{ outputs: RadtTsAudioOutput[] }>("list_radt_ts_outputs", {
         request: { project_id: selectedProjectId },
       });
+      const savedPresenterImage = await invoke<string | null>("get_project_presenter_image", {
+        request: { project_id: selectedProjectId },
+      });
+      if (!draft.presenterImagePath && savedPresenterImage) {
+        draft.presenterImagePath = savedPresenterImage;
+      }
       outputs = listing.outputs;
       settingsLoaded = true;
     } catch (reason: unknown) {
@@ -202,6 +214,21 @@
     }
   }
 
+  async function choosePresenterImage() {
+    error = null;
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "Presenter image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+      });
+      const path = typeof selected === "string" ? selected : selected?.[0];
+      if (path) draft.presenterImagePath = path;
+    } catch (reason: unknown) {
+      error = `Could not choose presenter image: ${toErrorMessage(reason)}`;
+    }
+  }
+
   async function synthesize() {
     if (startDisabled) {
       error = draft.voiceSource === "builtin"
@@ -240,6 +267,24 @@
     } finally {
       processing = false;
       job = null;
+    }
+  }
+
+  async function deleteVideoOutput(output: RadtTsAudioOutput) {
+    if (deletingOutput || output.media_format !== "mp4") return;
+    if (!window.confirm(`Delete ${output.filename}? The exported video will be removed from this project.`)) return;
+    deletingOutput = output.id;
+    error = null;
+    try {
+      await invoke<void>("delete_radt_ts_media_output", {
+        request: { project_id: selectedProjectId, output_id: output.id, kind: "voice" },
+      });
+      outputs = outputs.filter((item) => item.id !== output.id);
+      status = "Video deleted";
+    } catch (reason: unknown) {
+      error = `Could not delete video: ${toErrorMessage(reason)}`;
+    } finally {
+      deletingOutput = null;
     }
   }
 
@@ -448,17 +493,25 @@
       </div>
       <label class="stack">
         <span>Output format</span>
-        <select bind:value={draft.outputFormat}>
+        <select bind:value={draft.mediaFormat}>
           <option value="mp3">MP3</option>
           <option value="wav">WAV</option>
+          <option value="mp4">MP4 video</option>
         </select>
       </label>
+      {#if draft.mediaFormat === "mp4"}
+        <div class="radtts-video-options">
+          <label class="stack"><span>Presenter or avatar image</span><div class="radtts-reference-row"><input type="text" bind:value={draft.presenterImagePath} placeholder="Choose a PNG, JPEG, or WebP image" /><button class="secondary-button compact-button" type="button" disabled={processing} onclick={() => void choosePresenterImage()}>Choose image</button></div></label>
+          <label class="radtts-checkbox"><input type="checkbox" bind:checked={draft.savePresenterImageAsProjectDefault} /><span>Use this image for future videos in this project</span></label>
+          <small class="field-note">The exported video places the image beside a neutral white waveform that moves with the generated voice.</small>
+        </div>
+      {/if}
       <div class="radtts-processing-note">
         <span class="status-dot" class:is-ready={capability.available}></span>
         <span>{capability.available ? (capability.supports_builtin_voices ? "Reference and built-in voices are available locally." : "Reference voice generation is available locally.") : capabilityNotice(checkingCapability, capability)}</span>
       </div>
       <button class="primary-button radtts-process-button" type="button" disabled={startDisabled} onclick={() => void synthesize()}>
-        {processing ? "Generating" : "Generate voice audio"}
+        {processing ? "Generating" : draft.mediaFormat === "mp4" ? "Generate voice video" : "Generate voice audio"}
       </button>
     </section>
   </div>
@@ -477,18 +530,24 @@
           <article class="radtts-output-row">
             <div class="radtts-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}</span>
+              <span>{(output.media_format ?? output.output_format).toUpperCase()} · {formatDuration(output.duration_seconds)}</span>
             </div>
-            <audio controls src={convertFileSrc(output.path)}>
-              Your browser does not support audio playback.
-            </audio>
+            {#if output.media_format === "mp4"}
+              <!-- svelte-ignore a11y_media_has_caption: captions are generated separately when available -->
+              <video controls src={convertFileSrc(output.path)}>Your browser does not support video playback.</video>
+            {:else}
+              <audio controls src={convertFileSrc(output.path)}>Your browser does not support audio playback.</audio>
+            {/if}
             <div class="radtts-output-actions">
               <button
                 class="secondary-button compact-button"
                 type="button"
                 disabled={downloadingArtifact !== null}
-                onclick={() => void downloadArtifact(output.path, output.filename, "Audio", [output.output_format], "Audio")}
-              >Download audio</button>
+                onclick={() => void downloadArtifact(output.path, output.filename, output.media_format === "mp4" ? "Video" : "Audio", [output.media_format ?? output.output_format], output.media_format === "mp4" ? "Video" : "Audio")}
+              >Download {output.media_format === "mp4" ? "video" : "audio"}</button>
+              {#if output.media_format === "mp4"}
+                <button class="secondary-button compact-button danger-button" type="button" disabled={deletingOutput !== null} onclick={() => void deleteVideoOutput(output)}>{deletingOutput === output.id ? "Deleting..." : "Delete video"}</button>
+              {/if}
               {#each output.caption_paths as captionPath (captionPath)}
                 {@const captionFilename = filenameFromPath(captionPath, "captions.vtt")}
                 <button

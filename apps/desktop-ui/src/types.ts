@@ -59,6 +59,8 @@ export type RadciteDocumentVariant = "content" | "rise" | "other";
 
 export type AudioOutputFormat = "mp3" | "wav";
 
+export type MediaOutputFormat = "mp3" | "wav" | "mp4";
+
 export type CaptionFormat = "srt" | "vtt";
 
 export type CaptionQualityMode = "fast" | "accurate" | "reviewed";
@@ -90,6 +92,8 @@ export type RadcastAudioOutput = {
   path: string;
   duration_seconds: number;
   output_format: AudioOutputFormat;
+  media_format?: MediaOutputFormat;
+  image_path?: string;
   cleanup_enabled: boolean;
   clip_start_seconds: number | null;
   clip_end_seconds: number | null;
@@ -121,6 +125,7 @@ export type RadcastAudioListing = {
 
 export type RadcastProjectSettings = {
   output_format: AudioOutputFormat;
+  media_format?: MediaOutputFormat;
   caption_format: CaptionFormat | null;
   caption_language: string;
   caption_quality_mode: CaptionQualityMode;
@@ -189,13 +194,15 @@ export type RadtTsCapabilityStatus = {
 
 export type RadtTsJobState = "starting" | "running" | "completed" | "failed" | "cancelled";
 
-export type RadtTsProcessingPhase = "preparing" | "generating" | "saving_output";
+export type RadtTsProcessingPhase = "preparing" | "generating" | "rendering_video" | "saving_output";
 
 export type RadtTsAudioOutput = {
   id: string;
   filename: string;
   path: string;
   output_format: RadtTsOutputFormat;
+  media_format?: MediaOutputFormat;
+  image_path?: string;
   caption_paths: string[];
   duration_seconds: number | null;
   created_at: string | null;
@@ -217,6 +224,7 @@ export type RadtTsMediaProcessingPhase =
   | "preparing"
   | "transcribing"
   | "extracting_clip"
+  | "rendering_video"
   | "saving_output";
 
 export type RadtTsVerificationMode = "strict" | "lenient";
@@ -233,6 +241,8 @@ export type RadtTsMediaOutput = {
   primary_path: string;
   artifacts: RadtTsMediaArtifact[];
   output_format: RadtTsOutputFormat | null;
+  media_format?: MediaOutputFormat;
+  image_path?: string;
   warnings: string[];
 };
 

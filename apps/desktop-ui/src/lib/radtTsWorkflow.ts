@@ -1,6 +1,7 @@
 import type {
   RadtTsCapabilityStatus,
   RadtTsChunkMode,
+  MediaOutputFormat,
   RadtTsOutputFormat,
   RadtTsQuality,
   RadtTsVoiceSource,
@@ -24,6 +25,9 @@ export type RadtTsDraft = {
   pauseSeed: string;
   maxNewTokens: number;
   outputFormat: RadtTsOutputFormat;
+  mediaFormat: MediaOutputFormat;
+  presenterImagePath: string;
+  savePresenterImageAsProjectDefault: boolean;
   outputName: string;
   acknowledgeVoiceClone: boolean;
 };
@@ -43,6 +47,9 @@ export type RadtTsVoicePreferences = Partial<
     | "pauseSeed"
     | "maxNewTokens"
     | "outputFormat"
+    | "mediaFormat"
+    | "presenterImagePath"
+    | "savePresenterImageAsProjectDefault"
     | "outputName"
   >
 >;
@@ -62,6 +69,9 @@ export function createDefaultRadtTsDraft(): RadtTsDraft {
     pauseSeed: "",
     maxNewTokens: RADTTS_DEFAULT_NEW_TOKENS,
     outputFormat: "mp3",
+    mediaFormat: "mp3",
+    presenterImagePath: "",
+    savePresenterImageAsProjectDefault: false,
     outputName: "voice-generation",
     acknowledgeVoiceClone: false,
   };
@@ -72,10 +82,13 @@ export function mergeRadtTsVoicePreferences(
   preferences: RadtTsVoicePreferences | undefined,
 ): RadtTsDraft {
   const voiceSource: RadtTsVoiceSource = preferences?.voiceSource ?? draft.voiceSource;
+  const mediaFormat = preferences?.mediaFormat ?? preferences?.outputFormat ?? draft.mediaFormat;
   return {
     ...draft,
     ...preferences,
     voiceSource,
+    mediaFormat,
+    outputFormat: mediaFormat === "mp3" ? "mp3" : "wav",
     pauseSeed: preferences?.pauseSeed === undefined
       ? draft.pauseSeed
       : normalizeRadtTsPauseSeedText(preferences.pauseSeed),
@@ -101,6 +114,9 @@ export type RadtTsRequest = {
   pause_seed: number | null;
   max_new_tokens: number;
   output_format: RadtTsOutputFormat;
+  media_format: MediaOutputFormat;
+  presenter_image_path: string | null;
+  save_presenter_image_as_project_default: boolean;
   output_name: string;
   acknowledge_voice_clone: boolean;
 };
@@ -115,6 +131,7 @@ export function canStartRadtTs(
     draft.outputName.trim().length > 0 &&
     draft.pauseMinSeconds > 0 &&
     draft.pauseMaxSeconds >= draft.pauseMinSeconds &&
+    (draft.mediaFormat !== "mp4" || draft.presenterImagePath.trim().length > 0) &&
     (draft.voiceSource === "builtin"
       ? capability.supports_builtin_voices && draft.builtInSpeaker.trim().length > 0
       : draft.referenceAudioPath.trim().length > 0 && draft.acknowledgeVoiceClone)
@@ -151,6 +168,7 @@ export function buildRadtTsRequest(
   draft: RadtTsDraft,
   projectId: string | null,
 ): RadtTsRequest {
+  const mediaFormat = draft.mediaFormat ?? draft.outputFormat;
   return {
     project_id: projectId,
     text: draft.text.trim(),
@@ -165,7 +183,11 @@ export function buildRadtTsRequest(
     pause_max_seconds: draft.pauseMaxSeconds,
     pause_seed: parseRadtTsPauseSeed(draft.pauseSeed),
     max_new_tokens: clampRadtTsMaxNewTokens(draft.maxNewTokens),
-    output_format: draft.outputFormat,
+    output_format: mediaFormat === "mp3" ? "mp3" : "wav",
+    media_format: mediaFormat,
+    presenter_image_path: mediaFormat === "mp4" ? draft.presenterImagePath.trim() : null,
+    save_presenter_image_as_project_default:
+      mediaFormat === "mp4" && draft.savePresenterImageAsProjectDefault,
     output_name: draft.outputName.trim(),
     acknowledge_voice_clone: draft.acknowledgeVoiceClone,
   };

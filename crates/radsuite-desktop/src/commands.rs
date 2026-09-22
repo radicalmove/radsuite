@@ -34,12 +34,14 @@ use crate::{
     DesktopState,
     document_store::{DocumentStorageError, store_source, validate_source},
     library_links::build_uc_library_link,
+    media_assets::ProjectMediaStore,
 };
 
 pub use crate::radcast::{
-    DeleteRadcastAudioRequest, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
-    ListRadcastAudioRequest, ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput,
-    RadcastAudioSource, RadcastProcessingPhase, RadcastProjectSettings, RadcastStorageError,
+    DeleteRadcastAudioRequest, DeleteRadcastOutputRequest, ImportRadcastAudioLinkRequest,
+    ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
+    RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastProcessingPhase,
+    RadcastProjectSettings, RadcastStorageError,
 };
 pub use crate::radt_ts::{
     ListRadtTsOutputsRequest, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing,
@@ -83,6 +85,59 @@ pub struct SaveRadcastSettingsRequest {
     #[serde(default)]
     pub project_id: Option<ProjectId>,
     pub settings: RadcastProjectSettings,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProjectMediaRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum DeleteRadtTsMediaKind {
+    Voice,
+    Clip,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct DeleteRadtTsMediaOutputRequest {
+    #[serde(default)]
+    pub project_id: Option<ProjectId>,
+    pub output_id: String,
+    pub kind: DeleteRadtTsMediaKind,
+}
+
+pub async fn get_project_presenter_image(
+    state: &DesktopState,
+    request: ProjectMediaRequest,
+) -> Result<Option<String>, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    ProjectMediaStore::new(&state.paths.data_dir)
+        .saved_cover(&project.id.to_string())
+        .map(|image| image.map(|image| image.path().to_string_lossy().into_owned()))
+        .map_err(|error| error.to_string())
+}
+
+pub async fn delete_radt_ts_media_output(
+    state: &DesktopState,
+    request: DeleteRadtTsMediaOutputRequest,
+) -> Result<(), String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    match request.kind {
+        DeleteRadtTsMediaKind::Voice => {
+            crate::radt_ts::delete_radt_ts_video_output(state, project.id, &request.output_id)
+                .map_err(|error| error.to_string())
+        }
+        DeleteRadtTsMediaKind::Clip => {
+            crate::radt_ts_tools::delete_radt_ts_clip_video(state, project.id, &request.output_id)
+                .map_err(|error| error.to_string())
+        }
+    }
 }
 
 pub fn get_radcast_capabilities() -> RadcastCapabilityStatus {
@@ -209,6 +264,9 @@ pub async fn start_radt_ts_synthesis(
         pause_seed: request.pause_seed,
         max_new_tokens: request.max_new_tokens,
         output_format: request.output_format,
+        media_format: request.media_format,
+        presenter_image_path: request.presenter_image_path.map(PathBuf::from),
+        save_presenter_image_as_project_default: request.save_presenter_image_as_project_default,
         output_name: request.output_name,
         acknowledge_voice_clone: request.acknowledge_voice_clone,
     };
@@ -256,6 +314,9 @@ pub async fn start_radt_ts_clip(
     let project = load_requested_or_local_radcite_project(state, request.project_id)
         .await
         .map_err(|error| error.to_string())?;
+    let media_format = request.normalized_media_format();
+    request.media_format = Some(media_format);
+    request.output_format = media_format.into();
     request.project_id = Some(project.id);
     crate::radt_ts_tools::start_radt_ts_clip(state, request)
         .await
@@ -1310,6 +1371,19 @@ pub async fn delete_radcast_audio(
     let data_dir = state.paths.data_dir.clone();
     tokio::task::spawn_blocking(move || {
         crate::radcast::delete_audio(&data_dir, project.id, request)
+    })
+    .await?
+    .map_err(Into::into)
+}
+
+pub async fn delete_radcast_output(
+    state: &DesktopState,
+    request: DeleteRadcastOutputRequest,
+) -> Result<(), RadcastAudioError> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id).await?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::delete_output(&data_dir, project.id, request)
     })
     .await?
     .map_err(Into::into)

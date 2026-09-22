@@ -13,12 +13,14 @@ use radsuite_desktop::radcast::{
     RadcastProcessingPhase, RadcastProjectSettings, RadcastTrimRange,
     process_audio_with_processors_and_enhancement_with_progress,
     process_audio_with_processors_and_enhancement_with_progress_and_cancellation,
+    process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video,
 };
 use radsuite_desktop::{
-    CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
-    ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest, ListRadcastAudioRequest,
-    ProcessRadcastAudioRequest, RadcastAudioError, RadcastJobStatus, RadcastStorageError,
-    SaveRadcastSettingsRequest, cancel_radcast_audio, create_radcite_project, delete_radcast_audio,
+    CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DeleteRadcastOutputRequest,
+    DesktopState, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
+    ListRadcastAudioRequest, MediaOutputFormat, ProcessRadcastAudioRequest, RadcastAudioError,
+    RadcastJobStatus, RadcastStorageError, SaveRadcastSettingsRequest, cancel_radcast_audio,
+    create_radcite_project, delete_radcast_audio, delete_radcast_output,
     get_radcast_capabilities_with_processor, get_radcast_capabilities_with_processors,
     import_radcast_audio_from_link_with_processor, import_radcast_audio_with_processor,
     list_radcast_audio, list_radcite_projects, process_radcast_audio_with_processor,
@@ -27,7 +29,7 @@ use radsuite_desktop::{
 };
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessor, CaptionFormat, CaptionProcessor, CaptionQualityMode,
-    EnhancementModel, EnhancementProcessor, EnhancementQuality, FillerRemovalMode,
+    EnhancementModel, EnhancementProcessor, EnhancementQuality, FillerRemovalMode, VideoExporter,
 };
 use sqlx::sqlite::SqlitePoolOptions;
 
@@ -73,6 +75,9 @@ async fn radcast_import_process_and_list_are_project_scoped() {
             project_id: Some(default_project),
             source_id: source.id.clone(),
             output_format: AudioOutputFormat::Mp3,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: Some(2.0),
             clip_end_seconds: Some(8.0),
             cleanup_enabled: true,
@@ -158,6 +163,144 @@ async fn radcast_import_process_and_list_are_project_scoped() {
     assert!(!Path::new(&source_path).exists());
     assert!(Path::new(&output.path).is_file());
 
+    remove_dir(dir);
+}
+
+#[tokio::test]
+async fn radcast_mp4_persists_video_and_managed_presenter_image_only() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = list_radcite_projects(&state).await.unwrap()[0].id;
+    let dir = test_dir("mp4-output");
+    let source_path = dir.join("lecture.wav");
+    let image_path = dir.join("presenter.png");
+    fs::write(&source_path, b"source audio").unwrap();
+    fs::write(&image_path, b"\x89PNG\r\n\x1a\n").unwrap();
+    let audio = fake_processor(&dir);
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(project),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("lecture.wav".to_string()),
+        },
+        audio.clone(),
+    )
+    .await
+    .unwrap();
+
+    let output =
+        process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video(
+            &state.paths.data_dir,
+            project,
+            ProcessRadcastAudioRequest {
+                project_id: Some(project),
+                source_id: source.id,
+                output_format: AudioOutputFormat::Wav,
+                media_format: Some(MediaOutputFormat::Mp4),
+                presenter_image_path: Some(image_path.to_string_lossy().into_owned()),
+                save_presenter_image_as_project_default: true,
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+                cleanup_enabled: false,
+                max_silence_seconds: None,
+                caption_format: None,
+                caption_language: "en".to_string(),
+                caption_quality_mode: CaptionQualityMode::Reviewed,
+                caption_glossary: None,
+                enhancement_model: EnhancementModel::None,
+                enhancement_quality: EnhancementQuality::Standard,
+                remove_filler_words: false,
+                filler_removal_mode: FillerRemovalMode::Aggressive,
+            },
+            audio,
+            CaptionProcessor::default(),
+            EnhancementProcessor::default(),
+            fake_video_exporter(&dir),
+            |_| {},
+            || false,
+        )
+        .unwrap();
+
+    assert_eq!(output.normalized_media_format(), MediaOutputFormat::Mp4);
+    assert!(output.path.ends_with(".mp4"));
+    assert!(Path::new(&output.path).is_file());
+    assert!(Path::new(output.image_path.as_deref().unwrap()).is_file());
+    assert!(!Path::new(&output.path).with_extension("wav").exists());
+    let cover_path = output.image_path.clone().unwrap();
+    delete_radcast_output(
+        &state,
+        DeleteRadcastOutputRequest {
+            project_id: Some(project),
+            output_id: output.id,
+        },
+    )
+    .await
+    .unwrap();
+    assert!(!Path::new(&output.path).exists());
+    assert!(Path::new(&cover_path).exists());
+    remove_dir(dir);
+}
+
+#[tokio::test]
+async fn radcast_mp4_failure_removes_scratch_audio_image_and_output_record() {
+    let state = desktop_state_with_migrated_pool().await;
+    let project = list_radcite_projects(&state).await.unwrap()[0].id;
+    let dir = test_dir("mp4-failure");
+    let source_path = dir.join("lecture.wav");
+    let image_path = dir.join("presenter.png");
+    fs::write(&source_path, b"source audio").unwrap();
+    fs::write(&image_path, b"\x89PNG\r\n\x1a\n").unwrap();
+    let audio = fake_processor(&dir);
+    let source = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(project),
+            path: source_path.to_string_lossy().into_owned(),
+            original_filename: Some("lecture.wav".to_string()),
+        },
+        audio.clone(),
+    )
+    .await
+    .unwrap();
+
+    let error = process_audio_with_processors_and_enhancement_with_progress_cancellation_and_video(
+        &state.paths.data_dir,
+        project,
+        mp4_request(project, source.id, &image_path),
+        audio,
+        CaptionProcessor::default(),
+        EnhancementProcessor::default(),
+        failing_video_exporter(&dir),
+        |_| {},
+        || false,
+    )
+    .expect_err("video failure must fail the RADcast job");
+    assert!(matches!(error, RadcastStorageError::VideoExport(_)));
+
+    let listing = list_radcast_audio(
+        &state,
+        ListRadcastAudioRequest {
+            project_id: Some(project),
+        },
+    )
+    .await
+    .unwrap();
+    assert!(listing.outputs.is_empty());
+    let project_root = state
+        .paths
+        .data_dir
+        .join("radcast/projects")
+        .join(project.0.to_string());
+    let leaked: Vec<_> = walk_files(&project_root)
+        .into_iter()
+        .filter(|path| {
+            path.extension()
+                .and_then(|value| value.to_str())
+                .is_some_and(|ext| matches!(ext, "wav" | "mp4" | "png"))
+                && !path.to_string_lossy().contains("/sources/")
+        })
+        .collect();
+    assert!(leaked.is_empty(), "failed MP4 job leaked files: {leaked:?}");
     remove_dir(dir);
 }
 
@@ -249,6 +392,9 @@ async fn radcast_processing_rejects_unknown_sources() {
             project_id: Some(projects[0].id),
             source_id: "missing-source".to_string(),
             output_format: AudioOutputFormat::Wav,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: None,
             clip_end_seconds: None,
             cleanup_enabled: false,
@@ -284,6 +430,9 @@ async fn radcast_processing_honours_local_cancellation_before_work_begins() {
             project_id: Some(projects[0].id),
             source_id: "not-needed-after-cancellation".to_string(),
             output_format: AudioOutputFormat::Mp3,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: None,
             clip_end_seconds: None,
             cleanup_enabled: true,
@@ -359,6 +508,9 @@ async fn radcast_real_audio_fixture_can_process_when_available() {
             project_id: Some(projects[0].id),
             source_id: source.id,
             output_format: AudioOutputFormat::Mp3,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: Some(0.0),
             clip_end_seconds: Some(10.0),
             cleanup_enabled: true,
@@ -419,6 +571,9 @@ async fn radcast_real_audio_fixture_can_process_with_the_optimized_profile_when_
             project_id: Some(projects[0].id),
             source_id: source.id,
             output_format: AudioOutputFormat::Wav,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: Some(0.0),
             clip_end_seconds: Some(8.0),
             cleanup_enabled: true,
@@ -471,6 +626,9 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
             project_id: Some(projects[0].id),
             source_id: source.id,
             output_format: AudioOutputFormat::Mp3,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: None,
             clip_end_seconds: None,
             cleanup_enabled: false,
@@ -559,6 +717,9 @@ async fn radcast_speech_aware_pause_cleanup_uses_intervals_and_records_pause_cou
             project_id: Some(projects[0].id),
             source_id: source.id,
             output_format: AudioOutputFormat::Mp3,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: Some(0.0),
             clip_end_seconds: Some(3.0),
             cleanup_enabled: false,
@@ -630,6 +791,9 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
             project_id: Some(projects[0].id),
             source_id: source.id,
             output_format: AudioOutputFormat::Mp3,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: Some(1.0),
             clip_end_seconds: Some(8.0),
             cleanup_enabled: true,
@@ -716,6 +880,9 @@ async fn radcast_real_audio_fixture_can_process_with_each_legacy_profile_when_av
                 project_id: Some(projects[0].id),
                 source_id: source.id.clone(),
                 output_format: AudioOutputFormat::Wav,
+                media_format: None,
+                presenter_image_path: None,
+                save_presenter_image_as_project_default: false,
                 clip_start_seconds: None,
                 clip_end_seconds: None,
                 cleanup_enabled: false,
@@ -770,6 +937,9 @@ async fn radcast_processing_reports_ordered_local_progress_phases() {
             project_id: Some(projects[0].id),
             source_id: source.id,
             output_format: AudioOutputFormat::Mp3,
+            media_format: None,
+            presenter_image_path: None,
+            save_presenter_image_as_project_default: false,
             clip_start_seconds: None,
             clip_end_seconds: None,
             cleanup_enabled: false,
@@ -807,6 +977,7 @@ async fn radcast_project_settings_are_persisted_in_local_project_storage() {
     let projects = list_radcite_projects(&state).await.expect("list projects");
     let settings = RadcastProjectSettings {
         output_format: AudioOutputFormat::Wav,
+        media_format: Some(MediaOutputFormat::Wav),
         caption_format: Some(CaptionFormat::Vtt),
         caption_language: "mi".to_string(),
         caption_quality_mode: CaptionQualityMode::Accurate,
@@ -983,6 +1154,68 @@ fn fake_caption_processor(dir: &Path) -> CaptionProcessor {
     let model = dir.join("caption-model.bin");
     fs::write(&model, b"model").expect("write caption model");
     CaptionProcessor::from_commands(whisper, model)
+}
+
+fn fake_video_exporter(dir: &Path) -> VideoExporter {
+    let ffmpeg = write_executable(
+        dir,
+        "video-ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nmkdir -p \"$(dirname \"$output\")\"\nprintf 'fake mp4' > \"$output\"\nprintf 'out_time_us=12500000\\nprogress=end\\n'\n",
+    );
+    let ffprobe = write_executable(
+        dir,
+        "video-ffprobe.sh",
+        "#!/bin/sh\nprintf '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"duration\":12.5}}'\n",
+    );
+    VideoExporter::from_commands(ffmpeg, ffprobe)
+}
+
+fn failing_video_exporter(dir: &Path) -> VideoExporter {
+    let ffmpeg = write_executable(dir, "failing-video-ffmpeg.sh", "#!/bin/sh\nexit 9\n");
+    VideoExporter::from_commands(ffmpeg, dir.join("unused-ffprobe"))
+}
+
+fn mp4_request(
+    project_id: radsuite_core::ProjectId,
+    source_id: String,
+    image_path: &Path,
+) -> ProcessRadcastAudioRequest {
+    ProcessRadcastAudioRequest {
+        project_id: Some(project_id),
+        source_id,
+        output_format: AudioOutputFormat::Wav,
+        media_format: Some(MediaOutputFormat::Mp4),
+        presenter_image_path: Some(image_path.to_string_lossy().into_owned()),
+        save_presenter_image_as_project_default: true,
+        clip_start_seconds: None,
+        clip_end_seconds: None,
+        cleanup_enabled: false,
+        max_silence_seconds: None,
+        caption_format: None,
+        caption_language: "en".to_string(),
+        caption_quality_mode: CaptionQualityMode::Reviewed,
+        caption_glossary: None,
+        enhancement_model: EnhancementModel::None,
+        enhancement_quality: EnhancementQuality::Standard,
+        remove_filler_words: false,
+        filler_removal_mode: FillerRemovalMode::Aggressive,
+    }
+}
+
+fn walk_files(root: &Path) -> Vec<PathBuf> {
+    if !root.exists() {
+        return Vec::new();
+    }
+    let mut files = Vec::new();
+    for entry in fs::read_dir(root).unwrap() {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            files.extend(walk_files(&path));
+        } else {
+            files.push(path);
+        }
+    }
+    files
 }
 
 fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {

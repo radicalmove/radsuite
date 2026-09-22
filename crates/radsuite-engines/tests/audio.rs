@@ -1,9 +1,13 @@
+use std::path::PathBuf;
+
+#[cfg(unix)]
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(unix)]
+use std::{os::unix::fs::PermissionsExt, path::Path};
 
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingError, AudioProcessingRequest, AudioProcessor,
@@ -215,6 +219,7 @@ fn audio_processing_builds_a_concat_graph_for_filler_intervals() {
 }
 
 #[test]
+#[cfg(unix)]
 fn audio_processor_runs_with_deterministic_tool_commands() {
     let dir = test_dir("process");
     let ffmpeg = write_executable(
@@ -251,6 +256,79 @@ fn audio_processor_runs_with_deterministic_tool_commands() {
     remove_dir(dir);
 }
 
+#[test]
+#[cfg(unix)]
+fn audio_processor_exposes_runner_progress_without_changing_the_default_path() {
+    let dir = test_dir("runner-progress");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'out_time_us=1000000\\n'\nmkdir -p \"$(dirname \"$output\")\"\nprintf 'fake audio' > \"$output\"\n",
+    );
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nprintf '12.5\\n'");
+    let input = dir.join("source.wav");
+    let output = dir.join("outputs").join("clean.wav");
+    fs::write(&input, b"source audio").expect("write source");
+    let mut progress = Vec::new();
+
+    let result = AudioProcessor::from_commands(ffmpeg, ffprobe)
+        .process_with_callbacks(
+            AudioProcessingRequest {
+                input_path: input,
+                output_path: output,
+                output_format: AudioOutputFormat::Wav,
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+                cleanup_enabled: false,
+                max_silence_seconds: None,
+                remove_intervals: Vec::new(),
+            },
+            || false,
+            |line| progress.push(line.to_string()),
+        )
+        .expect("process audio with callbacks");
+
+    assert_eq!(result.duration_seconds, 12.5);
+    assert!(progress.iter().any(|line| line == "out_time_us=1000000"));
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn audio_processor_maps_runner_cancellation_to_audio_cancellation() {
+    let dir = test_dir("runner-cancel");
+    let ffmpeg = write_executable(&dir, "ffmpeg.sh", "#!/bin/sh\nsleep 30\n");
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nprintf '12.5\\n'");
+    let input = dir.join("source.wav");
+    let output = dir.join("outputs").join("clean.wav");
+    fs::write(&input, b"source audio").expect("write source");
+    let mut polls = 0;
+
+    let result = AudioProcessor::from_commands(ffmpeg, ffprobe).process_with_callbacks(
+        AudioProcessingRequest {
+            input_path: input,
+            output_path: output,
+            output_format: AudioOutputFormat::Wav,
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+            cleanup_enabled: false,
+            max_silence_seconds: None,
+            remove_intervals: Vec::new(),
+        },
+        || {
+            polls += 1;
+            polls > 3
+        },
+        |_| {},
+    );
+
+    assert!(matches!(
+        result,
+        Err(AudioProcessingError::Cancelled { .. })
+    ));
+    remove_dir(dir);
+}
+
 fn request(output_format: AudioOutputFormat) -> AudioProcessingRequest {
     AudioProcessingRequest {
         input_path: PathBuf::from("source.wav"),
@@ -270,6 +348,7 @@ fn display_args(args: &[std::ffi::OsString]) -> Vec<String> {
         .collect()
 }
 
+#[cfg(unix)]
 fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
     let path = dir.join(filename);
     fs::write(&path, contents).expect("write fake tool");
@@ -281,6 +360,7 @@ fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
     path
 }
 
+#[cfg(unix)]
 fn test_dir(label: &str) -> PathBuf {
     let suffix = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -291,6 +371,7 @@ fn test_dir(label: &str) -> PathBuf {
     path
 }
 
+#[cfg(unix)]
 fn remove_dir(path: PathBuf) {
     let _ = fs::remove_dir_all(path);
 }

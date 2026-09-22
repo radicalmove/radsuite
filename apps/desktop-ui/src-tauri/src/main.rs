@@ -8,7 +8,8 @@ use radsuite_desktop::{
     AnalysePdfRequest, AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
     ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest,
     AssignCourseReferenceModuleRequest, CourseModuleSummary, CourseReferenceSummary,
-    CourseReferencesExport, CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
+    CourseReferencesExport, CreateRadciteProjectRequest, DeleteRadcastAudioRequest,
+    DeleteRadcastOutputRequest, DeleteRadtTsMediaOutputRequest, DesktopState,
     ExportCourseReferencesRequest, ExportModuleReadingsRequest, ExportRadciteReviewReportRequest,
     ImportDocumentReadingsRequest, ImportDocumentReadingsResponse, ImportRadcastAudioLinkRequest,
     ImportRadcastAudioRequest, LegacyRadciteImportRequest, LegacyRadciteImportResult,
@@ -18,15 +19,15 @@ use radsuite_desktop::{
     MergeCourseReferencesRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
     ModuleReadingsExport, ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
-    ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
-    RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem, RadciteProjectSummary,
-    RadciteReviewReportExport, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsMediaJobStatus,
-    RadtTsMediaOutputListing, RadtTsOutputListing, RestoreRadciteArchiveItemRequest,
-    RestoreRadciteProjectRequest, SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest,
-    SavedRadciteReviewSummary, StartRadtTsClipRequest, StartRadtTsSynthesisRequest,
-    StartRadtTsTranscriptionRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
-    UpdateRadciteProjectRequest,
+    ProcessRadcastAudioRequest, ProjectMediaRequest, RadcastAudioListing, RadcastAudioOutput,
+    RadcastAudioSource, RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem,
+    RadciteProjectSummary, RadciteReviewReportExport, RadtTsCapabilityStatus, RadtTsJobStatus,
+    RadtTsMediaJobStatus, RadtTsMediaOutputListing, RadtTsOutputListing,
+    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
+    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
+    StartRadtTsClipRequest, StartRadtTsSynthesisRequest, StartRadtTsTranscriptionRequest,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, UpdateRadciteProjectRequest,
 };
 
 #[tauri::command]
@@ -163,6 +164,16 @@ async fn delete_radcast_audio(
 }
 
 #[tauri::command]
+async fn delete_radcast_output(
+    state: tauri::State<'_, DesktopState>,
+    request: DeleteRadcastOutputRequest,
+) -> Result<(), String> {
+    radsuite_desktop::delete_radcast_output(&state, request)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn save_local_file(source_path: String, destination_path: String) -> Result<(), String> {
     radsuite_desktop::copy_local_file(Path::new(&source_path), Path::new(&destination_path))
         .map_err(|error| format!("could not save file: {error}"))
@@ -288,6 +299,22 @@ async fn list_radt_ts_media_outputs(
     request: ListRadtTsOutputsRequest,
 ) -> Result<RadtTsMediaOutputListing, String> {
     radsuite_desktop::list_radt_ts_media_outputs(&state, request).await
+}
+
+#[tauri::command]
+async fn get_project_presenter_image(
+    state: tauri::State<'_, DesktopState>,
+    request: ProjectMediaRequest,
+) -> Result<Option<String>, String> {
+    radsuite_desktop::get_project_presenter_image(&state, request).await
+}
+
+#[tauri::command]
+async fn delete_radt_ts_media_output(
+    state: tauri::State<'_, DesktopState>,
+    request: DeleteRadtTsMediaOutputRequest,
+) -> Result<(), String> {
+    radsuite_desktop::delete_radt_ts_media_output(&state, request).await
 }
 
 #[tauri::command]
@@ -701,6 +728,7 @@ fn main() {
             export_radcite_review_report,
             list_radcast_audio,
             delete_radcast_audio,
+            delete_radcast_output,
             save_local_file,
             write_local_text_file,
             save_radcast_settings,
@@ -717,6 +745,8 @@ fn main() {
             get_radt_ts_job,
             cancel_radt_ts_job,
             list_radt_ts_media_outputs,
+            get_project_presenter_image,
+            delete_radt_ts_media_output,
             start_radt_ts_transcription,
             start_radt_ts_clip,
             get_radt_ts_media_job,

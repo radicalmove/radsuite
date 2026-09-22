@@ -9,6 +9,7 @@
     EnhancementModel,
     EnhancementQuality,
     FillerRemovalMode,
+    MediaOutputFormat,
     RadcastCapabilityStatus,
     RadcastAudioListing,
     RadcastAudioOutput,
@@ -30,7 +31,7 @@
     normalizeRadcastTrimRange,
     shouldRestartRadcastPlayback,
   } from "../lib/radcastSettings";
-  import { saveLocalArtifact } from "../lib/fileDownload";
+  import { filenameFromPath, saveLocalArtifact } from "../lib/fileDownload";
 
   type Props = {
     selectedProjectId: string | null;
@@ -45,6 +46,9 @@
   let clipStart = $state(0);
   let clipEnd = $state(0);
   let outputFormat = $state<AudioOutputFormat>("mp3");
+  let mediaFormat = $state<MediaOutputFormat>("mp3");
+  let presenterImagePath = $state("");
+  let savePresenterImageAsProjectDefault = $state(false);
   let captionFormat = $state<CaptionFormat | null>(null);
   let captionLanguage = $state("en");
   let captionQualityMode = $state<CaptionQualityMode>("reviewed");
@@ -182,6 +186,7 @@
     !selectedSource ||
     clipEnd <= clipStart ||
     clipEnd > selectedSource.duration_seconds ||
+    (mediaFormat === "mp4" && presenterImagePath.trim().length === 0) ||
     (settingsLoaded && selectedEnhancementCapability !== null && !selectedEnhancementCapability.available) ||
     (settingsLoaded && !canUseRadcastSpeechCleanup(captionCapability.caption_available, shortenPauses, removeFillerWords)),
   );
@@ -189,6 +194,10 @@
   $effect(() => {
     selectedProjectId;
     void refreshAudio();
+  });
+
+  $effect(() => {
+    outputFormat = mediaFormat === "mp3" ? "mp3" : "wav";
   });
 
   $effect(() => {
@@ -256,6 +265,21 @@
       error = `Could not save ${label.toLowerCase()}: ${toErrorMessage(reason)}`;
     } finally {
       downloadingArtifact = null;
+    }
+  }
+
+  async function choosePresenterImage() {
+    error = null;
+    try {
+      const selected = await open({
+        multiple: false,
+        directory: false,
+        filters: [{ name: "Presenter image", extensions: ["png", "jpg", "jpeg", "webp"] }],
+      });
+      const path = typeof selected === "string" ? selected : selected?.[0];
+      if (path) presenterImagePath = path;
+    } catch (reason: unknown) {
+      error = `Could not choose presenter image: ${toErrorMessage(reason)}`;
     }
   }
 
@@ -527,12 +551,20 @@
     settingsLoaded = false;
     error = null;
     try {
-      const result = await invoke<RadcastAudioListing>("list_radcast_audio", {
-        request: { project_id: selectedProjectId },
-      });
-      const capabilities = await invoke<RadcastCapabilityStatus>("get_radcast_capabilities");
+      presenterImagePath = "";
+      const [result, capabilities, savedPresenterImage] = await Promise.all([
+        invoke<RadcastAudioListing>("list_radcast_audio", {
+          request: { project_id: selectedProjectId },
+        }),
+        invoke<RadcastCapabilityStatus>("get_radcast_capabilities"),
+        invoke<string | null>("get_project_presenter_image", {
+          request: { project_id: selectedProjectId },
+        }),
+      ]);
       captionCapability = capabilities;
+      presenterImagePath = savedPresenterImage ?? "";
       outputFormat = result.settings.output_format;
+      mediaFormat = result.settings.output_format;
       captionFormat = result.settings.caption_format;
       captionLanguage = result.settings.caption_language;
       captionQualityMode = result.settings.caption_quality_mode;
@@ -639,6 +671,10 @@
           project_id: selectedProjectId,
           source_id: selectedSource.id,
           output_format: outputFormat,
+          media_format: mediaFormat,
+          presenter_image_path: mediaFormat === "mp4" ? presenterImagePath.trim() : null,
+          save_presenter_image_as_project_default:
+            mediaFormat === "mp4" && savePresenterImageAsProjectDefault,
           clip_start_seconds: clipStart,
           clip_end_seconds: clipEnd,
           cleanup_enabled: cleanupEnabled,
@@ -969,12 +1005,27 @@
         </label>
         <label class="stack settings-compact-field">
           <span>Output format</span>
-          <select bind:value={outputFormat}>
+          <select bind:value={mediaFormat}>
             <option value="mp3">MP3</option>
             <option value="wav">WAV</option>
+            <option value="mp4">MP4 video</option>
           </select>
         </label>
       </div>
+
+      {#if mediaFormat === "mp4"}
+        <div class="radcast-video-options">
+          <label class="stack settings-compact-field">
+            <span>Presenter or avatar image</span>
+            <div class="radcast-image-row">
+              <input type="text" bind:value={presenterImagePath} placeholder="Choose a PNG, JPEG, or WebP image" />
+              <button class="secondary-button compact-button" type="button" disabled={processing} onclick={() => void choosePresenterImage()}>Choose image</button>
+            </div>
+          </label>
+          <label class="radcast-checkbox"><input type="checkbox" bind:checked={savePresenterImageAsProjectDefault} /><span>Use this image for future videos in this project</span></label>
+          <small class="field-note">The exported video places the image beside a neutral white waveform that moves with the cleaned audio.</small>
+        </div>
+      {/if}
 
       <details class="radcast-settings-group" open={captionFormat !== null}>
         <summary>
@@ -1135,7 +1186,7 @@
           <span>{selectedEnhancementCapability?.available ? "Ready to process locally." : "Local enhancement is unavailable."}</span>
         </div>
         <button class="primary-button radcast-process-button" type="button" disabled={processDisabled} onclick={() => void processAudio()}>
-          {processing ? "Processing" : "Create audio version"}
+          {processing ? "Processing" : mediaFormat === "mp4" ? "Create video version" : "Create audio version"}
         </button>
       </div>
     </section>
@@ -1155,24 +1206,27 @@
           <article class="radcast-output-row">
             <div class="radcast-output-copy">
               <strong>{output.filename}</strong>
-              <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model !== "none" ? ` · ${enhancementModelLabel(output.enhancement_model)} · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds !== null ? ` · Keep pauses ≤ ${output.max_silence_seconds}s · ${formatRadcastPauseRemovalCount(output.removed_pause_count)}` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
+              <span>{(output.media_format ?? output.output_format).toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model !== "none" ? ` · ${enhancementModelLabel(output.enhancement_model)} · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds !== null ? ` · Keep pauses ≤ ${output.max_silence_seconds}s · ${formatRadcastPauseRemovalCount(output.removed_pause_count)}` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
             </div>
-            <audio controls src={convertFileSrc(output.path)}>
-              Your browser does not support audio playback.
-            </audio>
+            {#if output.media_format === "mp4"}
+              <!-- svelte-ignore a11y_media_has_caption: generated captions are optional -->
+              <video controls src={convertFileSrc(output.path)}>Your browser does not support video playback.</video>
+            {:else}
+              <audio controls src={convertFileSrc(output.path)}>Your browser does not support audio playback.</audio>
+            {/if}
             <div class="radcast-output-actions">
               <button
                 class="secondary-button compact-button"
                 type="button"
                 disabled={downloadingArtifact !== null}
-                onclick={() => void downloadArtifact(output.path, output.filename, "Audio file", output.output_format, "Audio")}
-              >Download audio</button>
+                onclick={() => void downloadArtifact(output.path, output.filename, output.media_format === "mp4" ? "Video file" : "Audio file", output.media_format ?? output.output_format, output.media_format === "mp4" ? "Video" : "Audio")}
+              >Download {output.media_format === "mp4" ? "video" : "audio"}</button>
               {#if output.caption_path && output.caption_format}
                 <button
                   class="secondary-button compact-button"
                   type="button"
                   disabled={downloadingArtifact !== null}
-                  onclick={() => void downloadArtifact(output.caption_path!, `${output.filename}.${output.caption_format}`, "Caption file", output.caption_format!, output.caption_format!.toUpperCase())}
+                  onclick={() => void downloadArtifact(output.caption_path!, filenameFromPath(output.caption_path!, `captions.${output.caption_format}`), "Caption file", output.caption_format!, output.caption_format!.toUpperCase())}
                 >Download {output.caption_format.toUpperCase()}</button>
               {/if}
               {#if output.caption_review_path}
@@ -1180,7 +1234,7 @@
                   class="secondary-button compact-button"
                   type="button"
                   disabled={downloadingArtifact !== null}
-                  onclick={() => void downloadArtifact(output.caption_review_path!, `${output.filename}.review.txt`, "Caption review", "txt", "Caption review")}
+                  onclick={() => void downloadArtifact(output.caption_review_path!, filenameFromPath(output.caption_review_path!, `${output.filename}.review.txt`), "Caption review", "txt", "Caption review")}
                 >Download caption review</button>
               {/if}
             </div>
