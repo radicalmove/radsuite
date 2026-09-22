@@ -260,14 +260,8 @@ impl VideoExporter {
                 return Err(with_cleanup(error, &[partial_path.as_path()]));
             }
         };
-        if is_cancelled() {
-            return Err(with_cleanup(
-                VideoExportError::Process(ProcessError::Cancelled {
-                    executable: self.ffprobe_command.clone(),
-                    diagnostics: Vec::new(),
-                }),
-                &[partial_path.as_path()],
-            ));
+        if let Err(error) = ensure_export_not_cancelled(&mut is_cancelled, &self.ffprobe_command) {
+            return Err(with_cleanup(error, &[partial_path.as_path()]));
         }
         promote_partial_output(&partial_path, &request.output_path)?;
         Ok(VideoExportResult {
@@ -601,6 +595,23 @@ fn with_cleanup(cause: VideoExportError, paths: &[&Path]) -> VideoExportError {
     }
 }
 
+fn ensure_export_not_cancelled<C>(
+    is_cancelled: &mut C,
+    executable: &Path,
+) -> Result<(), VideoExportError>
+where
+    C: FnMut() -> bool,
+{
+    if is_cancelled() {
+        Err(VideoExportError::Process(ProcessError::Cancelled {
+            executable: executable.to_path_buf(),
+            diagnostics: Vec::new(),
+        }))
+    } else {
+        Ok(())
+    }
+}
+
 fn cleanup_owned_paths(paths: &[&Path]) -> Vec<CleanupFailure> {
     paths
         .iter()
@@ -665,6 +676,17 @@ struct ProbeFormat {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn post_probe_cancellation_gate_returns_a_cancelled_process_error() {
+        let error = ensure_export_not_cancelled(&mut || true, Path::new("ffprobe"))
+            .expect_err("cancelled export should not be promoted");
+
+        assert!(matches!(
+            error,
+            VideoExportError::Process(ProcessError::Cancelled { .. })
+        ));
+    }
 
     #[test]
     fn no_replace_copy_preserves_partial_source_when_copy_fails() {
