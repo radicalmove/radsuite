@@ -684,21 +684,21 @@ impl WindowsProcessControl {
             Err(error) => Some(error),
         };
 
-        if !self.use_pid_tree {
-            if let Some(job) = self.job.as_ref() {
-                match job.terminate() {
-                    Ok(()) => job_terminated = true,
-                    Err(error) => {
-                        diagnostics.push(format!("Windows Job Object termination failed: {error}"))
-                    }
+        if !self.use_pid_tree
+            && let Some(job) = self.job.as_ref()
+        {
+            match job.terminate() {
+                Ok(()) => job_terminated = true,
+                Err(error) => {
+                    diagnostics.push(format!("Windows Job Object termination failed: {error}"))
                 }
             }
         }
 
-        if let Some(error) = taskkill_error {
-            if !job_terminated {
-                diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
-            }
+        if let Some(error) = taskkill_error
+            && !job_terminated
+        {
+            diagnostics.push(format!("taskkill process-tree termination failed: {error}"));
         }
 
         if diagnostics.len() > diagnostic_count {

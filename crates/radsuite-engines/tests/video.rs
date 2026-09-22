@@ -552,7 +552,6 @@ fn process_runner_cancels_a_powershell_descendant_tree() {
     )
     .expect("write Windows process tree script");
     let started = std::time::Instant::now();
-    let mut polls = 0;
 
     let result = run_process(
         Path::new("powershell.exe"),
@@ -563,10 +562,7 @@ fn process_runner_cancels_a_powershell_descendant_tree() {
             OsString::from("-File"),
             script.as_os_str().to_owned(),
         ],
-        || {
-            polls += 1;
-            descendant_pid.is_file() || polls > 100
-        },
+        || descendant_pid.is_file() || started.elapsed() > Duration::from_secs(3),
         |_| {},
     );
 
