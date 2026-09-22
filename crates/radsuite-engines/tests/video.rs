@@ -234,8 +234,8 @@ fn process_runner_keeps_cancellation_primary_when_a_reader_times_out() {
     let started = std::time::Instant::now();
 
     let result = run_process(
-        &script,
-        &[],
+        Path::new("/bin/sh"),
+        &[script.as_os_str().to_owned()],
         || detached_pid.is_file() || started.elapsed() > Duration::from_secs(3),
         |_| {},
     );
