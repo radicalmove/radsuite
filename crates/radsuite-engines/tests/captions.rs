@@ -289,6 +289,39 @@ fn caption_processor_extracts_word_timestamps_from_whisper_json() {
 }
 
 #[test]
+fn caption_processor_normalizes_segment_relative_tokens_and_ignores_control_tokens() {
+    let dir = test_dir("segment-relative-word-timestamps");
+    let whisper = write_executable(
+        &dir,
+        "whisper-json.sh",
+        "#!/bin/sh\noutput=''\nprevious=''\nfor arg in \"$@\"; do\n  if [ \"$previous\" = \"-of\" ]; then output=\"$arg\"; fi\n  previous=\"$arg\"\ndone\nprintf '{\"transcription\":[{\"offsets\":{\"from\":0,\"to\":500},\"tokens\":[{\"text\":\"[_BEG_]\",\"offsets\":{\"from\":0,\"to\":0},\"p\":0.99},{\"text\":\" first\",\"offsets\":{\"from\":100,\"to\":300},\"p\":0.9},{\"text\":\"[_TT_50]\",\"offsets\":{\"from\":500,\"to\":500},\"p\":0.99}]},{\"offsets\":{\"from\":2000,\"to\":5000},\"tokens\":[{\"text\":\"[_BEG_]\",\"offsets\":{\"from\":0,\"to\":0},\"p\":0.99},{\"text\":\" second\",\"offsets\":{\"from\":100,\"to\":300},\"p\":0.9},{\"text\":\" later\",\"offsets\":{\"from\":2200,\"to\":2300},\"p\":0.8}]}]}' > \"$output.json\"\n",
+    );
+    let model = dir.join("model.bin");
+    fs::write(&model, b"model").expect("write model");
+    let input = dir.join("source.wav");
+    fs::write(&input, b"source audio").expect("write source");
+
+    let words = CaptionProcessor::from_commands(whisper, model)
+        .transcribe_words(&CaptionTranscriptionRequest {
+            input_path: input,
+            language: "en".to_string(),
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+        })
+        .expect("transcribe segment-relative word timestamps");
+
+    assert_eq!(
+        words,
+        vec![
+            word("first", 0.1, 0.3, 0.9),
+            word("second", 2.1, 2.3, 0.9),
+            word("later", 4.2, 4.3, 0.8),
+        ]
+    );
+    remove_dir(dir);
+}
+
+#[test]
 fn filler_intervals_are_relative_to_the_selected_clip() {
     let dir = test_dir("clip-filler");
     let whisper = write_executable(

@@ -349,19 +349,34 @@ impl CaptionProcessor {
         Ok(document
             .transcription
             .into_iter()
-            .flat_map(|segment| segment.tokens)
-            .filter_map(|token| {
-                let offsets = token.offsets?;
-                let start_seconds = offsets.from as f64 / 1000.0;
-                let end_seconds = offsets.to as f64 / 1000.0;
-                if token.text.trim().is_empty() || end_seconds <= start_seconds {
-                    return None;
-                }
-                Some(CaptionWord {
-                    text: token.text.trim().to_string(),
-                    start_seconds,
-                    end_seconds,
-                    probability: token.probability,
+            .flat_map(|segment| {
+                let segment_start = segment.offsets.as_ref().map_or(0, |offsets| offsets.from);
+                let relative_to_segment = segment.tokens.iter().find_map(|token| {
+                    let text = token.text.trim();
+                    is_spoken_token(text)
+                        .then_some(token.offsets.as_ref())
+                        .flatten()
+                        .map(|offsets| offsets.from < segment_start)
+                });
+                let offset_base = if relative_to_segment.unwrap_or(false) {
+                    segment_start
+                } else {
+                    0
+                };
+                segment.tokens.into_iter().filter_map(move |token| {
+                    let text = token.text.trim();
+                    if !is_spoken_token(text) {
+                        return None;
+                    }
+                    let offsets = token.offsets?;
+                    let start_seconds = (offset_base + offsets.from) as f64 / 1000.0;
+                    let end_seconds = (offset_base + offsets.to) as f64 / 1000.0;
+                    (end_seconds > start_seconds).then_some(CaptionWord {
+                        text: text.to_string(),
+                        start_seconds,
+                        end_seconds,
+                        probability: token.probability,
+                    })
                 })
             })
             .collect())
@@ -806,6 +821,12 @@ fn clamp_interval(
 
 fn round_milliseconds(seconds: f64) -> f64 {
     (seconds * 1000.0).round() / 1000.0
+}
+
+fn is_spoken_token(text: &str) -> bool {
+    !(text.is_empty()
+        || (text.starts_with("[_") && text.ends_with(']'))
+        || (text.starts_with("<|") && text.ends_with("|>")))
 }
 
 fn caption_prompt(glossary: Option<&str>) -> Option<String> {
