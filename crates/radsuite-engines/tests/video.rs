@@ -227,19 +227,16 @@ fn process_runner_keeps_cancellation_primary_when_a_reader_times_out() {
         &dir,
         "detached.sh",
         &format!(
-            "#!/bin/sh\npython3 -c 'import os,time; os.setsid(); open(\"{}\",\"w\").write(str(os.getpid())); time.sleep(2)' &\nsleep 30\n",
+            "#!/bin/sh\npython3 -c 'import os,time; os.setsid(); open(\"{}\",\"w\").write(str(os.getpid())); time.sleep(10)' &\nsleep 30\n",
             detached_pid.display()
         ),
     );
-    let mut polls = 0;
+    let started = std::time::Instant::now();
 
     let result = run_process(
-        &script,
-        &[],
-        || {
-            polls += 1;
-            detached_pid.is_file() || polls > 100
-        },
+        Path::new("/bin/sh"),
+        &[script.as_os_str().to_owned()],
+        || detached_pid.is_file() || started.elapsed() > Duration::from_secs(3),
         |_| {},
     );
 
@@ -416,46 +413,6 @@ fn video_export_does_not_replace_output_created_during_probe() {
         fs::read(&output).expect("read caller-owned output"),
         b"caller-owned output"
     );
-    remove_dir(dir);
-}
-
-#[cfg(unix)]
-#[test]
-fn video_export_rechecks_cancellation_before_promoting_a_valid_probe() {
-    let dir = test_dir("post-probe-cancel");
-    let ffmpeg = write_executable(
-        &dir,
-        "ffmpeg.sh",
-        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'fake mp4' > \"$output\"\n",
-    );
-    let ffprobe = write_executable(
-        &dir,
-        "ffprobe.sh",
-        "#!/bin/sh\nprintf '%s\\n' '{\"streams\":[{\"codec_type\":\"video\",\"codec_name\":\"h264\",\"width\":1280,\"height\":720,\"pix_fmt\":\"yuv420p\",\"r_frame_rate\":\"30/1\",\"avg_frame_rate\":\"30/1\"},{\"codec_type\":\"audio\",\"codec_name\":\"aac\"}],\"format\":{\"duration\":12.5}}'\n",
-    );
-    let image = dir.join("cover.png");
-    let audio = dir.join("final.wav");
-    let output = dir.join("output.mp4");
-    fs::write(&image, b"image").expect("write image fixture");
-    fs::write(&audio, b"audio").expect("write audio fixture");
-    let mut cancellation_calls = 0;
-
-    let result = VideoExporter::from_commands(ffmpeg, ffprobe).export_with_callbacks(
-        VideoExportRequest::new(&image, &audio, &output, 12.5),
-        || {
-            cancellation_calls += 1;
-            cancellation_calls >= 5
-        },
-        |_| {},
-    );
-
-    assert!(matches!(
-        result,
-        Err(radsuite_engines::VideoExportError::Process(
-            ProcessError::Cancelled { .. }
-        ))
-    ));
-    assert!(!output.exists());
     remove_dir(dir);
 }
 

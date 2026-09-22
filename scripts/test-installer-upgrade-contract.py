@@ -27,6 +27,12 @@ class InstallerUpgradeContractTests(unittest.TestCase):
             "currentUser",
         )
 
+    def test_macos_bundle_uses_an_explicit_signing_identity(self) -> None:
+        self.assertEqual(
+            self.config["bundle"]["macOS"]["signingIdentity"],
+            "-",
+        )
+
     def test_public_page_explains_upgrade_without_uninstall(self) -> None:
         self.assertIn("do not normally need to uninstall", self.page)
         self.assertIn("existing installation", self.page)
