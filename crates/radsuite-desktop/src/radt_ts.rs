@@ -1452,7 +1452,14 @@ pub fn build_synthesis_args(
 }
 
 pub(crate) fn parse_cli_result(stdout: &[u8]) -> Result<RadtTsCliResult, RadtTsError> {
-    serde_json::from_slice(stdout).map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))
+    // Some model dependencies print warnings before the CLI's final JSON object.
+    let result_start = stdout
+        .windows(2)
+        .rposition(|pair| pair == b"\n{")
+        .map(|index| index + 1)
+        .unwrap_or(0);
+    serde_json::from_slice(&stdout[result_start..])
+        .map_err(|error| RadtTsError::InvalidCliResult(error.to_string()))
 }
 
 pub fn discover_radt_ts_cli() -> RadtTsCapabilityStatus {
@@ -2398,6 +2405,19 @@ mod tests {
         assert_eq!(
             result.outputs.output_file.as_deref(),
             Some("/tmp/project/assets/generated_audio/intro.mp3")
+        );
+    }
+
+    #[test]
+    fn parses_cli_result_after_model_warning_on_stdout() {
+        let result = parse_cli_result(
+            b"\n********\nWarning: flash-attn is not installed. Will only run the manual PyTorch version.\n********\n \n{\"job_id\":\"job-2\",\"status\":\"completed\",\"stage\":\"completed\",\"outputs\":{\"audio_path\":\"/tmp/intro.mp3\",\"metadata_path\":\"/tmp/intro.json\"}}\n",
+        )
+        .expect("a model warning before the result must not hide completed synthesis");
+        assert_eq!(result.job_id, "job-2");
+        assert_eq!(
+            result.outputs.metadata_path.as_deref(),
+            Some("/tmp/intro.json")
         );
     }
 
