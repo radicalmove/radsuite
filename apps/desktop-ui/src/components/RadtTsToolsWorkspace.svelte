@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { open, save } from "@tauri-apps/plugin-dialog";
@@ -91,7 +92,7 @@
   $effect(() => {
     selectedProjectId;
     settingsLoaded = false;
-    void refresh();
+    untrack(() => void refresh());
   });
 
   $effect(() => {
