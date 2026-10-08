@@ -1,0 +1,31 @@
+{
+  "status": "in_progress",
+  "conclusion": "",
+  "headSha": "f2e48e8d60f0cb97955740c8f0d7fbfda2ae54f4",
+  "url": "https://github.com/radicalmove/radsuite/actions/runs/37857731666",
+  "jobs": [
+    {
+      "name": "package (macos-15-intel, Intel-Mac, app,dmg)",
+      "status": "in_progress",
+      "conclusion": ""
+    },
+    {
+      "name": "package (macos-latest, Apple-Silicon, app,dmg)",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "name": "package (windows-latest, Windows-x64, msi,nsis)",
+      "status": "in_progress",
+      "conclusion": ""
+    }
+  ],
+  "local_installers": [
+    {
+      "path": "/Users/rcd58/Library/Application Support/RADsuite/platform-build-backups/0.2.11-f2e48e8/Apple-Silicon/dmg/RADsuite_0.2.11_aarch64.dmg",
+      "bytes": 10430076,
+      "sha256": "a250441bc76f32a83e24c8dda710e4ad7d29c79577e7442b75469d63af657720"
+    }
+  ],
+  "note": "Installer/package verification; speech runtime was tested on the local Apple Silicon Mac. Public release unchanged."
+}
