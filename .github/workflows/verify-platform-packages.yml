@@ -47,11 +47,11 @@ jobs:
         run: npm test -- --run src/lib/radcastStudio.test.ts
       - name: Verify Studio registration
         run: cargo test -p radsuite-engines --test studio
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version 2.9.6 --locked
+      - name: Verify pinned prebuilt Tauri CLI
+        run: npx --yes --package @tauri-apps/cli@2.9.6 tauri --version
       - name: Build packages without publishing
         shell: bash
-        run: cargo tauri build --bundles '${{ matrix.bundles }}' --config '{"bundle":{"createUpdaterArtifacts":false,"macOS":{"signingIdentity":"-"}}}'
+        run: npx --yes --package @tauri-apps/cli@2.9.6 tauri build --bundles '${{ matrix.bundles }}' --config '{"bundle":{"createUpdaterArtifacts":false,"macOS":{"signingIdentity":"-"}}}'
       - name: Upload test packages
         uses: actions/upload-artifact@v4
         with:
