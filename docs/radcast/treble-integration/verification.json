@@ -36,6 +36,16 @@
   "limitations": "Progress/cancellation wait for the existing synchronous Python process to exit. Local opt-in preset; no claim of Adobe parity.",
   "installed_version": "0.2.11",
   "local_signature": "verified",
-  "ui_option": "Studio \u2014 Natural voice enabled",
-  "version_manifests": "consistent"
+  "ui_option": "Studio \u2014 Treble (recommended); Studio \u2014 Classic",
+  "version_manifests": "consistent",
+  "label_tests": {
+    "rust": 4,
+    "ui": 3,
+    "failed": 0
+  },
+  "fresh_treble_tests": {
+    "run": 7,
+    "failed": 0
+  },
+  "fresh_clippy": "passed with warnings denied"
 }
