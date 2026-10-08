@@ -1,0 +1,111 @@
+{
+  "state": "qualification_rejection_independently_verified",
+  "controls_report_sha256": "7695ede0c520de746961f50ff05ca85b3ec593f0db61c58fe4c44bdd0fcce4bf",
+  "checkpoint_sha256": "6b2a0c78b2eea566fcfd39b0d77ffc0102b0baf6af60a4a1f4dee93995081121",
+  "upstream_ast_symbols_verified": 11,
+  "original_runtime_files_unchanged": 34,
+  "protected_audio_files_unchanged": 4,
+  "unrelated_tracked_files_unchanged": true,
+  "control_cases": [
+    {
+      "speaker": "p232",
+      "condition": "clean",
+      "source_replay_exact": true,
+      "samples": 475203,
+      "si_sdr_db": 9.66040167587736,
+      "improvement_db": -324.7621847392091,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    },
+    {
+      "speaker": "p232",
+      "condition": "early",
+      "source_replay_exact": true,
+      "samples": 475203,
+      "si_sdr_db": 7.478254722985355,
+      "improvement_db": -3.6446033405006855,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    },
+    {
+      "speaker": "p232",
+      "condition": "late",
+      "source_replay_exact": true,
+      "samples": 475203,
+      "si_sdr_db": 8.817534312561193,
+      "improvement_db": -1.657800347163116,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    },
+    {
+      "speaker": "p232",
+      "condition": "composite",
+      "source_replay_exact": true,
+      "samples": 475203,
+      "si_sdr_db": 7.029748884422289,
+      "improvement_db": -0.850729553399117,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    },
+    {
+      "speaker": "p257",
+      "condition": "clean",
+      "source_replay_exact": true,
+      "samples": 398282,
+      "si_sdr_db": 8.40685768801764,
+      "improvement_db": -323.49417406662,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    },
+    {
+      "speaker": "p257",
+      "condition": "early",
+      "source_replay_exact": true,
+      "samples": 398282,
+      "si_sdr_db": 6.628175110865221,
+      "improvement_db": -5.0553689182381065,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    },
+    {
+      "speaker": "p257",
+      "condition": "late",
+      "source_replay_exact": true,
+      "samples": 398282,
+      "si_sdr_db": 7.442055146029642,
+      "improvement_db": -2.550443769409302,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    },
+    {
+      "speaker": "p257",
+      "condition": "composite",
+      "source_replay_exact": true,
+      "samples": 398282,
+      "si_sdr_db": 6.174987612625509,
+      "improvement_db": -1.6171789919377515,
+      "actual_mode": "dereverb",
+      "model_history_continuous": true
+    }
+  ],
+  "all_eight_outputs_finite_native48k_float_exact_count": true,
+  "source_input_replay_exact": true,
+  "all_six_room_reference_improvements_negative": true,
+  "clean_watchdog_flags": {
+    "p232": [],
+    "p257": []
+  },
+  "boundedequivalence": {
+    "maximum_error": 1.043081283569336e-07,
+    "rms_error": 1.4263349448579033e-08,
+    "proof_sha256": "5e7f7601919487d522f4f0aec813303e997b7e0f4d125a40db514e70fdcc269a"
+  },
+  "candidate_model_inferences": 0,
+  "new_treble_control_inferences": 0,
+  "qualification_uses_inferences": 8,
+  "setup_and_equivalence_uses_inferences": 3,
+  "full_finnegan_renders": 0,
+  "round_closed": true,
+  "remaining_full_render_budget": 0,
+  "phase_similarity_caveat": "PairedSI-SDR includesallwaveformerror andisnot a pureecho orperceivedvoice-qualitymeasure."
+}

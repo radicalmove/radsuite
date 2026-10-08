@@ -1,0 +1,1010 @@
+{
+  "date": "2026-10-09",
+  "sample_rate": 48000,
+  "full_sample_count": 6887520,
+  "new_model_inferences": 0,
+  "new_full_candidates": 0,
+  "native_application_changed": false,
+  "baseline_manifest": {
+    "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/trial.qa.json",
+    "sha256": "5855b9cac8caeed1229c094bccfaadb1a28177255b783b844685a98b5b06a4a9"
+  },
+  "inputs": {
+    "prepared": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/prepared.wav",
+      "sha256": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71",
+      "role": "input",
+      "sample_count": 6887520
+    },
+    "highpassed": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/highpassed.wav",
+      "sha256": "bc0e8d4af75b1329b4b8586805d770a7c18bfe4d6fa7892d467f5fc8bdb19cee",
+      "role": "processing_stem",
+      "sample_count": 6887520
+    },
+    "model_raw": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/model_raw.wav",
+      "sha256": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+      "role": "processing_stem",
+      "sample_count": 6887520
+    },
+    "cleanup": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/cleanup.wav",
+      "sha256": "7a95d9f51941d8f48a30ade71da18f4e2f22e930f231725befd34105f91d7ecc",
+      "role": "processing_stem",
+      "sample_count": 6887520
+    }
+  },
+  "exact_blend_replay_max_error": 0.0,
+  "rejected_unblended_master": "Preserved; raw-stem clips below are diagnostics only, not approved full outputs.",
+  "definitions": {
+    "difference": "Blended minus least-squares-scaled model. Includes voice, noise, room, phase and processing changes; not isolated reverberation.",
+    "mask": "Unchanged full-original-derived protected 20ms energy proxy; not semantic VAD.",
+    "attribution": "Finite gain-normalized correlation cannot establish apparent distance or Adobe algorithm."
+  },
+  "regions": {
+    "target_phrase": {
+      "original_timeline_seconds": [
+        20,
+        32
+      ],
+      "blend_difference": {
+        "fitted_static_gain_db": 1.2934807777109034,
+        "waveform_correlation": 0.999117727636282,
+        "difference_rms_fraction_after_scalar": 0.04203430383549438,
+        "difference_rms_db_after_scalar": -27.527922817871744
+      },
+      "original_to_model_difference": {
+        "fitted_static_gain_db": -5.276918893908143,
+        "waveform_correlation": 0.9909714801854258,
+        "difference_rms_fraction_after_scalar": 0.13529434437630003,
+        "difference_rms_db_after_scalar": -17.374407151196323
+      },
+      "spectral_share_change_db": {
+        "sub": 0.5362243860944815,
+        "body": 0.1249727076535434,
+        "mid": -0.02783483692312483,
+        "presence": 0.06535722797984178,
+        "sibilants": -0.0033629881173382614,
+        "air": 0.031605076375022634
+      },
+      "stage_metrics": {
+        "prepared": {
+          "pcm_sha256": "28a6009ac6a91c5f9fab2fe186f8226e07bc30da193a94a044e7c6e5a7589851",
+          "duration_seconds": 12.0,
+          "rms_dbfs": -33.901722597833434,
+          "sample_peak_dbfs": -12.882505955547694,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -33.23017080579735,
+          "pause_rms_dbfs": -65.31294613165096,
+          "speech_pause_contrast_db": 32.08277532585361,
+          "speech_frames": 514,
+          "pause_frames": 23,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -38.08419573197307,
+            "body": -7.178403098126146,
+            "mid": -0.9880829847650179,
+            "presence": -20.162647836287064,
+            "sibilants": -27.41309738003575,
+            "air": -34.1024238369467
+          },
+          "rolloff_95_hz": 703.125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.721943776760114,
+            "7000-8000": -37.21411490792083,
+            "8000-9000": -37.035555839626696,
+            "9000-10000": -39.44628413630483,
+            "10000-12000": -41.863601132905984,
+            "12000-16000": -49.12870551243849
+          }
+        },
+        "highpassed": {
+          "pcm_sha256": "56b4b5251130e3997689ec5630e7f0d83f31f180e52a409465771af12251100d",
+          "duration_seconds": 12.0,
+          "rms_dbfs": -33.90340961391551,
+          "sample_peak_dbfs": -12.802713791219132,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -33.23185746799373,
+          "pause_rms_dbfs": -65.31621129865427,
+          "speech_pause_contrast_db": 32.08435383066054,
+          "speech_frames": 514,
+          "pause_frames": 23,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -38.32584746160106,
+            "body": -7.18687492045068,
+            "mid": -0.9860440002628824,
+            "presence": -20.159742128309126,
+            "sibilants": -27.410200380042248,
+            "air": -34.09955099917262
+          },
+          "rolloff_95_hz": 703.125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.71906269929458,
+            "7000-8000": -37.211256520709725,
+            "8000-9000": -37.03268193680587,
+            "9000-10000": -39.44341515602156,
+            "10000-12000": -41.860725988510545,
+            "12000-16000": -49.12582635388087
+          }
+        },
+        "model_raw": {
+          "pcm_sha256": "d2edb77172e0bd1ee84dc4441d004883a80ec5fefeb602ad6a5794692c957bad",
+          "duration_seconds": 12.0,
+          "rms_dbfs": -39.1018792094662,
+          "sample_peak_dbfs": -17.980819846763527,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -38.42999947795756,
+          "pause_rms_dbfs": -94.45375923926917,
+          "speech_pause_contrast_db": 56.02375976131162,
+          "speech_frames": 514,
+          "pause_frames": 23,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -40.213537625629286,
+            "body": -7.613139726299853,
+            "mid": -0.8862589837995211,
+            "presence": -20.431417976253577,
+            "sibilants": -27.434272119528273,
+            "air": -34.17277886662695
+          },
+          "rolloff_95_hz": 703.125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.45397645554118,
+            "7000-8000": -37.34438946120413,
+            "8000-9000": -37.124946479786914,
+            "9000-10000": -39.50884578762017,
+            "10000-12000": -41.841124502285716,
+            "12000-16000": -49.47229016554129
+          }
+        },
+        "cleanup": {
+          "pcm_sha256": "e411fe6ea899b28bfc5dd94cebd31ae11598ab7cfeb2e8c8cfafae8311381ab5",
+          "duration_seconds": 12.0,
+          "rms_dbfs": -37.80069546155653,
+          "sample_peak_dbfs": -16.669046202261978,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -37.12885199727254,
+          "pause_rms_dbfs": -78.71168742722693,
+          "speech_pause_contrast_db": 41.58283542995439,
+          "speech_frames": 514,
+          "pause_frames": 23,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -39.677313239534804,
+            "body": -7.488167018646309,
+            "mid": -0.9140938207226459,
+            "presence": -20.366060748273735,
+            "sibilants": -27.43763510764561,
+            "air": -34.141173790251926
+          },
+          "rolloff_95_hz": 703.125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.53265603233036,
+            "7000-8000": -37.2972176402379,
+            "8000-9000": -37.08760291799669,
+            "9000-10000": -39.47896566437818,
+            "10000-12000": -41.83789021012331,
+            "12000-16000": -49.3590457919261
+          }
+        }
+      },
+      "rms_listening": {
+        "model_unblended": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/target_phrase_model_unblended.wav",
+          "sha256": "c16914d0d0ae0a85537363a0080cabaf5b0a88ef4c0ca0f819be346b40643bc7",
+          "sample_count": 576000,
+          "static_gain_db": 11.929999477957558,
+          "speech_rms_dbfs": -26.500000107953426,
+          "loudness": {
+            "integrated_lufs": -26.57,
+            "true_peak_dbfs": -6.05,
+            "loudness_range_lu": 4.4
+          }
+        },
+        "original20": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/target_phrase_original20.wav",
+          "sha256": "96524c18cbce6e6fcf4ce70a0af12e97bc66bbe757192fca05af1583eab16927",
+          "sample_count": 576000,
+          "static_gain_db": 10.628851997272541,
+          "speech_rms_dbfs": -26.50000007901115,
+          "loudness": {
+            "integrated_lufs": -26.61,
+            "true_peak_dbfs": -6.04,
+            "loudness_range_lu": 4.4
+          }
+        }
+      },
+      "lufs_listening": {
+        "files": {
+          "model_unblended": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-lufs/target_phrase_model_unblended.wav",
+            "sha256": "58831cb951a0b0fd9ed0679ae0e4194cf7f0b1d9d212c9d2f85b7151c90c52c6",
+            "sample_count": 576000,
+            "total_static_gain_db": 11.88999947795756,
+            "loudness": {
+              "integrated_lufs": -26.61,
+              "true_peak_dbfs": -6.09,
+              "loudness_range_lu": 4.4
+            }
+          },
+          "original20": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-lufs/target_phrase_original20.wav",
+            "sha256": "96524c18cbce6e6fcf4ce70a0af12e97bc66bbe757192fca05af1583eab16927",
+            "sample_count": 576000,
+            "total_static_gain_db": 10.628851997272541,
+            "loudness": {
+              "integrated_lufs": -26.61,
+              "true_peak_dbfs": -6.04,
+              "loudness_range_lu": 4.4
+            }
+          }
+        },
+        "measured_spread_lu": 0.0
+      }
+    },
+    "exact_words": {
+      "original_timeline_seconds": [
+        23.47,
+        28.38
+      ],
+      "blend_difference": {
+        "fitted_static_gain_db": 1.302519212792129,
+        "waveform_correlation": 0.9992860563735917,
+        "difference_rms_fraction_after_scalar": 0.03780764593315116,
+        "difference_rms_db_after_scalar": -28.448407256806437
+      },
+      "original_to_model_difference": {
+        "fitted_static_gain_db": -5.275522218198447,
+        "waveform_correlation": 0.9927102994824741,
+        "difference_rms_fraction_after_scalar": 0.12140999283864527,
+        "difference_rms_db_after_scalar": -18.314911330111624
+      },
+      "spectral_share_change_db": {
+        "sub": 0.4906322065129629,
+        "body": 0.04604255972659743,
+        "mid": -0.009406590246674895,
+        "presence": 0.030080255286325297,
+        "sibilants": 0.09213071827522512,
+        "air": 0.05583411021311946
+      },
+      "stage_metrics": {
+        "prepared": {
+          "pcm_sha256": "a7304c78a439ee60ff1f6aeda12946a6cba87fbcfa0536ec815304ad3a27dbc4",
+          "duration_seconds": 4.91,
+          "rms_dbfs": -33.58958893874242,
+          "sample_peak_dbfs": -12.882505955547694,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -33.05383756054579,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 217,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -38.38187211396636,
+            "body": -7.730217617319988,
+            "mid": -0.8348073038469421,
+            "presence": -23.556656415344598,
+            "sibilants": -28.730706898957614,
+            "air": -34.77395364921983
+          },
+          "rolloff_95_hz": 679.6875,
+          "hf_bands_db_relative": {
+            "6000-7000": -38.00002009549877,
+            "7000-8000": -37.27706659399947,
+            "8000-9000": -37.39027697764812,
+            "9000-10000": -40.557737695869065,
+            "10000-12000": -42.72966247236815,
+            "12000-16000": -50.24137051922614
+          }
+        },
+        "highpassed": {
+          "pcm_sha256": "38b975006bc223ef98cd0ce36908a64ea0cda506a8266a3c5267226afb347506",
+          "duration_seconds": 4.91,
+          "rms_dbfs": -33.591282382288476,
+          "sample_peak_dbfs": -12.802713791219132,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -33.05553065122246,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 217,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -38.659635872603964,
+            "body": -7.731109514879661,
+            "mid": -0.8345842603928745,
+            "presence": -23.555560500509415,
+            "sibilants": -28.729306811470043,
+            "air": -34.77257640277739
+          },
+          "rolloff_95_hz": 679.6875,
+          "hf_bands_db_relative": {
+            "6000-7000": -37.99864927848826,
+            "7000-8000": -37.27562956885394,
+            "8000-9000": -37.38890922307818,
+            "9000-10000": -40.556346507068156,
+            "10000-12000": -42.72827748094569,
+            "12000-16000": -50.23998356796692
+          }
+        },
+        "model_raw": {
+          "pcm_sha256": "89d0674ea0812214096d040818737287f40b1ab712c31311bf826584d779c17a",
+          "duration_seconds": 4.91,
+          "rms_dbfs": -38.80335027561407,
+          "sample_peak_dbfs": -17.980819846763527,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -38.26744362880088,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 217,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -40.3507439267429,
+            "body": -7.899305702111931,
+            "mid": -0.7991098526880974,
+            "presence": -23.758012476064824,
+            "sibilants": -29.08390542118557,
+            "air": -34.92642245571695
+          },
+          "rolloff_95_hz": 796.875,
+          "hf_bands_db_relative": {
+            "6000-7000": -37.89958608987474,
+            "7000-8000": -37.50569097328728,
+            "8000-9000": -37.611961794161765,
+            "9000-10000": -40.6206593182138,
+            "10000-12000": -42.76276179992517,
+            "12000-16000": -50.59827595538894
+          }
+        },
+        "cleanup": {
+          "pcm_sha256": "6614f8f26f325f295820b53a304370f0d4e637d9c6054889ed1638115fef9041",
+          "duration_seconds": 4.91,
+          "rms_dbfs": -37.49461632109523,
+          "sample_peak_dbfs": -16.669046202261978,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -36.9587327146263,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 217,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -39.86011172022994,
+            "body": -7.853263142385334,
+            "mid": -0.8085164429347723,
+            "presence": -23.7279322207785,
+            "sibilants": -28.991774702910345,
+            "air": -34.87058834550383
+          },
+          "rolloff_95_hz": 773.4375,
+          "hf_bands_db_relative": {
+            "6000-7000": -37.928904467091826,
+            "7000-8000": -37.4286056443526,
+            "8000-9000": -37.53386164858511,
+            "9000-10000": -40.59231813096364,
+            "10000-12000": -42.74523166037582,
+            "12000-16000": -50.48253399611677
+          }
+        }
+      }
+    },
+    "quiet_articulation": {
+      "original_timeline_seconds": [
+        19.5,
+        22.5
+      ],
+      "blend_difference": {
+        "fitted_static_gain_db": 1.2171355901140541,
+        "waveform_correlation": 0.9990260339556949,
+        "difference_rms_fraction_after_scalar": 0.044167655783022966,
+        "difference_rms_db_after_scalar": -27.09791300985801
+      },
+      "original_to_model_difference": {
+        "fitted_static_gain_db": -5.051930735924744,
+        "waveform_correlation": 0.9896502729778365,
+        "difference_rms_fraction_after_scalar": 0.14500103324909888,
+        "difference_rms_db_after_scalar": -16.772578061123497
+      },
+      "spectral_share_change_db": {
+        "sub": 0.4137701975712744,
+        "body": 0.37581109517320854,
+        "mid": -0.0778554849429669,
+        "presence": 0.1547663327059432,
+        "sibilants": -0.06293859198439833,
+        "air": 0.0158073734799018
+      },
+      "stage_metrics": {
+        "prepared": {
+          "pcm_sha256": "6616a23e2617cb2cf937e6db5638d6be71173dcb0b8c976de2f020dc23f8212e",
+          "duration_seconds": 3.0,
+          "rms_dbfs": -33.405476504000404,
+          "sample_peak_dbfs": -14.97012502105318,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -33.228275822776354,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 144,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -39.066217310390286,
+            "body": -6.948052257184831,
+            "mid": -1.124960187832448,
+            "presence": -16.336448050191468,
+            "sibilants": -26.369081679599663,
+            "air": -32.25846679800596
+          },
+          "rolloff_95_hz": 726.5625,
+          "hf_bands_db_relative": {
+            "6000-7000": -34.65674516379494,
+            "7000-8000": -36.65567282194063,
+            "8000-9000": -35.07057654492942,
+            "9000-10000": -38.05450750724435,
+            "10000-12000": -39.651319034814485,
+            "12000-16000": -47.32844277420788
+          }
+        },
+        "highpassed": {
+          "pcm_sha256": "e7cfb3c2bb562ab92b8e0e0caf5f8209fe424ad7591a471152c519e1c30ab261",
+          "duration_seconds": 3.0,
+          "rms_dbfs": -33.407071395648835,
+          "sample_peak_dbfs": -14.862397642422229,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -33.22987032027337,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 144,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -39.23274873687643,
+            "body": -6.951116551664364,
+            "mid": -1.1242847540123753,
+            "presence": -16.331919842861705,
+            "sibilants": -26.364603408876608,
+            "air": -32.25399548879012
+          },
+          "rolloff_95_hz": 726.5625,
+          "hf_bands_db_relative": {
+            "6000-7000": -34.65229202216969,
+            "7000-8000": -36.651211220996586,
+            "8000-9000": -35.06610832000932,
+            "9000-10000": -38.05003247745097,
+            "10000-12000": -39.646844159418706,
+            "12000-16000": -47.32397195854815
+          }
+        },
+        "model_raw": {
+          "pcm_sha256": "f9b8448d23839477c4d1d3b11fbc156ade3c0aa61d6f996c0a90573bb3e98192",
+          "duration_seconds": 3.0,
+          "rms_dbfs": -38.36872315948389,
+          "sample_peak_dbfs": -19.459164951179602,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -38.19143602162302,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 144,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -40.721755271508975,
+            "body": -8.135334106416694,
+            "mid": -0.8484328243372601,
+            "presence": -16.83327012453464,
+            "sibilants": -26.161404794985458,
+            "air": -32.25970572189604
+          },
+          "rolloff_95_hz": 726.5625,
+          "hf_bands_db_relative": {
+            "6000-7000": -34.29785531993301,
+            "7000-8000": -36.59380727292272,
+            "8000-9000": -35.090688249195466,
+            "9000-10000": -38.029507931486734,
+            "10000-12000": -39.60652895984449,
+            "12000-16000": -47.51037665944986
+          }
+        },
+        "cleanup": {
+          "pcm_sha256": "33df3b315a47d906e0f2138e57a7915b57189767df9e9bd816cbdc314bcf7d91",
+          "duration_seconds": 3.0,
+          "rms_dbfs": -37.14311414666912,
+          "sample_peak_dbfs": -18.326653018001352,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -36.965836546636915,
+          "pause_rms_dbfs": null,
+          "speech_pause_contrast_db": null,
+          "speech_frames": 144,
+          "pause_frames": 0,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -40.3079850739377,
+            "body": -7.759523011243486,
+            "mid": -0.926288309280227,
+            "presence": -16.678503791828696,
+            "sibilants": -26.224343386969856,
+            "air": -32.24389834841614
+          },
+          "rolloff_95_hz": 726.5625,
+          "hf_bands_db_relative": {
+            "6000-7000": -34.393862914034514,
+            "7000-8000": -36.59844880058549,
+            "8000-9000": -35.06970442944262,
+            "9000-10000": -38.02190932623894,
+            "10000-12000": -39.60254781236052,
+            "12000-16000": -47.43968091824608
+          }
+        }
+      },
+      "rms_listening": {
+        "model_unblended": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/quiet_articulation_model_unblended.wav",
+          "sha256": "4b99a9b7fbde98e3157de0d39da40c05cfd17807ddb10b83da3703bb01254d62",
+          "sample_count": 144000,
+          "static_gain_db": 11.69143602162302,
+          "speech_rms_dbfs": -26.499999888394722,
+          "loudness": {
+            "integrated_lufs": -27.24,
+            "true_peak_dbfs": -7.75,
+            "loudness_range_lu": 1.1
+          }
+        },
+        "original20": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/quiet_articulation_original20.wav",
+          "sha256": "bd2d68d5127fd86d0656d33da06fefcf6651669507c889fb7d3e97b4f04c25a2",
+          "sample_count": 144000,
+          "static_gain_db": 10.465836546636915,
+          "speech_rms_dbfs": -26.49999987150784,
+          "loudness": {
+            "integrated_lufs": -27.22,
+            "true_peak_dbfs": -7.85,
+            "loudness_range_lu": 1.1
+          }
+        }
+      }
+    },
+    "louder_passage": {
+      "original_timeline_seconds": [
+        70,
+        80
+      ],
+      "blend_difference": {
+        "fitted_static_gain_db": 0.8835596520848703,
+        "waveform_correlation": 0.9994423700388594,
+        "difference_rms_fraction_after_scalar": 0.033409481785420504,
+        "difference_rms_db_after_scalar": -29.52260521305464
+      },
+      "original_to_model_difference": {
+        "fitted_static_gain_db": -3.8494637277799155,
+        "waveform_correlation": 0.9928241151046975,
+        "difference_rms_fraction_after_scalar": 0.1204480851664838,
+        "difference_rms_db_after_scalar": -18.384001996872747
+      },
+      "spectral_share_change_db": {
+        "sub": 0.520299137197771,
+        "body": 0.06469072719412683,
+        "mid": -0.02905241949730808,
+        "presence": -0.15021843841671512,
+        "sibilants": -0.07229883153963002,
+        "air": -0.1003542853564241
+      },
+      "stage_metrics": {
+        "prepared": {
+          "pcm_sha256": "917b508b9793e36030a451ea77e31971888b075b1d27bb1cd0af52fed4001139",
+          "duration_seconds": 10.0,
+          "rms_dbfs": -15.75061838845379,
+          "sample_peak_dbfs": -1.8268916267864275,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -14.983119901718213,
+          "pause_rms_dbfs": -56.7408530886801,
+          "speech_pause_contrast_db": 41.757733186961886,
+          "speech_frames": 419,
+          "pause_frames": 50,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -27.773812154012877,
+            "body": -4.454985078149979,
+            "mid": -2.1988825410248687,
+            "presence": -16.77664011230873,
+            "sibilants": -18.31653045104169,
+            "air": -28.87609001412479
+          },
+          "rolloff_95_hz": 1125.0,
+          "hf_bands_db_relative": {
+            "6000-7000": -27.036953283497112,
+            "7000-8000": -30.416312756432152,
+            "8000-9000": -32.63262785167533,
+            "9000-10000": -34.58709980645945,
+            "10000-12000": -35.76350997774397,
+            "12000-16000": -38.63535042050222
+          }
+        },
+        "highpassed": {
+          "pcm_sha256": "a69b55d3eea707021efd6d806f56bb2ec9cafee5be6b836629de54ed08b302f3",
+          "duration_seconds": 10.0,
+          "rms_dbfs": -15.755388104517547,
+          "sample_peak_dbfs": 0.1320308029427514,
+          "clipped_samples": 3,
+          "speech_rms_dbfs": -14.987889468099027,
+          "pause_rms_dbfs": -56.75756587565466,
+          "speech_pause_contrast_db": 41.769676407555636,
+          "speech_frames": 419,
+          "pause_frames": 50,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -28.07514342521926,
+            "body": -4.467132268131861,
+            "mid": -2.1910715546471486,
+            "presence": -16.76689625275027,
+            "sibilants": -18.306713447291692,
+            "air": -28.866332734434987
+          },
+          "rolloff_95_hz": 1125.0,
+          "hf_bands_db_relative": {
+            "6000-7000": -27.02720689415482,
+            "7000-8000": -30.406535905558158,
+            "8000-9000": -32.622871085966445,
+            "9000-10000": -34.57734473676737,
+            "10000-12000": -35.753751374218176,
+            "12000-16000": -38.625588044648616
+          }
+        },
+        "model_raw": {
+          "pcm_sha256": "ecadcff4904a4d412fc0fe3b4bb796b167807d80d2e1baad575a6acb073a1ff8",
+          "duration_seconds": 10.0,
+          "rms_dbfs": -19.542348327069142,
+          "sample_peak_dbfs": -3.836256315293736,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -18.774799543136712,
+          "pause_rms_dbfs": -66.56744569481444,
+          "speech_pause_contrast_db": 47.79264615167773,
+          "speech_frames": 419,
+          "pause_frames": 50,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -30.05476340819125,
+            "body": -4.70305015930238,
+            "mid": -2.0732979322955893,
+            "presence": -16.372972622301855,
+            "sibilants": -18.085961235196564,
+            "air": -28.499041429011385
+          },
+          "rolloff_95_hz": 1171.875,
+          "hf_bands_db_relative": {
+            "6000-7000": -26.69396201648366,
+            "7000-8000": -30.20489752300335,
+            "8000-9000": -32.41382809519175,
+            "9000-10000": -34.20878142629106,
+            "10000-12000": -35.228487705589046,
+            "12000-16000": -37.96432502230316
+          }
+        },
+        "cleanup": {
+          "pcm_sha256": "12ad6945e456c9bd0404acc1a3872d416f8a5fb7931ef3a49a4c6c4d8b532c76",
+          "duration_seconds": 10.0,
+          "rms_dbfs": -18.65393600615152,
+          "sample_peak_dbfs": -3.235390010453031,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -17.886395027789476,
+          "pause_rms_dbfs": -63.97479889231488,
+          "speech_pause_contrast_db": 46.088403864525404,
+          "speech_frames": 419,
+          "pause_frames": 50,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -29.534464270993478,
+            "body": -4.6383594321082535,
+            "mid": -2.1023503517928974,
+            "presence": -16.52319106071857,
+            "sibilants": -18.158260066736194,
+            "air": -28.59939571436781
+          },
+          "rolloff_95_hz": 1148.4375,
+          "hf_bands_db_relative": {
+            "6000-7000": -26.780839352948924,
+            "7000-8000": -30.256752284892766,
+            "8000-9000": -32.47003327522356,
+            "9000-10000": -34.311025707941766,
+            "10000-12000": -35.36996212396968,
+            "12000-16000": -38.14334874633023
+          }
+        }
+      },
+      "rms_listening": {
+        "model_unblended": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/louder_passage_model_unblended.wav",
+          "sha256": "1d708eaa556c4180b55d403e02abf8f79d83ba0134edfa311d3d89b5131b28d6",
+          "sample_count": 480000,
+          "static_gain_db": -7.725200456863288,
+          "speech_rms_dbfs": -26.49999993010111,
+          "loudness": {
+            "integrated_lufs": -26.87,
+            "true_peak_dbfs": -11.56,
+            "loudness_range_lu": 4.2
+          }
+        },
+        "original20": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/louder_passage_original20.wav",
+          "sha256": "6c0b9e5d6257796ccab2612370c1a40e1572fe6b23eb7de4dce7607e278a8fcc",
+          "sample_count": 480000,
+          "static_gain_db": -8.613604972210524,
+          "speech_rms_dbfs": -26.499999978064103,
+          "loudness": {
+            "integrated_lufs": -26.95,
+            "true_peak_dbfs": -11.85,
+            "loudness_range_lu": 4.1
+          }
+        }
+      }
+    },
+    "phrase_ending": {
+      "original_timeline_seconds": [
+        38.5,
+        41.8
+      ],
+      "blend_difference": {
+        "fitted_static_gain_db": 1.092630844336598,
+        "waveform_correlation": 0.9993948197043219,
+        "difference_rms_fraction_after_scalar": 0.03480603693703098,
+        "difference_rms_db_after_scalar": -29.16690846528845
+      },
+      "original_to_model_difference": {
+        "fitted_static_gain_db": -4.576019502530536,
+        "waveform_correlation": 0.9930911637809562,
+        "difference_rms_fraction_after_scalar": 0.11816174955783139,
+        "difference_rms_db_after_scalar": -18.550461745647468
+      },
+      "spectral_share_change_db": {
+        "sub": 0.28382651623618926,
+        "body": 0.15864541310724434,
+        "mid": -0.003282364836419388,
+        "presence": 0.04830770288597108,
+        "sibilants": -0.038390760348896436,
+        "air": 0.13694685223137526
+      },
+      "stage_metrics": {
+        "prepared": {
+          "pcm_sha256": "9f671079a53d7d4a77fb557952f0fbdfa6f3d0e3948d09740c7face99fd2e835",
+          "duration_seconds": 3.3,
+          "rms_dbfs": -30.76958876622253,
+          "sample_peak_dbfs": -11.440321881156974,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -30.14815074337776,
+          "pause_rms_dbfs": -71.72288167125247,
+          "speech_pause_contrast_db": 41.57473092787471,
+          "speech_frames": 143,
+          "pause_frames": 3,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -41.2943953162572,
+            "body": -16.448402163395347,
+            "mid": -0.1164059401612378,
+            "presence": -28.51567068060946,
+            "sibilants": -27.346959867863625,
+            "air": -33.29886886129095
+          },
+          "rolloff_95_hz": 632.8125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.775223511387644,
+            "7000-8000": -36.025229686016004,
+            "8000-9000": -37.680870952960575,
+            "9000-10000": -37.23658016772437,
+            "10000-12000": -40.13135223392807,
+            "12000-16000": -49.46372034317922
+          }
+        },
+        "highpassed": {
+          "pcm_sha256": "39763c31a601308b25b97989bfcfdb0cd4be51198f1b93ff575025cdc5b6c2da",
+          "duration_seconds": 3.3,
+          "rms_dbfs": -30.770012839565084,
+          "sample_peak_dbfs": -11.404682272439512,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -30.148574581985898,
+          "pause_rms_dbfs": -71.71931713156319,
+          "speech_pause_contrast_db": 41.57074254957729,
+          "speech_frames": 143,
+          "pause_frames": 3,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -41.6942774211505,
+            "body": -16.431108357744122,
+            "mid": -0.1167775609378275,
+            "presence": -28.51602180738977,
+            "sibilants": -27.347413020027723,
+            "air": -33.29932582888953
+          },
+          "rolloff_95_hz": 632.8125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.77570539811236,
+            "7000-8000": -36.025738994186995,
+            "8000-9000": -37.68131822227161,
+            "9000-10000": -37.23704583960684,
+            "10000-12000": -40.13180936510289,
+            "12000-16000": -49.464176758674405
+          }
+        },
+        "model_raw": {
+          "pcm_sha256": "1ea50a0832586636e4d43d72a66dd6966770481cb10e22227573438c000131fc",
+          "duration_seconds": 3.3,
+          "rms_dbfs": -35.285855415718274,
+          "sample_peak_dbfs": -15.778804982170163,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -34.66437643835268,
+          "pause_rms_dbfs": -103.48952803664625,
+          "speech_pause_contrast_db": 68.82515159829356,
+          "speech_frames": 143,
+          "pause_frames": 3,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -43.04338564375435,
+            "body": -17.115724238832847,
+            "mid": -0.10137175349202504,
+            "presence": -28.77897924178331,
+            "sibilants": -27.318718227415786,
+            "air": -33.82129871250825
+          },
+          "rolloff_95_hz": 632.8125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.931813973313076,
+            "7000-8000": -36.47768390759462,
+            "8000-9000": -38.61988311199245,
+            "9000-10000": -37.54794113331245,
+            "10000-12000": -40.31243183068332,
+            "12000-16000": -50.7121030223838
+          }
+        },
+        "cleanup": {
+          "pcm_sha256": "144efbdb3a4d3427bad82f66694497147ae8ddecb35ad50610afc9cb01e587a4",
+          "duration_seconds": 3.3,
+          "rms_dbfs": -34.18796229868752,
+          "sample_peak_dbfs": -14.710090677046724,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -33.56648747354463,
+          "pause_rms_dbfs": -85.00520671733533,
+          "speech_pause_contrast_db": 51.43871924379069,
+          "speech_frames": 143,
+          "pause_frames": 3,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -42.75955912751816,
+            "body": -16.957078825725603,
+            "mid": -0.10465411832844443,
+            "presence": -28.73067153889734,
+            "sibilants": -27.357108987764683,
+            "air": -33.68435186027688
+          },
+          "rolloff_95_hz": 632.8125,
+          "hf_bands_db_relative": {
+            "6000-7000": -35.909998054985365,
+            "7000-8000": -36.36728793390467,
+            "8000-9000": -38.36462149155077,
+            "9000-10000": -37.46357090228267,
+            "10000-12000": -40.26934549102478,
+            "12000-16000": -50.41881276043647
+          }
+        }
+      },
+      "rms_listening": {
+        "model_unblended": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/phrase_ending_model_unblended.wav",
+          "sha256": "9644bb9360817113013fc6058a685daade0fe8626883f79840ae205a2f822a1a",
+          "sample_count": 158400,
+          "static_gain_db": 8.164376438352683,
+          "speech_rms_dbfs": -26.499999598317334,
+          "loudness": {
+            "integrated_lufs": -21.05,
+            "true_peak_dbfs": -7.61,
+            "loudness_range_lu": 0.0
+          }
+        },
+        "original20": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/phrase_ending_original20.wav",
+          "sha256": "7e0ec6ddd8c2efb288ff668efddb6a67abd7165d161e0e973efc350cb517a762",
+          "sample_count": 158400,
+          "static_gain_db": 7.066487473544633,
+          "speech_rms_dbfs": -26.500000073147373,
+          "loudness": {
+            "integrated_lufs": -21.64,
+            "true_peak_dbfs": -7.64,
+            "loudness_range_lu": 0.0
+          }
+        }
+      }
+    }
+  },
+  "known_clean_controls": {
+    "p232": {
+      "inputs": {
+        "clean": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav",
+          "sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+          "sample_count": 1209892
+        },
+        "synthetic_room": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room.wav",
+          "sha256": "529735b02af4462cba871edd69606da2dae9c2102fd03dab7f41221ca696a91b",
+          "sample_count": 1209892
+        },
+        "clean_model": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean_model.wav",
+          "sha256": "3aee4349cce4aba37f9f407f04d0a35f3fc373143a1082aae0b0ca778fe594a3",
+          "sample_count": 1209892
+        },
+        "synthetic_room_model": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room_model.wav",
+          "sha256": "265fa51682a8a7527221bf20fb88a9b9482001884b49468aa5d14bd434ad6d4f",
+          "sample_count": 1209892
+        }
+      },
+      "raw_model_si_sdr_db": 11.110706958327668,
+      "original20_si_sdr_db": 10.708581096700886,
+      "change_db": -0.4021258616267822,
+      "input_room_si_sdr_db": 7.782897804070003,
+      "note": "One previously declared synthetic room; no new inference. Paired signal error includes all distortions, not isolated reverb or listening quality."
+    },
+    "p257": {
+      "inputs": {
+        "clean": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean.wav",
+          "sha256": "07d24d6da81163ae9f58dd3119c30de028088ee4aa45f85404ea878eeb5b6a85",
+          "sample_count": 1208843
+        },
+        "synthetic_room": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room.wav",
+          "sha256": "fca54fd95c81279fdc920bc80766ff0760183a0bc4598588bdf3babe681ad0e5",
+          "sample_count": 1208843
+        },
+        "clean_model": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean_model.wav",
+          "sha256": "87fcc59f0c85de27a3f4b74f0f3b7bc3e860dc3dbfc6f1344ede75d3c40899b6",
+          "sample_count": 1208843
+        },
+        "synthetic_room_model": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room_model.wav",
+          "sha256": "51eeb3f625a3d06a9436d21e5ca8e5782e801699a69b58ed119f2fea53504ee6",
+          "sample_count": 1208843
+        }
+      },
+      "raw_model_si_sdr_db": 11.350253218063918,
+      "original20_si_sdr_db": 10.995034713064317,
+      "change_db": -0.35521850499960017,
+      "input_room_si_sdr_db": 7.55448058671128,
+      "note": "One previously declared synthetic room; no new inference. Paired signal error includes all distortions, not isolated reverb or listening quality."
+    }
+  },
+  "controls_manifest": {
+    "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/controls.json",
+    "sha256": "13286c07a6080da71b54a53e0d3f139e18b9b90b196ccbaa3a6765fb8986ccf9"
+  },
+  "reference_integrity": {
+    "original": {
+      "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+      "sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+      "unchanged": true
+    },
+    "optimized": {
+      "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-88ada395.mp3",
+      "sha256": "6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9",
+      "unchanged": true
+    },
+    "natural_double_plus": {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/audio_work/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-7524c22d.mp3",
+      "sha256": "f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad",
+      "unchanged": true
+    },
+    "reference": {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav",
+      "sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4",
+      "unchanged": true
+    }
+  },
+  "code_sha256": {
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/analyse_saved.py": "5ab871e9e0bd7aef5648448aea5f6d497d72e08100fc17896b5e6725184e8002",
+    "/Users/rcd58/Documents/RADsuite/tools/radcast/analysis.py": "621330f679dc16c766b2b27b0120e0920fab99157e350211d718c70db97f8f08",
+    "/Users/rcd58/Documents/RADsuite/tools/radcast/studio.py": "0e677d2fea69baccf4f3ffbfee5e7348ee067e6fbdd479a0b14e2fd3b70138c9",
+    "/Users/rcd58/Documents/RADsuite/tools/radcast/model_trial.py": "55c42110ffcae0dd82b4169fc239b597e33281903af973a9b6c4d375e5d04ddf"
+  }
+}

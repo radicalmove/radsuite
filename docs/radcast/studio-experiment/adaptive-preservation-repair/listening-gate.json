@@ -1,0 +1,38 @@
+{
+  "state": "human_listening_pending_with_asr_flag",
+  "human_feedback": "target_phrase_model_unblended.wav sounds better, a bit cleaner and sounds slightly closer to the mic",
+  "human_feedback_scope": "Earlier unblended target only; this full adaptive candidate has not been heard or approved.",
+  "full_candidate": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/CRJU160_adaptive_original_preservation.wav",
+  "full_candidate_sha256": "2c458317c69230165dd3353a394af7648b2c74d84142ac42235d17bf82a3d1ee",
+  "technical_waveform_guards_pass": true,
+  "full_length_human_approved": false,
+  "identity_articulation_lisp_approved": false,
+  "adobe_parity_claimed": false,
+  "native_or_default_changed": false,
+  "asr": {
+    "proxy_edits": 35,
+    "original_proxy_words": 293,
+    "baseline_proxy_edits": 7,
+    "target_phrase_present": true,
+    "introductory_words_present": false,
+    "requires_listening": true,
+    "note": "Proxy transcript, not verified ground truth; cannot distinguish ASR failure from audible content loss.",
+    "substantive_recognition_flags": [
+      "Opening six words omitted",
+      "read the entire -> very much higher",
+      "against them -> incident",
+      "Previous-recognized trailing I've put omitted"
+    ]
+  },
+  "rounds": {
+    "first": {
+      "state": "rejected",
+      "remaining_render_budget": 0
+    },
+    "coverage_repair": {
+      "state": "technically_accepted_for_listening",
+      "remaining_render_budget": 0
+    }
+  },
+  "next_action": "Listen to matched phrase plus full candidate and opening/faint comparisons. No further candidate or production promotion is authorized by this gate."
+}

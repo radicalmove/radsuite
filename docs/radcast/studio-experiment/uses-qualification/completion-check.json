@@ -1,0 +1,17 @@
+{
+  "state": "rejected_round_documentation_verified",
+  "report_sha256": "4cf14df90f0c3aa724ce5e4e76bd2e2fbd071a1fc706944ae69e9874a4a2500c",
+  "all_local_report_links_exist": true,
+  "local_links": 13,
+  "tests": 106,
+  "skips": 0,
+  "seconds": 24.124,
+  "tests_log_sha256": "aeb2dea1314bf2a4d949ed575e3cf2a4e64961a0037ff77f2dcfe066891c2e5e",
+  "original_failed_suite_retained": true,
+  "verification_sha256": "2b802aa7fa8b285f13607121b4f95ba7c7355b3f5c15089b4f94ce69814f88fe",
+  "controls_sha256": "7695ede0c520de746961f50ff05ca85b3ec593f0db61c58fe4c44bdd0fcce4bf",
+  "closure_sha256": "f9bbbc72560b6850fe9a4017d147b3bf62d540ab4b49276f8df5b3e960b361c4",
+  "full_finnegan_renders": 0,
+  "proximity_gap_resolved": false,
+  "independent_final_review": "No material evidence/schema/path misclaims;32artifacthashes,13links andtrainederrors independently checked. Metadata-only wording clarified."
+}

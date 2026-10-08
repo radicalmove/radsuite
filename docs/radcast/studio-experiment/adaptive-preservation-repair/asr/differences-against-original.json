@@ -1,0 +1,127 @@
+[
+  {
+    "operation": "delete",
+    "reference": "so some more criminal justice terminology",
+    "adaptive": ""
+  },
+  {
+    "operation": "replace",
+    "reference": "cause",
+    "adaptive": "because"
+  },
+  {
+    "operation": "insert",
+    "reference": "",
+    "adaptive": "like"
+  },
+  {
+    "operation": "replace",
+    "reference": "cause",
+    "adaptive": "because"
+  },
+  {
+    "operation": "insert",
+    "reference": "",
+    "adaptive": "wrong"
+  },
+  {
+    "operation": "replace",
+    "reference": "you'll",
+    "adaptive": "you're"
+  },
+  {
+    "operation": "replace",
+    "reference": "read the entire",
+    "adaptive": "very much higher"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "replace",
+    "reference": "against them",
+    "adaptive": "incident"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "insert",
+    "reference": "",
+    "adaptive": "in"
+  },
+  {
+    "operation": "insert",
+    "reference": "",
+    "adaptive": "the"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "replace",
+    "reference": "there's",
+    "adaptive": "this"
+  },
+  {
+    "operation": "replace",
+    "reference": "you're",
+    "adaptive": "you"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "replace",
+    "reference": "like",
+    "adaptive": "light"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "replace",
+    "reference": "offence",
+    "adaptive": "offense"
+  },
+  {
+    "operation": "replace",
+    "reference": "and",
+    "adaptive": "i then"
+  },
+  {
+    "operation": "replace",
+    "reference": "they're",
+    "adaptive": "they"
+  },
+  {
+    "operation": "replace",
+    "reference": "they're",
+    "adaptive": "they"
+  },
+  {
+    "operation": "delete",
+    "reference": "i put",
+    "adaptive": ""
+  }
+]

@@ -1,0 +1,98 @@
+{
+  "date": "2026-10-09",
+  "scope": "Two new published leads. Primary source only. Source text/metadata fetched; no weights, package install, execution or user-audio upload.",
+  "leads": {
+    "reuse": {
+      "repo": "nvidia/RE-USE",
+      "pin": "022e920d727347a64d6c21fbf0628f2a5f37ad78",
+      "files": [
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/README.md",
+          "url": "https://huggingface.co/nvidia/RE-USE/raw/022e920d727347a64d6c21fbf0628f2a5f37ad78/README.md",
+          "sha256": "2ab4f0cfbe1b29a5e59dbfd6dc36452085c69778fb27d81f144bd6eb7be24a81",
+          "bytes": 7695
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/config.json",
+          "url": "https://huggingface.co/nvidia/RE-USE/raw/022e920d727347a64d6c21fbf0628f2a5f37ad78/config.json",
+          "sha256": "e69986483774f01893d2727503addc49ef201d19e6e1a266b8d4e971e28c478d",
+          "bytes": 830
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/inference.py",
+          "url": "https://huggingface.co/nvidia/RE-USE/raw/022e920d727347a64d6c21fbf0628f2a5f37ad78/inference.py",
+          "sha256": "933c44915fc62332616ee31daba3714a5eb05c5696212147b4a803774ce6b8f6",
+          "bytes": 4766
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/inference.sh",
+          "url": "https://huggingface.co/nvidia/RE-USE/raw/022e920d727347a64d6c21fbf0628f2a5f37ad78/inference.sh",
+          "sha256": "c629666348d7246f6e006f72e23a4932b5160a256edab6dddb7208cc47ab975c",
+          "bytes": 395
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/models/generator_SEMamba_time_d4.py",
+          "url": "https://huggingface.co/nvidia/RE-USE/raw/022e920d727347a64d6c21fbf0628f2a5f37ad78/models/generator_SEMamba_time_d4.py",
+          "sha256": "ff82f2f6a907da311b4c27d0cfc3dfe6485a0de06248ac491c3a1913639742a7",
+          "bytes": 3599
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/models/codec_module_time_d4.py",
+          "url": "https://huggingface.co/nvidia/RE-USE/raw/022e920d727347a64d6c21fbf0628f2a5f37ad78/models/codec_module_time_d4.py",
+          "sha256": "55144dc929626a0f0f66ebfa729852abef6fc63cb8e66fe49615b0b624900145",
+          "bytes": 6347
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/models/mamba_block2_SEMamba.py",
+          "url": "https://huggingface.co/nvidia/RE-USE/raw/022e920d727347a64d6c21fbf0628f2a5f37ad78/models/mamba_block2_SEMamba.py",
+          "sha256": "4aed8861ac17bc8a92b6df53575ef54ab3e742c439a17c89c0cf0ae3c6c13956",
+          "bytes": 3021
+        }
+      ],
+      "weights_downloaded": false,
+      "runtime_tested": false,
+      "qualification": "not_selected",
+      "reasons": [
+        "Published model/version is GAN-trained; source predicts magnitude and phase rather than applying observed-spectrum preservation filters.",
+        "Pinned inference explicitly rejects CPU mode and depends on CUDA/Mamba kernels; not a runnable stock Apple Silicon path.",
+        "Card declares research/development only and NVIDIA One-Way Noncommercial License; no production eligibility established."
+      ],
+      "paper_url": "https://arxiv.org/html/2603.02641v2",
+      "released_model_note": "Model card says released checkpoint differs from paper. A regression-only stage is not exposed in this audited release; do not claim published two-stage scores for a hypothetical bypass."
+    },
+    "sgmse": {
+      "repo": "sp-uhh/speech-enhancement-sgmse",
+      "pin": "b6485214b3662a7f90309f397cacf1384046783c",
+      "files": [
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/sgmse/README.md",
+          "url": "https://huggingface.co/sp-uhh/speech-enhancement-sgmse/raw/b6485214b3662a7f90309f397cacf1384046783c/README.md",
+          "sha256": "2343fc510203b978b357b2c49f1b59931e0799098d46f06c5272341162087d32",
+          "bytes": 11481
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/sgmse/LICENSE",
+          "url": "https://huggingface.co/sp-uhh/speech-enhancement-sgmse/raw/b6485214b3662a7f90309f397cacf1384046783c/LICENSE",
+          "sha256": "8748956d2e5afe9dfc8311188b4119dacc7c5293b0561e7cca7a21cf80e54caa",
+          "bytes": 1101
+        },
+        {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/sgmse/sgmse/model.py",
+          "url": "https://huggingface.co/sp-uhh/speech-enhancement-sgmse/raw/b6485214b3662a7f90309f397cacf1384046783c/sgmse/model.py",
+          "sha256": "27ecc3733fb2b915e47c76d1523a96c2a693cb7ba7cce8ea5e2170c8f69cf047",
+          "bytes": 10325
+        }
+      ],
+      "weights_downloaded": false,
+      "runtime_tested": false,
+      "qualification": "not_selected_for_source_preserving_default",
+      "reasons": [
+        "Released native-48k EARS-Reverb dereverberation checkpoint exists, but enhancement is diffusion-based generative reconstruction.",
+        "No weight/runtime evaluation or Apple Silicon feasibility claim; this needs a distinct experimental restoration design."
+      ],
+      "repo_url": "https://github.com/sp-uhh/sgmse",
+      "dataset_url": "https://sp-uhh.github.io/ears_dataset/"
+    }
+  },
+  "conclusion": "Neither of these two inspected releases qualifies as a drop-in source-preserving Apple Silicon Studio replacement. This is a bounded audit, not proof that no suitable model exists."
+}

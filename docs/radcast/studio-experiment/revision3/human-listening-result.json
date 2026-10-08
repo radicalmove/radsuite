@@ -1,0 +1,15 @@
+{
+  "date": "2026-10-09",
+  "timezone": "Pacific/Auckland",
+  "evidence_kind": "direct_user_listening_feedback",
+  "verbatim_feedback": "Adobe is clearly the better of the 4 by a fair margin, there is almost no echo. B is the best of the rest, but it is noticeable inferior",
+  "preferred_overall": "adobe_reference",
+  "preferred_local": "trial_b_bounded_tail_2db",
+  "remaining_issue": "noticeably inferior room removal compared with Adobe",
+  "articulation_or_identity_approval": "not_separately_given",
+  "production_approval": false,
+  "promotion_approval": false,
+  "experiment_status": "closed_target_dryness_not_achieved",
+  "native_studio_revision": 2,
+  "next_step": "propose_separate_dereverberation_model_feasibility_plan"
+}

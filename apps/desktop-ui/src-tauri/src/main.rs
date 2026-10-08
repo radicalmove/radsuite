@@ -5,28 +5,29 @@ use tauri::Manager;
 use radsuite_desktop::{
     AddCourseReferenceRequest, AddManualCitationRequest, AddModuleReadingRequest,
     AddRadciteModuleRequest, AnalyseDocxRequest, AnalyseDocxResponse, AnalyseDocxReviewResponse,
-    AnalysePdfRequest, AppStatus, ArchiveCourseReferenceRequest, ArchiveModuleReadingRequest,
-    ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest, ArchiveRadciteProjectRequest,
-    AssignCourseReferenceModuleRequest, CourseModuleSummary, CourseReferenceSummary,
-    CourseReferencesExport, CreateRadciteProjectRequest, DeleteRadcastAudioRequest, DesktopState,
-    ExportCourseReferencesRequest, ExportModuleReadingsRequest, ExportRadciteReviewReportRequest,
-    ImportDocumentReadingsRequest, ImportDocumentReadingsResponse, ImportRadcastAudioLinkRequest,
-    ImportRadcastAudioRequest, LegacyRadciteImportRequest, LegacyRadciteImportResult,
-    LinkCitationReferenceRequest, ListCourseReferencesRequest, ListModuleReadingsRequest,
-    ListRadcastAudioRequest, ListRadciteArchiveRequest, ListRadciteModulesRequest,
-    ListRadtTsOutputsRequest, ListSavedReviewsRequest, LoadSavedReviewRequest,
-    MergeCourseReferencesRequest, ModuleReadingImportCandidateSummary, ModuleReadingSummary,
-    ModuleReadingsExport, ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
+    AnalysePdfRequest, AnalyzeRadcastSilenceRequest, AppStatus, ArchiveCourseReferenceRequest,
+    ArchiveModuleReadingRequest, ArchiveRadciteDocumentRequest, ArchiveRadciteModuleRequest,
+    ArchiveRadciteProjectRequest, AssignCourseReferenceModuleRequest, CourseModuleSummary,
+    CourseReferenceSummary, CourseReferencesExport, CreateRadciteProjectRequest,
+    DeleteRadcastAudioRequest, DesktopState, ExportCourseReferencesRequest,
+    ExportModuleReadingsRequest, ExportRadciteReviewReportRequest, ImportDocumentReadingsRequest,
+    ImportDocumentReadingsResponse, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
+    LegacyRadciteImportRequest, LegacyRadciteImportResult, LinkCitationReferenceRequest,
+    ListCourseReferencesRequest, ListModuleReadingsRequest, ListRadcastAudioRequest,
+    ListRadciteArchiveRequest, ListRadciteModulesRequest, ListRadtTsOutputsRequest,
+    ListSavedReviewsRequest, LoadSavedReviewRequest, MergeCourseReferencesRequest,
+    ModuleReadingImportCandidateSummary, ModuleReadingSummary, ModuleReadingsExport,
+    ModuleReadingsPdfImportPreview, PreviewModuleReadingsCsvImportRequest,
     PreviewModuleReadingsImportRequest, PreviewModuleReadingsPdfImportRequest,
     ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource,
-    RadcastCapabilityStatus, RadcastJobStatus, RadciteArchiveItem, RadciteProjectSummary,
-    RadciteReviewReportExport, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsMediaJobStatus,
-    RadtTsMediaOutputListing, RadtTsOutputListing, RestoreRadciteArchiveItemRequest,
-    RestoreRadciteProjectRequest, SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest,
-    SavedRadciteReviewSummary, StartRadtTsClipRequest, StartRadtTsSynthesisRequest,
-    StartRadtTsTranscriptionRequest, UpdateCourseReferenceRequest, UpdateModuleReadingRequest,
-    UpdateParagraphReviewRequest, UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest,
-    UpdateRadciteProjectRequest,
+    RadcastCapabilityStatus, RadcastJobStatus, RadcastSilenceAnalysis, RadciteArchiveItem,
+    RadciteProjectSummary, RadciteReviewReportExport, RadtTsCapabilityStatus, RadtTsJobStatus,
+    RadtTsMediaJobStatus, RadtTsMediaOutputListing, RadtTsOutputListing,
+    RestoreRadciteArchiveItemRequest, RestoreRadciteProjectRequest,
+    SaveModuleReadingsImportRequest, SaveRadcastSettingsRequest, SavedRadciteReviewSummary,
+    StartRadtTsClipRequest, StartRadtTsSynthesisRequest, StartRadtTsTranscriptionRequest,
+    UpdateCourseReferenceRequest, UpdateModuleReadingRequest, UpdateParagraphReviewRequest,
+    UpdateRadciteDocumentRequest, UpdateRadciteModuleRequest, UpdateRadciteProjectRequest,
 };
 
 #[tauri::command]
@@ -150,6 +151,14 @@ async fn list_radcast_audio(
     radsuite_desktop::list_radcast_audio(&state, request)
         .await
         .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn analyze_radcast_silence(
+    state: tauri::State<'_, DesktopState>,
+    request: AnalyzeRadcastSilenceRequest,
+) -> Result<RadcastSilenceAnalysis, String> {
+    radsuite_desktop::analyze_radcast_silence(&state, request).await
 }
 
 #[tauri::command]
@@ -700,6 +709,7 @@ fn main() {
             import_legacy_radcite_database,
             export_radcite_review_report,
             list_radcast_audio,
+            analyze_radcast_silence,
             delete_radcast_audio,
             save_local_file,
             write_local_text_file,

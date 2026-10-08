@@ -1,0 +1,97 @@
+{
+  "model": {
+    "tensor_count": 270,
+    "element_count": 8524352,
+    "missing": [],
+    "unexpected": [],
+    "shape_mismatches": [],
+    "model_family": "TFGridNetV3 URGENT2025",
+    "model_revision": "daad000927daa131e7692376a71c8144bcbfa6f8",
+    "publisher_commit": "6be80495bca76d8406ca11e5971a9954949ac9c1",
+    "checkpoint_sha256": "8350b6f84bb5de01646b7cebe9d19d5b1fc4318cd85c31d242caccc2442d276e",
+    "config_sha256": "9591c84a91349834fb7a31a021fa4d0858b46c001c6aa7ab096f0ee502684a61",
+    "vendor_audit_sha256": "d3d51b2dc41886f467d04fc25895ad7ff3b728a5f9336c487c76080ab46a3406",
+    "adapter_sha256": "1741442e8de84a997c42fe48cb2ba6e4cceeac69be72648d406f5a0231c63229",
+    "stft_helper_sha256": "d2f9a31f066de05b33e6ab0923afb6b9e7edf029595a20e50f3f0ead555ea0e4",
+    "torch_version": "2.1.1",
+    "device": "mps",
+    "complex_stft_device": "cpu",
+    "threads": 4,
+    "dtype": "float32",
+    "sample_rate": 48000,
+    "fft": 1536,
+    "hop": 768,
+    "frequency_bins": 769,
+    "window_policy": {
+      "window_samples": 144000,
+      "hop_samples": 96000,
+      "overlap_samples": 48000,
+      "overlap": "half-sample raised cosine; normalized sum",
+      "context": "independent neural windows",
+      "resampling": false,
+      "output_peak_normalization": false,
+      "between_window_gain_matching": false
+    },
+    "output_peak_normalization": false,
+    "resampling": false,
+    "cascade": false,
+    "target": "Published preparation retains approximately50ms early response; not guaranteed anechoic.",
+    "variance": "Per-window torch.std(correction=1); restored once before overlap"
+  },
+  "trace": {
+    "window_samples": 144000,
+    "hop_samples": 96000,
+    "overlap_samples": 48000,
+    "overlap": "half-sample raised cosine; normalized sum",
+    "context": "independent neural windows",
+    "resampling": false,
+    "output_peak_normalization": false,
+    "between_window_gain_matching": false,
+    "windows": [
+      {
+        "start_sample": 0,
+        "end_sample": 144000
+      },
+      {
+        "start_sample": 96000,
+        "end_sample": 196800
+      }
+    ],
+    "sample_count": 196800,
+    "minimum_weight": 1.0,
+    "maximum_weight": 1.0,
+    "join_energy_worst_db": -0.0074557028788514446,
+    "join_energy_protected_worst_db": -0.0074557028788514446,
+    "join_energy_note": "Merged vs weighted per-window frame energy; includes amplitude and phase variation, not a pure phase or reverb estimate.",
+    "window_details": [
+      {
+        "silence_bypass": false,
+        "neural_calls": 1,
+        "spectrum_shape": [
+          1,
+          188,
+          769
+        ],
+        "input_std": 0.08688748627901077
+      },
+      {
+        "silence_bypass": false,
+        "neural_calls": 1,
+        "spectrum_shape": [
+          1,
+          132,
+          769
+        ],
+        "input_std": 0.07539926469326019
+      }
+    ],
+    "frequency_bins": 769,
+    "sample_rate": 48000,
+    "wall_seconds": 18.504116958007216,
+    "peak_process_rss_bytes": 2747596800,
+    "whole_context_equivalence_claimed": false,
+    "global_input_sample_count": 196800
+  },
+  "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/device-probe/mps.wav",
+  "sha256": "e1340ed335923643d56c968cc8407b85632ca6c79be9db13ad35f2203005d865"
+}

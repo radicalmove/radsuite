@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Pacific/Auckland",
+  "python_tests": 31,
+  "rust_tests": 171,
+  "frontend_retained_tests": 177,
+  "frontend_changed": false,
+  "real_studio_e2e_enabled": true,
+  "default_wpe_delay": 4,
+  "default_room_method": "wpe",
+  "code_hashes": {
+    "tools/radcast/studio.py": "0e677d2fea69baccf4f3ffbfee5e7348ee067e6fbdd479a0b14e2fd3b70138c9",
+    "tools/radcast/speech_cleanup.py": "a2d4f772c2dfb406efcf9704eca35653f0c1ff6e7e081ef77533afb2baf565ef",
+    "tools/radcast/analysis.py": "621330f679dc16c766b2b27b0120e0920fab99157e350211d718c70db97f8f08",
+    "tools/radcast/compare_trial.py": "18c871663b1dd6348b5a447370a25cc395df3041ab93b7971577f4cab4962353",
+    "tools/radcast/audition_set.py": "d16738941d54756d47eae34bad4e2e2d9bb6a844d6e8e1516f8336e27970cb26"
+  }
+}

@@ -1,0 +1,25 @@
+HTTP/1.1 200 200
+Content-Type: application/hal+json;charset=UTF-8
+Transfer-Encoding: chunked
+Connection: keep-alive
+Date: Thu, 08 Oct 2026 12:42:04 GMT
+Server: Apache
+Strict-Transport-Security: max-age=31536000
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), geolocation=(), microphone=()
+Content-Security-Policy: default-src 'self' https: data: blob:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' https: data:; connect-src 'self' https: wss:; frame-src 'self' https:; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https:
+Vary: Origin,Access-Control-Request-Method,Access-Control-Request-Headers
+DSPACE-XSRF-TOKEN: 194e1a30-a3ee-48b0-974a-20719eb3b864
+Set-Cookie: DSPACE-XSRF-COOKIE=194e1a30-a3ee-48b0-974a-20719eb3b864; Path=/server; Secure; HttpOnly; SameSite=None
+Content-Language: en
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Cache-Control: no-cache, no-store, max-age=0, must-revalidate
+Pragma: no-cache
+Expires: 0
+Strict-Transport-Security: max-age=31536000 ; includeSubDomains
+X-Frame-Options: DENY
+Set-Cookie: RCKBMHKB=027ff8be59-56fd-48MbaKA-7p-mACD4JdTVrGsoPo5z9EorGSc0ITAutYvAk15e52Ew9lOHExBbBxy4PxeEo; path=/; SameSite=None; Secure
+

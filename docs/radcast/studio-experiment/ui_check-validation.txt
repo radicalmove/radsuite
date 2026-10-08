@@ -1,0 +1,8 @@
+
+> radsuite-desktop-ui@0.2.8 check
+> svelte-check --tsconfig ./tsconfig.json
+
+Loading svelte-check in workspace: /Users/rcd58/Documents/RADsuite/apps/desktop-ui
+Getting Svelte diagnostics...
+
+svelte-check found 0 errors and 0 warnings

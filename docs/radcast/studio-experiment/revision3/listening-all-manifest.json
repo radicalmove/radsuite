@@ -1,0 +1,202 @@
+{
+  "target_phrase": {
+    "r2": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/target_phrase_r2_matched.wav",
+      "sha256": "093c1913cb7b71726d1e39cb0a9195963d032d7d4edfac8b64b4f94df265e5d6",
+      "source_timeline": [
+        20,
+        32
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 12.0,
+      "match_gain_db": -3.1608021678147717,
+      "common_headroom_gain_db": 0.0
+    },
+    "shorter_wpe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/target_phrase_shorter_wpe_matched.wav",
+      "sha256": "28736bff812696eadb6a55db581f354b1f4d86321398bda7edb865df347c6dfc",
+      "source_timeline": [
+        20,
+        32
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 12.0,
+      "match_gain_db": -3.1689358097148035,
+      "common_headroom_gain_db": 0.0
+    },
+    "bounded_tail": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/target_phrase_bounded_tail_matched.wav",
+      "sha256": "b7cffd821cefa7ba60b4bcf9d12e16996b049ca726a0d26c9c32095d07d1fdbe",
+      "source_timeline": [
+        20,
+        32
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 12.0,
+      "match_gain_db": -3.0208439755319687,
+      "common_headroom_gain_db": 0.0
+    },
+    "reference": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/target_phrase_reference_matched.wav",
+      "sha256": "f9a6b8eb976753cbd4c29f2859878ad2bddb23e552967df8a3f13982761278b9",
+      "source_timeline": [
+        20,
+        32
+      ],
+      "file_offset_seconds": -2.239,
+      "duration_seconds": 12.0,
+      "match_gain_db": 0.0,
+      "common_headroom_gain_db": 0.0
+    }
+  },
+  "quiet_articulation": {
+    "r2": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/quiet_articulation_r2_matched.wav",
+      "sha256": "d8f26f82f82b3c2cd9b27d7394b0795b7d57ba0f5d166cae4a11687d7ceec6e8",
+      "source_timeline": [
+        19.5,
+        22.5
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 3.0,
+      "match_gain_db": -4.34248216213077,
+      "common_headroom_gain_db": 0.0
+    },
+    "shorter_wpe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/quiet_articulation_shorter_wpe_matched.wav",
+      "sha256": "1556e5108f83f752306cae618b77766eecf23116d37d0c15e3ab7d8f04d423a1",
+      "source_timeline": [
+        19.5,
+        22.5
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 3.0,
+      "match_gain_db": -4.345843964752966,
+      "common_headroom_gain_db": 0.0
+    },
+    "bounded_tail": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/quiet_articulation_bounded_tail_matched.wav",
+      "sha256": "9d2f4ca1317f96bc53ff4195711bf5f51f33deaa0c746a2323004a1258d88fe8",
+      "source_timeline": [
+        19.5,
+        22.5
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 3.0,
+      "match_gain_db": -4.153854163620315,
+      "common_headroom_gain_db": 0.0
+    },
+    "reference": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/quiet_articulation_reference_matched.wav",
+      "sha256": "f02c057d0d0ed407fab7f69ac8e941b188435ebffa072da3febc6d5458e89743",
+      "source_timeline": [
+        19.5,
+        22.5
+      ],
+      "file_offset_seconds": -2.239,
+      "duration_seconds": 3.0,
+      "match_gain_db": 0.0,
+      "common_headroom_gain_db": 0.0
+    }
+  },
+  "louder_passage": {
+    "r2": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/louder_passage_r2_matched.wav",
+      "sha256": "ede9e5bf3ed05264c19427106b195d364af36c067aae766c53a4028f723ea7f1",
+      "source_timeline": [
+        70,
+        80
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 10.0,
+      "match_gain_db": -4.169081004968313,
+      "common_headroom_gain_db": 0.0
+    },
+    "shorter_wpe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/louder_passage_shorter_wpe_matched.wav",
+      "sha256": "a57135e905f35f6624ef55c4856e554bcab98507af2d7a1ce42ca9df91a5b111",
+      "source_timeline": [
+        70,
+        80
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 10.0,
+      "match_gain_db": -4.059407276991137,
+      "common_headroom_gain_db": 0.0
+    },
+    "bounded_tail": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/louder_passage_bounded_tail_matched.wav",
+      "sha256": "ab11c7cd9ae6f34d44b39ce445c10c59bcd53ac2d137babc0d22d913d7a1d0f3",
+      "source_timeline": [
+        70,
+        80
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 10.0,
+      "match_gain_db": -4.03988046164317,
+      "common_headroom_gain_db": 0.0
+    },
+    "reference": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/louder_passage_reference_matched.wav",
+      "sha256": "3d30ef84076730f366126ece9a2f4095a330eb69e6b47beb9ca08dd0c4e58719",
+      "source_timeline": [
+        70,
+        80
+      ],
+      "file_offset_seconds": -2.239,
+      "duration_seconds": 10.0,
+      "match_gain_db": 0.0,
+      "common_headroom_gain_db": 0.0
+    }
+  },
+  "phrase_ending_context": {
+    "r2": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/phrase_ending_context_r2_matched.wav",
+      "sha256": "23f7332b0b3d707346d1143f0f5d25c1bbc0edfbd17850bc033b964b38dbd58c",
+      "source_timeline": [
+        38.5,
+        41.8
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 3.3,
+      "match_gain_db": -0.12946534219761327,
+      "common_headroom_gain_db": 0.0
+    },
+    "shorter_wpe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/phrase_ending_context_shorter_wpe_matched.wav",
+      "sha256": "5060b5cbe382f185b892cc2bd842e84afd26a6988402499dc6bc8f232bc07661",
+      "source_timeline": [
+        38.5,
+        41.8
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 3.3,
+      "match_gain_db": -0.13773489699061292,
+      "common_headroom_gain_db": 0.0
+    },
+    "bounded_tail": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/phrase_ending_context_bounded_tail_matched.wav",
+      "sha256": "e49fa8d0b72f3cd7547a6f8b279a76b59a9fb3ebc65e690166e44448a2802b10",
+      "source_timeline": [
+        38.5,
+        41.8
+      ],
+      "file_offset_seconds": 0,
+      "duration_seconds": 3.3,
+      "match_gain_db": 0.0,
+      "common_headroom_gain_db": 0.0
+    },
+    "reference": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/listening-all/phrase_ending_context_reference_matched.wav",
+      "sha256": "16921adfa0f059ea62c682bdc837315b20f577699fd5defffc58352c854b8c88",
+      "source_timeline": [
+        38.5,
+        41.8
+      ],
+      "file_offset_seconds": -2.239,
+      "duration_seconds": 3.3,
+      "match_gain_db": -2.0408233444229134,
+      "common_headroom_gain_db": 0.0
+    }
+  }
+}

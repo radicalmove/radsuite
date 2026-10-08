@@ -1,0 +1,43 @@
+RADcast calibration measurements
+
+All levels dB; speech/pause masks are energy proxies, not ASR/VAD.
+Spectral bands are speech-energy shares, not absolute EQ gain. Edited files are not timing-comparable.
+
+| File | Hz | Duration | LUFS | dBTP | Speech/pause contrast | Rolloff95 |
+|---|---:|---:|---:|---:|---:|---:|
+| original | 48000 | 143.49 | -18.54 | -1.82 | 35.40 | 1031.25 |
+| reference | 48000 | 135.20 | -25.24 | -4.13 | 41.02 | 2062.50 |
+| studio_r2_wpe65 | 48000 | 143.49 | -21.63 | -1.55 | 44.22 | 1171.88 |
+| studio_r3_delay2 | 48000 | 143.49 | -21.60 | -1.55 | 44.04 | 1195.31 |
+
+original
+Path: /Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3
+SHA256: 3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627
+Bands (dB of total speech spectrum): {'sub': -27.538457984267932, 'body': -4.7355036371683985, 'mid': -1.9812687621086214, 'presence': -16.665783785193774, 'sibilants': -22.010660836777923, 'air': -32.294568651291904}
+Alignment: lag=None, block spread=None, envelope=None
+QA: None
+
+
+reference
+Path: /Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav
+SHA256: e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4
+Bands (dB of total speech spectrum): {'sub': -24.097999610721107, 'body': -5.9221451703846295, 'mid': -1.7807718127974645, 'presence': -11.854356931022334, 'sibilants': -19.534678632676336, 'air': -34.517256017425744}
+Alignment: lag=-2.238, block spread=0.6200000000000001, envelope=0.4800433612998871
+QA: None
+Edited/different timing: pause metrics use own mask; global correlations and spectrum cannot establish preservation.
+
+studio_r2_wpe65
+Path: /Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision2/CRJU160_studio_r2_wpe65_level8_presence2.wav
+SHA256: f6c8eb34fa24b4dc7a36df04dc8430177ec47d20eb708301d076a6a627eebdd1
+Bands (dB of total speech spectrum): {'sub': -29.401271675577426, 'body': -5.506768830049877, 'mid': -1.6715460017939736, 'presence': -15.398406300601845, 'sibilants': -21.384125187928163, 'air': -31.01099928984803}
+Alignment: lag=0.0, block spread=0.0, envelope=0.9077071279729908
+QA: []
+
+
+studio_r3_delay2
+Path: /Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/CRJU160_studio_r3_wpe65_delay2.wav
+SHA256: 5415c71be2da00ef03fcac0ffad46fb95f100290fbf465db034c7930190fd583
+Bands (dB of total speech spectrum): {'sub': -30.206787191963503, 'body': -5.76043316194786, 'mid': -1.5774579833348015, 'presence': -15.257881967230256, 'sibilants': -21.221333187552972, 'air': -30.863149370107337}
+Alignment: lag=0.0, block spread=0.0, envelope=0.9053215432757554
+QA: []
+

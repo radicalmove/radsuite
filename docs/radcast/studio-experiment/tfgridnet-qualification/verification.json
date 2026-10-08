@@ -1,0 +1,15 @@
+{
+  "state": "short_diagnostic_verified_full_trial_rejected",
+  "audio_clips": 3,
+  "sample_rate": 48000,
+  "clip_seconds": 3.0,
+  "lufs_spread": 0.030000000000001137,
+  "four_publisher_classes_unchanged": true,
+  "protected_audio_files_unchanged": 4,
+  "original_runtime_files_unchanged": 34,
+  "unrelated_tracked_files_unchanged": true,
+  "full_finnegan_renders": 0,
+  "teacher_diagnostic_windows": 1,
+  "full_recording_qualified": false,
+  "closeness_identity_approved": false
+}

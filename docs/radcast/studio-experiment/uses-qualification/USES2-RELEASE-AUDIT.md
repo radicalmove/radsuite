@@ -1,0 +1,15 @@
+# USES2 release audit and model-selection correction
+
+The user correctly identified a gap in the initial model selection: current ESPnet includes USES2-Comp and USES2-Swin. They were added through [ESPnet PR5761](https://github.com/espnet/espnet/pull/5761), merged6May2025. The research paper is from2024; the toolkit integration is later. [Author paper](https://arxiv.org/html/2401.14271v2).
+
+The author's implementations introduce local time-frequency window modeling and decoupled single/multiple-microphone processing. Comp combines window, frequency and temporal processing with memory tokens; Swin uses shifted windows and omits those memory tokens. These are substantive architectural differences, not alternate names for the downloaded USES checkpoint.
+
+The bounded release search inspected the current ESPnet recipe/README, the author paper, PRbody/humancomments, publisher/author model-zoo tables, global Hugging Face name queries and author accounts. No provenance-established USES2 pretrained binary was identified. This is not proof that none exists elsewhere. The user likewise reports no official published checkpoint and directs that any newly found checkpoint remain unverified until its card/config establishes provenance. Code and recipes do not supply trained weights, weight licences or model hashes.
+
+The current source also exposes two practical cautions: Comp's explicit dereverb memory selection cannot be applied to Swin, whose separator rejects that mode; the general current inference wrapper's sample-rate-independent class list omits USES2Separator. Future USES2 integration must audit native-rate plumbing instead of assuming a quickstart correctly selects48k processing.
+
+The verified12,279,888byte261-tensor checkpoint acquired for this bounded trial is **legacy USES**, publisher revision927a9ecea245120a6f2d88c2552864b937ec5ab9. Its binary matches the declared SHA256. It will never be presented as USES2. The current trial remains a test of whether its full-band mapping/explicit room-removal mode helps compared with Treble, with native-rate, clean-voice and separated reflection controls before any Finnegan candidate.
+
+A newer actually released alternative was also identified: the [official URGENT2025 baseline](https://urgent-challenge.github.io/urgent2025/), [Kohei Saijo's TFGridNetV3 checkpoint](https://huggingface.co/kohei0209/tfgridnet_urgent25). Its card/config establish native48k reverberant training coverage and deterministic complex-spectrum mapping. However, its author training preprocessor retains approximately50ms after direct arrival as the target. It is therefore not a verified fully dry solution. No weights for this alternative were downloaded and no extra candidate matrix is included in this round.
+
+The model-selection correction was accepted before enhancement inference began. Existing audio, earlier trials and exhausted render budgets remain intact. USES2 remains a future training/qualified-weight option; Adobe's present algorithm remains undisclosed.

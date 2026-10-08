@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "delivered_chain": "requested_model_chain",
+  "fallback": false,
+  "files": {
+    "cleanup.wav": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/cleanup.wav",
+      "sha256": "d8c959aa5c0769b689672894c2286ab3c93b93bb7fe05e4ecf31068efce263b2",
+      "role": "pre_guard_attempt_stem",
+      "accepted_for_delivery": true
+    },
+    "pause_control.wav": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/pause_control.wav",
+      "sha256": "16b6a13dc87a4a53866c9c6b1377687acabdd3b61a4cfb1644a4ba57af991f39",
+      "role": "pre_guard_attempt_stem",
+      "accepted_for_delivery": true
+    },
+    "source_masks.npz": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/source_masks.npz",
+      "sha256": "f0c1a6af56afc8e3e5e5dc9afe0bc361c935565e44040d4bcf9dd9486152e9d9",
+      "role": "input",
+      "accepted_for_delivery": true
+    },
+    "levelled.wav": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/levelled.wav",
+      "sha256": "1af2c98fcee2a4c7f33b57b077f7fd50dc14e8830dbaf19143b78c46e1a73b91",
+      "role": "pre_guard_attempt_stem",
+      "accepted_for_delivery": true
+    },
+    "highpassed.wav": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/highpassed.wav",
+      "sha256": "bc0e8d4af75b1329b4b8586805d770a7c18bfe4d6fa7892d467f5fc8bdb19cee",
+      "role": "input",
+      "accepted_for_delivery": true
+    },
+    "level_frame_gain_db.npy": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/level_frame_gain_db.npy",
+      "sha256": "48f367cdc0066fb3501748a1ade6dda2913277d21adc4e0a5e1e3292ad8b7fff",
+      "role": "pre_guard_attempt_stem",
+      "accepted_for_delivery": true
+    },
+    "wpe.wav": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/wpe.wav",
+      "sha256": "216a7b18dd995b33ab1349758a0454190393249c06052995ef17a33399c5db41",
+      "role": "pre_guard_attempt_stem",
+      "accepted_for_delivery": true
+    },
+    "presence.wav": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/presence.wav",
+      "sha256": "4bdf861d7b048e797046a49dfe32d46207ca3070444d6f48ba077f2cf1a68ed6",
+      "role": "pre_guard_attempt_stem",
+      "accepted_for_delivery": true
+    },
+    "prepared.wav": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision3/diagnostics-delay4/prepared.wav",
+      "sha256": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71",
+      "role": "input",
+      "accepted_for_delivery": true
+    }
+  },
+  "note": "Provenance added to the successful pre-instrumentation render; stems were not overwritten."
+}

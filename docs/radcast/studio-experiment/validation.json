@@ -1,0 +1,33 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Pacific/Auckland",
+  "python_tests": 15,
+  "rust_tests": 171,
+  "ui_tests": 177,
+  "studio_real_e2e_enabled": true,
+  "frontend_diagnostics": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "production_ui_build": "passed",
+  "rust_format": "passed",
+  "git_diff_check": "passed",
+  "note": "Rust count includes conditional historical fixture tests that early-return when their fixture environment is not supplied. New real Studio end-to-end test was explicitly enabled, covers WAV and MP3; legacy profiles protected by existing argument/filter/serialization tests, not rerendered with unavailable legacy fixture environment.",
+  "commands": [
+    "python -m unittest discover -s tools/radcast -p test*.py",
+    "RADSUITE_TEST_STUDIO=1 cargo test -p radsuite-engines -p radsuite-desktop",
+    "npm --prefix apps/desktop-ui test -- --run",
+    "npm --prefix apps/desktop-ui run build",
+    "cargo fmt --all -- --check",
+    "git diff --check"
+  ],
+  "implementation_sha256": {
+    "tools/radcast/analysis.py": "d0bdb43db58c086d136c15b8d7d50c1739c5f8a3074f2da45ed3bbd1bcde874c",
+    "tools/radcast/studio.py": "6bba3688f731775909f4dc37f3f08a935afecc1c9bee9dabfb85c0bbe0187b01",
+    "tools/radcast/asr_compare.py": "24812a321cac72dbe0a05ca9df0b1b02c3d4c090a8d665f59ca2c096c57d6028",
+    "crates/radsuite-engines/src/studio.rs": "e97888cad6f2c98757c0750fa369afd668f9487df62e2bda5dd3f02679abbf70",
+    "crates/radsuite-engines/src/enhancement.rs": "5e45ae12e55bf12993f15a21440ee4fff66adea55dbf7a432ef903c3724218c3",
+    "crates/radsuite-engines/src/audio.rs": "6035bc807017e43994427092bae2257549b272265ec04bea4c4d9a1a12b3f454",
+    "crates/radsuite-desktop/src/radcast.rs": "ebfab6eadeec252e9881bd98d058a2fb1300cf3c5c99d94347d74753ed9896be"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "raw_model": true,
+  "protection_reference": true,
+  "calibrated_frame_gain_db": true,
+  "identical_pcm": true,
+  "sample_count": 6887520,
+  "sample_rate": 48000,
+  "maximum_absolute_error": 0.0,
+  "fallback": false,
+  "watchdog": [],
+  "baseline_watchdog": []
+}

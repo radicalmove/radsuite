@@ -1,0 +1,529 @@
+{
+  "highpassed": {
+    "median_gain_db": -0.0023616064726441044,
+    "worst_windows": [
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -0.2008671648372412,
+        "relative_gain_db": -0.1985055583645971
+      },
+      {
+        "start_seconds": 73.0,
+        "end_seconds": 74.0,
+        "gain_db": -0.08151765438534074,
+        "relative_gain_db": -0.07915604791269663
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -0.03880157090685566,
+        "relative_gain_db": -0.036439964434211554
+      },
+      {
+        "start_seconds": 12.5,
+        "end_seconds": 13.5,
+        "gain_db": -0.03074761742602961,
+        "relative_gain_db": -0.028386010953385506
+      },
+      {
+        "start_seconds": 86.5,
+        "end_seconds": 87.5,
+        "gain_db": -0.02985535587054378,
+        "relative_gain_db": -0.027493749397899676
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -0.02369586357577387,
+        "relative_gain_db": -0.021334257103129767
+      },
+      {
+        "start_seconds": 120.5,
+        "end_seconds": 121.5,
+        "gain_db": -0.023460791457461102,
+        "relative_gain_db": -0.021099184984817
+      },
+      {
+        "start_seconds": 80.0,
+        "end_seconds": 81.0,
+        "gain_db": -0.02135888145625158,
+        "relative_gain_db": -0.018997274983607478
+      }
+    ],
+    "below_threshold": []
+  },
+  "model_raw": {
+    "median_gain_db": -4.3647423292896805,
+    "worst_windows": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.17367571390701,
+        "relative_gain_db": -27.80893338461733
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.94438910258376,
+        "relative_gain_db": -25.57964677329408
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -28.78607762318534,
+        "relative_gain_db": -24.42133529389566
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.779835026972883,
+        "relative_gain_db": -23.415092697683203
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -27.014998603320844,
+        "relative_gain_db": -22.650256274031165
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -25.918865174341637,
+        "relative_gain_db": -21.554122845051957
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -25.48485993675658,
+        "relative_gain_db": -21.1201176074669
+      },
+      {
+        "start_seconds": 35.5,
+        "end_seconds": 36.5,
+        "gain_db": -8.904429283168106,
+        "relative_gain_db": -4.539686953878426
+      }
+    ],
+    "below_threshold": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.17367571390701,
+        "relative_gain_db": -27.80893338461733
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.94438910258376,
+        "relative_gain_db": -25.57964677329408
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -28.78607762318534,
+        "relative_gain_db": -24.42133529389566
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.779835026972883,
+        "relative_gain_db": -23.415092697683203
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -27.014998603320844,
+        "relative_gain_db": -22.650256274031165
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -25.918865174341637,
+        "relative_gain_db": -21.554122845051957
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -25.48485993675658,
+        "relative_gain_db": -21.1201176074669
+      }
+    ]
+  },
+  "pause_control": {
+    "median_gain_db": -4.3647423292896805,
+    "worst_windows": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.17367571390701,
+        "relative_gain_db": -27.80893338461733
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.94438910258376,
+        "relative_gain_db": -25.57964677329408
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -28.78607762318534,
+        "relative_gain_db": -24.42133529389566
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.779835026972883,
+        "relative_gain_db": -23.415092697683203
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -27.014998603320844,
+        "relative_gain_db": -22.650256274031165
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -25.918865174341637,
+        "relative_gain_db": -21.554122845051957
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -25.48485993675658,
+        "relative_gain_db": -21.1201176074669
+      },
+      {
+        "start_seconds": 35.5,
+        "end_seconds": 36.5,
+        "gain_db": -8.904429283168106,
+        "relative_gain_db": -4.539686953878426
+      }
+    ],
+    "below_threshold": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.17367571390701,
+        "relative_gain_db": -27.80893338461733
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.94438910258376,
+        "relative_gain_db": -25.57964677329408
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -28.78607762318534,
+        "relative_gain_db": -24.42133529389566
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.779835026972883,
+        "relative_gain_db": -23.415092697683203
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -27.014998603320844,
+        "relative_gain_db": -22.650256274031165
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -25.918865174341637,
+        "relative_gain_db": -21.554122845051957
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -25.48485993675658,
+        "relative_gain_db": -21.1201176074669
+      }
+    ]
+  },
+  "presence": {
+    "median_gain_db": -4.194165725353157,
+    "worst_windows": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.133351276038454,
+        "relative_gain_db": -27.939185550685295
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.788549700729867,
+        "relative_gain_db": -25.594383975376708
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -28.537492014401167,
+        "relative_gain_db": -24.343326289048008
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.632904153772493,
+        "relative_gain_db": -23.438738428419335
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -26.83790877969447,
+        "relative_gain_db": -22.643743054341314
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -25.664699239131696,
+        "relative_gain_db": -21.47053351377854
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -25.36039118688987,
+        "relative_gain_db": -21.166225461536712
+      },
+      {
+        "start_seconds": 35.5,
+        "end_seconds": 36.5,
+        "gain_db": -8.724126575775985,
+        "relative_gain_db": -4.529960850422828
+      }
+    ],
+    "below_threshold": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.133351276038454,
+        "relative_gain_db": -27.939185550685295
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.788549700729867,
+        "relative_gain_db": -25.594383975376708
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -28.537492014401167,
+        "relative_gain_db": -24.343326289048008
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.632904153772493,
+        "relative_gain_db": -23.438738428419335
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -26.83790877969447,
+        "relative_gain_db": -22.643743054341314
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -25.664699239131696,
+        "relative_gain_db": -21.47053351377854
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -25.36039118688987,
+        "relative_gain_db": -21.166225461536712
+      }
+    ]
+  },
+  "levelled": {
+    "median_gain_db": -9.052859740184008,
+    "worst_windows": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.133351276038454,
+        "relative_gain_db": -23.080491535854446
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.788549700729867,
+        "relative_gain_db": -20.73568996054586
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.632904153772493,
+        "relative_gain_db": -18.580044413588485
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -26.83790877969447,
+        "relative_gain_db": -17.78504903951046
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -25.579124427370893,
+        "relative_gain_db": -16.526264687186885
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -23.781585676847495,
+        "relative_gain_db": -14.728725936663487
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -17.779101727962786,
+        "relative_gain_db": -8.726241987778778
+      },
+      {
+        "start_seconds": 73.5,
+        "end_seconds": 74.5,
+        "gain_db": -12.324337297282582,
+        "relative_gain_db": -3.2714775570985744
+      }
+    ],
+    "below_threshold": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -32.133351276038454,
+        "relative_gain_db": -23.080491535854446
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -29.788549700729867,
+        "relative_gain_db": -20.73568996054586
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -27.632904153772493,
+        "relative_gain_db": -18.580044413588485
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -26.83790877969447,
+        "relative_gain_db": -17.78504903951046
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -25.579124427370893,
+        "relative_gain_db": -16.526264687186885
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -23.781585676847495,
+        "relative_gain_db": -14.728725936663487
+      }
+    ]
+  },
+  "master_attempt": {
+    "median_gain_db": -2.046153523769528,
+    "worst_windows": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -25.123351049434962,
+        "relative_gain_db": -23.077197525665433
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -22.778549457371604,
+        "relative_gain_db": -20.732395933602074
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -20.622903927907572,
+        "relative_gain_db": -18.576750404138043
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -19.82790854573398,
+        "relative_gain_db": -17.78175502196445
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -18.569124196400484,
+        "relative_gain_db": -16.522970672630954
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -16.77158544332528,
+        "relative_gain_db": -14.725431919555751
+      },
+      {
+        "start_seconds": 67.0,
+        "end_seconds": 68.0,
+        "gain_db": -10.769101509318567,
+        "relative_gain_db": -8.72294798554904
+      },
+      {
+        "start_seconds": 73.5,
+        "end_seconds": 74.5,
+        "gain_db": -5.320595163165177,
+        "relative_gain_db": -3.2744416393956493
+      }
+    ],
+    "below_threshold": [
+      {
+        "start_seconds": 4.5,
+        "end_seconds": 5.5,
+        "gain_db": -25.123351049434962,
+        "relative_gain_db": -23.077197525665433
+      },
+      {
+        "start_seconds": 138.5,
+        "end_seconds": 139.5,
+        "gain_db": -22.778549457371604,
+        "relative_gain_db": -20.732395933602074
+      },
+      {
+        "start_seconds": 139.0,
+        "end_seconds": 140.0,
+        "gain_db": -20.622903927907572,
+        "relative_gain_db": -18.576750404138043
+      },
+      {
+        "start_seconds": 138.0,
+        "end_seconds": 139.0,
+        "gain_db": -19.82790854573398,
+        "relative_gain_db": -17.78175502196445
+      },
+      {
+        "start_seconds": 140.0,
+        "end_seconds": 141.0,
+        "gain_db": -18.569124196400484,
+        "relative_gain_db": -16.522970672630954
+      },
+      {
+        "start_seconds": 4.0,
+        "end_seconds": 5.0,
+        "gain_db": -16.77158544332528,
+        "relative_gain_db": -14.725431919555751
+      }
+    ]
+  }
+}

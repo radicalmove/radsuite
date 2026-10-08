@@ -1,0 +1,60 @@
+{
+  "checkpoint_sha256": "6b2a0c78b2eea566fcfd39b0d77ffc0102b0baf6af60a4a1f4dee93995081121",
+  "config_sha256": "3cd7b57bdb541672fea82d9ab16a04ce63299ac4b108907a5c406b2dd1dc8793",
+  "vendor_audit_sha256": "e437f492feeaa635760d66c06b56453129b0db20ad940ea603f42530a18fe67e",
+  "adapter_sha256": "d2f9a31f066de05b33e6ab0923afb6b9e7edf029595a20e50f3f0ead555ea0e4",
+  "uses_bounded_sha256": "a9377d7a49b3474cd94814fe84780597febde2eddd511dd616ebfcc48f3abf7a",
+  "execution_config": {
+    "backend": "bounded_features",
+    "device": "cpu",
+    "dtype": "float32",
+    "torch_version": "2.1.1",
+    "threads": 4,
+    "sample_rate": 48000,
+    "fft": 1536,
+    "hop": 768,
+    "frequency_bins": 769,
+    "channels": 1,
+    "num_spk": 1,
+    "ref_channel": 0,
+    "segment_size": 64,
+    "memory_size": 20,
+    "memory_types": 2,
+    "atf_blocks": 6,
+    "mode": "dereverb",
+    "memory_index": 1,
+    "memory_initializations_per_utterance": 1,
+    "normalize_variance_correction": 1,
+    "variance_restorations": 1,
+    "external_audio_chunks": 1,
+    "audio_crossfade": false,
+    "resampling": false,
+    "output_peak_normalization": false,
+    "post_encoder_time_halo": 1,
+    "pre_decoder_time_halo": 1,
+    "final_padding_after_bottleneck": true,
+    "whole_utterance_stft": true
+  },
+  "passed": true,
+  "maximum_error": 1.043081283569336e-07,
+  "rms_error": 1.4263349448579033e-08,
+  "maximum_error_limit": 3e-06,
+  "rms_error_limit": 3e-07,
+  "source": {
+    "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav",
+    "sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+    "sample_count": 1209892
+  },
+  "selected_samples": [
+    48000,
+    153600
+  ],
+  "sample_count": 105600,
+  "upstream_record": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/equivalence/upstream.json",
+  "bounded_record": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/equivalence/bounded.json",
+  "memory_indices": [
+    1
+  ],
+  "segment_count": 3,
+  "note": "Actual trained2.2s whole-utterance native48k outputs,3segments withcontinuousmemory. Numeric agreement, not voice-quality or generalization proof."
+}

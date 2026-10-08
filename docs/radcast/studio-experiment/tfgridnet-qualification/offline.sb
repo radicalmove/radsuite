@@ -1,0 +1,6 @@
+(version 1)
+(allow default)
+(deny network*)
+(deny file-write* (subpath "/Users/rcd58/.radcast/venv311"))
+(deny file-write* (subpath "/Users/rcd58/.radcast/experiments/uses-qualification"))
+(deny file-write* (subpath "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119"))

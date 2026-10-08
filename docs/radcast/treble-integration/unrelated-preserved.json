@@ -1,0 +1,6 @@
+{
+  "apps/desktop-ui/src-tauri/src/main.rs": true,
+  "apps/desktop-ui/src/styles.css": true,
+  "crates/radsuite-engines/src/audio.rs": true,
+  "crates/radsuite-engines/tests/audio.rs": true
+}

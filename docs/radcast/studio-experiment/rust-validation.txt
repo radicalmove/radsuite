@@ -1,0 +1,258 @@
+   Compiling radsuite-engines v0.1.0 (/Users/rcd58/Documents/RADsuite/crates/radsuite-engines)
+   Compiling radsuite-desktop v0.2.8 (/Users/rcd58/Documents/RADsuite/crates/radsuite-desktop)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 10.16s
+     Running unittests src/lib.rs (target/debug/deps/radsuite_desktop-e1070f71f06d0865)
+
+running 35 tests
+test library_links::tests::unwraps_openathens_and_ezproxy_links ... ok
+test document_store::tests::store_source_reports_missing_input_without_creating_destination ... ok
+test radcast::silence_plan_tests::target_duration_scales_silence_reduction_and_reports_minimum ... ok
+test radcast::silence_plan_tests::keep_percentage_is_applied_proportionally_to_qualifying_silence ... ok
+test document_store::tests::managed_source_path_keeps_source_inside_project_directory ... ok
+test radcast::tests::identifies_macos_cloud_storage_paths ... ok
+test radcast::tests::standard_processing_keeps_requested_generic_cleanup ... ok
+test radcast::tests::enhanced_profiles_do_not_receive_generic_cleanup ... ok
+test radt_ts::tests::builds_builtin_voice_cli_arguments_without_reference_audio ... ok
+test radt_ts::tests::accepts_legacy_synthesis_requests_without_reference_text ... ok
+test radcast::tests::accepts_onedrive_and_sharepoint_https_links_only ... ok
+test radt_ts::tests::parses_structured_cli_result ... ok
+test library_links::tests::tolerates_non_ascii_doi_input_without_panicking ... ok
+test radt_ts::tests::rejects_builtin_voice_requests_until_the_installed_cli_supports_them ... ok
+test library_links::tests::normalises_doi_forms ... ok
+test radt_ts::tests::rejects_malformed_cli_result ... ok
+test radt_ts::tests::rejects_path_like_output_names ... ok
+test radt_ts::tests::builds_reference_voice_cli_arguments_without_shell_interpolation ... ok
+test radt_ts::tests::omits_reference_transcript_cli_arguments_when_not_supplied ... ok
+test radt_ts::tests::shutdown_marks_radt_ts_lifecycle_closed ... ok
+test radt_ts::tests::rejects_generation_budgets_outside_the_supported_range ... ok
+test radt_ts::tests::removes_script_and_optional_reference_text_files_together ... ok
+test radt_ts_tools::tests::builds_phrase_based_clip_arguments ... ok
+test radt_ts_tools::tests::builds_transcription_arguments_without_shell_interpolation ... ok
+test radt_ts_tools::tests::parses_cli_artifacts ... ok
+test radt_ts_tools::tests::rejects_clip_without_boundaries ... ok
+test radt_ts::tests::shutdown_removes_registered_radt_ts_temp_files ... ok
+test radt_ts_tools::tests::rejects_non_finite_or_reversed_clip_times ... ok
+test radt_ts::tests::only_accepts_generated_files_inside_project_root ... ok
+test radt_ts::tests::validates_reference_audio_as_a_regular_supported_file ... ok
+test radt_ts_tools::tests::validates_transcript_input_extension ... ok
+test document_store::tests::store_source_copies_the_selected_file_to_managed_storage ... ok
+test radt_ts::tests::creates_radt_ts_project_scaffold_for_cli_commands ... ok
+test radt_ts::tests::stops_waiting_when_the_cli_does_not_answer_help ... ok
+test radt_ts::tests::probes_the_installed_cli_without_starting_a_generation_job ... ok
+
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.08s
+
+     Running tests/desktop_contracts.rs (target/debug/deps/desktop_contracts-2be60893ae96099d)
+
+running 65 tests
+test app_paths_resolve_platform_data_directory_for_radsuite ... ok
+test app_status_exposes_database_sync_and_engine_state ... ok
+test analyse_docx_path_rejects_empty_path ... ok
+test archived_radcite_projects_cannot_be_updated ... ok
+test course_reference_export_can_omit_generico_tags ... ok
+test course_reference_export_blocks_apa_fixes_unless_overridden ... ok
+test course_reference_update_commands_validate_input ... ok
+test course_reference_export_can_use_uc_library_links ... ok
+test course_reference_updates_can_apply_lookup_metadata_without_erasing_it ... ok
+test course_references_can_be_assigned_and_moved_between_modules ... ok
+test course_references_can_be_exported_as_html ... ok
+test course_references_can_be_updated_and_archived ... ok
+test course_references_get_apa_validation_status ... ok
+test analyse_pdf_for_review_persists_ordered_paragraphs_and_citations ... ok
+test analyse_docx_for_review_returns_ordered_paragraphs_and_citations ... ok
+test fresh_project_scoped_refresh_does_not_create_a_sample_project ... ok
+test analyse_docx_path_persists_document_and_returns_summary ... ok
+test legacy_radcite_import_rejects_an_empty_path ... ok
+test document_readings_import_uses_selected_module_when_source_has_no_module_signal ... ok
+test document_pdf_readings_import_infers_module_from_scorm_filename ... ok
+test local_radcite_projects_can_be_archived_and_restored ... ok
+test local_radcite_projects_can_be_listed_and_created ... ok
+test local_radcite_projects_can_be_updated ... ok
+test course_references_can_be_merged_without_losing_citation_links ... ok
+test analysed_docx_reviews_reuse_the_local_radcite_project ... ok
+test manual_required_reading_upgrades_existing_optional_duplicate ... ok
+test module_readings_are_listed_and_exported_in_natural_lesson_order ... ok
+test module_readings_can_be_exported_as_html ... ok
+test module_readings_commands_add_and_list_local_modules_and_readings ... ok
+test module_readings_commands_update_and_archive_modules_and_readings ... ok
+test module_readings_commands_validate_input ... ok
+test course_reference_usage_and_linking_are_project_scoped ... ok
+test document_readings_import_creates_modules_and_is_idempotent ... ok
+test local_course_references_are_added_to_the_radcite_project ... ok
+test module_readings_export_filename_uses_project_title_when_code_is_missing ... ok
+test module_readings_export_links_stored_doi_when_url_is_blank ... ok
+test module_readings_export_can_emit_ako_html ... ok
+test module_readings_export_rejects_missing_module ... ok
+test legacy_radcite_import_preserves_course_structure_and_review_links ... ok
+test module_readings_import_deduplicates_by_doi_and_upgrades_required_category ... ok
+test module_readings_csv_import_preview_extracts_candidates_for_selected_module_save ... ok
+test module_readings_import_save_validates_missing_module ... ok
+test module_readings_import_required_upgrades_existing_optional_reading ... ok
+test module_readings_import_save_persists_selected_candidates ... ok
+test module_readings_import_save_reuses_existing_duplicate_candidates ... ok
+test module_readings_import_preview_extracts_candidates_without_persisting ... ok
+test module_readings_pdf_import_rejects_empty_selection ... ok
+test project_updates_reject_unknown_structure_modes ... ok
+test module_readings_update_commands_validate_input ... ok
+test module_readings_pdf_import_preview_reports_unreadable_files_without_losing_candidates ... ok
+test module_readings_pdf_import_preview_extracts_candidates_from_multiple_pdfs ... ok
+test radcite_document_module_assignment_round_trips_and_validates_project_scope ... ok
+test paragraph_citations_can_be_linked_to_course_references ... ok
+test radcite_excluded_document_filtering ... ok
+test radcite_document_metadata_contract ... ok
+test radcite_archive_lists_and_restores_project_items ... ok
+test selected_project_commands_reject_missing_projects ... ok
+test source_copy_failure_does_not_persist_a_saved_review ... ok
+test reference_suggestions_are_empty_when_course_references_do_not_match ... ok
+test radcite_commands_respect_selected_project_context ... ok
+test radcite_review_actions_persist_and_return_refreshed_review ... ok
+test review_report_export_contains_document_statistics_and_findings ... ok
+test reference_suggestions_include_strong_course_reference_matches ... ok
+test saved_radcite_review_can_be_listed_and_loaded ... ok
+test review_queue_summary_tracks_linked_suggested_and_unlinked_citations ... ok
+
+test result: ok. 65 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.96s
+
+     Running tests/file_export.rs (target/debug/deps/file_export-ab30965a3f6ce665)
+
+running 2 tests
+test write_local_text_file_preserves_generated_html ... ok
+test copy_local_file_writes_the_selected_destination ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/library_links.rs (target/debug/deps/library_links-194d5afd3c315a89)
+
+running 4 tests
+test removes_existing_proxy_wrappers_before_rebuilding_the_link ... ok
+test wraps_a_direct_url_for_uc_access ... ok
+test returns_none_without_a_usable_source ... ok
+test builds_an_openathens_link_from_a_doi ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/radcast_contracts.rs (target/debug/deps/radcast_contracts-556ff246690e461d)
+
+running 19 tests
+test radcast_defaults_to_the_original_optimized_quality_profile ... ok
+test radcast_cancel_command_marks_a_running_local_job_for_cancellation ... ok
+test radcast_processing_honours_local_cancellation_before_work_begins ... ok
+test radcast_link_import_rejects_an_empty_url_before_network_access ... ok
+test radcast_link_import_rejects_non_onedrive_urls_before_network_access ... ok
+test radcast_import_reports_when_the_selected_source_cannot_be_read ... ok
+test radcast_processing_rejects_unknown_sources ... ok
+test radcast_real_audio_fixture_can_process_when_available ... ok
+test radcast_real_audio_fixture_can_process_with_each_legacy_profile_when_available ... ok
+test radcast_real_audio_fixture_can_process_with_the_optimized_profile_when_available ... ok
+test radcast_project_settings_are_persisted_in_local_project_storage ... ok
+test radcast_import_process_and_list_are_project_scoped ... ok
+test radcast_processing_reports_ordered_local_progress_phases ... ok
+test radcast_processing_keeps_generated_captions_with_the_audio_output ... ok
+test radcast_speech_aware_pause_cleanup_uses_intervals_and_records_pause_count ... ok
+test radcast_capabilities_explain_each_local_enhancement_backend ... ok
+test radcast_processing_can_apply_the_optimized_local_enhancement_profile ... ok
+test radcast_capabilities_report_caption_model_readiness ... ok
+test studio_real_export_retains_final_qa_and_original_identity_when_enabled ... ok
+
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 12.75s
+
+     Running tests/real_course_smoke.rs (target/debug/deps/real_course_smoke-25063bb9e761527a)
+
+running 1 test
+test real_course_materials_can_exercise_project_csv_docx_pdf_flow_when_available ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/radsuite_engines-e7b076fd6f00b057)
+
+running 4 tests
+test audio::packet_duration_tests::packet_timeline_uses_last_audio_packet_end ... ok
+test runtime::tests::resolves_ffmpeg_from_the_windows_user_local_runtime ... ok
+test enhancement::tests::includes_windows_virtual_environment_helper_paths ... ok
+test registry::tests::finds_audio_cleanup_helper_in_windows_user_venv ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/audio.rs (target/debug/deps/audio-be3097e077d73b24)
+
+running 11 tests
+test audio_processing_keeps_only_the_configured_length_of_long_silences ... ok
+test audio_processing_can_apply_the_radcast_natural_double_plus_postfilter ... ok
+test audio_processing_can_apply_the_radcast_natural_postfilter ... ok
+test audio_processing_can_apply_the_radcast_natural_plus_postfilter ... ok
+test audio_processing_can_apply_the_radcast_optimized_postfilter ... ok
+test audio_processing_builds_trimmed_cleanup_commands_for_mp3_and_wav ... ok
+test audio_processing_accepts_zero_seconds_for_pause_limit ... ok
+test audio_processing_builds_a_concat_graph_for_filler_intervals ... ok
+test audio_processing_rejects_a_clip_that_ends_before_it_starts ... ok
+test detects_a_long_silent_audio_interval_with_ffmpeg ... ok
+test audio_processor_runs_with_deterministic_tool_commands ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running tests/captions.rs (target/debug/deps/captions-819d0fccbc943835)
+
+running 16 tests
+test filler_detection_respects_normal_and_aggressive_modes ... ok
+test caption_processor_builds_trimmed_vtt_arguments ... ok
+test caption_quality_controls_whisper_search_and_glossary_prompt ... ok
+test caption_processor_reports_a_missing_model_before_running ... ok
+test speech_cleanup_clamps_transcription_overshoot_at_clip_boundary ... ok
+test speech_cleanup_excludes_fillers_from_pause_timeline_and_merges_overlaps ... ok
+test speech_cleanup_keeps_gaps_at_or_below_the_original_threshold ... ok
+test speech_cleanup_rejects_invalid_timing_inputs ... ok
+test speech_cleanup_shortens_leading_inter_word_and_trailing_pauses ... ok
+test caption_processor_normalizes_segment_relative_tokens_and_ignores_control_tokens ... ok
+test caption_processor_extracts_word_timestamps_from_whisper_json ... ok
+test filler_intervals_are_relative_to_the_selected_clip ... ok
+test caption_processor_builds_cleanup_plan_from_one_transcription ... ok
+test reviewed_captions_flag_text_without_confidence_data ... ok
+test caption_processor_runs_cli_and_counts_srt_segments ... ok
+test reviewed_captions_write_a_confidence_review_file ... ok
+
+test result: ok. 16 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/enhancement.rs (target/debug/deps/enhancement-14e59ab4981dda18)
+
+running 9 tests
+test enhancement_processor_builds_deepfilternet_arguments_for_the_selected_backend ... ok
+test enhancement_processor_builds_directory_helper_arguments ... ok
+test enhancement_processor_builds_resemble_arguments_for_the_selected_backend ... ok
+test enhancement_processor_uses_speech_preserving_dereverb_for_the_natural_double_plus_variant ... ok
+test enhancement_processor_uses_the_optimized_model_for_the_natural_plus_variant ... ok
+test enhancement_processor_maps_quality_profiles_to_model_steps ... ok
+test enhancement_processor_uses_the_optimized_model_for_the_natural_variant ... ok
+test enhancement_processor_forwards_streamed_chunk_progress ... ok
+test enhancement_processor_copies_the_helper_output_to_the_requested_path ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.83s
+
+     Running tests/registry.rs (target/debug/deps/registry-018e5a9dc86fbc03)
+
+running 2 tests
+test registry_explains_missing_engines_without_calling_them_broken ... ok
+test registry_reports_available_engines_with_actionable_details ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/studio.rs (target/debug/deps/studio-346a8b53f119f198)
+
+running 3 tests
+test studio_working_arguments_are_float_pcm_48k_and_no_mastering ... ok
+test studio_registration_preserves_legacy_ids ... ok
+test studio_final_mp3_encoding_only_at_export ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests radsuite_desktop
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests radsuite_engines
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -7,14 +7,76 @@ use std::{
 
 use chrono::Utc;
 use radsuite_engines::{
-    AudioOutputFormat, AudioProcessingRequest, AudioProcessor, CaptionFormat,
+    AudioOutputFormat, AudioProcessingRequest, AudioProcessor, AudioTimeInterval, CaptionFormat,
     CaptionProcessingRequest, CaptionProcessor, CaptionQualityMode, CaptionQualitySummary,
-    CaptionTranscriptionRequest, EnhancementModel, EnhancementProcessingRequest,
+    CaptionTranscriptionRequest, DetectedSilence, EnhancementModel, EnhancementProcessingRequest,
     EnhancementProcessor, EnhancementQuality, FillerRemovalMode,
     RADCAST_NATURAL_DOUBLE_PLUS_POSTFILTER, RADCAST_NATURAL_PLUS_POSTFILTER,
     RADCAST_NATURAL_POSTFILTER, RADCAST_OPTIMIZED_POSTFILTER, RADCAST_STANDARD_POSTFILTER,
     RADCAST_STANDARD_PREFILTER, RADCAST_STUDIO_POSTFILTER, SpeechCleanupError,
 };
+
+fn silence_plan(
+    silences: &[DetectedSilence],
+    clip_start: f64,
+    clip_end: f64,
+    keep_percent: f64,
+    target_duration: Option<f64>,
+) -> (Vec<AudioTimeInterval>, RadcastSilenceAnalysis) {
+    let duration = (clip_end - clip_start).max(0.0);
+    let qualifying: Vec<(f64, f64)> = silences
+        .iter()
+        .filter_map(|item| {
+            let start = item.start_seconds.max(clip_start);
+            let end = item.end_seconds.min(clip_end);
+            (end > start && end - start >= 0.0).then_some((start - clip_start, end - clip_start))
+        })
+        .collect();
+    let silence_total: f64 = qualifying.iter().map(|(s, e)| e - s).sum();
+    let max_removal: f64 = qualifying
+        .iter()
+        .map(|(s, e)| (e - s - 0.10).max(0.0))
+        .sum();
+    let shortest = (duration - max_removal).max(0.0);
+    let requested_removal = target_duration
+        .map(|target| (duration - target).max(0.0))
+        .unwrap_or(silence_total * (1.0 - keep_percent.clamp(0.0, 100.0) / 100.0));
+    let actual_removal = requested_removal.min(max_removal);
+    let scale = if max_removal > 0.0 {
+        actual_removal / max_removal
+    } else {
+        0.0
+    };
+    let intervals = qualifying
+        .iter()
+        .filter_map(|(start, end)| {
+            let span = end - start;
+            let remove = ((span - 0.10).max(0.0) * scale).min(span);
+            (remove > 0.001).then_some(AudioTimeInterval {
+                start_seconds: start + (span - remove) / 2.0,
+                end_seconds: end - (span - remove) / 2.0,
+            })
+        })
+        .collect();
+    let result_duration = duration - actual_removal;
+    let retained = if silence_total > 0.0 {
+        ((silence_total - actual_removal) / silence_total * 100.0).clamp(0.0, 100.0)
+    } else {
+        100.0
+    };
+    (
+        intervals,
+        RadcastSilenceAnalysis {
+            original_duration_seconds: duration,
+            qualifying_silence_count: qualifying.len(),
+            qualifying_silence_seconds: silence_total,
+            shortest_duration_seconds: shortest,
+            estimated_duration_seconds: result_duration,
+            retained_silence_percent: retained,
+            target_reachable: target_duration.is_none_or(|target| target >= shortest),
+        },
+    )
+}
 use reqwest::blocking::{Client, Response};
 use reqwest::header::{CONTENT_DISPOSITION, CONTENT_TYPE};
 use serde::{Deserialize, Serialize};
@@ -96,6 +158,16 @@ pub struct ProcessRadcastAudioRequest {
     #[serde(default)]
     pub max_silence_seconds: Option<f64>,
     #[serde(default)]
+    pub silence_shortening_enabled: bool,
+    #[serde(default = "default_silence_minimum_seconds")]
+    pub silence_minimum_seconds: f64,
+    #[serde(default = "default_silence_threshold_db")]
+    pub silence_threshold_db: f64,
+    #[serde(default = "default_silence_keep_percent")]
+    pub silence_keep_percent: f64,
+    #[serde(default)]
+    pub target_duration_seconds: Option<f64>,
+    #[serde(default)]
     pub caption_format: Option<CaptionFormat>,
     #[serde(default = "default_caption_language")]
     pub caption_language: String,
@@ -111,6 +183,39 @@ pub struct ProcessRadcastAudioRequest {
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
     pub filler_removal_mode: FillerRemovalMode,
+}
+
+fn default_silence_minimum_seconds() -> f64 {
+    2.0
+}
+fn default_silence_threshold_db() -> f64 {
+    -40.0
+}
+fn default_silence_keep_percent() -> f64 {
+    50.0
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct AnalyzeRadcastSilenceRequest {
+    pub project_id: Option<radsuite_core::ProjectId>,
+    pub source_id: String,
+    pub clip_start_seconds: Option<f64>,
+    pub clip_end_seconds: Option<f64>,
+    pub minimum_seconds: f64,
+    pub threshold_db: f64,
+    pub keep_percent: f64,
+    pub target_duration_seconds: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct RadcastSilenceAnalysis {
+    pub original_duration_seconds: f64,
+    pub qualifying_silence_count: usize,
+    pub qualifying_silence_seconds: f64,
+    pub shortest_duration_seconds: f64,
+    pub estimated_duration_seconds: f64,
+    pub retained_silence_percent: f64,
+    pub target_reachable: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -140,6 +245,16 @@ pub struct RadcastProjectSettings {
     #[serde(default)]
     pub max_silence_seconds: Option<f64>,
     #[serde(default)]
+    pub silence_shortening_enabled: bool,
+    #[serde(default = "default_silence_minimum_seconds")]
+    pub silence_minimum_seconds: f64,
+    #[serde(default = "default_silence_threshold_db")]
+    pub silence_threshold_db: f64,
+    #[serde(default = "default_silence_keep_percent")]
+    pub silence_keep_percent: f64,
+    #[serde(default)]
+    pub target_duration_seconds: Option<f64>,
+    #[serde(default)]
     pub remove_filler_words: bool,
     #[serde(default = "default_filler_removal_mode")]
     pub filler_removal_mode: FillerRemovalMode,
@@ -159,6 +274,11 @@ impl Default for RadcastProjectSettings {
             enhancement_quality: default_enhancement_quality(),
             cleanup_enabled: default_cleanup_enabled(),
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: default_silence_minimum_seconds(),
+            silence_threshold_db: default_silence_threshold_db(),
+            silence_keep_percent: default_silence_keep_percent(),
+            target_duration_seconds: None,
             remove_filler_words: false,
             filler_removal_mode: default_filler_removal_mode(),
             trim_ranges_by_source_id: HashMap::new(),
@@ -178,6 +298,11 @@ impl RadcastProjectSettings {
             enhancement_quality: request.enhancement_quality,
             cleanup_enabled: request.cleanup_enabled,
             max_silence_seconds: request.max_silence_seconds,
+            silence_shortening_enabled: request.silence_shortening_enabled,
+            silence_minimum_seconds: request.silence_minimum_seconds,
+            silence_threshold_db: request.silence_threshold_db,
+            silence_keep_percent: request.silence_keep_percent,
+            target_duration_seconds: request.target_duration_seconds,
             remove_filler_words: request.remove_filler_words,
             filler_removal_mode: request.filler_removal_mode,
             trim_ranges_by_source_id: HashMap::new(),
@@ -204,6 +329,10 @@ pub struct RadcastAudioOutput {
     pub duration_seconds: f64,
     pub output_format: AudioOutputFormat,
     pub cleanup_enabled: bool,
+    #[serde(default)]
+    pub studio_qa_path: Option<String>,
+    #[serde(default)]
+    pub studio_qa_warnings: Vec<String>,
     pub clip_start_seconds: Option<f64>,
     pub clip_end_seconds: Option<f64>,
     #[serde(default)]
@@ -306,6 +435,8 @@ pub enum RadcastStorageError {
     },
     #[error("saved audio source was not found: {0}")]
     MissingSource(String),
+    #[error("invalid RADcast request: {0}")]
+    InvalidRequest(String),
     #[error("failed to access RADcast project storage")]
     Io(#[from] std::io::Error),
     #[error("failed to read RADcast project manifest")]
@@ -342,6 +473,55 @@ pub(crate) fn list_audio(
         outputs: manifest.outputs,
         settings: manifest.settings,
     })
+}
+
+pub(crate) fn analyze_audio_silence(
+    data_dir: &Path,
+    project_id: radsuite_core::ProjectId,
+    request: AnalyzeRadcastSilenceRequest,
+    processor: AudioProcessor,
+) -> Result<RadcastSilenceAnalysis, RadcastStorageError> {
+    if !request.keep_percent.is_finite()
+        || !(0.0..=100.0).contains(&request.keep_percent)
+        || request
+            .target_duration_seconds
+            .is_some_and(|target| !target.is_finite() || target <= 0.0)
+    {
+        return Err(RadcastStorageError::InvalidRequest(
+            "invalid silence retention or target duration".to_string(),
+        ));
+    }
+    let manifest = load_manifest(data_dir, project_id)?;
+    let source = manifest
+        .sources
+        .iter()
+        .find(|source| source.id == request.source_id)
+        .ok_or_else(|| RadcastStorageError::MissingSource(request.source_id.clone()))?;
+    let start = request.clip_start_seconds.unwrap_or(0.0);
+    let end = request.clip_end_seconds.unwrap_or(source.duration_seconds);
+    if !start.is_finite()
+        || !end.is_finite()
+        || start < 0.0
+        || end <= start
+        || end > source.duration_seconds
+    {
+        return Err(RadcastStorageError::InvalidRequest(
+            "invalid clip range".to_string(),
+        ));
+    }
+    let detected = processor.detect_silences(
+        Path::new(&source.path),
+        request.threshold_db,
+        request.minimum_seconds,
+    )?;
+    Ok(silence_plan(
+        &detected,
+        start,
+        end,
+        request.keep_percent,
+        request.target_duration_seconds,
+    )
+    .1)
 }
 
 pub(crate) fn delete_audio(
@@ -561,6 +741,17 @@ where
     F: FnMut(RadcastProcessingProgress),
     C: FnMut() -> bool,
 {
+    if request.silence_shortening_enabled
+        && (!request.silence_keep_percent.is_finite()
+            || !(0.0..=100.0).contains(&request.silence_keep_percent)
+            || request
+                .target_duration_seconds
+                .is_some_and(|target| !target.is_finite() || target <= 0.0))
+    {
+        return Err(RadcastStorageError::InvalidRequest(
+            "invalid silence retention or target duration".to_string(),
+        ));
+    }
     if is_cancelled() {
         return Err(RadcastStorageError::Cancelled);
     }
@@ -632,10 +823,40 @@ where
     if is_cancelled() {
         return Err(RadcastStorageError::Cancelled);
     }
-    let removal_intervals = cleanup_plan
+    let mut removal_intervals = cleanup_plan
         .as_ref()
         .map(|plan| plan.removal_intervals.clone())
         .unwrap_or_default();
+    if request.silence_shortening_enabled {
+        let start = request.clip_start_seconds.unwrap_or(0.0);
+        let end = request.clip_end_seconds.unwrap_or(source.duration_seconds);
+        let detected = processor.detect_silences(
+            &source_path,
+            request.silence_threshold_db,
+            request.silence_minimum_seconds,
+        )?;
+        let (silence_intervals, _) = silence_plan(
+            &detected,
+            start,
+            end,
+            request.silence_keep_percent,
+            request.target_duration_seconds,
+        );
+        removal_intervals.extend(silence_intervals);
+        removal_intervals.sort_by(|a, b| a.start_seconds.total_cmp(&b.start_seconds));
+        let mut merged: Vec<AudioTimeInterval> = Vec::new();
+        for interval in removal_intervals.drain(..) {
+            if let Some(previous) = merged
+                .last_mut()
+                .filter(|p| interval.start_seconds <= p.end_seconds)
+            {
+                previous.end_seconds = previous.end_seconds.max(interval.end_seconds);
+            } else {
+                merged.push(interval);
+            }
+        }
+        removal_intervals = merged;
+    }
     let removed_pause_count = cleanup_plan
         .as_ref()
         .map(|plan| plan.removed_pause_count)
@@ -660,26 +881,39 @@ where
             | EnhancementModel::StudioV18Natural
             | EnhancementModel::StudioV18NaturalPlus
             | EnhancementModel::StudioV18NaturalDoublePlus
+            | EnhancementModel::StudioV1
+            | EnhancementModel::StudioTreble
             | EnhancementModel::None => None,
         };
-        if let Err(error) = processor.process_with_additional_filter(
-            AudioProcessingRequest {
-                input_path: source_path.clone(),
-                output_path: prepared_path.clone(),
-                output_format: AudioOutputFormat::Wav,
-                clip_start_seconds: request.clip_start_seconds,
-                clip_end_seconds: request.clip_end_seconds,
-                max_silence_seconds: None,
-                remove_intervals: Vec::new(),
-                cleanup_enabled: false,
-            },
-            preparation_filter,
-        ) {
-            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+        let preparation_request = AudioProcessingRequest {
+            input_path: source_path.clone(),
+            output_path: prepared_path.clone(),
+            output_format: AudioOutputFormat::Wav,
+            clip_start_seconds: request.clip_start_seconds,
+            clip_end_seconds: request.clip_end_seconds,
+            max_silence_seconds: None,
+            remove_intervals: Vec::new(),
+            cleanup_enabled: false,
+        };
+        let preparation = if request.enhancement_model.is_guarded_studio() {
+            processor.process_studio_with_additional_filter(preparation_request, None)
+        } else {
+            processor.process_with_additional_filter(preparation_request, preparation_filter)
+        };
+        if let Err(error) = preparation {
+            cleanup_temporary_paths(&[
+                prepared_path.clone(),
+                enhanced_path.clone(),
+                enhanced_path.with_extension("qa.json"),
+            ]);
             return Err(error.into());
         }
         if is_cancelled() {
-            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+            cleanup_temporary_paths(&[
+                prepared_path.clone(),
+                enhanced_path.clone(),
+                enhanced_path.with_extension("qa.json"),
+            ]);
             return Err(RadcastStorageError::Cancelled);
         }
         report_progress(RadcastProcessingProgress {
@@ -706,12 +940,23 @@ where
             },
         );
         if let Err(error) = enhancement_result {
-            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+            cleanup_temporary_paths(&[
+                prepared_path.clone(),
+                enhanced_path.clone(),
+                enhanced_path.with_extension("qa.json"),
+            ]);
             return Err(error.into());
         }
         if is_cancelled() {
-            cleanup_temporary_paths(&[prepared_path, enhanced_path]);
+            cleanup_temporary_paths(&[
+                prepared_path.clone(),
+                enhanced_path.clone(),
+                enhanced_path.with_extension("qa.json"),
+            ]);
             return Err(RadcastStorageError::Cancelled);
+        }
+        if request.enhancement_model.is_guarded_studio() {
+            temporary_paths.push(enhanced_path.with_extension("qa.json"));
         }
         temporary_paths.extend([prepared_path, enhanced_path.clone()]);
         enhanced_path
@@ -740,6 +985,7 @@ where
             }
         };
     let additional_filter = match request.enhancement_model {
+        EnhancementModel::StudioV1 | EnhancementModel::StudioTreble => None,
         EnhancementModel::Resemble | EnhancementModel::DeepFilterNet => {
             Some(RADCAST_STANDARD_POSTFILTER)
         }
@@ -768,19 +1014,28 @@ where
     };
     let cleanup_enabled =
         effective_cleanup_enabled(request.enhancement_model, request.cleanup_enabled);
-    let result = match processor.process_with_additional_filter(
-        AudioProcessingRequest {
-            input_path: processing_input_path,
-            output_path: output_path.clone(),
-            output_format: request.output_format,
-            clip_start_seconds,
-            clip_end_seconds,
-            max_silence_seconds: None,
-            remove_intervals: removal_intervals,
-            cleanup_enabled,
-        },
-        final_filter.as_deref(),
-    ) {
+    let final_request = AudioProcessingRequest {
+        input_path: processing_input_path,
+        output_path: output_path.clone(),
+        output_format: request.output_format,
+        clip_start_seconds,
+        clip_end_seconds,
+        max_silence_seconds: None,
+        remove_intervals: removal_intervals,
+        cleanup_enabled,
+    };
+    let timeline_edited = !final_request.remove_intervals.is_empty();
+    let removed_seconds = final_request
+        .remove_intervals
+        .iter()
+        .map(|interval| interval.end_seconds - interval.start_seconds)
+        .sum();
+    let rendering = if request.enhancement_model.is_guarded_studio() {
+        processor.process_studio_with_additional_filter(final_request, final_filter.as_deref())
+    } else {
+        processor.process_with_additional_filter(final_request, final_filter.as_deref())
+    };
+    let result = match rendering {
         Ok(result) => result,
         Err(error) => {
             cleanup_temporary_paths(&temporary_paths);
@@ -789,9 +1044,83 @@ where
     };
     if is_cancelled() {
         let _ = fs::remove_file(&output_path);
+        let _ = fs::remove_file(output_path.with_extension("qa.json"));
         cleanup_temporary_paths(&temporary_paths);
         return Err(RadcastStorageError::Cancelled);
     }
+    let mut studio_qa_warnings = Vec::new();
+    let retained_qa = (|| -> Result<Option<String>, RadcastStorageError> {
+        let path = if request.enhancement_model.is_guarded_studio() {
+            let source = temporary_paths
+                .iter()
+                .find(|path| path.to_string_lossy().ends_with(".qa.json"));
+            match source {
+                Some(source) => {
+                    let prepared = temporary_paths
+                        .iter()
+                        .find(|path| path.to_string_lossy().ends_with("-prepared.wav"))
+                        .expect("Studio preparation recorded");
+                    if let Err(error) = enhancement_processor.verify_guarded_studio_export(
+                        request.enhancement_model,
+                        prepared,
+                        &output_path,
+                        source,
+                        &source_path,
+                        timeline_edited,
+                        removed_seconds,
+                    ) {
+                        let _ = fs::remove_file(&output_path);
+                        let _ = fs::remove_file(output_path.with_extension("qa.json"));
+                        cleanup_temporary_paths(&temporary_paths);
+                        return Err(error.into());
+                    }
+                    let report: serde_json::Value =
+                        serde_json::from_slice(&fs::read(source).map_err(|error| {
+                            RadcastStorageError::InvalidRequest(error.to_string())
+                        })?)
+                        .map_err(|error| RadcastStorageError::InvalidRequest(error.to_string()))?;
+                    if let Some(warnings) = report["warnings"].as_array() {
+                        studio_qa_warnings = warnings
+                            .iter()
+                            .map(|warning| {
+                                format!(
+                                    "{}: {}",
+                                    warning["code"].as_str().unwrap_or("warning"),
+                                    warning["detail"]
+                                        .as_str()
+                                        .unwrap_or("Review Studio QA report")
+                                )
+                            })
+                            .collect();
+                    }
+                    let qa_path = output_path.with_extension("qa.json");
+                    fs::copy(source, &qa_path).map_err(|error| {
+                        RadcastStorageError::InvalidRequest(format!(
+                            "Could not retain Studio QA: {error}"
+                        ))
+                    })?;
+                    Some(qa_path.to_string_lossy().into_owned())
+                }
+                None => {
+                    return Err(RadcastStorageError::InvalidRequest(
+                        "Studio QA report missing".to_string(),
+                    ));
+                }
+            }
+        } else {
+            None
+        };
+        Ok(path)
+    })();
+    let studio_qa_path = match retained_qa {
+        Ok(path) => path,
+        Err(error) => {
+            let _ = fs::remove_file(&output_path);
+            let _ = fs::remove_file(output_path.with_extension("qa.json"));
+            cleanup_temporary_paths(&temporary_paths);
+            return Err(error);
+        }
+    };
     cleanup_temporary_paths(&temporary_paths);
 
     let (caption_path, caption_format, caption_segment_count, caption_quality) =
@@ -822,6 +1151,7 @@ where
                 ),
                 Err(error) => {
                     let _ = fs::remove_file(&output_path);
+                    let _ = fs::remove_file(output_path.with_extension("qa.json"));
                     let _ = fs::remove_file(path);
                     cleanup_temporary_paths(&temporary_paths);
                     return Err(error.into());
@@ -832,6 +1162,7 @@ where
         };
     if is_cancelled() {
         let _ = fs::remove_file(&output_path);
+        let _ = fs::remove_file(output_path.with_extension("qa.json"));
         if let Some(caption_path) = caption_path.as_deref() {
             let _ = fs::remove_file(caption_path);
         }
@@ -854,6 +1185,8 @@ where
         duration_seconds: result.duration_seconds,
         output_format: result.output_format,
         cleanup_enabled,
+        studio_qa_path,
+        studio_qa_warnings,
         clip_start_seconds: request.clip_start_seconds,
         clip_end_seconds: request.clip_end_seconds,
         max_silence_seconds: request.max_silence_seconds,
@@ -883,6 +1216,9 @@ where
     if let Err(error) = write_manifest(data_dir, project_id, &manifest) {
         let _ = fs::remove_file(output_path);
         cleanup_temporary_paths(&temporary_paths);
+        if let Some(qa_path) = output.studio_qa_path.as_deref() {
+            let _ = fs::remove_file(qa_path);
+        }
         if let Some(caption_path) = output.caption_path.as_deref() {
             let _ = fs::remove_file(caption_path);
         }
@@ -892,6 +1228,46 @@ where
         return Err(error);
     }
     Ok(output)
+}
+
+#[cfg(test)]
+mod silence_plan_tests {
+    use super::*;
+
+    #[test]
+    fn target_duration_scales_silence_reduction_and_reports_minimum() {
+        let detected = vec![
+            DetectedSilence {
+                start_seconds: 0.0,
+                end_seconds: 20.0,
+            },
+            DetectedSilence {
+                start_seconds: 21.0,
+                end_seconds: 29.0,
+            },
+        ];
+        let (intervals, result) = silence_plan(&detected, 0.0, 30.0, 50.0, Some(1.5));
+        let removed: f64 = intervals
+            .iter()
+            .map(|span| span.end_seconds - span.start_seconds)
+            .sum();
+        assert!((result.estimated_duration_seconds - 2.2).abs() < 0.01);
+        assert!((removed - 27.8).abs() < 0.01);
+        assert!(!result.target_reachable);
+        assert!((result.shortest_duration_seconds - 2.2).abs() < 0.01);
+    }
+
+    #[test]
+    fn keep_percentage_is_applied_proportionally_to_qualifying_silence() {
+        let detected = vec![DetectedSilence {
+            start_seconds: 1.0,
+            end_seconds: 21.0,
+        }];
+        let (_, result) = silence_plan(&detected, 0.0, 25.0, 50.0, None);
+        assert_eq!(result.qualifying_silence_count, 1);
+        assert!((result.retained_silence_percent - 50.0).abs() < 0.01);
+        assert!((result.estimated_duration_seconds - 15.0).abs() < 0.01);
+    }
 }
 
 fn cleanup_temporary_paths(paths: &[PathBuf]) {

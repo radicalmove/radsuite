@@ -1,0 +1,221 @@
+[
+  {
+    "speaker": "p232",
+    "condition": "late",
+    "nn_replay_bit_identical": true,
+    "original_wet_proxy_min": -1.0502469181530325,
+    "known_clean_protected_min": -1.0502469181530325,
+    "worst_frames": [
+      {
+        "seconds": 6.72,
+        "delta_db": -1.0502469181530325,
+        "clean_rms": 0.0027405699521381804,
+        "wet_rms": 0.021164677819867656,
+        "expected_model_rms": 0.002770160461158169,
+        "clean_protected": true
+      },
+      {
+        "seconds": 6.74,
+        "delta_db": -0.8855756426411081,
+        "clean_rms": 0.0034767673508873083,
+        "wet_rms": 0.018990939094889307,
+        "expected_model_rms": 0.002509037456189492,
+        "clean_protected": true
+      },
+      {
+        "seconds": 8.66,
+        "delta_db": -0.5834364375726695,
+        "clean_rms": 0.0049650116020959765,
+        "wet_rms": 0.027216472476085402,
+        "expected_model_rms": 0.0011067196590395078,
+        "clean_protected": true
+      },
+      {
+        "seconds": 6.48,
+        "delta_db": -0.4914393030562223,
+        "clean_rms": 0.010014617963041168,
+        "wet_rms": 0.03216372055127222,
+        "expected_model_rms": 0.00442723230012864,
+        "clean_protected": true
+      },
+      {
+        "seconds": 8.64,
+        "delta_db": -0.43543621153231016,
+        "clean_rms": 0.004820757669562414,
+        "wet_rms": 0.03314479493025117,
+        "expected_model_rms": 0.0021968262165811964,
+        "clean_protected": true
+      },
+      {
+        "seconds": 6.46,
+        "delta_db": -0.3136142057430906,
+        "clean_rms": 0.01509508298557906,
+        "wet_rms": 0.029987832389504525,
+        "expected_model_rms": 0.005782241042480684,
+        "clean_protected": true
+      },
+      {
+        "seconds": 4.74,
+        "delta_db": -0.28375985655951463,
+        "clean_rms": 0.002132683488649192,
+        "wet_rms": 0.038355681680020404,
+        "expected_model_rms": 0.005594130210582079,
+        "clean_protected": true
+      },
+      {
+        "seconds": 6.78,
+        "delta_db": -0.2708453066949617,
+        "clean_rms": 0.0016668981626356601,
+        "wet_rms": 0.008657559465585657,
+        "expected_model_rms": 0.0008076998918975282,
+        "clean_protected": true
+      }
+    ]
+  },
+  {
+    "speaker": "p257",
+    "condition": "late",
+    "nn_replay_bit_identical": true,
+    "original_wet_proxy_min": -2.131172174557736,
+    "known_clean_protected_min": -2.131172174557736,
+    "worst_frames": [
+      {
+        "seconds": 2.5,
+        "delta_db": -2.131172174557736,
+        "clean_rms": 0.01163295714153346,
+        "wet_rms": 0.01720913855289335,
+        "expected_model_rms": 0.00266951788453141,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.54,
+        "delta_db": -1.9028369866717267,
+        "clean_rms": 0.03663707211058021,
+        "wet_rms": 0.037376486797879166,
+        "expected_model_rms": 0.0014839392967097229,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.52,
+        "delta_db": -1.238685102108284,
+        "clean_rms": 0.04503769312131527,
+        "wet_rms": 0.04617868726296404,
+        "expected_model_rms": 0.00236426256753493,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.48,
+        "delta_db": -1.07485081467608,
+        "clean_rms": 0.006905803962196567,
+        "wet_rms": 0.01378686293586558,
+        "expected_model_rms": 0.0024122296662578272,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.56,
+        "delta_db": -0.9265682459960536,
+        "clean_rms": 0.0140861197729209,
+        "wet_rms": 0.016881201994901823,
+        "expected_model_rms": 0.0016959738601781296,
+        "clean_protected": true
+      },
+      {
+        "seconds": 6.66,
+        "delta_db": -0.3672146712629376,
+        "clean_rms": 0.017003816777136024,
+        "wet_rms": 0.028244911119555852,
+        "expected_model_rms": 0.003714522755976879,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.58,
+        "delta_db": -0.30049229655247645,
+        "clean_rms": 0.012177852247912235,
+        "wet_rms": 0.0158578337700385,
+        "expected_model_rms": 0.001750670652464432,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.6,
+        "delta_db": -0.24848342129259351,
+        "clean_rms": 0.004947664216256165,
+        "wet_rms": 0.012756112580297496,
+        "expected_model_rms": 0.0012444498281467323,
+        "clean_protected": true
+      }
+    ]
+  },
+  {
+    "speaker": "p257",
+    "condition": "composite",
+    "nn_replay_bit_identical": true,
+    "original_wet_proxy_min": -2.0886747598239945,
+    "known_clean_protected_min": -2.0886747598239945,
+    "worst_frames": [
+      {
+        "seconds": 2.5,
+        "delta_db": -2.0886747598239945,
+        "clean_rms": 0.01163295714153346,
+        "wet_rms": 0.017242899126674063,
+        "expected_model_rms": 0.0017306436900137482,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.52,
+        "delta_db": -1.8177868726140947,
+        "clean_rms": 0.04503769312131527,
+        "wet_rms": 0.04617819148516111,
+        "expected_model_rms": 0.0034862837283278726,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.54,
+        "delta_db": -1.300175779864434,
+        "clean_rms": 0.03663707211058021,
+        "wet_rms": 0.03904625684037268,
+        "expected_model_rms": 0.007977879540769341,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.56,
+        "delta_db": -1.049685038859858,
+        "clean_rms": 0.0140861197729209,
+        "wet_rms": 0.01894554388759629,
+        "expected_model_rms": 0.0026295592737815587,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.48,
+        "delta_db": -0.9205418914049707,
+        "clean_rms": 0.006905803962196567,
+        "wet_rms": 0.013545353182064889,
+        "expected_model_rms": 0.0014075586531521733,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.6,
+        "delta_db": -0.21452302181894028,
+        "clean_rms": 0.004947664216256165,
+        "wet_rms": 0.01264687678012588,
+        "expected_model_rms": 0.0009337376007135367,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.58,
+        "delta_db": -0.19823317658091355,
+        "clean_rms": 0.012177852247912235,
+        "wet_rms": 0.01704721767820448,
+        "expected_model_rms": 0.0016855735593882405,
+        "clean_protected": true
+      },
+      {
+        "seconds": 2.1,
+        "delta_db": -0.13713567155327808,
+        "clean_rms": 0.05155519440831204,
+        "wet_rms": 0.05466031320457133,
+        "expected_model_rms": 0.009647909646898163,
+        "clean_protected": true
+      }
+    ]
+  }
+]

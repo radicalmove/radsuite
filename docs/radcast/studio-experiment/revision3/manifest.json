@@ -1,0 +1,70 @@
+{
+  "original": {
+    "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+    "sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627"
+  },
+  "reference": {
+    "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav",
+    "sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4"
+  },
+  "studio_r2_wpe65": {
+    "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision2/CRJU160_studio_r2_wpe65_level8_presence2.wav",
+    "sha256": "f6c8eb34fa24b4dc7a36df04dc8430177ec47d20eb708301d076a6a627eebdd1"
+  },
+  "r2_config": {
+    "preset_id": "studio_v1",
+    "revision": "r2",
+    "highpass_hz": 45,
+    "attenuation_limit_db": 18,
+    "dry_low_band": 0.126,
+    "dry_high_band": 0.75,
+    "blend_transition_hz": [
+      3500,
+      7000
+    ],
+    "pause_max_attenuation_db": 6,
+    "compression_ratio": 1.15,
+    "compression_threshold": 0.18,
+    "target_lufs": -20.75,
+    "true_peak_target_dbfs": -1.5,
+    "eq_boost_db": 2,
+    "deess_max_db": 0,
+    "leveling_max_gain_db": 8,
+    "leveling_max_cut_db": 8,
+    "wpe": {
+      "chunk_seconds": 12,
+      "overlap_seconds": 2,
+      "fft_size": 1024,
+      "hop_size": 256,
+      "taps": 10,
+      "delay": 4,
+      "iterations": 2,
+      "psd_context": 1,
+      "strength": 0.65,
+      "seconds": 2.6634911670116708
+    },
+    "leveling": {
+      "target_speech_rms_dbfs": -26.57450769583837,
+      "maximum_gain_db": 7.999999999999996,
+      "minimum_gain_db": -7.999999999999996,
+      "gain_span_db": 15.999999999999991,
+      "eligible_frames": 4834,
+      "lookahead_seconds": 1,
+      "window_seconds": 2
+    },
+    "presence": {
+      "gain_db": 2.0,
+      "maximum_gain_db": 2,
+      "center_hz": 2400,
+      "q": 0.8,
+      "target_presence_to_mid_db": -11
+    },
+    "tail_reduction": 0,
+    "tail_power_floor": null
+  },
+  "baseline_code_hashes": {
+    "tools/radcast/studio.py": "b80163c93e3a29e54eed32dfe8902b91288299e4797f51a9e4d0af85ac31726f",
+    "tools/radcast/speech_cleanup.py": "d753d59e0a23da150cdce1d73276e966955b33b31dac9b337a7632105a82b95d",
+    "tools/radcast/analysis.py": "621330f679dc16c766b2b27b0120e0920fab99157e350211d718c70db97f8f08"
+  }
+}

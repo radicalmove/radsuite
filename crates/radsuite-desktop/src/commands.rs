@@ -37,10 +37,32 @@ use crate::{
 };
 
 pub use crate::radcast::{
-    DeleteRadcastAudioRequest, ImportRadcastAudioLinkRequest, ImportRadcastAudioRequest,
-    ListRadcastAudioRequest, ProcessRadcastAudioRequest, RadcastAudioListing, RadcastAudioOutput,
-    RadcastAudioSource, RadcastProcessingPhase, RadcastProjectSettings, RadcastStorageError,
+    AnalyzeRadcastSilenceRequest, DeleteRadcastAudioRequest, ImportRadcastAudioLinkRequest,
+    ImportRadcastAudioRequest, ListRadcastAudioRequest, ProcessRadcastAudioRequest,
+    RadcastAudioListing, RadcastAudioOutput, RadcastAudioSource, RadcastProcessingPhase,
+    RadcastProjectSettings, RadcastSilenceAnalysis, RadcastStorageError,
 };
+
+pub async fn analyze_radcast_silence(
+    state: &DesktopState,
+    request: AnalyzeRadcastSilenceRequest,
+) -> Result<RadcastSilenceAnalysis, String> {
+    let project = load_requested_or_local_radcite_project(state, request.project_id)
+        .await
+        .map_err(|error| error.to_string())?;
+    let data_dir = state.paths.data_dir.clone();
+    tokio::task::spawn_blocking(move || {
+        crate::radcast::analyze_audio_silence(
+            &data_dir,
+            project.id,
+            request,
+            AudioProcessor::default(),
+        )
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
+}
 pub use crate::radt_ts::{
     ListRadtTsOutputsRequest, RadtTsCapabilityStatus, RadtTsJobStatus, RadtTsOutputListing,
     StartRadtTsSynthesisRequest,
@@ -131,7 +153,19 @@ pub fn get_radcast_capabilities_with_processors(
         .into_iter()
         .map(|model| {
             let available = enhancement_processor.is_model_available(model);
-            let detail = if available {
+            let detail = if model == EnhancementModel::StudioTreble {
+                if available {
+                    "Ready locally. Reduces room sound and protects quiet speech; review the completed version for natural articulation.".to_string()
+                } else {
+                    "Natural voice needs the local RADcast Python environment, verified Treble model cache, and FFmpeg. No model downloads occur during processing.".to_string()
+                }
+            } else if model == EnhancementModel::StudioV1 {
+                if available {
+                    "Experimental opt-in: cached DeepFilterNet3 and local dependencies ready. Listening approval required before default promotion.".to_string()
+                } else {
+                    "Studio requires the local RADcast Python environment, DeepFilterNet3 cached weights, and FFmpeg. No model is downloaded during processing. Existing modes remain available.".to_string()
+                }
+            } else if available {
                 if model == EnhancementModel::None {
                     "Available without an additional model.".to_string()
                 } else {

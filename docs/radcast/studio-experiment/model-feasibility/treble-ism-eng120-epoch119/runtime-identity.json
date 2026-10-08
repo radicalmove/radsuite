@@ -1,0 +1,202 @@
+{
+  "python_version": "3.11.15 (main, Mar  3 2026, 00:52:57) [Clang 17.0.0 (clang-1700.6.3.2)]",
+  "executable_path": "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119/runtime/bin/python",
+  "resolved_interpreter": "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119/runtime/bin/python",
+  "modules": {
+    "df.enhance": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/enhance.py",
+    "df.deepfilternet3": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternet3.py",
+    "df.multiframe": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/multiframe.py",
+    "libdf": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/libdf/__init__.py",
+    "torch": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/__init__.py",
+    "torch._C": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/_C.cpython-311-darwin.so",
+    "torchaudio": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torchaudio/__init__.py"
+  },
+  "files": [
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/enhance.py",
+      "bytes": 14051,
+      "sha256": "cee68a15ab23a4e788d22eda7927c8d89287b8de3d3e9121d6af819abd77b8de"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/config.py",
+      "bytes": 10763,
+      "sha256": "3e5a1d211a0e2b65e820c874f644607cfd33d273d44e0e595d7714786c448a99"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/sepm.py",
+      "bytes": 17442,
+      "sha256": "a38087b8f47e54c62420051ba6a4565fc12b3aaab803a97fe8124c84921f27a0"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/version.py",
+      "bytes": 884,
+      "sha256": "f864067a2c80dc8aae0970f5a4ef818f6159f192fd4e4002cba28fe78e2bdedb"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/checkpoint.py",
+      "bytes": 7976,
+      "sha256": "04e5776592f47d0ac2b28974d51ec9c825ca4dabbf9f0db490d46cf4f6436da2"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/evaluation_utils.py",
+      "bytes": 24839,
+      "sha256": "e3636665498cd59618a9490cf671db93cf2856e3f1a689ada90cedbda5566fdc"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/lr.py",
+      "bytes": 1920,
+      "sha256": "24bac0cdeee571ae470877a891191f41960ec2389d12b19d66055bbda19116d1"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/multiframe.py",
+      "bytes": 24440,
+      "sha256": "356bdbb0d3bd366f531af1c32d4d4c5e6feb8b2a23a804657f2ab8d119f75460"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternetmf.py",
+      "bytes": 15869,
+      "sha256": "f6f907d7b27d948596978bd37e52cfc17cd1529619484ef5afab834eab0da841"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/io.py",
+      "bytes": 4105,
+      "sha256": "8daccc65404cc18c4a84996ed97a6ddaa0e51555ef1c67c4b5f9d435ba70f145"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/stoi.py",
+      "bytes": 9474,
+      "sha256": "31b386be94b4ae8f3e4fd746737be1e5464758aa07c023494fb39382f83bf99f"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/__init__.py",
+      "bytes": 171,
+      "sha256": "2b79671703e0b5ae07f2d170b7e7738571de0ed914267ac79325ca619c4c52b0"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternet.py",
+      "bytes": 11383,
+      "sha256": "7650f37f0391558e6ad5c9850aaf20b2495f5e239a800553b7a8365b94ab859b"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/logger.py",
+      "bytes": 7192,
+      "sha256": "b39ff6e6cc8bfd5082bd480574298952d9a24051ae0e2d2761bdcdd9c8ee5994"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/visualization.py",
+      "bytes": 3566,
+      "sha256": "492c4766780f23950cc64ba3b6928dc8b047a70296b6c6163c1bba4dd65b2a95"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/model.py",
+      "bytes": 779,
+      "sha256": "1e9e2436a89fc65a6dd76c2823afd5bd37cc849fd1fd63740faef94955d85eca"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/loss.py",
+      "bytes": 34301,
+      "sha256": "29d3d007c91b949e4cafafc2d70d26d827f081f157ea239cca88d3d7f05c2b5f"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/utils.py",
+      "bytes": 7430,
+      "sha256": "19c39c7f3277ab13cc7f6755a4138ac4b0f226216e3c48201b8ec52aec21f9c4"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/train.py",
+      "bytes": 23681,
+      "sha256": "c9da4951cdcabea0263768555c1d2b9a836a1525fc19eefc5fc0a2bd144e86ff"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/modules.py",
+      "bytes": 36996,
+      "sha256": "7a23659eec71db01cc7f16ff97c2c1afcbf4a2493fc27979c7e5a2b311dd1f57"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternet2.py",
+      "bytes": 19236,
+      "sha256": "c9f3ad58906981e37f23f8d0b26677615d7ae3fec7768ab184b661d514874559"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternet3.py",
+      "bytes": 17519,
+      "sha256": "e4011a92b180bcd26c9f5744b7c244617a2c08db3bdf39a79155a0277ede0805"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/libdf/__init__.py",
+      "bytes": 103,
+      "sha256": "d59f8e4f79f04c1ec262b92d3383c740226b4ef662562c18955a4864fbb5ffd9"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/libdf/libdf.cpython-311-darwin.so",
+      "bytes": 771408,
+      "sha256": "925a939c94ba270a217d7b8330b3bbe9b29dac65b633653cd93fce7966c128f6"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/__init__.py",
+      "bytes": 71411,
+      "sha256": "7261130fcc9dae49bb38843604ae2d0cab8d6b7277eb57b5dbc1559e35e34be1"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch_python.dylib",
+      "bytes": 23140728,
+      "sha256": "c3d3e019df646bfaf549b92802dffd7399b9fb42acedb970bbaad95b89d4c25a"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch.dylib",
+      "bytes": 16720,
+      "sha256": "b611ad478b014968ed91c4d188277e711d5b21d0e3ed3fc2e2e105bcc7d8d587"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch_global_deps.dylib",
+      "bytes": 16728,
+      "sha256": "3d9edd848cf76e3be661b2e63b50dd3a89b134b006963184e04384717c9078da"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch_cpu.dylib",
+      "bytes": 177352016,
+      "sha256": "798eec12799c0afda777374c88a322db6236a3e6f55bc63e5eb95f3c027810af"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libc10.dylib",
+      "bytes": 729088,
+      "sha256": "6f42927f8289bafb7b450d03d1dc07cc12afdea5509f4f58945f9e39e40bbc37"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libshm.dylib",
+      "bytes": 76416,
+      "sha256": "91ebea05c1b886da94fa8be630375d59bf5c3da336928321f0a67868334e6b9b"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/_C.cpython-311-darwin.so",
+      "bytes": 49941,
+      "sha256": "b4d3a46f17033772e452a3a7c4e8fe4a684b41ef035bc73bd6911b12eb5a3171"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torchaudio/__init__.py",
+      "bytes": 1117,
+      "sha256": "24da967918edec6f406e4a87fb3aa0b49e35b416ee297c73605c1247a041c116"
+    },
+    {
+      "path": "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119/runtime/bin/python",
+      "bytes": 52448,
+      "sha256": "831807be3d255aae0708810462ce0cde2467235f7daaa86e93d0ddc58b1a4101"
+    }
+  ],
+  "versions": {
+    "torch": "2.1.1",
+    "torchaudio": "2.1.1",
+    "deepfilternet": "0.5.6",
+    "deepfilterlib": "0.5.6",
+    "numpy": "1.26.2",
+    "scipy": "1.11.4",
+    "soundfile": "0.12.1"
+  },
+  "offline_verification": {
+    "network_connection_succeeded": false,
+    "errno": 1,
+    "error": "[Errno 1] Operation not permitted"
+  },
+  "sandbox_profile_sha256": "cda169c63cd3a06a579c84c9d08e07d883b5f14e2e8ac20a0e4b213b790c5117",
+  "scope_note": "Resolved inference Python sources, interpreter and key native libraries hashed; packages referenced through shared cache, not separately reinstalled or copied. This is not a complete wheel/archive hash."
+}

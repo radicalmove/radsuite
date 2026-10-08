@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "config": {
+    "preset_id": "studio_v1",
+    "highpass_hz": 45,
+    "attenuation_limit_db": 18,
+    "dry_low_band": 0.126,
+    "dry_high_band": 0.75,
+    "blend_transition_hz": [
+      3500,
+      7000
+    ],
+    "pause_max_attenuation_db": 12,
+    "compression_ratio": 1.15,
+    "compression_threshold": 0.18,
+    "target_lufs": -20.75,
+    "true_peak_target_dbfs": -1.5,
+    "eq_boost_db": 0,
+    "deess_max_db": 0,
+    "tail_reduction": 0,
+    "tail_power_floor": null
+  },
+  "stages": [
+    "decode_float_48k",
+    "highpass_45hz",
+    "deepfilternet3_delay_compensated",
+    "upper_band_source_preservation",
+    "guarded_pause_attenuation",
+    "light_compression",
+    "final_linear_loudness_true_peak"
+  ],
+  "tail_variant": false,
+  "input": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+  "output": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/CRJU160_studio_v1_df18_air75.wav",
+  "input_sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+  "output_sha256": "e76418a638fd1f5501c62d9659933d89faff2e558c3a194c09075f293b5e4257",
+  "sample_rate": 48000,
+  "working_format": "float32 PCM",
+  "versions": {
+    "numpy": "1.26.2",
+    "scipy": "1.11.4",
+    "soundfile": "0.12.1",
+    "deepfilternet": "0.5.6",
+    "deepfilterlib": "0.5.6",
+    "torch": "2.1.1",
+    "torchaudio": "2.1.1"
+  },
+  "model_path": "/Users/rcd58/Library/Caches/DeepFilterNet/DeepFilterNet3",
+  "model_files": {
+    "checkpoints/model_120.ckpt.best": "23b92884f63ccf54bb026014604625ab231657b6480df65db4095c4c171e6003",
+    "config.ini": "415eb925d44990d938fb739f514aa3662c1ec0ea836cff044fa1291b82cb4290"
+  },
+  "inference_seconds": 6.590356583008543,
+  "real_time_factor": 0.04592903047605089,
+  "fallback": false,
+  "warnings": [],
+  "watchdog": [],
+  "rejected_path_watchdog": [],
+  "metrics": {
+    "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/CRJU160_studio_v1_df18_air75.wav",
+    "sha256": "e76418a638fd1f5501c62d9659933d89faff2e558c3a194c09075f293b5e4257",
+    "sample_rate": 48000,
+    "channels": 1,
+    "codec": "pcm_f32le",
+    "bitrate": 1536000,
+    "pcm_sha256": "c1a57b91ad8e8b9a77d11f8dcd5ef8f84e4226b28c013af03220380c45767645",
+    "duration_seconds": 143.49,
+    "rms_dbfs": -23.26692993875866,
+    "sample_peak_dbfs": -2.3000131272259465,
+    "clipped_samples": 0,
+    "speech_rms_dbfs": -19.397988865709564,
+    "pause_rms_dbfs": -70.44946856600345,
+    "speech_pause_contrast_db": 51.05147970029388,
+    "speech_frames": 2940,
+    "pause_frames": 2603,
+    "mask_method": "20 ms source-energy proxy; 180 ms guarded pauses; not semantic VAD",
+    "bands_db_relative": {
+      "sub": -28.57616064189577,
+      "body": -4.737430635477796,
+      "mid": -1.9932595075029989,
+      "presence": -16.56770551547885,
+      "sibilants": -20.977405137132102,
+      "air": -31.55566264337034
+    },
+    "rolloff_95_hz": 1078.125,
+    "hf_bands_db_relative": {
+      "6000-7000": -27.79573294724248,
+      "7000-8000": -31.737177717779087,
+      "8000-9000": -34.699801731794274,
+      "9000-10000": -37.16885111723557,
+      "10000-12000": -39.22104085915095,
+      "12000-16000": -43.14191566764358
+    },
+    "integrated_lufs": -20.75,
+    "true_peak_dbfs": -2.29,
+    "loudness_range_lu": 19.0,
+    "lag_seconds": 0.0,
+    "waveform_correlation": 0.9747067294014586,
+    "envelope_correlation": 0.9931210666759639,
+    "block_lags_seconds": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "block_lag_spread_seconds": 0.0,
+    "timing_comparable": true,
+    "matched_excerpt": {
+      "source_start_seconds": 10,
+      "output_start_seconds": 10.0,
+      "duration_seconds": 30,
+      "alignment": {
+        "lag_seconds": 0.0,
+        "waveform_correlation": 0.9814606873171658,
+        "envelope_correlation": 0.9924250462020031,
+        "block_lags_seconds": [
+          0.0,
+          0.0
+        ],
+        "block_lag_spread_seconds": 0.0
+      },
+      "source": {
+        "pcm_sha256": "ab74086118dd3e333b860517badae4b290e1be19a435177c16632ccb50b5473e",
+        "duration_seconds": 30.0,
+        "rms_dbfs": -33.41391219573961,
+        "sample_peak_dbfs": -9.676239130954094,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -30.440952046555555,
+        "pause_rms_dbfs": -65.31109008854784,
+        "speech_pause_contrast_db": 34.87013804199229,
+        "speech_frames": 755,
+        "pause_frames": 380,
+        "mask_method": "20 ms source-energy proxy; 180 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -39.30289098646844,
+          "body": -8.148704381114372,
+          "mid": -0.7863273971379269,
+          "presence": -19.625920648207334,
+          "sibilants": -29.105541333754363,
+          "air": -36.74095945032763
+        },
+        "rolloff_95_hz": 960.9375,
+        "hf_bands_db_relative": {
+          "6000-7000": -38.15783705114055,
+          "7000-8000": -38.971025765608196,
+          "8000-9000": -39.374336069169004,
+          "9000-10000": -42.21915430421277,
+          "10000-12000": -45.12438453892186,
+          "12000-16000": -52.53930499098019
+        }
+      },
+      "output": {
+        "pcm_sha256": "3bb7e6a26894eb800c7e2bc0d3f35854831f31ed501df1b6e76c707693e12406",
+        "duration_seconds": 30.0,
+        "rms_dbfs": -35.71702007655213,
+        "sample_peak_dbfs": -11.424530654295165,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -32.737823856671795,
+        "pause_rms_dbfs": -90.21018609252178,
+        "speech_pause_contrast_db": 57.472362235849985,
+        "speech_frames": 755,
+        "pause_frames": 380,
+        "mask_method": "20 ms source-energy proxy; 180 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -42.36931515905498,
+          "body": -8.785945168433361,
+          "mid": -0.6815008829190012,
+          "presence": -19.309176998689086,
+          "sibilants": -29.871216274786434,
+          "air": -37.881427684794474
+        },
+        "rolloff_95_hz": 1031.25,
+        "hf_bands_db_relative": {
+          "6000-7000": -38.96215217978467,
+          "7000-8000": -39.699169404124476,
+          "8000-9000": -40.63406060905291,
+          "9000-10000": -43.33339912749848,
+          "10000-12000": -45.96647014954914,
+          "12000-16000": -53.25013635875284
+        }
+      },
+      "note": "First stable-offset segment only; energy masks do not establish consonant or speaker identity preservation."
+    },
+    "watchdog": []
+  },
+  "source_metrics": {
+    "duration_seconds": 143.49,
+    "rms_dbfs": -20.925309353507657,
+    "sample_peak_dbfs": -1.8268916267864275,
+    "clipped_samples": 0,
+    "speech_rms_dbfs": -17.058337467448045,
+    "pause_rms_dbfs": -54.33650370344384,
+    "speech_pause_contrast_db": 37.2781662359958,
+    "speech_frames": 2940,
+    "pause_frames": 2603,
+    "mask_method": "20 ms source-energy proxy; 180 ms guarded pauses; not semantic VAD",
+    "bands_db_relative": {
+      "sub": -27.548289242057695,
+      "body": -4.735754685816692,
+      "mid": -1.978871466228642,
+      "presence": -16.683257041214695,
+      "sibilants": -22.13317318043057,
+      "air": -32.80063605698845
+    },
+    "rolloff_95_hz": 1031.25,
+    "hf_bands_db_relative": {
+      "6000-7000": -29.10275181562025,
+      "7000-8000": -33.0426491890737,
+      "8000-9000": -35.96267546227186,
+      "9000-10000": -38.36409588378003,
+      "10000-12000": -40.470867472114485,
+      "12000-16000": -44.44845011899908
+    }
+  },
+  "mastering": {
+    "measured_before": {
+      "integrated_lufs": -19.97,
+      "true_peak_dbfs": -1.51,
+      "loudness_range_lu": 19.0
+    },
+    "final_gain_db": -0.7800000000000011
+  },
+  "enhancement_master_metrics": {
+    "duration_seconds": 143.49,
+    "rms_dbfs": -23.26692993875866,
+    "sample_peak_dbfs": -2.3000131272259465,
+    "clipped_samples": 0,
+    "speech_rms_dbfs": -19.397988865709564,
+    "pause_rms_dbfs": -70.44946856600345,
+    "speech_pause_contrast_db": 51.05147970029388,
+    "speech_frames": 2940,
+    "pause_frames": 2603,
+    "mask_method": "20 ms source-energy proxy; 180 ms guarded pauses; not semantic VAD",
+    "bands_db_relative": {
+      "sub": -28.57616064189577,
+      "body": -4.737430635477796,
+      "mid": -1.9932595075029989,
+      "presence": -16.56770551547885,
+      "sibilants": -20.977405137132102,
+      "air": -31.55566264337034
+    },
+    "rolloff_95_hz": 1078.125,
+    "hf_bands_db_relative": {
+      "6000-7000": -27.79573294724248,
+      "7000-8000": -31.737177717779087,
+      "8000-9000": -34.699801731794274,
+      "9000-10000": -37.16885111723557,
+      "10000-12000": -39.22104085915095,
+      "12000-16000": -43.14191566764358
+    },
+    "integrated_lufs": -20.75,
+    "true_peak_dbfs": -2.29,
+    "loudness_range_lu": 19.0,
+    "lag_seconds": 0.0,
+    "waveform_correlation": 0.9747067294014586,
+    "envelope_correlation": 0.9931210666759639,
+    "block_lags_seconds": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "block_lag_spread_seconds": 0.0
+  },
+  "prepared_clip": {
+    "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+    "sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+    "role": "Temporary decoded/trimmed float PCM input; may be removed after export"
+  },
+  "final_export_edited": false,
+  "original_source": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+  "original_source_sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627"
+}

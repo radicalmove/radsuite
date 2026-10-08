@@ -1,0 +1,17 @@
+{
+  "original": {
+    "first_passage_speech_dbfs": -30.440952046555555,
+    "later_passage_speech_dbfs": -13.555609912814283,
+    "passage_level_change_db": 16.885342133741272
+  },
+  "studio_v1": {
+    "first_passage_speech_dbfs": -32.737823856671795,
+    "later_passage_speech_dbfs": -15.671472418335444,
+    "passage_level_change_db": 17.06635143833635
+  },
+  "reference": {
+    "first_passage_speech_dbfs": -23.89241260185422,
+    "later_passage_speech_dbfs": -21.115194772755675,
+    "passage_level_change_db": 2.777217829098543
+  }
+}

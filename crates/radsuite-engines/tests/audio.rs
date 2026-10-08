@@ -2,6 +2,7 @@ use std::{
     fs,
     os::unix::fs::PermissionsExt,
     path::{Path, PathBuf},
+    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -26,6 +27,40 @@ fn audio_processing_rejects_a_clip_that_ends_before_it_starts() {
         error,
         AudioProcessingError::InvalidClipRange { .. }
     ));
+}
+
+#[test]
+fn detects_a_long_silent_audio_interval_with_ffmpeg() {
+    let dir = test_dir("silencedetect");
+    let input = dir.join("silence.wav");
+    let generated = Command::new("ffmpeg")
+        .args([
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "anullsrc=r=16000:cl=mono:d=4",
+            "-y",
+        ])
+        .arg(&input)
+        .status();
+    let Ok(status) = generated else {
+        remove_dir(dir);
+        return;
+    };
+    if !status.success() {
+        remove_dir(dir);
+        return;
+    }
+    let processor = AudioProcessor::from_commands("ffmpeg", "ffprobe");
+    let silences = processor
+        .detect_silences(&input, -40.0, 2.0)
+        .expect("silence detection succeeds");
+    assert_eq!(silences.len(), 1);
+    assert!(silences[0].end_seconds - silences[0].start_seconds >= 3.9);
+    remove_dir(dir);
 }
 
 #[test]

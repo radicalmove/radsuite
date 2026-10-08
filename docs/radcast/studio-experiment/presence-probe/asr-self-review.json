@@ -1,0 +1,91 @@
+{
+  "lexical_comparison": [
+    {
+      "kind": "delete",
+      "previous": "so some more criminal justice terminology",
+      "presence": "",
+      "context": "so some more criminal justice terminology so this is a refresh from"
+    },
+    {
+      "kind": "replace",
+      "previous": "cause",
+      "presence": "because",
+      "context": "them in the weeks forward just cause it makes reading anything to do"
+    },
+    {
+      "kind": "insert",
+      "previous": "",
+      "presence": "like",
+      "context": "weeks forward just cause it makes reading anything to do with the"
+    },
+    {
+      "kind": "replace",
+      "previous": "cause",
+      "presence": "because",
+      "context": "criminal law a lot more simple cause if you get some of these"
+    },
+    {
+      "kind": "insert",
+      "previous": "",
+      "presence": "like",
+      "context": "prosecution defendants and then you will read the entire case wrong and"
+    },
+    {
+      "kind": "insert",
+      "previous": "",
+      "presence": "you know",
+      "context": "time so things such as charge so that's a formal declaration of"
+    },
+    {
+      "kind": "insert",
+      "previous": "",
+      "presence": "the",
+      "context": "most commonly the state that is a party that is giving evidence"
+    },
+    {
+      "kind": "replace",
+      "previous": "i've",
+      "presence": "i",
+      "context": "prison or what have you so i've put"
+    }
+  ],
+  "term_counts": {
+    "reading": {
+      "previous": 1,
+      "presence": 1
+    },
+    "criminal": {
+      "previous": 3,
+      "presence": 2
+    },
+    "law": {
+      "previous": 2,
+      "presence": 2
+    },
+    "simple": {
+      "previous": 1,
+      "presence": 1
+    },
+    "charged": {
+      "previous": 4,
+      "presence": 4
+    },
+    "convicted": {
+      "previous": 3,
+      "presence": 3
+    },
+    "prosecution": {
+      "previous": 2,
+      "presence": 2
+    },
+    "defendants": {
+      "previous": 1,
+      "presence": 1
+    },
+    "innocent": {
+      "previous": 1,
+      "presence": 1
+    }
+  },
+  "note": "Recognizer differences only; no verified transcript or human articulation assessment. Extra edits trigger targeted listening, not a WER/quality ranking."
+}

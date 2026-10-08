@@ -1,0 +1,15 @@
+# USES qualification work log
+
+User requested continued closer-microphone alignment on “in the weeks forward”, then corrected omission of USES2. Official code/recipes verified; no provenance-established USES2 checkpoint found in bounded audit. User also confirmed no official checkpoint and required independent card/config provenance. Continue with verified legacyUSES, not labelledUSES2. No native/default change.
+
+12,279,888byte20epoch checkpoint matches publisherSHA. IsolatedPython3.11 runtime with read-only existingpackages; no packageinstall or upgrade; network-denied inference, originalruntimewritesdenied. Original34runtimefiles and4reference audiohashes unchanged. Vendor11class/functionASTs preserved frompinnedESPnet with Apache licence/portattribution. Strict261tensors/3052492elements CPUfloat32.
+
+One-second licensedCSTRsmoke passed exact48k/native769bins/finite48000samples andactualdereverbgroup1;8.701seconds,2.663GBpeakRSS. No Finnegan inference. Naivefullrecord featureallocations can exceed16GB; bounded-intermediateequivalentexecution requiresactualtrainedmulti-segment numericalproof beforecontrols/fulltrial. No externallychunked/crossfaded audio or memoryreset ispermitted.
+
+TDD:6initialprimitivefailures→green; sourcevendor/buildguardtests red→green; float32latecoefficient andleadingzero causality regressions red→green; controls14lighttests and renderer6lighttests pass. Actuallearned preservation remainspending. FirstTWOwholelicensedutterances per speaker lockedbeforecontrols (p232475203samples,p257398282),8USESconditions then4newTreblecomparisons onlyifprereqs pass. Fixed+1dB early/late vsuntreated;early≥currentTreble+1dB bothvoices;late≥Treble−1dB; unchangedcleanwaveformguard. No thresholdrelaxation/resultdependentselection.
+
+Independentcodecrossreview foundrenderer count-schema/baseline/evidence/budget gaps. Newtestsobservedred thenfixedactualinference_counts, pinned dry20reportSHA, passedboundedevidencebinding requirement, exclusive task-level ledger beforefullcleanup. Onefullcandidate afterqualification;0repairs. No heavycontrols yet.
+
+Actual trainednative48k2.2s equivalence completed in separateprocesses: original24.707s/RSS2.602GB; bounded21.401s/RSS2.814GB;105600samples,3segments, group1initializationonce and2reuses. MaximumPCMerror1.04308128e−7;RMS1.42633494e−8, below fixed3e−6/3e−7 bounds. Boundedevidence binds checkpoint/config/vendor/adapter/backend/executionconfig. No Finnegan inference. Controls8-casequalification launched sequentially afterthis proof.
+
+All8 controls finished withoutinferenceerror. Bothspeakers fail+1dB early/lategate; all6roompairedchangesnegative. No4conditionalTreblecalls and noFinneganrender/ledgerclaim. Independentinput/hash/SI-SDR/AST/runtime/referencechecks pass. Fresh106-testsuitefirstfailedoneassumptionaboutabsenceofactualproof; preserveattempt1log, isolatefixturewithcopiedtemporaryartifacts/vendorpath, modelcodeunchanged, freshrepeat106passednoskips24.124s. Rootprototype/setup checkpointforwards3; qualification8; regressionsuitecheckpointforwards2perrun×2. Roundclosedwith0fullrenders, noautomaticrepair.

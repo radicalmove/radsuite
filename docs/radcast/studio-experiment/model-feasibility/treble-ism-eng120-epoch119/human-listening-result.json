@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "exact_user_feedback": "your attempts are better, there is something special about the adobe version though. It somehow creates more presence in the voice, I can't quite put it into words about what that means",
+  "interpretation": "Local attempts are improved, but Adobe retains a preferred sense of voice presence. No specific ranking between new candidate and B, or explicit identity/articulation/integration approval was stated.",
+  "remaining_gap": "presence/proximity/body/word definition; interpretation to guide later design, not a proven mechanism",
+  "production_approval": false,
+  "integration_authorized": false,
+  "promotion_authorized": false,
+  "new_model_or_dsp_render_performed": false
+}

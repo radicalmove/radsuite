@@ -1,0 +1,12 @@
+# Generated listening/rendering evidence remains local; retain JSON hashes,
+# research source, provenance, licences and the approved Treble checkpoint.
+*.wav
+*.mp3
+*.png
+*.pth
+*.bin
+*.zip
+*.npy
+*.npz
+__pycache__/
+*.pyc

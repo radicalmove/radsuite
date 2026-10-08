@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "measurement_scope": "Existing saved clips only; no enhancement or application change",
+  "groups": {
+    "target_phrase": {
+      "Adobe_minus_new_band_share_db": {
+        "sub": 14.147538076445219,
+        "body": 2.319534756239598,
+        "mid": -1.0287337182519507,
+        "presence": 4.430235997839397,
+        "sibilants": 5.034844782581924,
+        "air": -2.1390774087026685
+      },
+      "Adobe_minus_B_band_share_db": {
+        "sub": 15.91408747919277,
+        "body": 2.7040280988846233,
+        "mid": -1.0967114466880612,
+        "presence": 3.7538238824503942,
+        "sibilants": 3.835468984581677,
+        "air": -3.4254644535652545
+      }
+    },
+    "quiet_articulation": {
+      "Adobe_minus_new_band_share_db": {
+        "sub": 14.777063424271319,
+        "body": 1.7949392503198407,
+        "mid": -0.7833954065666215,
+        "presence": 3.969035508309922,
+        "sibilants": 5.4504867841014,
+        "air": -1.8532754040364132
+      },
+      "Adobe_minus_B_band_share_db": {
+        "sub": 15.724393592207633,
+        "body": 2.2007177678564247,
+        "mid": -0.8212530801926562,
+        "presence": 3.255292483868608,
+        "sibilants": 4.705892715548693,
+        "air": -2.892413386437944
+      }
+    },
+    "louder_passage": {
+      "Adobe_minus_new_band_share_db": {
+        "sub": 5.604253364385691,
+        "body": -1.0457508725612543,
+        "mid": 0.3550218067636448,
+        "presence": 1.6195067835697063,
+        "sibilants": 0.6508580913697024,
+        "air": -9.995980918345499
+      },
+      "Adobe_minus_B_band_share_db": {
+        "sub": 4.781426681933294,
+        "body": -1.1574419497126822,
+        "mid": 0.393132252146809,
+        "presence": 2.1795526183420773,
+        "sibilants": 0.5744979974858104,
+        "air": -10.046100361683564
+      }
+    },
+    "phrase_ending_context": {
+      "Adobe_minus_new_band_share_db": {
+        "sub": 12.988147329260833,
+        "body": 6.9794611088474525,
+        "mid": -0.5559854180289314,
+        "presence": 4.9263215211830165,
+        "sibilants": 6.469888912943485,
+        "air": 0.8891608900438897
+      },
+      "Adobe_minus_B_band_share_db": {
+        "sub": 14.998509193726527,
+        "body": 7.442924489562905,
+        "mid": -0.5629403133065174,
+        "presence": 4.862779254968601,
+        "sibilants": 5.137228892246103,
+        "air": -0.8590962670664197
+      }
+    }
+  },
+  "target_matched_loudness": {
+    "B": {
+      "integrated_lufs": -26.4,
+      "true_peak_dbfs": -7.1,
+      "loudness_range_lu": 2.2
+    },
+    "model_dry20": {
+      "integrated_lufs": -26.56,
+      "true_peak_dbfs": -6.78,
+      "loudness_range_lu": 2.4
+    },
+    "Adobe": {
+      "integrated_lufs": -26.52,
+      "true_peak_dbfs": -6.2,
+      "loudness_range_lu": 1.5
+    }
+  },
+  "limitations": [
+    "Energy-share differences are not EQ gains, isolated reverb, speaker identity or a decoded Adobe architecture.",
+    "RMS and LUFS matching do not prove identical subjective loudness.",
+    "The spectral gap varies across passages; no fixed EQ recipe is established.",
+    "Presence/improvement are human feedback; tools do not independently hear these recordings."
+  ]
+}

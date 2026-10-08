@@ -1,0 +1,849 @@
+{
+  "note": "Read-only eligibility diagnosis. No detector change, new controller run or render. Different reference eligibility can include non-speech room signal; semantic identity remains unverified.",
+  "references": {
+    "prepared": {
+      "triggered_windows": [
+        {
+          "start_seconds": 4.0,
+          "relative_gain_db": -21.1201176074669
+        },
+        {
+          "start_seconds": 4.5,
+          "relative_gain_db": -27.80893338461733
+        },
+        {
+          "start_seconds": 67.0,
+          "relative_gain_db": -21.554122845051957
+        },
+        {
+          "start_seconds": 138.0,
+          "relative_gain_db": -22.650256274031165
+        },
+        {
+          "start_seconds": 138.5,
+          "relative_gain_db": -25.57964677329408
+        },
+        {
+          "start_seconds": 139.0,
+          "relative_gain_db": -23.415092697683203
+        },
+        {
+          "start_seconds": 140.0,
+          "relative_gain_db": -24.42133529389566
+        }
+      ],
+      "early_eligible_window_starts": [
+        3.0,
+        3.5
+      ]
+    },
+    "highpassed": {
+      "triggered_windows": [
+        {
+          "start_seconds": 4.0,
+          "relative_gain_db": -21.14337568427134
+        },
+        {
+          "start_seconds": 4.5,
+          "relative_gain_db": -27.836541561671275
+        },
+        {
+          "start_seconds": 67.0,
+          "relative_gain_db": -21.548487098572494
+        },
+        {
+          "start_seconds": 105.5,
+          "relative_gain_db": -43.361084990161984
+        },
+        {
+          "start_seconds": 138.0,
+          "relative_gain_db": -22.988120979545506
+        },
+        {
+          "start_seconds": 138.5,
+          "relative_gain_db": -25.382846843124334
+        },
+        {
+          "start_seconds": 139.0,
+          "relative_gain_db": -23.212182042852064
+        },
+        {
+          "start_seconds": 140.0,
+          "relative_gain_db": -24.440318685798076
+        }
+      ],
+      "early_eligible_window_starts": [
+        3.0,
+        3.5
+      ]
+    },
+    "cleanup": {
+      "triggered_windows": [
+        {
+          "start_seconds": 1.5,
+          "relative_gain_db": -14.322534240402884
+        },
+        {
+          "start_seconds": 2.0,
+          "relative_gain_db": -19.80917152442138
+        },
+        {
+          "start_seconds": 2.5,
+          "relative_gain_db": -21.280539743793625
+        },
+        {
+          "start_seconds": 4.0,
+          "relative_gain_db": -11.548478644186623
+        },
+        {
+          "start_seconds": 4.5,
+          "relative_gain_db": -17.66289477681906
+        },
+        {
+          "start_seconds": 67.0,
+          "relative_gain_db": -11.676495720607921
+        },
+        {
+          "start_seconds": 105.0,
+          "relative_gain_db": -32.4235057323073
+        },
+        {
+          "start_seconds": 105.5,
+          "relative_gain_db": -32.63323074331825
+        },
+        {
+          "start_seconds": 137.5,
+          "relative_gain_db": -12.130734646759027
+        },
+        {
+          "start_seconds": 138.0,
+          "relative_gain_db": -13.394922222753078
+        },
+        {
+          "start_seconds": 138.5,
+          "relative_gain_db": -15.559299683750332
+        },
+        {
+          "start_seconds": 139.0,
+          "relative_gain_db": -13.538405700308843
+        },
+        {
+          "start_seconds": 140.0,
+          "relative_gain_db": -14.81928100546141
+        }
+      ],
+      "early_eligible_window_starts": [
+        1.5,
+        2.0,
+        2.5,
+        3.0,
+        3.5
+      ]
+    },
+    "pause_control": {
+      "triggered_windows": [
+        {
+          "start_seconds": 1.5,
+          "relative_gain_db": -12.71924668991483
+        },
+        {
+          "start_seconds": 2.0,
+          "relative_gain_db": -19.646929323957597
+        },
+        {
+          "start_seconds": 2.5,
+          "relative_gain_db": -21.232303236627818
+        },
+        {
+          "start_seconds": 4.0,
+          "relative_gain_db": -11.548478644186623
+        },
+        {
+          "start_seconds": 4.5,
+          "relative_gain_db": -17.66289477681906
+        },
+        {
+          "start_seconds": 67.0,
+          "relative_gain_db": -11.676495720607921
+        },
+        {
+          "start_seconds": 105.0,
+          "relative_gain_db": -32.4235057323073
+        },
+        {
+          "start_seconds": 105.5,
+          "relative_gain_db": -32.63323074331825
+        },
+        {
+          "start_seconds": 137.5,
+          "relative_gain_db": -12.130734646759027
+        },
+        {
+          "start_seconds": 138.0,
+          "relative_gain_db": -13.394922222753078
+        },
+        {
+          "start_seconds": 138.5,
+          "relative_gain_db": -15.559299683750332
+        },
+        {
+          "start_seconds": 139.0,
+          "relative_gain_db": -13.538405700308843
+        },
+        {
+          "start_seconds": 140.0,
+          "relative_gain_db": -14.81928100546141
+        }
+      ],
+      "early_eligible_window_starts": [
+        1.5,
+        2.0,
+        2.5,
+        3.0,
+        3.5
+      ]
+    },
+    "presence": {
+      "triggered_windows": [
+        {
+          "start_seconds": 2.0,
+          "relative_gain_db": -19.565516582725067
+        },
+        {
+          "start_seconds": 2.5,
+          "relative_gain_db": -21.141663910187965
+        },
+        {
+          "start_seconds": 4.0,
+          "relative_gain_db": -11.45507753193266
+        },
+        {
+          "start_seconds": 4.5,
+          "relative_gain_db": -17.55363092392063
+        },
+        {
+          "start_seconds": 67.0,
+          "relative_gain_db": -11.697001368725772
+        },
+        {
+          "start_seconds": 138.0,
+          "relative_gain_db": -13.352164065280562
+        },
+        {
+          "start_seconds": 138.5,
+          "relative_gain_db": -15.496561158969103
+        },
+        {
+          "start_seconds": 139.0,
+          "relative_gain_db": -13.415125700396922
+        },
+        {
+          "start_seconds": 140.0,
+          "relative_gain_db": -14.927388814700782
+        }
+      ],
+      "early_eligible_window_starts": [
+        2.0,
+        2.5,
+        3.0,
+        3.5
+      ]
+    },
+    "levelled": {
+      "triggered_windows": [
+        {
+          "start_seconds": 2.0,
+          "relative_gain_db": -24.128544761809408
+        },
+        {
+          "start_seconds": 2.5,
+          "relative_gain_db": -25.49927767885379
+        },
+        {
+          "start_seconds": 3.0,
+          "relative_gain_db": -12.226140580869895
+        },
+        {
+          "start_seconds": 3.5,
+          "relative_gain_db": -12.359967783582213
+        },
+        {
+          "start_seconds": 4.0,
+          "relative_gain_db": -19.64697571126245
+        },
+        {
+          "start_seconds": 4.5,
+          "relative_gain_db": -22.024370995834904
+        },
+        {
+          "start_seconds": 5.0,
+          "relative_gain_db": -11.833053096259045
+        },
+        {
+          "start_seconds": 5.5,
+          "relative_gain_db": -11.891344145041703
+        },
+        {
+          "start_seconds": 6.0,
+          "relative_gain_db": -11.99697644194612
+        },
+        {
+          "start_seconds": 6.5,
+          "relative_gain_db": -12.135190226171595
+        },
+        {
+          "start_seconds": 7.0,
+          "relative_gain_db": -12.276522202010174
+        },
+        {
+          "start_seconds": 7.5,
+          "relative_gain_db": -12.132100104326986
+        },
+        {
+          "start_seconds": 8.0,
+          "relative_gain_db": -12.26366233035425
+        },
+        {
+          "start_seconds": 8.5,
+          "relative_gain_db": -12.363283947740973
+        },
+        {
+          "start_seconds": 9.0,
+          "relative_gain_db": -13.461002936404748
+        },
+        {
+          "start_seconds": 9.5,
+          "relative_gain_db": -12.25919028636047
+        },
+        {
+          "start_seconds": 10.0,
+          "relative_gain_db": -11.997030520885273
+        },
+        {
+          "start_seconds": 10.5,
+          "relative_gain_db": -11.92883314584885
+        },
+        {
+          "start_seconds": 11.0,
+          "relative_gain_db": -10.068766868029025
+        },
+        {
+          "start_seconds": 11.5,
+          "relative_gain_db": -10.074148827511536
+        },
+        {
+          "start_seconds": 12.0,
+          "relative_gain_db": -10.630616059856191
+        },
+        {
+          "start_seconds": 17.0,
+          "relative_gain_db": -10.89164885135448
+        },
+        {
+          "start_seconds": 17.5,
+          "relative_gain_db": -12.205810925471367
+        },
+        {
+          "start_seconds": 18.0,
+          "relative_gain_db": -11.263021689546447
+        },
+        {
+          "start_seconds": 18.5,
+          "relative_gain_db": -10.251493449805007
+        },
+        {
+          "start_seconds": 19.0,
+          "relative_gain_db": -10.238594571197929
+        },
+        {
+          "start_seconds": 19.5,
+          "relative_gain_db": -10.66889199780138
+        },
+        {
+          "start_seconds": 20.0,
+          "relative_gain_db": -12.204415649031494
+        },
+        {
+          "start_seconds": 20.5,
+          "relative_gain_db": -12.470148993363448
+        },
+        {
+          "start_seconds": 21.0,
+          "relative_gain_db": -12.14424761342955
+        },
+        {
+          "start_seconds": 21.5,
+          "relative_gain_db": -12.112029194542224
+        },
+        {
+          "start_seconds": 22.0,
+          "relative_gain_db": -11.946284950300072
+        },
+        {
+          "start_seconds": 22.5,
+          "relative_gain_db": -12.473546217849245
+        },
+        {
+          "start_seconds": 23.0,
+          "relative_gain_db": -12.470391882975044
+        },
+        {
+          "start_seconds": 23.5,
+          "relative_gain_db": -12.396656048120244
+        },
+        {
+          "start_seconds": 24.0,
+          "relative_gain_db": -12.3753393606315
+        },
+        {
+          "start_seconds": 24.5,
+          "relative_gain_db": -12.025288479121055
+        },
+        {
+          "start_seconds": 25.0,
+          "relative_gain_db": -11.33242566173644
+        },
+        {
+          "start_seconds": 25.5,
+          "relative_gain_db": -9.894259694404598
+        },
+        {
+          "start_seconds": 26.0,
+          "relative_gain_db": -9.882609019411722
+        },
+        {
+          "start_seconds": 26.5,
+          "relative_gain_db": -11.302713870771164
+        },
+        {
+          "start_seconds": 27.0,
+          "relative_gain_db": -11.338523764882284
+        },
+        {
+          "start_seconds": 27.5,
+          "relative_gain_db": -11.044610814117558
+        },
+        {
+          "start_seconds": 28.0,
+          "relative_gain_db": -10.86240713584628
+        },
+        {
+          "start_seconds": 28.5,
+          "relative_gain_db": -10.738760634120762
+        },
+        {
+          "start_seconds": 29.0,
+          "relative_gain_db": -12.207754853638619
+        },
+        {
+          "start_seconds": 29.5,
+          "relative_gain_db": -12.495810018202409
+        },
+        {
+          "start_seconds": 30.0,
+          "relative_gain_db": -12.794347402661174
+        },
+        {
+          "start_seconds": 30.5,
+          "relative_gain_db": -12.6647252470637
+        },
+        {
+          "start_seconds": 31.0,
+          "relative_gain_db": -12.554075790118882
+        },
+        {
+          "start_seconds": 31.5,
+          "relative_gain_db": -12.396886167183794
+        },
+        {
+          "start_seconds": 32.0,
+          "relative_gain_db": -12.396439668580598
+        },
+        {
+          "start_seconds": 33.0,
+          "relative_gain_db": -12.296046589888295
+        },
+        {
+          "start_seconds": 33.5,
+          "relative_gain_db": -12.631746479920276
+        },
+        {
+          "start_seconds": 34.0,
+          "relative_gain_db": -12.662151549506168
+        },
+        {
+          "start_seconds": 34.5,
+          "relative_gain_db": -12.704532524312853
+        },
+        {
+          "start_seconds": 35.0,
+          "relative_gain_db": -12.929836542639455
+        },
+        {
+          "start_seconds": 35.5,
+          "relative_gain_db": -13.77525982923998
+        },
+        {
+          "start_seconds": 36.0,
+          "relative_gain_db": -13.077972708139908
+        },
+        {
+          "start_seconds": 36.5,
+          "relative_gain_db": -13.030154988602707
+        },
+        {
+          "start_seconds": 37.0,
+          "relative_gain_db": -12.679056702289701
+        },
+        {
+          "start_seconds": 37.5,
+          "relative_gain_db": -12.39421136839377
+        },
+        {
+          "start_seconds": 38.0,
+          "relative_gain_db": -12.465175274783652
+        },
+        {
+          "start_seconds": 38.5,
+          "relative_gain_db": -12.933482577255203
+        },
+        {
+          "start_seconds": 45.5,
+          "relative_gain_db": -9.226004728122362
+        },
+        {
+          "start_seconds": 46.0,
+          "relative_gain_db": -11.070586380091259
+        },
+        {
+          "start_seconds": 46.5,
+          "relative_gain_db": -11.124085461489486
+        },
+        {
+          "start_seconds": 137.5,
+          "relative_gain_db": -17.023171948443725
+        },
+        {
+          "start_seconds": 138.0,
+          "relative_gain_db": -18.819196775937503
+        },
+        {
+          "start_seconds": 138.5,
+          "relative_gain_db": -20.7310654863028
+        },
+        {
+          "start_seconds": 139.0,
+          "relative_gain_db": -17.727079023183162
+        },
+        {
+          "start_seconds": 140.0,
+          "relative_gain_db": -21.92959777099441
+        }
+      ],
+      "early_eligible_window_starts": [
+        2.0,
+        2.5,
+        3.0,
+        3.5
+      ]
+    },
+    "master_attempt": {
+      "triggered_windows": [
+        {
+          "start_seconds": 2.0,
+          "relative_gain_db": -24.130814315072108
+        },
+        {
+          "start_seconds": 2.5,
+          "relative_gain_db": -25.50154723079319
+        },
+        {
+          "start_seconds": 3.0,
+          "relative_gain_db": -12.228410136066511
+        },
+        {
+          "start_seconds": 3.5,
+          "relative_gain_db": -12.362237338609074
+        },
+        {
+          "start_seconds": 4.0,
+          "relative_gain_db": -19.649245262625588
+        },
+        {
+          "start_seconds": 4.5,
+          "relative_gain_db": -22.026640548418104
+        },
+        {
+          "start_seconds": 5.0,
+          "relative_gain_db": -11.835322644789791
+        },
+        {
+          "start_seconds": 5.5,
+          "relative_gain_db": -11.893613693812743
+        },
+        {
+          "start_seconds": 6.0,
+          "relative_gain_db": -11.999245991033618
+        },
+        {
+          "start_seconds": 6.5,
+          "relative_gain_db": -12.137459777655277
+        },
+        {
+          "start_seconds": 7.0,
+          "relative_gain_db": -12.278791757524044
+        },
+        {
+          "start_seconds": 7.5,
+          "relative_gain_db": -12.13436965712701
+        },
+        {
+          "start_seconds": 8.0,
+          "relative_gain_db": -12.26593188312587
+        },
+        {
+          "start_seconds": 8.5,
+          "relative_gain_db": -12.3655535015052
+        },
+        {
+          "start_seconds": 9.0,
+          "relative_gain_db": -13.463272485477557
+        },
+        {
+          "start_seconds": 9.5,
+          "relative_gain_db": -12.261459835644207
+        },
+        {
+          "start_seconds": 10.0,
+          "relative_gain_db": -11.999300069904702
+        },
+        {
+          "start_seconds": 10.5,
+          "relative_gain_db": -11.93110269481069
+        },
+        {
+          "start_seconds": 11.0,
+          "relative_gain_db": -10.053750743419528
+        },
+        {
+          "start_seconds": 11.5,
+          "relative_gain_db": -10.0593153225856
+        },
+        {
+          "start_seconds": 12.0,
+          "relative_gain_db": -10.632885611207762
+        },
+        {
+          "start_seconds": 17.0,
+          "relative_gain_db": -10.892896787663403
+        },
+        {
+          "start_seconds": 17.5,
+          "relative_gain_db": -12.206859625751882
+        },
+        {
+          "start_seconds": 18.0,
+          "relative_gain_db": -11.265291240880334
+        },
+        {
+          "start_seconds": 18.5,
+          "relative_gain_db": -10.245194540836081
+        },
+        {
+          "start_seconds": 19.0,
+          "relative_gain_db": -10.23147451376526
+        },
+        {
+          "start_seconds": 19.5,
+          "relative_gain_db": -10.664787265212265
+        },
+        {
+          "start_seconds": 20.0,
+          "relative_gain_db": -12.205240000680192
+        },
+        {
+          "start_seconds": 20.5,
+          "relative_gain_db": -12.470421259621247
+        },
+        {
+          "start_seconds": 21.0,
+          "relative_gain_db": -12.096152165037847
+        },
+        {
+          "start_seconds": 21.5,
+          "relative_gain_db": -12.071694549573678
+        },
+        {
+          "start_seconds": 22.0,
+          "relative_gain_db": -11.94855122996297
+        },
+        {
+          "start_seconds": 22.5,
+          "relative_gain_db": -12.470742978487628
+        },
+        {
+          "start_seconds": 23.0,
+          "relative_gain_db": -12.459230238579174
+        },
+        {
+          "start_seconds": 23.5,
+          "relative_gain_db": -12.372371714375397
+        },
+        {
+          "start_seconds": 24.0,
+          "relative_gain_db": -12.377608911886714
+        },
+        {
+          "start_seconds": 24.5,
+          "relative_gain_db": -12.024121225249054
+        },
+        {
+          "start_seconds": 25.0,
+          "relative_gain_db": -11.330169094075103
+        },
+        {
+          "start_seconds": 25.5,
+          "relative_gain_db": -9.823443719009415
+        },
+        {
+          "start_seconds": 26.0,
+          "relative_gain_db": -9.80334518364943
+        },
+        {
+          "start_seconds": 26.5,
+          "relative_gain_db": -11.30498342124256
+        },
+        {
+          "start_seconds": 27.0,
+          "relative_gain_db": -11.340793315437466
+        },
+        {
+          "start_seconds": 27.5,
+          "relative_gain_db": -10.988564238632154
+        },
+        {
+          "start_seconds": 28.0,
+          "relative_gain_db": -10.777006311624934
+        },
+        {
+          "start_seconds": 28.5,
+          "relative_gain_db": -10.63079593179474
+        },
+        {
+          "start_seconds": 29.0,
+          "relative_gain_db": -12.208675862036145
+        },
+        {
+          "start_seconds": 29.5,
+          "relative_gain_db": -12.497570437965347
+        },
+        {
+          "start_seconds": 30.0,
+          "relative_gain_db": -12.796616951250432
+        },
+        {
+          "start_seconds": 30.5,
+          "relative_gain_db": -12.653833826841993
+        },
+        {
+          "start_seconds": 31.0,
+          "relative_gain_db": -12.538785615116097
+        },
+        {
+          "start_seconds": 31.5,
+          "relative_gain_db": -12.399053774002859
+        },
+        {
+          "start_seconds": 32.0,
+          "relative_gain_db": -12.398607216546878
+        },
+        {
+          "start_seconds": 33.0,
+          "relative_gain_db": -12.279006984955267
+        },
+        {
+          "start_seconds": 33.5,
+          "relative_gain_db": -12.634016034236438
+        },
+        {
+          "start_seconds": 34.0,
+          "relative_gain_db": -12.664421104789945
+        },
+        {
+          "start_seconds": 34.5,
+          "relative_gain_db": -12.664511538862332
+        },
+        {
+          "start_seconds": 35.0,
+          "relative_gain_db": -12.89517488197058
+        },
+        {
+          "start_seconds": 35.5,
+          "relative_gain_db": -13.777529379816439
+        },
+        {
+          "start_seconds": 36.0,
+          "relative_gain_db": -13.073053294346192
+        },
+        {
+          "start_seconds": 36.5,
+          "relative_gain_db": -13.023046260063968
+        },
+        {
+          "start_seconds": 37.0,
+          "relative_gain_db": -12.68132624673304
+        },
+        {
+          "start_seconds": 37.5,
+          "relative_gain_db": -12.396480927942271
+        },
+        {
+          "start_seconds": 38.0,
+          "relative_gain_db": -12.467444836053104
+        },
+        {
+          "start_seconds": 38.5,
+          "relative_gain_db": -12.935752139398701
+        },
+        {
+          "start_seconds": 45.5,
+          "relative_gain_db": -9.164048687323408
+        },
+        {
+          "start_seconds": 46.0,
+          "relative_gain_db": -11.064969771159593
+        },
+        {
+          "start_seconds": 46.5,
+          "relative_gain_db": -11.116565378627069
+        },
+        {
+          "start_seconds": 137.5,
+          "relative_gain_db": -17.025441492200734
+        },
+        {
+          "start_seconds": 138.0,
+          "relative_gain_db": -18.821466322943323
+        },
+        {
+          "start_seconds": 138.5,
+          "relative_gain_db": -20.733335034110237
+        },
+        {
+          "start_seconds": 139.0,
+          "relative_gain_db": -17.729348579882334
+        },
+        {
+          "start_seconds": 140.0,
+          "relative_gain_db": -21.931867327785277
+        }
+      ],
+      "early_eligible_window_starts": [
+        2.0,
+        2.5,
+        3.0,
+        3.5
+      ]
+    }
+  }
+}

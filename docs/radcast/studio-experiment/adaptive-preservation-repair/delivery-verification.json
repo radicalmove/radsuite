@@ -1,0 +1,23 @@
+{
+  "state": "delivery_files_and_report_verified",
+  "report_sha256": "be30843998ce6d6dc923d902d26e376753b2313364d8e1743325e1bac695a638",
+  "report_links": 31,
+  "all_report_links_exist": true,
+  "test_log_sha256": "3671e398dc7fd5b190989abff3166dc1f2d05eabb3ef264484df268246d49ec3",
+  "suite_tests": 60,
+  "suite_skips": 0,
+  "suite_seconds": 19.891,
+  "review_sha256": "acb09715cd3b54cb602586898006d0414eaaf25395ac061f260ab16670507094",
+  "mp3": {
+    "codec": "mp3",
+    "sample_rate": 48000,
+    "channels": 1,
+    "bit_rate": 320000,
+    "sha256": "2fe7ee83382057948af5c8b60fea2ac5a9262709d1041a7c595c4fbeb9dc83ca"
+  },
+  "waveform_verification_sha256": "611ec0b7434fa65e1a5cf1be4339ebd879b114c38de986cbec09840596a63435",
+  "controls_verification_sha256": "e29b78c64237ad1371364ccbafcddd7ef30a55fcff1e5acdc69e302f1a238c8d",
+  "listening_gate_sha256": "0c35c2c5c10b65b2ec1ca2dd86edce71518a9bfef399b1aa33dec3f21bcc1527",
+  "asr_comparison_sha256": "0f8e04ecf97e01d4535e0707124efe9a2701e7f54d8dba8ff92ef07416e4e724",
+  "full_length_human_approved": false
+}

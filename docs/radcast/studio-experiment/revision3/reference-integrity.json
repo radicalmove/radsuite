@@ -1,0 +1,22 @@
+{
+  "original": {
+    "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+    "sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+    "unchanged": true
+  },
+  "optimized": {
+    "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-88ada395.mp3",
+    "sha256": "6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9",
+    "unchanged": true
+  },
+  "natural_double_plus": {
+    "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/audio_work/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-7524c22d.mp3",
+    "sha256": "f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad",
+    "unchanged": true
+  },
+  "reference": {
+    "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav",
+    "sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4",
+    "unchanged": true
+  }
+}

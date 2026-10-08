@@ -19,6 +19,8 @@ pub enum EnhancementModel {
     Resemble,
     DeepFilterNet,
     Studio,
+    StudioV1,
+    StudioTreble,
     StudioV18,
     StudioV18Natural,
     StudioV18NaturalPlus,
@@ -26,8 +28,13 @@ pub enum EnhancementModel {
 }
 
 impl EnhancementModel {
-    pub const fn all() -> [Self; 8] {
+    pub const fn is_guarded_studio(self) -> bool {
+        matches!(self, Self::StudioV1 | Self::StudioTreble)
+    }
+    pub const fn all() -> [Self; 10] {
         [
+            Self::StudioTreble,
+            Self::StudioV1,
             Self::None,
             Self::Resemble,
             Self::DeepFilterNet,
@@ -41,6 +48,8 @@ impl EnhancementModel {
 
     pub const fn label(self) -> &'static str {
         match self {
+            Self::StudioTreble => "Studio — Treble (recommended)",
+            Self::StudioV1 => "Studio — Classic",
             Self::None => "Standard cleanup",
             Self::Resemble => "Resemble Enhance",
             Self::DeepFilterNet => "DeepFilterNet3",
@@ -54,6 +63,10 @@ impl EnhancementModel {
 
     pub const fn description(self) -> &'static str {
         match self {
+            Self::StudioTreble => "Room cleanup with adaptive protection for quiet speech.",
+            Self::StudioV1 => {
+                "Cleans noise and room sound while prioritising natural voice and articulation."
+            }
             Self::None => {
                 "Keeps the original audio quality and applies only the selected cleanup options."
             }
@@ -138,6 +151,8 @@ pub struct EnhancementProcessor {
     deepfilternet_command: PathBuf,
     studio_command: PathBuf,
     optimized_command: PathBuf,
+    studio_v1_python: PathBuf,
+    studio_treble_python: PathBuf,
 }
 
 impl Default for EnhancementProcessor {
@@ -183,6 +198,8 @@ impl EnhancementProcessor {
             deepfilternet_command: deepfilternet_command.into(),
             studio_command: studio_command.into(),
             optimized_command: optimized_command.into(),
+            studio_v1_python: crate::studio::python_command(),
+            studio_treble_python: crate::studio_treble::python_command(),
         }
     }
 
@@ -191,9 +208,62 @@ impl EnhancementProcessor {
     }
 
     pub fn is_model_available(&self, model: EnhancementModel) -> bool {
+        if model == EnhancementModel::StudioTreble {
+            return crate::studio_treble::is_available(&self.studio_treble_python);
+        }
+        if model == EnhancementModel::StudioV1 {
+            return crate::studio::is_available(&self.studio_v1_python);
+        }
         match self.command_for_model(model) {
             None => true,
             Some(command) => command.is_file(),
+        }
+    }
+
+    pub fn verify_studio_export(
+        &self,
+        source: &Path,
+        export: &Path,
+        qa: &Path,
+        origin: &Path,
+        edited: bool,
+        removed_seconds: f64,
+    ) -> Result<(), EnhancementProcessingError> {
+        crate::studio::verify_export(
+            &self.studio_v1_python,
+            source,
+            export,
+            qa,
+            origin,
+            edited,
+            removed_seconds,
+        )
+    }
+
+    // Keep the guarded dispatcher compatible with the established export-check arguments.
+    #[allow(clippy::too_many_arguments)]
+    pub fn verify_guarded_studio_export(
+        &self,
+        model: EnhancementModel,
+        source: &Path,
+        export: &Path,
+        qa: &Path,
+        origin: &Path,
+        edited: bool,
+        removed_seconds: f64,
+    ) -> Result<(), EnhancementProcessingError> {
+        if model == EnhancementModel::StudioTreble {
+            crate::studio_treble::verify_export(
+                &self.studio_treble_python,
+                source,
+                export,
+                qa,
+                origin,
+                edited,
+                removed_seconds,
+            )
+        } else {
+            self.verify_studio_export(source, export, qa, origin, edited, removed_seconds)
         }
     }
 
@@ -238,6 +308,10 @@ impl EnhancementProcessor {
             .unwrap_or_default();
         let suffix = audio_suffix(&request.input_path);
         match model {
+            EnhancementModel::StudioV1 | EnhancementModel::StudioTreble => Ok(vec![
+                request.input_path.clone().into_os_string(),
+                request.output_path.clone().into_os_string(),
+            ]),
             EnhancementModel::None => Ok(Vec::new()),
             EnhancementModel::Resemble | EnhancementModel::Studio => Ok(vec![
                 input_dir.into_os_string(),
@@ -351,6 +425,12 @@ impl EnhancementProcessor {
     where
         F: FnMut(usize, usize),
     {
+        if model == EnhancementModel::StudioTreble {
+            return crate::studio_treble::process(&self.studio_treble_python, request);
+        }
+        if model == EnhancementModel::StudioV1 {
+            return crate::studio::process(&self.studio_v1_python, request);
+        }
         if !request.input_path.is_file() {
             return Err(EnhancementProcessingError::MissingInput {
                 path: request.input_path,
@@ -480,6 +560,8 @@ impl EnhancementProcessor {
 
     fn command_for_model(&self, model: EnhancementModel) -> Option<&Path> {
         match model {
+            EnhancementModel::StudioV1 => Some(&self.studio_v1_python),
+            EnhancementModel::StudioTreble => Some(&self.studio_treble_python),
             EnhancementModel::None => None,
             EnhancementModel::Resemble => Some(&self.resemble_command),
             EnhancementModel::DeepFilterNet => Some(&self.deepfilternet_command),

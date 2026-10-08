@@ -1,0 +1,12 @@
+{
+  "room_input_si_sdr_db": 12.541447715860825,
+  "note": "Known synthetic chirped harmonic source with 14/37 ms reflections. Gain-invariant error to known clean; diagnostic only, not a model of the lecturer or a definition of quality.",
+  "delay4": {
+    "si_sdr_db": 11.256329894146965,
+    "rms_ratio": 0.3566265404224396
+  },
+  "delay2": {
+    "si_sdr_db": 12.484598677642458,
+    "rms_ratio": 0.3502892851829529
+  }
+}

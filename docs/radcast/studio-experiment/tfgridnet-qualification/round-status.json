@@ -1,0 +1,10 @@
+{
+  "state": "full_qualification_failed_short_diagnostic_pending_human",
+  "full_finnegan_renders": 0,
+  "teacher_diagnostic_windows": 1,
+  "original_gate_rejection_preserved": true,
+  "corrected_join_prerequisites_pass": true,
+  "current_model_comparative_gate_pass": false,
+  "full_replacement_approved": false,
+  "report_sha256": "7b34185776e519c80bfab69d104dd259bc725eaf5841fc918961f1adb0a80151"
+}

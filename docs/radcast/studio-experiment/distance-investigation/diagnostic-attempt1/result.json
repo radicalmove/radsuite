@@ -1,0 +1,7 @@
+{
+  "state": "stopped_diagnostic_export",
+  "reason": "Stage-level clips were very quiet (~-38 LUFS). A single static 0.06 dB cut changed gated measurement by 0.10 LU; measured spread 0.04 LU exceeded the 0.02 LU matching assertion.",
+  "action": "Preserve failed copies. Regenerate audition copies at comfortable speech RMS with static scalar/headroom only, retaining 0.02 LU matching requirement.",
+  "model_inferences": 0,
+  "full_candidates": 0
+}

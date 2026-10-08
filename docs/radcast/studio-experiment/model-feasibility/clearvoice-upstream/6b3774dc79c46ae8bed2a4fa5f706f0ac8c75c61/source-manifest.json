@@ -1,0 +1,224 @@
+[
+  {
+    "path": "README.md",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/README.md",
+    "sha256": "01eeb5527e1ff37d317e29a8bbcb4c23abe17dd2efb2acfab74e95b0a94c6083",
+    "size": 9796
+  },
+  {
+    "path": "LICENSE",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/LICENSE",
+    "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+    "size": 11357
+  },
+  {
+    "path": "requirements.txt",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/requirements.txt",
+    "sha256": "a2f02873410acdc09923ebf3afc544400d24904a4ff66715a55b822e96eb9289",
+    "size": 482
+  },
+  {
+    "path": "clearvoice/clearvoice/utils/decode.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/utils/decode.py",
+    "sha256": "e19417ea6b0556af8b002a2260d9ec287ed4d776eb49e9612586f217ee13f6be",
+    "size": 32718
+  },
+  {
+    "path": "clearvoice/clearvoice/utils/decode_batch.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/utils/decode_batch.py",
+    "sha256": "1f5ae2ece465eb877bd6bb05c9673db782987d543b6d72b53673fa879258a942",
+    "size": 36103
+  },
+  {
+    "path": "clearvoice/clearvoice/config/inference/MossFormer2_SE_48K.yaml",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/config/inference/MossFormer2_SE_48K.yaml",
+    "sha256": "68bb5cef7c8cb2d30bfe3e1b25dceccaff16314335c8d7a68a64e509e463955e",
+    "size": 626
+  },
+  {
+    "path": "clearvoice/clearvoice/models/mossformer2_se/mossformer2_se_wrapper.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/models/mossformer2_se/mossformer2_se_wrapper.py",
+    "sha256": "85e71167a9025a137f9ca8d314c3da4a34cd3285dc856d51352050ecc56e4dda",
+    "size": 3479
+  },
+  {
+    "path": "clearvoice/clearvoice/network_wrapper.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/network_wrapper.py",
+    "sha256": "39ccc11557a5d805a15564996d7c5d1b5793d2528d1855e71787a6da0601a2e0",
+    "size": 15020
+  },
+  {
+    "path": "clearvoice/clearvoice/networks.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/networks.py",
+    "sha256": "3fefffb1db6dd095368f359775e480cfa181741645ef8752ea8ee4ed2358423f",
+    "size": 29040
+  },
+  {
+    "path": "train/speech_enhancement/dataloader/dataloader.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/speech_enhancement/dataloader/dataloader.py",
+    "sha256": "a4e6423e07819be103a786db21bbc2ef5ebeae6a3ac9e822dfe55114d564e274",
+    "size": 9087
+  },
+  {
+    "path": "train/speech_enhancement/losses/loss.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/speech_enhancement/losses/loss.py",
+    "sha256": "1517dd54171f08129f921e9b2278c9615d60e5d4ce81c7b0d19da25a1cb3c73c",
+    "size": 6612
+  },
+  {
+    "path": "train/speech_enhancement/solver.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/speech_enhancement/solver.py",
+    "sha256": "3fd2fae98004c32517bfafbbb483038c7f10bf19c8aed59d3b447fd93cfd5c5f",
+    "size": 22631
+  },
+  {
+    "path": "train/speech_enhancement/config/train/MossFormer2_SE_48K.yaml",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/speech_enhancement/config/train/MossFormer2_SE_48K.yaml",
+    "sha256": "89a5c2cbd43099a94b018b0c851da971c3fff255af7d928a8b14e0816cf2fc7c",
+    "size": 810
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_noisy_speech/README.md",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_noisy_speech/README.md",
+    "sha256": "6a84aa508185aa43fac34608ee2130d1a0982c88577df17a033d09ded6068c10",
+    "size": 1122
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_noisy_speech/add_noise.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_noisy_speech/add_noise.py",
+    "sha256": "5cf8135c5053a83c1ae70d878e3436f05be0d05ee33ccb9491f4d728a4fd7ecc",
+    "size": 10711
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_noisy_speech/audiolib.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_noisy_speech/audiolib.py",
+    "sha256": "c111173b774b0792407af8fb0f8fa51e8e652e7db26f0f2c9d22eefe28c0dbb8",
+    "size": 4815
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_noisy_speech/config/para.cfg",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_noisy_speech/config/para.cfg",
+    "sha256": "3c8cf28889c6aba45b672b2299d31b5a4efce15916b8b5ba6aab7309152ed9d8",
+    "size": 2224
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_noisy_speech/data/data_scp/noise.scp",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_noisy_speech/data/data_scp/noise.scp",
+    "sha256": "9e1e9671abba024f7a18a64ee7f96f806e6f7845052a00c16d0185c9c91fc9b4",
+    "size": 252
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_noisy_speech/data/data_scp/speech.scp",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_noisy_speech/data/data_scp/speech.scp",
+    "sha256": "245dd2d55f7cc6a28670df0139b25908c4875e63255a149a851a7e92d8f52596",
+    "size": 243
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_noisy_speech/run.sh",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_noisy_speech/run.sh",
+    "sha256": "e70b59528d586f481db6b192716b8ac2db3606830ef3ac52779e766fffd04963",
+    "size": 49
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/README.md",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/README.md",
+    "sha256": "ae6bdf32b0fe86de460e71663e991c35a34eb27f8326c9305ff467e3b50de24e",
+    "size": 2010
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/audiolib.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/audiolib.py",
+    "sha256": "6c8c5098b9f59e866ac66b1ec5886beab433e8eb32cdbd1d0c59076605dcc937",
+    "size": 5663
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/config/para.cfg",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/config/para.cfg",
+    "sha256": "370c82dda2177b5aa7aebe7ebeed120dedb57bba223caab4ef40f0a359500d2f",
+    "size": 1391
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/config/para.cfg.bk",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/config/para.cfg.bk",
+    "sha256": "96abba2a74e52e0c80a649d7a4941d723ac84178019d9bf20dceced30c5caa5a",
+    "size": 2427
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/data/data_scp/noise.scp",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/data/data_scp/noise.scp",
+    "sha256": "9e1e9671abba024f7a18a64ee7f96f806e6f7845052a00c16d0185c9c91fc9b4",
+    "size": 252
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/data/data_scp/speech.scp",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/data/data_scp/speech.scp",
+    "sha256": "245dd2d55f7cc6a28670df0139b25908c4875e63255a149a851a7e92d8f52596",
+    "size": 243
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/requirements.txt",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/requirements.txt",
+    "sha256": "0024015ec0df47c883c4201b363906f39573545dbbcb4985cc70f13d9e5a00df",
+    "size": 14
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/run.sh",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/run.sh",
+    "sha256": "5c42dddad38fa448bca6d3103459ebf8e48a763bf642f0a02935efacaa32f409",
+    "size": 733
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/step1_gen_RIRs.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/step1_gen_RIRs.py",
+    "sha256": "04ac282a714008535be5648b4e748e78e657d1c6b7f59799bbab20f74d41cb6a",
+    "size": 2798
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/step2_gen_reverb_speech.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/step2_gen_reverb_speech.py",
+    "sha256": "0ac01a01dcc7b09998b4d52300a6476f8da20981beaa38fa76d59ebdde301822",
+    "size": 4489
+  },
+  {
+    "path": "train/data_generation/speech_enhancement/generate_reverb_noisy_speech/step3_add_noise.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/train/data_generation/speech_enhancement/generate_reverb_noisy_speech/step3_add_noise.py",
+    "sha256": "c973755889bbf7c202e05a6962077fd833bddca5f86da68653ecc6dd51060134",
+    "size": 9017
+  },
+  {
+    "path": "clearvoice/clearvoice/models/mossformer2_se/mossformer2.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/models/mossformer2_se/mossformer2.py",
+    "sha256": "528b7d6078c8ac99806a2baefe2dc707a2d9ddc6595abe95e4084b92b397b94b",
+    "size": 19471
+  },
+  {
+    "path": "clearvoice/clearvoice/models/mossformer2_se/mossformer2_block.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/models/mossformer2_se/mossformer2_block.py",
+    "sha256": "8b4f1714156365d9f1e5d96f750793f47d92f51c14d0afd00d43055cd78bdee7",
+    "size": 26778
+  },
+  {
+    "path": "clearvoice/clearvoice/models/mossformer2_se/fsmn.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/models/mossformer2_se/fsmn.py",
+    "sha256": "62c376b2708ac1c59853c13cbe9acb7ea011082c39f1a42e1af0f8213a00bb76",
+    "size": 10621
+  },
+  {
+    "path": "clearvoice/clearvoice/models/mossformer2_se/layer_norm.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/models/mossformer2_se/layer_norm.py",
+    "sha256": "d28fea41b3c5a2dd8bb7a1a8c1c97492fcc7eb88cc7b46283fc21e4dbf19f062",
+    "size": 4075
+  },
+  {
+    "path": "clearvoice/clearvoice/models/mossformer2_se/conv_module.py",
+    "url": "https://raw.githubusercontent.com/modelscope/ClearerVoice-Studio/6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61/clearvoice/clearvoice/models/mossformer2_se/conv_module.py",
+    "sha256": "cd16d84a55ed22a234d91871d685a7ae97fa3fbca3f0d94bd065ce0b4c9a1180",
+    "size": 14016
+  },
+  {
+    "path": "model-card.md",
+    "url": "https://huggingface.co/alibabasglab/MossFormer2_SE_48K/raw/eff8c97925c8bec812af707814b3e5d777fd4503/README.md",
+    "sha256": "62c405e115b2f3f948730fc2574c9a0019da3c12a0efef32c7d3873b16ac460e",
+    "size": 2176
+  }
+]

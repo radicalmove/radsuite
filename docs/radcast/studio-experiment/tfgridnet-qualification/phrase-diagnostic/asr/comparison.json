@@ -1,0 +1,26 @@
+{
+  "command": [
+    "/opt/homebrew/bin/whisper-cli",
+    "-m",
+    "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+    "-f",
+    "docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/asr/analysis16k.wav",
+    "-l",
+    "en",
+    "-t",
+    "4",
+    "-nf",
+    "-nt",
+    "-otxt",
+    "-of",
+    "docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/asr/diagnostic"
+  ],
+  "transcript": " them in the weeks forward just because it makes like\n",
+  "source_span": [
+    19.5,
+    22.5
+  ],
+  "analysis_only16k": true,
+  "verified_transcript": false,
+  "note": "Shortcontext ASR proxy, not word-groundtruth/identity/lisp certification."
+}

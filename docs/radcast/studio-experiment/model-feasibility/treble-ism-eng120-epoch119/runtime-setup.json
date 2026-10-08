@@ -1,0 +1,10 @@
+{
+  "path": "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119/runtime",
+  "dependency_strategy": "separate Python environment; existing cached package directory referenced without installing/upgrading it",
+  "shared_dependency_directory": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages",
+  "no_new_package_install": true,
+  "bytecode_write_disabled_during_experiment": true,
+  "network_verification": "macOS sandbox deny network*",
+  "python": "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119/runtime/bin/python",
+  "cache": "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119/cache"
+}

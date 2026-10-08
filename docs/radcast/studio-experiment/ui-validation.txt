@@ -1,0 +1,13 @@
+
+> radsuite-desktop-ui@0.2.8 test
+> vitest --run
+
+
+ RUN  v4.1.6 /Users/rcd58/Documents/RADsuite/apps/desktop-ui
+
+
+ Test Files  37 passed (37)
+      Tests  177 passed (177)
+   Start at  17:11:57
+   Duration  7.16s (transform 2.40s, setup 0ms, import 5.16s, tests 224ms, environment 4.80s)
+

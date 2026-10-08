@@ -1,0 +1,57 @@
+{
+  "model": "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+  "model_sha256": "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+  "binary": "/opt/homebrew/bin/whisper-cli",
+  "binary_sha256": "ff6403f6443809e89b2fdb7b63ae2fe4f272602e97cde67736a0f395c81da400",
+  "original_proxy_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings.json",
+  "original_proxy_sha256": "03a9be8ef6a2300d40f2639c9097fca1b68f68d4cead112c40b9ea6adc6ba938",
+  "files": {
+    "previous": {
+      "transcript": " So some more criminal justice terminology, so this is a refresh from curfew 150. If you don't know these words, it's okay, but it would be good to be familiar with them in the weeks forward, just 'cause it makes reading anything to do with the criminal law a lot more simple, 'cause if you get\n some of these words wrong, particularly like prosecution, defendants, and then you will read the entire case wrong and you just waste it a bit of time. So things such as charge, so that's a formal declaration of someone being charged of an offence or being recognized as potentially having done that offence. Someone has made a complaint and there's a sufficient\n enough amount of evidence to engage in an investigation or a trial against them. So offence is basically just like a category, like what crime you're committed with or what crime you're charged with. That one's fairly straightforward. Prosecution, you remember, in a first instance trial, that is the\n criminal law, most commonly the state, that is a party that is giving evidence in order to see that person being committed of the offence or giving evidence in order to prosecute them. And then there's conviction, which is after your trial, if you're found guilty, you're convicted of the offence. I think the main, like, the best one to know is when someone's charged with an offence versus when someone is convicted\n with an offence, if they're charged with the offence, they actually haven't been found to commit it, to have committed it, sorry, are then they're still technically presumed innocent. Then a trial will happen, if they're found guilty, then they're convicted, then they'll go to prison or what have you. So I've put\n",
+      "word_count": 292,
+      "proxy_edits": 7,
+      "proxy_edit_rate": 0.023890784982935155,
+      "command": [
+        "/opt/homebrew/bin/whisper-cli",
+        "-m",
+        "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+        "-f",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/asr/previous_analysis16k.wav",
+        "-l",
+        "en",
+        "-t",
+        "4",
+        "-nf",
+        "-nt",
+        "-otxt",
+        "-of",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/asr/previous"
+      ],
+      "analysis_copy_sha256": "b5e5b45bfd0210288a787e1398718ebecf5b520a00426f5dd56d80d24ac84cd2"
+    },
+    "presence": {
+      "transcript": " So this is a refresh from curfew 150. If you don't know these words it's okay but it would be good to be familiar with them in the weeks forward just because it makes like reading anything to do with the criminal law a lot more simple because if you get\n some of these words wrong particularly like prosecution defendants and then you will like read the entire case wrong and you just waste it a bit of time. So things such as charge you know so that's a formal declaration of someone being charged of an offence or being recognized as potentially having done that offence. Someone has made a complaint and there's a sufficient\n enough amount of evidence to engage in an investigation or a trial against them. So offence is basically just like a category like what crime you're committed with or what crime you're charged with. That one's fairly straightforward. Prosecution you remember in a first instance trial that is the\n criminal law most commonly the state that is the a party that is giving evidence in order to see that person being committed of the offence or giving evidence in order to prosecute them. And then there's conviction which is after your trial if you're found guilty you're convicted of the offence. I think the main like the best one to know is when someone's charged with an offence versus when someone is convicted\n with an offence. If they're charged with the offence they actually haven't been found to commit it to have committed it sorry are then they're still technically presumed innocent. Then a trial will happen if they're found guilty then they're convicted then they'll go to prison or what have you. So I put\n",
+      "word_count": 291,
+      "proxy_edits": 14,
+      "proxy_edit_rate": 0.04778156996587031,
+      "command": [
+        "/opt/homebrew/bin/whisper-cli",
+        "-m",
+        "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+        "-f",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/asr/presence_analysis16k.wav",
+        "-l",
+        "en",
+        "-t",
+        "4",
+        "-nf",
+        "-nt",
+        "-otxt",
+        "-of",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/asr/presence"
+      ],
+      "analysis_copy_sha256": "2ad56b7b6147a79f489c79183c1cd89808f1b50f86cb32d8718df7f9950993ff"
+    }
+  },
+  "note": "Same cached small model/settings; 16k copies are analysis-only. Original-ASR edits are not WER, identity or lisp tests."
+}

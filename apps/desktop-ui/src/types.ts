@@ -65,7 +65,7 @@ export type CaptionQualityMode = "fast" | "accurate" | "reviewed";
 
 export type FillerRemovalMode = "normal" | "aggressive";
 
-export type EnhancementModel = "none" | "resemble" | "deepfilternet" | "studio" | "studio_v18" | "studio_v18_natural" | "studio_v18_natural_plus" | "studio_v18_natural_double_plus";
+export type EnhancementModel = "studio_treble" | "studio_v1" | "none" | "resemble" | "deepfilternet" | "studio" | "studio_v18" | "studio_v18_natural" | "studio_v18_natural_plus" | "studio_v18_natural_double_plus";
 
 export type EnhancementQuality = "fast" | "standard" | "high";
 
@@ -84,6 +84,8 @@ export type RadcastTrimRange = {
 };
 
 export type RadcastAudioOutput = {
+  studio_qa_path?: string | null;
+  studio_qa_warnings?: string[];
   id: string;
   source_id: string;
   filename: string;
@@ -129,9 +131,24 @@ export type RadcastProjectSettings = {
   enhancement_quality: EnhancementQuality;
   cleanup_enabled: boolean;
   max_silence_seconds: number | null;
+  silence_shortening_enabled: boolean;
+  silence_minimum_seconds: number;
+  silence_threshold_db: number;
+  silence_keep_percent: number;
+  target_duration_seconds: number | null;
   remove_filler_words: boolean;
   filler_removal_mode: FillerRemovalMode;
   trim_ranges_by_source_id: Record<string, RadcastTrimRange>;
+};
+
+export type RadcastSilenceAnalysis = {
+  original_duration_seconds: number;
+  qualifying_silence_count: number;
+  qualifying_silence_seconds: number;
+  shortest_duration_seconds: number;
+  estimated_duration_seconds: number;
+  retained_silence_percent: number;
+  target_reachable: boolean;
 };
 
 export type RadcastCapabilityStatus = {

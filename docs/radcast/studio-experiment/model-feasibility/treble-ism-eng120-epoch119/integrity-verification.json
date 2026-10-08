@@ -1,0 +1,481 @@
+{
+  "utc": "2026-10-08T13:05:12.610794+00:00",
+  "references": [
+    {
+      "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+      "sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+      "expected_sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-88ada395.mp3",
+      "sha256": "6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9",
+      "expected_sha256": "6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/audio_work/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-7524c22d.mp3",
+      "sha256": "f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad",
+      "expected_sha256": "f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav",
+      "sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4",
+      "expected_sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4",
+      "unchanged": true
+    }
+  ],
+  "runtime_files": [
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/enhance.py",
+      "sha256": "cee68a15ab23a4e788d22eda7927c8d89287b8de3d3e9121d6af819abd77b8de",
+      "expected_sha256": "cee68a15ab23a4e788d22eda7927c8d89287b8de3d3e9121d6af819abd77b8de",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/config.py",
+      "sha256": "3e5a1d211a0e2b65e820c874f644607cfd33d273d44e0e595d7714786c448a99",
+      "expected_sha256": "3e5a1d211a0e2b65e820c874f644607cfd33d273d44e0e595d7714786c448a99",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/sepm.py",
+      "sha256": "a38087b8f47e54c62420051ba6a4565fc12b3aaab803a97fe8124c84921f27a0",
+      "expected_sha256": "a38087b8f47e54c62420051ba6a4565fc12b3aaab803a97fe8124c84921f27a0",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/version.py",
+      "sha256": "f864067a2c80dc8aae0970f5a4ef818f6159f192fd4e4002cba28fe78e2bdedb",
+      "expected_sha256": "f864067a2c80dc8aae0970f5a4ef818f6159f192fd4e4002cba28fe78e2bdedb",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/checkpoint.py",
+      "sha256": "04e5776592f47d0ac2b28974d51ec9c825ca4dabbf9f0db490d46cf4f6436da2",
+      "expected_sha256": "04e5776592f47d0ac2b28974d51ec9c825ca4dabbf9f0db490d46cf4f6436da2",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/evaluation_utils.py",
+      "sha256": "e3636665498cd59618a9490cf671db93cf2856e3f1a689ada90cedbda5566fdc",
+      "expected_sha256": "e3636665498cd59618a9490cf671db93cf2856e3f1a689ada90cedbda5566fdc",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/lr.py",
+      "sha256": "24bac0cdeee571ae470877a891191f41960ec2389d12b19d66055bbda19116d1",
+      "expected_sha256": "24bac0cdeee571ae470877a891191f41960ec2389d12b19d66055bbda19116d1",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/multiframe.py",
+      "sha256": "356bdbb0d3bd366f531af1c32d4d4c5e6feb8b2a23a804657f2ab8d119f75460",
+      "expected_sha256": "356bdbb0d3bd366f531af1c32d4d4c5e6feb8b2a23a804657f2ab8d119f75460",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternetmf.py",
+      "sha256": "f6f907d7b27d948596978bd37e52cfc17cd1529619484ef5afab834eab0da841",
+      "expected_sha256": "f6f907d7b27d948596978bd37e52cfc17cd1529619484ef5afab834eab0da841",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/io.py",
+      "sha256": "8daccc65404cc18c4a84996ed97a6ddaa0e51555ef1c67c4b5f9d435ba70f145",
+      "expected_sha256": "8daccc65404cc18c4a84996ed97a6ddaa0e51555ef1c67c4b5f9d435ba70f145",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/stoi.py",
+      "sha256": "31b386be94b4ae8f3e4fd746737be1e5464758aa07c023494fb39382f83bf99f",
+      "expected_sha256": "31b386be94b4ae8f3e4fd746737be1e5464758aa07c023494fb39382f83bf99f",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/__init__.py",
+      "sha256": "2b79671703e0b5ae07f2d170b7e7738571de0ed914267ac79325ca619c4c52b0",
+      "expected_sha256": "2b79671703e0b5ae07f2d170b7e7738571de0ed914267ac79325ca619c4c52b0",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternet.py",
+      "sha256": "7650f37f0391558e6ad5c9850aaf20b2495f5e239a800553b7a8365b94ab859b",
+      "expected_sha256": "7650f37f0391558e6ad5c9850aaf20b2495f5e239a800553b7a8365b94ab859b",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/logger.py",
+      "sha256": "b39ff6e6cc8bfd5082bd480574298952d9a24051ae0e2d2761bdcdd9c8ee5994",
+      "expected_sha256": "b39ff6e6cc8bfd5082bd480574298952d9a24051ae0e2d2761bdcdd9c8ee5994",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/visualization.py",
+      "sha256": "492c4766780f23950cc64ba3b6928dc8b047a70296b6c6163c1bba4dd65b2a95",
+      "expected_sha256": "492c4766780f23950cc64ba3b6928dc8b047a70296b6c6163c1bba4dd65b2a95",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/model.py",
+      "sha256": "1e9e2436a89fc65a6dd76c2823afd5bd37cc849fd1fd63740faef94955d85eca",
+      "expected_sha256": "1e9e2436a89fc65a6dd76c2823afd5bd37cc849fd1fd63740faef94955d85eca",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/loss.py",
+      "sha256": "29d3d007c91b949e4cafafc2d70d26d827f081f157ea239cca88d3d7f05c2b5f",
+      "expected_sha256": "29d3d007c91b949e4cafafc2d70d26d827f081f157ea239cca88d3d7f05c2b5f",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/utils.py",
+      "sha256": "19c39c7f3277ab13cc7f6755a4138ac4b0f226216e3c48201b8ec52aec21f9c4",
+      "expected_sha256": "19c39c7f3277ab13cc7f6755a4138ac4b0f226216e3c48201b8ec52aec21f9c4",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/train.py",
+      "sha256": "c9da4951cdcabea0263768555c1d2b9a836a1525fc19eefc5fc0a2bd144e86ff",
+      "expected_sha256": "c9da4951cdcabea0263768555c1d2b9a836a1525fc19eefc5fc0a2bd144e86ff",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/modules.py",
+      "sha256": "7a23659eec71db01cc7f16ff97c2c1afcbf4a2493fc27979c7e5a2b311dd1f57",
+      "expected_sha256": "7a23659eec71db01cc7f16ff97c2c1afcbf4a2493fc27979c7e5a2b311dd1f57",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternet2.py",
+      "sha256": "c9f3ad58906981e37f23f8d0b26677615d7ae3fec7768ab184b661d514874559",
+      "expected_sha256": "c9f3ad58906981e37f23f8d0b26677615d7ae3fec7768ab184b661d514874559",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/df/deepfilternet3.py",
+      "sha256": "e4011a92b180bcd26c9f5744b7c244617a2c08db3bdf39a79155a0277ede0805",
+      "expected_sha256": "e4011a92b180bcd26c9f5744b7c244617a2c08db3bdf39a79155a0277ede0805",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/libdf/__init__.py",
+      "sha256": "d59f8e4f79f04c1ec262b92d3383c740226b4ef662562c18955a4864fbb5ffd9",
+      "expected_sha256": "d59f8e4f79f04c1ec262b92d3383c740226b4ef662562c18955a4864fbb5ffd9",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/libdf/libdf.cpython-311-darwin.so",
+      "sha256": "925a939c94ba270a217d7b8330b3bbe9b29dac65b633653cd93fce7966c128f6",
+      "expected_sha256": "925a939c94ba270a217d7b8330b3bbe9b29dac65b633653cd93fce7966c128f6",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/__init__.py",
+      "sha256": "7261130fcc9dae49bb38843604ae2d0cab8d6b7277eb57b5dbc1559e35e34be1",
+      "expected_sha256": "7261130fcc9dae49bb38843604ae2d0cab8d6b7277eb57b5dbc1559e35e34be1",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch_python.dylib",
+      "sha256": "c3d3e019df646bfaf549b92802dffd7399b9fb42acedb970bbaad95b89d4c25a",
+      "expected_sha256": "c3d3e019df646bfaf549b92802dffd7399b9fb42acedb970bbaad95b89d4c25a",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch.dylib",
+      "sha256": "b611ad478b014968ed91c4d188277e711d5b21d0e3ed3fc2e2e105bcc7d8d587",
+      "expected_sha256": "b611ad478b014968ed91c4d188277e711d5b21d0e3ed3fc2e2e105bcc7d8d587",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch_global_deps.dylib",
+      "sha256": "3d9edd848cf76e3be661b2e63b50dd3a89b134b006963184e04384717c9078da",
+      "expected_sha256": "3d9edd848cf76e3be661b2e63b50dd3a89b134b006963184e04384717c9078da",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libtorch_cpu.dylib",
+      "sha256": "798eec12799c0afda777374c88a322db6236a3e6f55bc63e5eb95f3c027810af",
+      "expected_sha256": "798eec12799c0afda777374c88a322db6236a3e6f55bc63e5eb95f3c027810af",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libc10.dylib",
+      "sha256": "6f42927f8289bafb7b450d03d1dc07cc12afdea5509f4f58945f9e39e40bbc37",
+      "expected_sha256": "6f42927f8289bafb7b450d03d1dc07cc12afdea5509f4f58945f9e39e40bbc37",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/lib/libshm.dylib",
+      "sha256": "91ebea05c1b886da94fa8be630375d59bf5c3da336928321f0a67868334e6b9b",
+      "expected_sha256": "91ebea05c1b886da94fa8be630375d59bf5c3da336928321f0a67868334e6b9b",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torch/_C.cpython-311-darwin.so",
+      "sha256": "b4d3a46f17033772e452a3a7c4e8fe4a684b41ef035bc73bd6911b12eb5a3171",
+      "expected_sha256": "b4d3a46f17033772e452a3a7c4e8fe4a684b41ef035bc73bd6911b12eb5a3171",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages/torchaudio/__init__.py",
+      "sha256": "24da967918edec6f406e4a87fb3aa0b49e35b416ee297c73605c1247a041c116",
+      "expected_sha256": "24da967918edec6f406e4a87fb3aa0b49e35b416ee297c73605c1247a041c116",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/.radcast/experiments/treble-ism-eng120-epoch119/runtime/bin/python",
+      "sha256": "831807be3d255aae0708810462ce0cde2467235f7daaa86e93d0ddc58b1a4101",
+      "expected_sha256": "831807be3d255aae0708810462ce0cde2467235f7daaa86e93d0ddc58b1a4101",
+      "unchanged": true
+    }
+  ],
+  "selected_downloads": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/model/checkpoints/model_119.ckpt.best",
+      "sha256": "a3cc6a842ee7674c9763dabbe16ffd562cf617aed961b797dd0bc39d1e422fd1",
+      "expected_sha256": "a3cc6a842ee7674c9763dabbe16ffd562cf617aed961b797dd0bc39d1e422fd1",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/model/config.ini",
+      "sha256": "22aad5d5f95312051b755b61cbf050d68cf55d86bb1800931964f4b65983573b",
+      "expected_sha256": "22aad5d5f95312051b755b61cbf050d68cf55d86bb1800931964f4b65983573b",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/LICENSE",
+      "sha256": "b30168d4dd80da497017e947efc304ec1586486debdaa71c1b5bbdddd9fd5ca4",
+      "expected_sha256": "b30168d4dd80da497017e947efc304ec1586486debdaa71c1b5bbdddd9fd5ca4",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/THIRD_PARTY_LICENSES.md",
+      "sha256": "ddc47c64b51b52ff08d8b827e1388a6fc01c12fd2380956dd4716478c3559bff",
+      "expected_sha256": "ddc47c64b51b52ff08d8b827e1388a6fc01c12fd2380956dd4716478c3559bff",
+      "unchanged": true
+    }
+  ],
+  "clean_sources": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p232_002.wav",
+      "sha256": "034de7f89e16082e6aeae23746978d2a42add1d81c29d9f8c615b3e020d70643",
+      "expected_sha256": "034de7f89e16082e6aeae23746978d2a42add1d81c29d9f8c615b3e020d70643",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p232_003.wav",
+      "sha256": "85bd30db189b8abdde6719efb07b34965fb5fb9b6e476ae23f6e6b2d4fd720db",
+      "expected_sha256": "85bd30db189b8abdde6719efb07b34965fb5fb9b6e476ae23f6e6b2d4fd720db",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p232_005.wav",
+      "sha256": "89b1ebdeabff150a3cc12629178e5b98a2366e052f3e8028ea853c2059f69494",
+      "expected_sha256": "89b1ebdeabff150a3cc12629178e5b98a2366e052f3e8028ea853c2059f69494",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p232_006.wav",
+      "sha256": "337d07d33650b223ec973413db1e455aa907dc21a94e49f0544f561e2bce600c",
+      "expected_sha256": "337d07d33650b223ec973413db1e455aa907dc21a94e49f0544f561e2bce600c",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p232_007.wav",
+      "sha256": "74d3ecad4aacbb89cfc4d1bd6dde9bb2c12f6014aaced6e281ff961c421f48f7",
+      "expected_sha256": "74d3ecad4aacbb89cfc4d1bd6dde9bb2c12f6014aaced6e281ff961c421f48f7",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p257_002.wav",
+      "sha256": "b9608fa621bf688a9c8f40fd6e6bf225ef5e06823b806eab3836f2d3a941ca92",
+      "expected_sha256": "b9608fa621bf688a9c8f40fd6e6bf225ef5e06823b806eab3836f2d3a941ca92",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p257_003.wav",
+      "sha256": "394acaaf0d1bf55678ed10e4ce5f09cc691dcd4e0e99d0d66809637dbb37e197",
+      "expected_sha256": "394acaaf0d1bf55678ed10e4ce5f09cc691dcd4e0e99d0d66809637dbb37e197",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p257_004.wav",
+      "sha256": "d2bb1c605d416df5fafa2aea4d4fb83df78bd3f9a46260606f5e3d1b58042f2e",
+      "expected_sha256": "d2bb1c605d416df5fafa2aea4d4fb83df78bd3f9a46260606f5e3d1b58042f2e",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p257_006.wav",
+      "sha256": "336051b3e1eb146169c48d23e56ef4abae990c22f223fe11a43cec896419024e",
+      "expected_sha256": "336051b3e1eb146169c48d23e56ef4abae990c22f223fe11a43cec896419024e",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p257_007.wav",
+      "sha256": "422f5f0d43ad411d811188e2dc4dfafe8784ab793759f22dd3ee784089976587",
+      "expected_sha256": "422f5f0d43ad411d811188e2dc4dfafe8784ab793759f22dd3ee784089976587",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/controls-source/wav/p257_008.wav",
+      "sha256": "e4d93c15e49a577b7db5c58cec7e02a18d18bdf6c4896fc250c3588849d64c20",
+      "expected_sha256": "e4d93c15e49a577b7db5c58cec7e02a18d18bdf6c4896fc250c3588849d64c20",
+      "unchanged": true
+    }
+  ],
+  "raw_controls": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav",
+      "sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+      "expected_sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room.wav",
+      "sha256": "529735b02af4462cba871edd69606da2dae9c2102fd03dab7f41221ca696a91b",
+      "expected_sha256": "529735b02af4462cba871edd69606da2dae9c2102fd03dab7f41221ca696a91b",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean_model.wav",
+      "sha256": "3aee4349cce4aba37f9f407f04d0a35f3fc373143a1082aae0b0ca778fe594a3",
+      "expected_sha256": "3aee4349cce4aba37f9f407f04d0a35f3fc373143a1082aae0b0ca778fe594a3",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room_model.wav",
+      "sha256": "265fa51682a8a7527221bf20fb88a9b9482001884b49468aa5d14bd434ad6d4f",
+      "expected_sha256": "265fa51682a8a7527221bf20fb88a9b9482001884b49468aa5d14bd434ad6d4f",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean.wav",
+      "sha256": "07d24d6da81163ae9f58dd3119c30de028088ee4aa45f85404ea878eeb5b6a85",
+      "expected_sha256": "07d24d6da81163ae9f58dd3119c30de028088ee4aa45f85404ea878eeb5b6a85",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room.wav",
+      "sha256": "fca54fd95c81279fdc920bc80766ff0760183a0bc4598588bdf3babe681ad0e5",
+      "expected_sha256": "fca54fd95c81279fdc920bc80766ff0760183a0bc4598588bdf3babe681ad0e5",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean_model.wav",
+      "sha256": "87fcc59f0c85de27a3f4b74f0f3b7bc3e860dc3dbfc6f1344ede75d3c40899b6",
+      "expected_sha256": "87fcc59f0c85de27a3f4b74f0f3b7bc3e860dc3dbfc6f1344ede75d3c40899b6",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room_model.wav",
+      "sha256": "51eeb3f625a3d06a9436d21e5ca8e5782e801699a69b58ed119f2fea53504ee6",
+      "expected_sha256": "51eeb3f625a3d06a9436d21e5ca8e5782e801699a69b58ed119f2fea53504ee6",
+      "unchanged": true
+    }
+  ],
+  "model_raw_same": true,
+  "primary_stems": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/prepared.wav",
+      "sha256": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71",
+      "expected_sha256": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/highpassed.wav",
+      "sha256": "bc0e8d4af75b1329b4b8586805d770a7c18bfe4d6fa7892d467f5fc8bdb19cee",
+      "expected_sha256": "bc0e8d4af75b1329b4b8586805d770a7c18bfe4d6fa7892d467f5fc8bdb19cee",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/model_raw.wav",
+      "sha256": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+      "expected_sha256": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/cleanup.wav",
+      "sha256": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+      "expected_sha256": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/pause_control.wav",
+      "sha256": "b58dc2ac766dff54d8675fcc808f1e0ab8f802111c46128d8f67dcc1cc2baa97",
+      "expected_sha256": "b58dc2ac766dff54d8675fcc808f1e0ab8f802111c46128d8f67dcc1cc2baa97",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/presence.wav",
+      "sha256": "7fb3c5456597e06625db987f139bccb749763a78bbe8cc3ed590ac15a888db96",
+      "expected_sha256": "7fb3c5456597e06625db987f139bccb749763a78bbe8cc3ed590ac15a888db96",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/levelled.wav",
+      "sha256": "07bddb522162818a13ebfba537779b935140e5fc092610e47babc37edf9a06b4",
+      "expected_sha256": "07bddb522162818a13ebfba537779b935140e5fc092610e47babc37edf9a06b4",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/master_attempt.wav",
+      "sha256": "6c5df9c2018763a8b7b3bb62e0408b673ad823e5b69f1d9d0efbaf43abf7129e",
+      "expected_sha256": "6c5df9c2018763a8b7b3bb62e0408b673ad823e5b69f1d9d0efbaf43abf7129e",
+      "unchanged": true
+    }
+  ],
+  "repair_stems": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/prepared.wav",
+      "sha256": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71",
+      "expected_sha256": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/highpassed.wav",
+      "sha256": "bc0e8d4af75b1329b4b8586805d770a7c18bfe4d6fa7892d467f5fc8bdb19cee",
+      "expected_sha256": "bc0e8d4af75b1329b4b8586805d770a7c18bfe4d6fa7892d467f5fc8bdb19cee",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/model_raw.wav",
+      "sha256": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+      "expected_sha256": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/cleanup.wav",
+      "sha256": "7a95d9f51941d8f48a30ade71da18f4e2f22e930f231725befd34105f91d7ecc",
+      "expected_sha256": "7a95d9f51941d8f48a30ade71da18f4e2f22e930f231725befd34105f91d7ecc",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/pause_control.wav",
+      "sha256": "54f68d4581e0b9b01d1e527ec9ddb9bc2fabca3a4843f221f4c8141e26950e89",
+      "expected_sha256": "54f68d4581e0b9b01d1e527ec9ddb9bc2fabca3a4843f221f4c8141e26950e89",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/presence.wav",
+      "sha256": "0604a120272191873f26e38814b5659788f4be9f303c00a1c125fb9619477e5e",
+      "expected_sha256": "0604a120272191873f26e38814b5659788f4be9f303c00a1c125fb9619477e5e",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/levelled.wav",
+      "sha256": "fe28e4fbaa607d4a9a5dbb226f727f6de3d3de739e4ce896954b99818a5194fa",
+      "expected_sha256": "fe28e4fbaa607d4a9a5dbb226f727f6de3d3de739e4ce896954b99818a5194fa",
+      "unchanged": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/CRJU160_modeltrial_ISM120_best119_dry20.wav",
+      "sha256": "944a3d1b3d95ea5aa208e0aa3c1547608c929c4163823df854abd37bef7e4be5",
+      "expected_sha256": "944a3d1b3d95ea5aa208e0aa3c1547608c929c4163823df854abd37bef7e4be5",
+      "unchanged": true
+    }
+  ],
+  "sandbox_profile_unchanged": true
+}

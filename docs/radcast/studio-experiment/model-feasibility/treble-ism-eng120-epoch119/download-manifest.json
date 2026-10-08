@@ -1,0 +1,37 @@
+{
+  "repository_revision": "8e7998acd7e2beb2776fdcc5231731891383bbc7",
+  "files": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/model/checkpoints/model_119.ckpt.best",
+      "upstream_path": "evaluation/models/ISM-eng-120/checkpoints/model_119.ckpt.best",
+      "url": "https://raw.githubusercontent.com/TrebleTechnologies/iwaenc2026milo/8e7998acd7e2beb2776fdcc5231731891383bbc7/evaluation/models/ISM-eng-120/checkpoints/model_119.ckpt.best",
+      "size_bytes": 8715794,
+      "sha256": "a3cc6a842ee7674c9763dabbe16ffd562cf617aed961b797dd0bc39d1e422fd1",
+      "git_blob_sha1": "3d0167bbc893f33f1358d2047ad5a2adedb8d8f4"
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/model/config.ini",
+      "upstream_path": "evaluation/models/ISM-eng-120/config.ini",
+      "url": "https://raw.githubusercontent.com/TrebleTechnologies/iwaenc2026milo/8e7998acd7e2beb2776fdcc5231731891383bbc7/evaluation/models/ISM-eng-120/config.ini",
+      "size_bytes": 2144,
+      "sha256": "22aad5d5f95312051b755b61cbf050d68cf55d86bb1800931964f4b65983573b",
+      "git_blob_sha1": "a1fc064626d46fb94a32e4f41de85388cf6776d6"
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/LICENSE",
+      "upstream_path": "LICENSE",
+      "url": "https://raw.githubusercontent.com/TrebleTechnologies/iwaenc2026milo/8e7998acd7e2beb2776fdcc5231731891383bbc7/LICENSE",
+      "size_bytes": 1076,
+      "sha256": "b30168d4dd80da497017e947efc304ec1586486debdaa71c1b5bbdddd9fd5ca4",
+      "git_blob_sha1": "25bab214b9ed4446e6a84504c047f24ebaf97afe"
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/THIRD_PARTY_LICENSES.md",
+      "upstream_path": "THIRD_PARTY_LICENSES.md",
+      "url": "https://raw.githubusercontent.com/TrebleTechnologies/iwaenc2026milo/8e7998acd7e2beb2776fdcc5231731891383bbc7/THIRD_PARTY_LICENSES.md",
+      "size_bytes": 2800,
+      "sha256": "ddc47c64b51b52ff08d8b827e1388a6fc01c12fd2380956dd4716478c3559bff",
+      "git_blob_sha1": "48983f1114613d7e9dbd49b1106a8b40061fa9d1"
+    }
+  ]
+}

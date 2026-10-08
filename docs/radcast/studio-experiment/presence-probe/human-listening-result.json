@@ -1,0 +1,13 @@
+{
+  "date": "2026-10-09",
+  "context": "Feedback after the one bounded tonal presence probe",
+  "exact_user_messages": [
+    "ok, the main difference now is the adobe version sounds like he is standing up to the mic, the other versions still sound like he is in a big room. Do you know what I mean?",
+    "or, you know further away form the mic in a big room"
+  ],
+  "interpretation": "Remaining apparent microphone-distance gap. No explicit approval of articulation, identity, production, integration or promotion.",
+  "next_authorization": {
+    "exact_reply": "yes",
+    "scope": "Investigate room sound during speech and original-preservation blending; not silent default promotion."
+  }
+}

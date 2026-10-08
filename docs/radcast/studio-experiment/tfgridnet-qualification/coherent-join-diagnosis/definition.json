@@ -1,0 +1,8 @@
+{
+  "formula": "RMS(merged) / RMS(sum(weight*abs(window_output))/sum(weight)) on the same protected20ms joined frames",
+  "threshold_db": -1,
+  "post_result_reference_correction": true,
+  "model_change": false,
+  "window_change": false,
+  "original_failed_gate_preserved": true
+}

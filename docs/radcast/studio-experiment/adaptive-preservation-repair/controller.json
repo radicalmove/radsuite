@@ -1,0 +1,210 @@
+{
+  "config": {
+    "onset_relative_db": -9.0,
+    "full_relative_db": -12.0,
+    "maximum_original": 0.2,
+    "frame_seconds": 0.02,
+    "expansion_frames_each_side": 8,
+    "smoothing_frames": 5,
+    "energy_guard_max_loss_db": 0.1,
+    "offline_whole_recording_statistics": true
+  },
+  "median_eligible_model_gain_db": -4.3647423292896805,
+  "detector_reference_median_gains_db": {
+    "original": -4.3647423292896805,
+    "preserved_cleanup": -1.0541458178724747
+  },
+  "uses_preserved_cleanup_reference": true,
+  "triggered_windows": [
+    {
+      "reference": "original",
+      "start_seconds": 4.0,
+      "end_seconds": 5.0,
+      "gain_db": -25.48485993675658,
+      "relative_gain_db": -21.1201176074669,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "original",
+      "start_seconds": 4.5,
+      "end_seconds": 5.5,
+      "gain_db": -32.17367571390701,
+      "relative_gain_db": -27.80893338461733,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "original",
+      "start_seconds": 67.0,
+      "end_seconds": 68.0,
+      "gain_db": -25.918865174341637,
+      "relative_gain_db": -21.554122845051957,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "original",
+      "start_seconds": 138.0,
+      "end_seconds": 139.0,
+      "gain_db": -27.014998603320844,
+      "relative_gain_db": -22.650256274031165,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "original",
+      "start_seconds": 138.5,
+      "end_seconds": 139.5,
+      "gain_db": -29.94438910258376,
+      "relative_gain_db": -25.57964677329408,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "original",
+      "start_seconds": 139.0,
+      "end_seconds": 140.0,
+      "gain_db": -27.779835026972883,
+      "relative_gain_db": -23.415092697683203,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "original",
+      "start_seconds": 140.0,
+      "end_seconds": 141.0,
+      "gain_db": -28.78607762318534,
+      "relative_gain_db": -24.42133529389566,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 1.5,
+      "end_seconds": 2.5,
+      "gain_db": -15.376680058275358,
+      "relative_gain_db": -14.322534240402884,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 2.0,
+      "end_seconds": 3.0,
+      "gain_db": -20.863317342293854,
+      "relative_gain_db": -19.80917152442138,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 2.5,
+      "end_seconds": 3.5,
+      "gain_db": -22.3346855616661,
+      "relative_gain_db": -21.280539743793625,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 4.0,
+      "end_seconds": 5.0,
+      "gain_db": -12.602624462059097,
+      "relative_gain_db": -11.548478644186623,
+      "original_weight": 0.16989857627910823
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 4.5,
+      "end_seconds": 5.5,
+      "gain_db": -18.717040594691532,
+      "relative_gain_db": -17.66289477681906,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 67.0,
+      "end_seconds": 68.0,
+      "gain_db": -12.730641538480397,
+      "relative_gain_db": -11.676495720607921,
+      "original_weight": 0.17843304804052806
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 105.0,
+      "end_seconds": 106.0,
+      "gain_db": -33.47765155017977,
+      "relative_gain_db": -32.4235057323073,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 105.5,
+      "end_seconds": 106.5,
+      "gain_db": -33.687376561190725,
+      "relative_gain_db": -32.63323074331825,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 137.5,
+      "end_seconds": 138.5,
+      "gain_db": -13.184880464631503,
+      "relative_gain_db": -12.130734646759027,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 138.0,
+      "end_seconds": 139.0,
+      "gain_db": -14.449068040625551,
+      "relative_gain_db": -13.394922222753078,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 138.5,
+      "end_seconds": 139.5,
+      "gain_db": -16.613445501622806,
+      "relative_gain_db": -15.559299683750332,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 139.0,
+      "end_seconds": 140.0,
+      "gain_db": -14.592551518181317,
+      "relative_gain_db": -13.538405700308843,
+      "original_weight": 0.2
+    },
+    {
+      "reference": "preserved_cleanup",
+      "start_seconds": 140.0,
+      "end_seconds": 141.0,
+      "gain_db": -15.873426823333883,
+      "relative_gain_db": -14.81928100546141,
+      "original_weight": 0.2
+    }
+  ],
+  "initial_energy_guard_conflict_frames": 0,
+  "energy_guard_bypassed_intervals": [],
+  "remaining_energy_guard_conflicts": 0,
+  "minimum_protected_candidate_vs_model_frame_gain_db": 0.0,
+  "active_frame_count": 575,
+  "frame_count": 7174,
+  "active_intervals": [
+    {
+      "start_seconds": 1.3,
+      "end_seconds": 3.7
+    },
+    {
+      "start_seconds": 3.8000000000000003,
+      "end_seconds": 5.7
+    },
+    {
+      "start_seconds": 66.8,
+      "end_seconds": 68.2
+    },
+    {
+      "start_seconds": 104.8,
+      "end_seconds": 106.7
+    },
+    {
+      "start_seconds": 137.3,
+      "end_seconds": 141.20000000000002
+    }
+  ],
+  "sample_count": 6887520,
+  "note": "Source-periodicity/modulation and frame energy are protection proxies, not semantic speech or reverb estimates."
+}

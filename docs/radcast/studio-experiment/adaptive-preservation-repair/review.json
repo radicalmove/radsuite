@@ -1,0 +1,12 @@
+{
+  "state": "no_material_blocker_to_listening_with_disclosed_intelligibility_flags",
+  "reviewer": "/root/studio_review",
+  "scope": "Approved coverage correction, current controller/tests, saved evidence and listening report; read-only review.",
+  "findings_addressed": [
+    "Named substantive ASR recognition differences in report and gate",
+    "Converted report local links to absolute paths",
+    "Same-controller controls and paired input hashes explicitly linked"
+  ],
+  "signal_changes_requested": false,
+  "remaining": "Full recording human listening, especially intro and substantive wording; no promotion or extra render."
+}

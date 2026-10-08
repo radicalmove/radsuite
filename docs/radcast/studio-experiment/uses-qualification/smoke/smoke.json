@@ -1,0 +1,87 @@
+{
+  "state": "local_runtime_smoke_passed",
+  "source": {
+    "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav",
+    "sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+    "sample_count": 1209892
+  },
+  "input_slice_seconds": [
+    1,
+    2
+  ],
+  "model": {
+    "tensor_count": 261,
+    "element_count": 3052492,
+    "missing": [],
+    "unexpected": [],
+    "shape_mismatches": [],
+    "model_family": "legacy USES (ASRU 2023)",
+    "is_uses2_checkpoint": false,
+    "code_revision": "bfc13cecfd0a07ed8e21d733b0ce130a1c69211a",
+    "model_revision": "927a9ecea245120a6f2d88c2552864b937ec5ab9",
+    "config_sha256": "3cd7b57bdb541672fea82d9ab16a04ce63299ac4b108907a5c406b2dd1dc8793",
+    "checkpoint_sha256": "6b2a0c78b2eea566fcfd39b0d77ffc0102b0baf6af60a4a1f4dee93995081121",
+    "vendor_audit_sha256": "e437f492feeaa635760d66c06b56453129b0db20ad940ea603f42530a18fe67e",
+    "vendor_symbol_count": 11,
+    "device": "cpu",
+    "dtype": "float32",
+    "torch_version": "2.1.1",
+    "threads": 4,
+    "weights_only": true,
+    "sample_rate": 48000,
+    "upstream_default_fs": 8000,
+    "fft": 1536,
+    "hop": 768,
+    "frequency_bins": 769,
+    "complex_representation": "native torch complex",
+    "normalize_variance": "torch.std(correction=1), restored exactly once",
+    "output_peak_normalization": false,
+    "resampling": false,
+    "cascade": false,
+    "mode": "dereverb",
+    "memory_types": 2,
+    "memory_reset": "local mem=None at each upstream USES.forward"
+  },
+  "trace": {
+    "mode": "dereverb",
+    "memory_indices": [
+      1
+    ],
+    "observed_separator_modes": [
+      "dereverb"
+    ],
+    "sample_rate": 48000,
+    "sample_count": 48000,
+    "fft": 1536,
+    "hop": 768,
+    "frequency_bins": 769,
+    "threads": 4,
+    "whole_utterance": true,
+    "external_chunks": 1,
+    "memory_reset": "upstream local initialization per forward",
+    "process_peak_rss_before_bytes": 289456128,
+    "input_spectrum_shape": [
+      1,
+      63,
+      769
+    ],
+    "output_spectrum_shape": [
+      1,
+      63,
+      769
+    ],
+    "silence_bypass": false,
+    "model_forward_calls": 1,
+    "wall_seconds": 8.701126874890178,
+    "process_peak_rss_bytes": 2663268352,
+    "output_sample_count": 48000
+  },
+  "input_sha256": "ebb6fbf9a4447576e6bef99bc497d8f5df18787c53b7d87da1570217af3f877f",
+  "output_sha256": "e436e7afe76988b5ab2ce03d5c01ee8e2cd96555361f3228187f839b750f867c",
+  "finite": true,
+  "sample_count": 48000,
+  "input_peak": 0.5,
+  "output_peak": 0.4437514841556549,
+  "candidate_renders": 0,
+  "note": "One-second licensed clean control, not Finnegan or a preservation/quality qualification."
+}

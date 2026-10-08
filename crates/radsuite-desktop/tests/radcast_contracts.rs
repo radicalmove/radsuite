@@ -77,6 +77,11 @@ async fn radcast_import_process_and_list_are_project_scoped() {
             clip_end_seconds: Some(8.0),
             cleanup_enabled: true,
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -253,6 +258,11 @@ async fn radcast_processing_rejects_unknown_sources() {
             clip_end_seconds: None,
             cleanup_enabled: false,
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -288,6 +298,11 @@ async fn radcast_processing_honours_local_cancellation_before_work_begins() {
             clip_end_seconds: None,
             cleanup_enabled: true,
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -363,6 +378,11 @@ async fn radcast_real_audio_fixture_can_process_when_available() {
             clip_end_seconds: Some(10.0),
             cleanup_enabled: true,
             max_silence_seconds: Some(1.0),
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -423,6 +443,11 @@ async fn radcast_real_audio_fixture_can_process_with_the_optimized_profile_when_
             clip_end_seconds: Some(8.0),
             cleanup_enabled: true,
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -475,6 +500,11 @@ async fn radcast_processing_keeps_generated_captions_with_the_audio_output() {
             clip_end_seconds: None,
             cleanup_enabled: false,
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: Some(CaptionFormat::Srt),
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -563,6 +593,11 @@ async fn radcast_speech_aware_pause_cleanup_uses_intervals_and_records_pause_cou
             clip_end_seconds: Some(3.0),
             cleanup_enabled: false,
             max_silence_seconds: Some(0.4),
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Fast,
@@ -634,6 +669,11 @@ async fn radcast_processing_can_apply_the_optimized_local_enhancement_profile() 
             clip_end_seconds: Some(8.0),
             cleanup_enabled: true,
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -720,6 +760,11 @@ async fn radcast_real_audio_fixture_can_process_with_each_legacy_profile_when_av
                 clip_end_seconds: None,
                 cleanup_enabled: false,
                 max_silence_seconds: None,
+                silence_shortening_enabled: false,
+                silence_minimum_seconds: 2.0,
+                silence_threshold_db: -40.0,
+                silence_keep_percent: 50.0,
+                target_duration_seconds: None,
                 caption_format: None,
                 caption_language: "en".to_string(),
                 caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -774,6 +819,11 @@ async fn radcast_processing_reports_ordered_local_progress_phases() {
             clip_end_seconds: None,
             cleanup_enabled: false,
             max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.0,
+            silence_threshold_db: -40.0,
+            silence_keep_percent: 50.0,
+            target_duration_seconds: None,
             caption_format: None,
             caption_language: "en".to_string(),
             caption_quality_mode: CaptionQualityMode::Reviewed,
@@ -815,6 +865,11 @@ async fn radcast_project_settings_are_persisted_in_local_project_storage() {
         enhancement_quality: EnhancementQuality::Fast,
         cleanup_enabled: false,
         max_silence_seconds: Some(1.5),
+        silence_shortening_enabled: false,
+        silence_minimum_seconds: 2.0,
+        silence_threshold_db: -40.0,
+        silence_keep_percent: 50.0,
+        target_duration_seconds: None,
         remove_filler_words: true,
         filler_removal_mode: FillerRemovalMode::Normal,
         trim_ranges_by_source_id: HashMap::from([(
@@ -869,7 +924,7 @@ fn radcast_capabilities_report_caption_model_readiness() {
     assert!(both_ready.optimized_available);
     assert!(both_ready.optimized_detail.contains("local"));
     assert!(both_ready.optimized_detail.contains("server"));
-    assert_eq!(both_ready.enhancement_models.len(), 8);
+    assert_eq!(both_ready.enhancement_models.len(), 10);
     assert!(
         both_ready
             .enhancement_models
@@ -1008,4 +1063,184 @@ fn test_dir(label: &str) -> PathBuf {
 
 fn remove_dir(path: PathBuf) {
     let _ = fs::remove_dir_all(path);
+}
+
+/// Opt-in real offline integration, exercised during Studio experiment validation.
+#[tokio::test]
+async fn studio_real_export_retains_final_qa_and_original_identity_when_enabled() {
+    if env::var_os("RADSUITE_TEST_STUDIO").is_none() {
+        return;
+    }
+    let state = desktop_state_with_migrated_pool().await;
+    let project = list_radcite_projects(&state).await.unwrap()[0].id;
+    let dir = test_dir("studio-e2e");
+    let source = dir.join("source.wav");
+    let status = std::process::Command::new("ffmpeg")
+        .args([
+            "-y",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "aevalsrc=0.1*sin(2*PI*220*t)*(sin(2*PI*2*t)^2):s=48000:d=2",
+            "-c:a",
+            "pcm_f32le",
+        ])
+        .arg(&source)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(project),
+            path: source.to_string_lossy().into_owned(),
+            original_filename: None,
+        },
+        AudioProcessor::default(),
+    )
+    .await
+    .unwrap();
+    for format in [AudioOutputFormat::Wav, AudioOutputFormat::Mp3] {
+        let request = ProcessRadcastAudioRequest {
+            project_id: Some(project),
+            source_id: imported.id.clone(),
+            output_format: format,
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+            cleanup_enabled: true,
+            max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.,
+            silence_threshold_db: -40.,
+            silence_keep_percent: 50.,
+            target_duration_seconds: None,
+            caption_format: None,
+            caption_language: "en".into(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::StudioV1,
+            enhancement_quality: EnhancementQuality::Standard,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
+        };
+        let output = process_radcast_audio_with_processors_and_enhancement(
+            &state,
+            request,
+            AudioProcessor::default(),
+            CaptionProcessor::default(),
+            EnhancementProcessor::default(),
+        )
+        .await
+        .expect("Studio full processing");
+        let report: serde_json::Value = serde_json::from_slice(
+            &fs::read(output.studio_qa_path.as_ref().expect("QA retained")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(report["output"].as_str().unwrap(), output.path);
+        assert_eq!(report["original_source"].as_str().unwrap(), imported.path);
+        assert_eq!(report["metrics"]["sample_rate"], 48000);
+        assert_eq!(report["metrics"]["watchdog"].as_array().unwrap().len(), 0);
+        assert!((report["metrics"]["duration_seconds"].as_f64().unwrap() - 2.).abs() < 0.001);
+        assert!(!output.cleanup_enabled);
+        assert_eq!(
+            output.studio_qa_warnings.len(),
+            report["warnings"].as_array().unwrap().len()
+        );
+        if report["fallback"] == true {
+            assert!(!output.studio_qa_warnings.is_empty());
+        }
+    }
+    fs::remove_dir_all(dir).unwrap();
+}
+
+/// Opt-in real offline integration, exercised during Studio experiment validation.
+#[tokio::test]
+async fn treble_real_export_retains_final_qa_and_original_identity_when_enabled() {
+    if env::var_os("RADSUITE_TEST_TREBLE").is_none() {
+        return;
+    }
+    let state = desktop_state_with_migrated_pool().await;
+    let project = list_radcite_projects(&state).await.unwrap()[0].id;
+    let dir = test_dir("treble-e2e");
+    let source = dir.join("source.wav");
+    let status = std::process::Command::new("ffmpeg")
+        .args([
+            "-y",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            "aevalsrc=0.1*sin(2*PI*220*t)*(sin(2*PI*2*t)^2):s=48000:d=2",
+            "-c:a",
+            "pcm_f32le",
+        ])
+        .arg(&source)
+        .status()
+        .unwrap();
+    assert!(status.success());
+    let imported = import_radcast_audio_with_processor(
+        &state,
+        ImportRadcastAudioRequest {
+            project_id: Some(project),
+            path: source.to_string_lossy().into_owned(),
+            original_filename: None,
+        },
+        AudioProcessor::default(),
+    )
+    .await
+    .unwrap();
+    for format in [AudioOutputFormat::Wav, AudioOutputFormat::Mp3] {
+        let request = ProcessRadcastAudioRequest {
+            project_id: Some(project),
+            source_id: imported.id.clone(),
+            output_format: format,
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+            cleanup_enabled: true,
+            max_silence_seconds: None,
+            silence_shortening_enabled: false,
+            silence_minimum_seconds: 2.,
+            silence_threshold_db: -40.,
+            silence_keep_percent: 50.,
+            target_duration_seconds: None,
+            caption_format: None,
+            caption_language: "en".into(),
+            caption_quality_mode: CaptionQualityMode::Reviewed,
+            caption_glossary: None,
+            enhancement_model: EnhancementModel::StudioTreble,
+            enhancement_quality: EnhancementQuality::Standard,
+            remove_filler_words: false,
+            filler_removal_mode: FillerRemovalMode::Aggressive,
+        };
+        let output = process_radcast_audio_with_processors_and_enhancement(
+            &state,
+            request,
+            AudioProcessor::default(),
+            CaptionProcessor::default(),
+            EnhancementProcessor::default(),
+        )
+        .await
+        .expect("Studio full processing");
+        let report: serde_json::Value = serde_json::from_slice(
+            &fs::read(output.studio_qa_path.as_ref().expect("QA retained")).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(report["output"].as_str().unwrap(), output.path);
+        assert_eq!(report["original_source"].as_str().unwrap(), imported.path);
+        assert_eq!(report["metrics"]["sample_rate"], 48000);
+        assert_eq!(report["metrics"]["watchdog"].as_array().unwrap().len(), 0);
+        assert!((report["metrics"]["duration_seconds"].as_f64().unwrap() - 2.).abs() < 0.001);
+        assert!(!output.cleanup_enabled);
+        assert_eq!(
+            output.studio_qa_warnings.len(),
+            report["warnings"].as_array().unwrap().len()
+        );
+        if report["fallback"] == true {
+            assert!(!output.studio_qa_warnings.is_empty());
+        }
+    }
+    fs::remove_dir_all(dir).unwrap();
 }

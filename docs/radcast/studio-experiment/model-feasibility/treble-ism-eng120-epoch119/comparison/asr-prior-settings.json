@@ -1,0 +1,146 @@
+{
+  "model": "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+  "model_sha256": "1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b",
+  "whisper": "/opt/homebrew/bin/whisper-cli",
+  "whisper_sha256": "ff6403f6443809e89b2fdb7b63ae2fe4f272602e97cde67736a0f395c81da400",
+  "settings": [
+    "-l",
+    "en",
+    "-t",
+    "4",
+    "-nf",
+    "-nt",
+    "-otxt"
+  ],
+  "note": "Exact prior asr_compare.py flags. Original is an unverified ASR proxy; differences are not WER, preservation truth, identity, or listening quality. Adobe edits confound full-file differences. Earlier asr-comparison.json omitted -nt and is retained as a separately labelled diagnostic; do not merge scores. No enhancement run.",
+  "files": {
+    "original": {
+      "transcript": " So some more criminal justice terminology, so this is a refresh from curfew 150. If you don't know these words, it's okay, but it would be good to be familiar with them in the weeks forward, just 'cause it makes reading anything to do with the criminal law a lot more simple, 'cause if you get\n some of these words wrong, particularly like prosecution, defendants, and then you'll like read the entire case wrong and you just waste it a bit of time. So things such as charge, you know, so that's a formal declaration of someone being charged of an offence or being recognized as potentially having done that offence. Someone has made a complaint and there's a sufficient\n enough amount of evidence to engage in an investigation or a trial against them. So offence is basically just like a category, like what crime you're committed with or what crime you're charged with. That one's fairly straightforward. Prosecution, you remember, in a first instance trial, that is the\n criminal law, most commonly the state, that is a party that is giving evidence in order to see that person being committed of the offence or giving evidence in order to prosecute them. And then there's conviction, which is after your trial, if you're found guilty, you're convicted of the offence. I think the main, like the best one to know is when someone's charged with an offence versus when someone is convicted\n with an offence. If they're charged with the offence, they actually haven't been found to commit it, to have committed it, sorry, and they're still technically presumed innocent. Then a trial will happen, if they're found guilty, then they're convicted, then they'll go to prison or what have you. So I put\n",
+      "transcript_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/original.txt",
+      "transcript_sha256": "f5db0d6d31f7de9037a33c48cbef714fdd21e168a7285739ba485b2126a18312",
+      "analysis_wav_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/original_analysis16k.wav",
+      "analysis_wav_sha256": "535d725044af0a1a150d84ce93482b821e6cfe88767f2fc1771199a51a91051e",
+      "command": [
+        "/opt/homebrew/bin/whisper-cli",
+        "-m",
+        "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+        "-f",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/original_analysis16k.wav",
+        "-l",
+        "en",
+        "-t",
+        "4",
+        "-nf",
+        "-nt",
+        "-otxt",
+        "-of",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/original"
+      ],
+      "log_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/original.log",
+      "target_phrase_present": [
+        true,
+        true,
+        true
+      ],
+      "word_count": 293,
+      "word_edit_distance_to_original_proxy": 0,
+      "word_difference_rate_to_original_proxy": 0.0
+    },
+    "B": {
+      "transcript": " See, everyone's a super cane. So some more criminal justice criminology. So this is a refresh from curfew 150. If you don't know these words, it's okay, but it would be good to be familiar with them in the weeks forward, just 'cause it makes reading anything to do with the criminal law a lot more simple. 'Cause if you get\n some of these words wrong, particularly like prosecution, defendants, and then you're like reading the entire case wrong and you just waste it a bit of time. So things such as charge, you know, so that's a formal declaration of someone being charged of an offense or being recognized as potentially having done that offense. Someone has made a complaint and there's a sufficient\n enough amount of evidence to engage in an investigation or a trial against them. So offense is basically just like a category, like what crime you're committed with or what crime you're charged with. That one's fairly straightforward. Prosecution, you remember in a first instance trial, that is the\n criminal law most commonly the state that is the a party that is giving evidence in order to see that person being committed of the offense or giving evidence in order to prosecute them. And then there's conviction, which is after your trial, if you're found guilty, you're convicted of the offense. I think the main light, the best one to know is when someone's charged with an offense versus when someone is convicted\n with an offense. If they're charged with the offense, they actually haven't been found to commit it to have committed it, sorry, are then they're still technically presumed innocent. Then a trial will happen, if they're found guilty, then they're convicted, then they'll go to prison or what have you. So I put\n",
+      "transcript_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/B.txt",
+      "transcript_sha256": "6cfde80869da4d573369fcae47a67789abc578f5f730ad4fed66b87e05ce0d8e",
+      "analysis_wav_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/B_analysis16k.wav",
+      "analysis_wav_sha256": "17dcccf4116d8b08cecc8c59768fdc1e5ab1e1e18c64cb042ca24e3f74adc158",
+      "command": [
+        "/opt/homebrew/bin/whisper-cli",
+        "-m",
+        "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+        "-f",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/B_analysis16k.wav",
+        "-l",
+        "en",
+        "-t",
+        "4",
+        "-nf",
+        "-nt",
+        "-otxt",
+        "-of",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/B"
+      ],
+      "log_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/B.log",
+      "target_phrase_present": [
+        true,
+        true,
+        true
+      ],
+      "word_count": 300,
+      "word_edit_distance_to_original_proxy": 20,
+      "word_difference_rate_to_original_proxy": 0.06825938566552901
+    },
+    "model_dry20": {
+      "transcript": " So some more criminal justice terminology, so this is a refresh from curfew 150. If you don't know these words, it's okay, but it would be good to be familiar with them in the weeks forward, just 'cause it makes reading anything to do with the criminal law a lot more simple, 'cause if you get\n some of these words wrong, particularly like prosecution, defendants, and then you will read the entire case wrong and you just waste it a bit of time. So things such as charge, so that's a formal declaration of someone being charged of an offence or being recognized as potentially having done that offence. Someone has made a complaint and there's a sufficient\n enough amount of evidence to engage in an investigation or a trial against them. So offence is basically just like a category, like what crime you're committed with or what crime you're charged with. That one's fairly straightforward. Prosecution, you remember, in a first instance trial, that is the\n criminal law, most commonly the state, that is a party that is giving evidence in order to see that person being committed of the offence or giving evidence in order to prosecute them. And then there's conviction, which is after your trial, if you're found guilty, you're convicted of the offence. I think the main, like, the best one to know is when someone's charged with an offence versus when someone is convicted\n with an offence, if they're charged with the offence, they actually haven't been found to commit it, to have committed it, sorry, are then they're still technically presumed innocent. Then a trial will happen, if they're found guilty, then they're convicted, then they'll go to prison or what have you. So I've put\n",
+      "transcript_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/model_dry20.txt",
+      "transcript_sha256": "53942c02e0fdfea66b9087303664c059991b7c66288ecb4db98dfb39615d6d68",
+      "analysis_wav_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/model_dry20_analysis16k.wav",
+      "analysis_wav_sha256": "b5e5b45bfd0210288a787e1398718ebecf5b520a00426f5dd56d80d24ac84cd2",
+      "command": [
+        "/opt/homebrew/bin/whisper-cli",
+        "-m",
+        "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+        "-f",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/model_dry20_analysis16k.wav",
+        "-l",
+        "en",
+        "-t",
+        "4",
+        "-nf",
+        "-nt",
+        "-otxt",
+        "-of",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/model_dry20"
+      ],
+      "log_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/model_dry20.log",
+      "target_phrase_present": [
+        true,
+        true,
+        true
+      ],
+      "word_count": 292,
+      "word_edit_distance_to_original_proxy": 7,
+      "word_difference_rate_to_original_proxy": 0.023890784982935155
+    },
+    "Adobe": {
+      "transcript": " So some more criminal justice primology. So this is a refresh from crew view 150. If you don't know these words, it's okay, but it would be good to be familiar with them in the weeks forward, just 'cause it makes like reading anything to do with the criminal law a lot more simple. 'Cause if you get some of these words wrong,\n it's really like prosecution and defendants and then you're like reading the entire case wrong and you just waste it a bit of time. So things such as charge, you know, so that's a formal declaration of someone being charged of an offense or being recognized as potentially having done that offense. Someone has made a complaint and there's a sufficient enough amount of evidence\n to engage in an investigation or a trial against them. So offense is basically just like a category, like what crime you're committed with or what crime you're charged with. That one's fairly straightforward. Prosecution, you remember in a first instance trial, that is the, and criminal law most commonly,\n that is the a party that is giving evidence in order to see that person being committed of the offense or giving evidence in order to prosecute them. And then there's conviction, which is after your trial, if you're found guilty, you're convicted of the offense. The best one to know is when someone's charged with an offense versus when someone is convicted with an offense.\n The offense, they actually haven't been found to commit it to have committed it. Sorry. And they're still technically presumed innocent. Then a trial will happen. If they found guilty, then they convicted, then they'll go to prison or what have you.\n",
+      "transcript_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/Adobe.txt",
+      "transcript_sha256": "bea20e6da9bc4d11ab181a5f4a0fba69500650a48cd365070174b1a30b050fc3",
+      "analysis_wav_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/Adobe_analysis16k.wav",
+      "analysis_wav_sha256": "f693e9dbe35fb0fa61649af54344cc9da1ca954c0b5b127715fe85122c122696",
+      "command": [
+        "/opt/homebrew/bin/whisper-cli",
+        "-m",
+        "/Users/rcd58/.radcast/whispercpp-models/ggml-small.bin",
+        "-f",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr/Adobe_analysis16k.wav",
+        "-l",
+        "en",
+        "-t",
+        "4",
+        "-nf",
+        "-nt",
+        "-otxt",
+        "-of",
+        "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/Adobe"
+      ],
+      "log_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/asr-prior-settings/Adobe.log",
+      "target_phrase_present": [
+        true,
+        true,
+        true
+      ],
+      "word_count": 285,
+      "word_edit_distance_to_original_proxy": 35,
+      "word_difference_rate_to_original_proxy": 0.11945392491467577
+    }
+  }
+}

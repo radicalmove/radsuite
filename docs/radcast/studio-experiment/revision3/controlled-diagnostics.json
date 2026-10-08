@@ -1,0 +1,33 @@
+{
+  "wpe": {
+    "phrase_rms_change_db": -0.09680468227482288,
+    "phrase_difference_signal_db_relative": -24.277840080283134,
+    "phrase_waveform_correlation": 0.9981740013461524
+  },
+  "cleanup": {
+    "phrase_rms_change_db": -0.08568278984767319,
+    "phrase_difference_signal_db_relative": -25.106821799995323,
+    "phrase_waveform_correlation": 0.9984906393391306
+  },
+  "presence": {
+    "phrase_rms_change_db": -0.084201393120681,
+    "phrase_difference_signal_db_relative": -25.21309476514855,
+    "phrase_waveform_correlation": 0.998526893075805
+  },
+  "levelled": {
+    "phrase_rms_change_db": -0.17979640315438775,
+    "phrase_difference_signal_db_relative": -24.545088800147383,
+    "phrase_waveform_correlation": 0.9984217829731227
+  },
+  "gain_curve": {
+    "maximum_absolute_difference_db": 2.985178203024567,
+    "phrase_maximum_difference_db": 1.1626666762212645,
+    "phrase_rms_difference_db": 0.17250991438243704
+  },
+  "frozen_gain": {
+    "phrase_rms_change_db": -0.09927454812877656,
+    "phrase_difference_signal_db_relative": -24.698374440124965
+  },
+  "baseline_reproduced": true,
+  "note": "Signal difference is not isolated reverb, RT60 or quality. Frozen-gain file is a diagnostic control, not a promoted preset."
+}

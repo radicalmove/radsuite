@@ -16,6 +16,7 @@
     RadcastJobStatus,
     RadcastProjectSettings,
     RadcastProcessingPhase,
+    RadcastSilenceAnalysis,
     RadcastTrimRange,
   } from "../types";
   import {
@@ -57,6 +58,19 @@
   );
   let shortenPauses = $state(false);
   let maxSilenceSeconds = $state(1.0);
+  let silenceShorteningEnabled = $state(false);
+  let silenceMinimumSeconds = $state(2.0);
+  let silenceThresholdDb = $state(-40.0);
+  let silenceKeepPercent = $state(50.0);
+  let targetDurationMinutes = $state<number | null>(null);
+  let targetDurationSeconds = $derived(
+    targetDurationMinutes !== null && Number.isFinite(targetDurationMinutes) && targetDurationMinutes > 0
+      ? targetDurationMinutes * 60
+      : null,
+  );
+  let silenceAnalysis = $state<RadcastSilenceAnalysis | null>(null);
+  let analyzingSilence = $state(false);
+  let silenceAnalysisKey = $state("");
   let removeFillerWords = $state(false);
   let fillerRemovalMode = $state<FillerRemovalMode>("aggressive");
   let trimRangesBySourceId = $state<Record<string, RadcastTrimRange>>({});
@@ -82,6 +96,20 @@
     optimized_available: false,
     optimized_detail: "Checking local enhancement support.",
     enhancement_models: [
+      {
+        id: "studio_treble",
+        label: "Studio — Treble (recommended)",
+        description: "Reduces room sound while protecting quiet speech.",
+        available: false,
+        detail: "Checking local support...",
+      },
+      {
+        id: "studio_v1",
+        label: "Studio — Classic",
+        description: "Earlier Studio method with room cleanup and original-voice blending.",
+        available: false,
+        detail: "Checking local enhancement support.",
+      },
       {
         id: "none",
         label: "Standard cleanup",
@@ -177,13 +205,18 @@
     Boolean(selectedSource && !isRadcastFullTrimRange(activeTrimRange, selectedSource.duration_seconds)),
   );
   let sourceAudioUrl = $derived(selectedSource ? convertFileSrc(selectedSource.path) : null);
+  let currentSilenceAnalysisKey = $derived(JSON.stringify([
+    selectedSourceId, clipStart, clipEnd, silenceMinimumSeconds, silenceThresholdDb,
+    silenceKeepPercent, targetDurationMinutes,
+  ]));
   let processDisabled = $derived(
     processing ||
     !selectedSource ||
     clipEnd <= clipStart ||
     clipEnd > selectedSource.duration_seconds ||
     (settingsLoaded && selectedEnhancementCapability !== null && !selectedEnhancementCapability.available) ||
-    (settingsLoaded && !canUseRadcastSpeechCleanup(captionCapability.caption_available, shortenPauses, removeFillerWords)),
+    (settingsLoaded && !canUseRadcastSpeechCleanup(captionCapability.caption_available, shortenPauses, removeFillerWords)) ||
+    (silenceShorteningEnabled && silenceAnalysisKey !== currentSilenceAnalysisKey),
   );
 
   $effect(() => {
@@ -505,6 +538,11 @@
       max_silence_seconds: captionCapability.caption_available && shortenPauses
         ? clampRadcastSilenceSeconds(maxSilenceSeconds)
         : null,
+      silence_shortening_enabled: silenceShorteningEnabled,
+      silence_minimum_seconds: silenceMinimumSeconds,
+      silence_threshold_db: silenceThresholdDb,
+      silence_keep_percent: silenceKeepPercent,
+      target_duration_seconds: targetDurationSeconds,
       remove_filler_words: captionCapability.caption_available && removeFillerWords,
       filler_removal_mode: fillerRemovalMode,
       trim_ranges_by_source_id: trimRanges,
@@ -542,6 +580,11 @@
       cleanupEnabled = result.settings.cleanup_enabled;
       shortenPauses = result.settings.max_silence_seconds !== null;
       maxSilenceSeconds = clampRadcastSilenceSeconds(result.settings.max_silence_seconds ?? 1.0);
+      silenceShorteningEnabled = result.settings.silence_shortening_enabled ?? false;
+      silenceMinimumSeconds = result.settings.silence_minimum_seconds ?? 2.0;
+      silenceThresholdDb = result.settings.silence_threshold_db ?? -40.0;
+      silenceKeepPercent = result.settings.silence_keep_percent ?? 50.0;
+      targetDurationMinutes = result.settings.target_duration_seconds == null ? null : result.settings.target_duration_seconds / 60;
       removeFillerWords = result.settings.remove_filler_words;
       fillerRemovalMode = result.settings.filler_removal_mode;
       trimRangesBySourceId = result.settings.trim_ranges_by_source_id ?? {};
@@ -645,6 +688,11 @@
           max_silence_seconds: captionCapability.caption_available && shortenPauses
             ? clampRadcastSilenceSeconds(maxSilenceSeconds)
             : null,
+          silence_shortening_enabled: silenceShorteningEnabled,
+          silence_minimum_seconds: silenceMinimumSeconds,
+          silence_threshold_db: silenceThresholdDb,
+          silence_keep_percent: silenceKeepPercent,
+          target_duration_seconds: targetDurationSeconds,
           caption_format: captionFormat,
           caption_language: captionLanguage,
           caption_quality_mode: captionQualityMode,
@@ -692,6 +740,31 @@
       resetRadcastProgress();
     } finally {
       processing = false;
+    }
+  }
+
+  async function analyzeSilence() {
+    if (!selectedSource) return;
+    analyzingSilence = true;
+    error = null;
+    try {
+      silenceAnalysis = await invoke<RadcastSilenceAnalysis>("analyze_radcast_silence", {
+        request: {
+          project_id: selectedProjectId,
+          source_id: selectedSource.id,
+          clip_start_seconds: clipStart,
+          clip_end_seconds: clipEnd,
+          minimum_seconds: silenceMinimumSeconds,
+          threshold_db: silenceThresholdDb,
+          keep_percent: silenceKeepPercent,
+          target_duration_seconds: targetDurationSeconds,
+        },
+      });
+      silenceAnalysisKey = currentSilenceAnalysisKey;
+    } catch (reason: unknown) {
+      error = `Could not analyze silence: ${toErrorMessage(reason)}`;
+    } finally {
+      analyzingSilence = false;
     }
   }
 
@@ -1053,6 +1126,35 @@
             </div>
           {/if}
           <label class="radcast-check">
+            <input type="checkbox" bind:checked={silenceShorteningEnabled} />
+            <span>
+              <strong>Shorten near-silent sections</strong>
+              <small>Detect long low-level pauses directly in the audio; speech remains untouched.</small>
+            </span>
+          </label>
+          {#if silenceShorteningEnabled}
+            <div class="settings-compact-field radcast-silence-options">
+              <label>Minimum silence (seconds)<input type="number" min="0.5" max="30" step="0.5" bind:value={silenceMinimumSeconds} /></label>
+              <label>Threshold (dB)<input type="number" min="-80" max="-10" step="1" bind:value={silenceThresholdDb} /></label>
+              <label>Keep silence (%)<input type="number" min="0" max="100" step="5" bind:value={silenceKeepPercent} /></label>
+              <label>Target length (minutes, optional)<input type="number" min="0.1" step="0.1" bind:value={targetDurationMinutes} placeholder="Use keep percentage" /></label>
+              <button class="button-secondary" type="button" onclick={analyzeSilence} disabled={analyzingSilence || processing || !selectedSource}>
+                {analyzingSilence ? "Analyzing…" : "Analyze silence"}
+              </button>
+              {#if silenceAnalysis && silenceAnalysisKey === currentSilenceAnalysisKey}
+                <div class="radcast-silence-analysis" aria-live="polite">
+                  <strong>Estimated output: {formatDuration(silenceAnalysis.estimated_duration_seconds)}</strong>
+                  <span>{silenceAnalysis.qualifying_silence_count} sections · {formatDuration(silenceAnalysis.qualifying_silence_seconds)} qualifying silence · {silenceAnalysis.retained_silence_percent.toFixed(0)}% retained</span>
+                  {#if targetDurationSeconds !== null && !silenceAnalysis.target_reachable}
+                    <span>Target can’t be reached using silence alone. Shortest possible: {formatDuration(silenceAnalysis.shortest_duration_seconds)}.</span>
+                  {/if}
+                </div>
+              {:else}
+                <small>Analyze this clip to preview the shortened duration before processing.</small>
+              {/if}
+            </div>
+          {/if}
+          <label class="radcast-check">
             <input type="checkbox" bind:checked={shortenPauses} disabled={!captionCapability.caption_available} />
             <span>
               <strong>Shorten long pauses</strong>
@@ -1157,6 +1259,9 @@
               <strong>{output.filename}</strong>
               <span>{output.output_format.toUpperCase()} · {formatDuration(output.duration_seconds)}{output.enhancement_model !== "none" ? ` · ${enhancementModelLabel(output.enhancement_model)} · ${enhancementQualityLabel(output.enhancement_quality)}` : ""}{output.cleanup_enabled ? " · Cleaned" : ""}{output.max_silence_seconds !== null ? ` · Keep pauses ≤ ${output.max_silence_seconds}s · ${formatRadcastPauseRemovalCount(output.removed_pause_count)}` : ""}{output.removed_filler_count > 0 ? ` · ${output.removed_filler_count} fillers removed` : ""}{output.caption_review_required ? ` · Review ${output.caption_low_confidence_segments} caption line${output.caption_low_confidence_segments === 1 ? "" : "s"}` : ""}</span>
             </div>
+            {#each output.studio_qa_warnings ?? [] as warning}
+              <p role="status">Studio used conservative fallback: {warning}</p>
+            {/each}
             <audio controls src={convertFileSrc(output.path)}>
               Your browser does not support audio playback.
             </audio>
@@ -1167,6 +1272,10 @@
                 disabled={downloadingArtifact !== null}
                 onclick={() => void downloadArtifact(output.path, output.filename, "Audio file", output.output_format, "Audio")}
               >Download audio</button>
+              {#if output.studio_qa_path}
+                <button type="button" class="secondary-button compact-button" disabled={downloadingArtifact !== null} onclick={() => void downloadArtifact(output.studio_qa_path!, `${output.filename}.qa.json`, "Studio QA report", "json", "QA report")}>Studio QA report</button>
+                <span>Experimental Studio: review the QA report and listen for natural articulation.</span>
+              {/if}
               {#if output.caption_path && output.caption_format}
                 <button
                   class="secondary-button compact-button"

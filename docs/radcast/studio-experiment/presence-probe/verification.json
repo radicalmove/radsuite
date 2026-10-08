@@ -1,0 +1,56 @@
+{
+  "reference_integrity": {
+    "original": {
+      "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3",
+      "sha256": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+      "unchanged": true
+    },
+    "optimized": {
+      "path": "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-88ada395.mp3",
+      "sha256": "6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9",
+      "unchanged": true
+    },
+    "natural_double_plus": {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/audio_work/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-7524c22d.mp3",
+      "sha256": "f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad",
+      "unchanged": true
+    },
+    "reference": {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav",
+      "sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4",
+      "unchanged": true
+    }
+  },
+  "runtime_snapshot_unchanged": true,
+  "hashed_paths_verified": 63,
+  "code_sha256": {
+    "tools/radcast/presence_probe.py": "505b96a25832c9b641325ffd7bc23ba9186368a611b33978f0ee000ac5611431",
+    "tools/radcast/test_presence_probe.py": "3f349aa28759a3b80618e1e0ca87d2424b3ebbe9f86c5e5284e4ef48e7a796dd",
+    "tools/radcast/model_trial.py": "55c42110ffcae0dd82b4169fc239b597e33281903af973a9b6c4d375e5d04ddf",
+    "tools/radcast/analysis.py": "621330f679dc16c766b2b27b0120e0920fab99157e350211d718c70db97f8f08",
+    "tools/radcast/studio.py": "0e677d2fea69baccf4f3ffbfee5e7348ee067e6fbdd479a0b14e2fd3b70138c9",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/compare_saved.py": "976c69ccf69fdc8ebfcf29cc10e91e6d72c89501d9111655e293a830cae010b6"
+  },
+  "ffmpeg": {
+    "path": "/opt/homebrew/bin/ffmpeg",
+    "sha256": "0a96da2735695308d964e25fa6f4a0db2e9d24031390360f4c5ff96a4f8938e5",
+    "version": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers"
+  },
+  "ffprobe": {
+    "path": "/opt/homebrew/bin/ffprobe",
+    "sha256": "68447e67105534f3f43b95c94983ed56fbdd7125e5724cc56499ad538c2b86a7"
+  },
+  "tests": {
+    "total": 50,
+    "failures": 0,
+    "skips": 0,
+    "seconds": 42.235,
+    "real_model_enabled": true
+  },
+  "response_bounds_passed": true,
+  "source_and_baseline_watchdogs": [],
+  "comparison_rms_within_db": 1e-05,
+  "target_lufs_spread_lu": 0.00999999999999801,
+  "asr_prior_model_and_binary_unchanged": true,
+  "note": "Actual tests observed before this inventory. External supplied references retain original encoding; generated WAVs validated mono48kFLOAT. No native/UI tests rerun because app unchanged."
+}

@@ -1,0 +1,134 @@
+{
+  "state": "single_window_diagnostic_human_feedback_pending",
+  "full_recording_qualified": false,
+  "full_candidate": false,
+  "model": {
+    "tensor_count": 270,
+    "element_count": 8524352,
+    "missing": [],
+    "unexpected": [],
+    "shape_mismatches": [],
+    "model_family": "TFGridNetV3 URGENT2025",
+    "model_revision": "daad000927daa131e7692376a71c8144bcbfa6f8",
+    "publisher_commit": "6be80495bca76d8406ca11e5971a9954949ac9c1",
+    "checkpoint_sha256": "8350b6f84bb5de01646b7cebe9d19d5b1fc4318cd85c31d242caccc2442d276e",
+    "config_sha256": "9591c84a91349834fb7a31a021fa4d0858b46c001c6aa7ab096f0ee502684a61",
+    "vendor_audit_sha256": "d3d51b2dc41886f467d04fc25895ad7ff3b728a5f9336c487c76080ab46a3406",
+    "adapter_sha256": "1741442e8de84a997c42fe48cb2ba6e4cceeac69be72648d406f5a0231c63229",
+    "stft_helper_sha256": "d2f9a31f066de05b33e6ab0923afb6b9e7edf029595a20e50f3f0ead555ea0e4",
+    "torch_version": "2.1.1",
+    "device": "mps",
+    "complex_stft_device": "cpu",
+    "threads": 4,
+    "dtype": "float32",
+    "sample_rate": 48000,
+    "fft": 1536,
+    "hop": 768,
+    "frequency_bins": 769,
+    "window_policy": {
+      "window_samples": 144000,
+      "hop_samples": 96000,
+      "overlap_samples": 48000,
+      "overlap": "half-sample raised cosine; normalized sum",
+      "context": "independent neural windows",
+      "resampling": false,
+      "output_peak_normalization": false,
+      "between_window_gain_matching": false
+    },
+    "output_peak_normalization": false,
+    "resampling": false,
+    "cascade": false,
+    "target": "Published preparation retains approximately50ms early response; not guaranteed anechoic.",
+    "variance": "Per-window torch.std(correction=1); restored once before overlap"
+  },
+  "inference_trace": {
+    "window_samples": 144000,
+    "hop_samples": 96000,
+    "overlap_samples": 48000,
+    "overlap": "half-sample raised cosine; normalized sum",
+    "context": "independent neural windows",
+    "resampling": false,
+    "output_peak_normalization": false,
+    "between_window_gain_matching": false,
+    "windows": [
+      {
+        "start_sample": 0,
+        "end_sample": 144000
+      }
+    ],
+    "sample_count": 144000,
+    "minimum_weight": 1.0,
+    "maximum_weight": 1.0,
+    "join_energy_worst_db": null,
+    "join_energy_protected_worst_db": null,
+    "join_energy_note": "Merged vs weighted per-window frame energy; includes amplitude and phase variation, not a pure phase or reverb estimate.",
+    "window_details": [
+      {
+        "silence_bypass": false,
+        "neural_calls": 1,
+        "spectrum_shape": [
+          1,
+          188,
+          769
+        ],
+        "input_std": 0.021362295374274254
+      }
+    ],
+    "frequency_bins": 769,
+    "sample_rate": 48000,
+    "wall_seconds": 10.721647750004195,
+    "peak_process_rss_bytes": 461209600,
+    "whole_context_equivalence_claimed": false,
+    "global_input_sample_count": 144000
+  },
+  "source_report": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/trial.qa.json",
+  "source_span_seconds": [
+    19.5,
+    22.5
+  ],
+  "Adobe_offset_seconds": -2.239,
+  "files": {
+    "TFGrid": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/weeks_forward_TFGrid.wav",
+      "sha256": "6e8427cef0725f2f00a43743090f437a3f668ecdf5fdd10cbf656e896ae25d98",
+      "static_gain_db": 21.02113292083609,
+      "samples": 144000,
+      "speech_rms_dbfs": -22.49600628827649,
+      "loudness": {
+        "integrated_lufs": -22.96,
+        "true_peak_dbfs": -4.11,
+        "loudness_range_lu": 1.0
+      }
+    },
+    "Treble": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/weeks_forward_Treble.wav",
+      "sha256": "58c8ada6df363f79815f061c7e93d6fbc9fca5eb37f19773c7def1580ea12908",
+      "static_gain_db": 15.695429777510693,
+      "samples": 144000,
+      "speech_rms_dbfs": -22.49600628604558,
+      "loudness": {
+        "integrated_lufs": -23.24,
+        "true_peak_dbfs": -3.75,
+        "loudness_range_lu": 1.1
+      }
+    },
+    "Adobe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/weeks_forward_Adobe.wav",
+      "sha256": "25924448bb8cf076d1bc0c9c6fe2db26cd2e2f550991989eeda1b51ddcb47377",
+      "static_gain_db": 4.998786112051555,
+      "samples": 144000,
+      "speech_rms_dbfs": -22.496006407309892,
+      "loudness": {
+        "integrated_lufs": -22.6,
+        "true_peak_dbfs": -2.97,
+        "loudness_range_lu": 0.7
+      }
+    }
+  },
+  "local_watchdog": [],
+  "candidate_inferences": 0,
+  "teacher_diagnostic_signals": 1,
+  "teacher_diagnostic_neural_windows": 1,
+  "stage": "Raw original-derived cleanup only; static auditiongain, no EQ/compressor/mastering.",
+  "context_caveat": "TFGrid independently inferred3s original-derived HPsource; Treble is from the full original run. This is not the approved fullwindowed-pipeline candidate and cannot establish full-length quiet-word safety or overall superiority."
+}

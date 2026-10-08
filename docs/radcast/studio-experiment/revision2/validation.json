@@ -1,0 +1,17 @@
+{
+  "date": "2026-10-08",
+  "timezone": "Pacific/Auckland",
+  "python_tests": 23,
+  "rust_tests": 171,
+  "ui_tests": 177,
+  "studio_real_e2e_enabled": true,
+  "ui_build": "passed",
+  "format_check": "passed",
+  "diff_whitespace": "passed",
+  "implementation_hashes": {
+    "tools/radcast/analysis.py": "621330f679dc16c766b2b27b0120e0920fab99157e350211d718c70db97f8f08",
+    "tools/radcast/studio.py": "b80163c93e3a29e54eed32dfe8902b91288299e4797f51a9e4d0af85ac31726f",
+    "tools/radcast/speech_cleanup.py": "d753d59e0a23da150cdce1d73276e966955b33b31dac9b337a7632105a82b95d",
+    "crates/radsuite-engines/src/studio.rs": "45a5771c820d97d18aa52d2cbbfccd83a296d4af1e20542ae2b166fc6150158c"
+  }
+}
