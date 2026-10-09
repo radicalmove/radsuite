@@ -1,10 +1,14 @@
+use std::path::PathBuf;
+
+#[cfg(unix)]
 use std::{
     fs,
-    os::unix::fs::PermissionsExt,
-    path::{Path, PathBuf},
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
+
+#[cfg(unix)]
+use std::{os::unix::fs::PermissionsExt, path::Path};
 
 use radsuite_engines::{
     AudioOutputFormat, AudioProcessingError, AudioProcessingRequest, AudioProcessor,
@@ -30,6 +34,7 @@ fn audio_processing_rejects_a_clip_that_ends_before_it_starts() {
 }
 
 #[test]
+#[cfg(unix)]
 fn detects_a_long_silent_audio_interval_with_ffmpeg() {
     let dir = test_dir("silencedetect");
     let input = dir.join("silence.wav");
@@ -253,6 +258,7 @@ fn audio_processing_builds_a_crossfade_graph_for_filler_intervals() {
 }
 
 #[test]
+#[cfg(unix)]
 fn removal_crossfades_match_python_duration_and_protect_selected_clip() {
     let dir = test_dir("crossfade-real");
     let input = dir.join("source.wav");
@@ -309,6 +315,7 @@ fn removal_crossfades_match_python_duration_and_protect_selected_clip() {
 }
 
 #[test]
+#[cfg(unix)]
 fn removal_crossfades_handle_tiny_middle_and_trailing_chunks() {
     let dir = test_dir("crossfade-tiny");
     let input = dir.join("source.wav");
@@ -375,6 +382,7 @@ fn removal_duration_includes_crossfades_for_guarded_export_checks() {
 }
 
 #[test]
+#[cfg(unix)]
 fn real_cleanup_transcription_and_render_when_fixture_is_available() {
     let Ok(path) = std::env::var("RADSUITE_REAL_CLEANUP_AUDIO") else {
         return;
@@ -423,6 +431,7 @@ fn real_cleanup_transcription_and_render_when_fixture_is_available() {
     fs::remove_dir_all(dir).unwrap();
 }
 
+#[cfg(unix)]
 fn write_pcm_wav(path: &Path, samples: &[[f32; 2]]) {
     let mut bytes = Vec::new();
     let length = (samples.len() * 4) as u32;
@@ -446,6 +455,7 @@ fn write_pcm_wav(path: &Path, samples: &[[f32; 2]]) {
     fs::write(path, bytes).unwrap();
 }
 
+#[cfg(unix)]
 fn read_stereo_samples(path: &Path) -> Vec<[f32; 2]> {
     let decoded = std::process::Command::new("ffmpeg")
         .args(["-v", "error", "-i"])
@@ -467,6 +477,7 @@ fn read_stereo_samples(path: &Path) -> Vec<[f32; 2]> {
 }
 
 #[test]
+#[cfg(unix)]
 fn audio_processor_runs_with_deterministic_tool_commands() {
     let dir = test_dir("process");
     let ffmpeg = write_executable(
@@ -503,6 +514,188 @@ fn audio_processor_runs_with_deterministic_tool_commands() {
     remove_dir(dir);
 }
 
+#[test]
+#[cfg(unix)]
+fn audio_processor_exposes_runner_progress_without_changing_the_default_path() {
+    let dir = test_dir("runner-progress");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf 'out_time_us=1000000\\n'\nmkdir -p \"$(dirname \"$output\")\"\nprintf 'fake audio' > \"$output\"\n",
+    );
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nprintf '12.5\\n'");
+    let input = dir.join("source.wav");
+    let output = dir.join("outputs").join("clean.wav");
+    fs::write(&input, b"source audio").expect("write source");
+    let mut progress = Vec::new();
+
+    let result = AudioProcessor::from_commands(ffmpeg, ffprobe)
+        .process_with_callbacks(
+            AudioProcessingRequest {
+                input_path: input,
+                output_path: output,
+                output_format: AudioOutputFormat::Wav,
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+                cleanup_enabled: false,
+                max_silence_seconds: None,
+                remove_intervals: Vec::new(),
+            },
+            || false,
+            |line| progress.push(line.to_string()),
+        )
+        .expect("process audio with callbacks");
+
+    assert_eq!(result.duration_seconds, 12.5);
+    assert!(progress.iter().any(|line| line == "out_time_us=1000000"));
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn audio_processor_maps_runner_cancellation_to_audio_cancellation() {
+    let dir = test_dir("runner-cancel");
+    let ffmpeg = write_executable(&dir, "ffmpeg.sh", "#!/bin/sh\nsleep 30\n");
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nprintf '12.5\\n'");
+    let input = dir.join("source.wav");
+    let output = dir.join("outputs").join("clean.wav");
+    fs::write(&input, b"source audio").expect("write source");
+    let mut polls = 0;
+
+    let result = AudioProcessor::from_commands(ffmpeg, ffprobe).process_with_callbacks(
+        AudioProcessingRequest {
+            input_path: input,
+            output_path: output,
+            output_format: AudioOutputFormat::Wav,
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+            cleanup_enabled: false,
+            max_silence_seconds: None,
+            remove_intervals: Vec::new(),
+        },
+        || {
+            polls += 1;
+            polls > 3
+        },
+        |_| {},
+    );
+
+    assert!(matches!(
+        result,
+        Err(AudioProcessingError::Cancelled { .. })
+    ));
+    remove_dir(dir);
+}
+
+#[test]
+fn studio_arguments_preserve_float_pcm_at_48khz() {
+    let args = display_args(
+        &AudioProcessor::studio_ffmpeg_arguments(&request(AudioOutputFormat::Wav), None)
+            .expect("studio arguments"),
+    );
+    assert!(
+        args.windows(2)
+            .any(|pair| pair == ["-codec:a", "pcm_f32le"])
+    );
+    assert!(args.windows(2).any(|pair| pair == ["-ar", "48000"]));
+    assert!(!args.iter().any(|arg| arg == "pcm_s16le"));
+}
+
+#[cfg(unix)]
+#[test]
+fn studio_callbacks_preserve_render_format_and_progress() {
+    let dir = test_dir("studio-callbacks");
+    let ffmpeg = write_executable(
+        &dir,
+        "ffmpeg.sh",
+        "#!/bin/sh\noutput=''\nfor arg in \"$@\"; do output=\"$arg\"; done\nprintf '%s\\n' \"$@\" > \"$output\"\nprintf 'out_time_us=1000000\\n'\n",
+    );
+    let ffprobe = write_executable(&dir, "ffprobe.sh", "#!/bin/sh\nprintf '12.5\\n'");
+    let input = dir.join("source.wav");
+    let output = dir.join("studio.wav");
+    fs::write(&input, b"source audio").unwrap();
+    let mut progress = Vec::new();
+    let result = AudioProcessor::from_commands(ffmpeg, ffprobe)
+        .process_studio_with_additional_filter_with_callbacks(
+            AudioProcessingRequest {
+                input_path: input,
+                output_path: output.clone(),
+                ..request(AudioOutputFormat::Wav)
+            },
+            Some("anull"),
+            || false,
+            |line| progress.push(line.to_string()),
+        )
+        .expect("studio rendering with callbacks");
+    let arguments = fs::read_to_string(output).unwrap();
+    assert!(arguments.contains("pcm_f32le\n-ar\n48000\n"));
+    assert!(arguments.contains("-af\nanull\n"));
+    assert!(progress.iter().any(|line| line == "out_time_us=1000000"));
+    assert_eq!(result.duration_seconds, 12.5);
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn removal_bounding_probe_can_be_cancelled_before_rendering() {
+    let dir = test_dir("bounding-probe-cancel");
+    let ffmpeg = write_executable(&dir, "ffmpeg.sh", "#!/bin/sh\nexit 99\n");
+    let ffprobe = write_executable(
+        &dir,
+        "ffprobe.sh",
+        "#!/bin/sh\nprintf 'probe_started\\n'\nsleep 30\n",
+    );
+    let input = dir.join("source.wav");
+    fs::write(&input, b"source audio").unwrap();
+    let cancelled = std::cell::Cell::new(false);
+    let result = AudioProcessor::from_commands(ffmpeg, &ffprobe).process_with_callbacks(
+        AudioProcessingRequest {
+            input_path: input,
+            output_path: dir.join("cut.wav"),
+            remove_intervals: vec![AudioTimeInterval {
+                start_seconds: 0.4,
+                end_seconds: 0.996,
+            }],
+            ..request(AudioOutputFormat::Wav)
+        },
+        || cancelled.get(),
+        |line| {
+            if line == "probe_started" {
+                cancelled.set(true);
+            }
+        },
+    );
+    assert!(
+        matches!(result, Err(AudioProcessingError::Cancelled { command }) if command == ffprobe.display().to_string())
+    );
+    remove_dir(dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn mp3_packet_probe_preserves_cancellation() {
+    let dir = test_dir("packet-probe-cancel");
+    let ffprobe = write_executable(
+        &dir,
+        "ffprobe.sh",
+        "#!/bin/sh\nfor arg in \"$@\"; do\nif [ \"$arg\" = '-show_packets' ]; then\nprintf 'packet_probe_started\\n'\nsleep 30\nexit 0\nfi\ndone\nprintf '12.5\\n'\n",
+    );
+    let cancelled = std::cell::Cell::new(false);
+    let result = AudioProcessor::from_commands("ffmpeg", &ffprobe).probe_duration_with_callbacks(
+        &dir.join("source.mp3"),
+        || cancelled.get(),
+        |line| {
+            if line == "packet_probe_started" {
+                cancelled.set(true);
+            }
+        },
+    );
+    assert!(
+        matches!(result, Err(AudioProcessingError::Cancelled { command }) if command == ffprobe.display().to_string())
+    );
+    remove_dir(dir);
+}
+
 fn request(output_format: AudioOutputFormat) -> AudioProcessingRequest {
     AudioProcessingRequest {
         input_path: PathBuf::from("source.wav"),
@@ -522,6 +715,7 @@ fn display_args(args: &[std::ffi::OsString]) -> Vec<String> {
         .collect()
 }
 
+#[cfg(unix)]
 fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
     let path = dir.join(filename);
     fs::write(&path, contents).expect("write fake tool");
@@ -533,6 +727,7 @@ fn write_executable(dir: &Path, filename: &str, contents: &str) -> PathBuf {
     path
 }
 
+#[cfg(unix)]
 fn test_dir(label: &str) -> PathBuf {
     let suffix = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -543,6 +738,7 @@ fn test_dir(label: &str) -> PathBuf {
     path
 }
 
+#[cfg(unix)]
 fn remove_dir(path: PathBuf) {
     let _ = fs::remove_dir_all(path);
 }

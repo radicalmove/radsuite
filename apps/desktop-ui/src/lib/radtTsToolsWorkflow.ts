@@ -1,5 +1,6 @@
 import type {
   RadtTsCapabilityStatus,
+  MediaOutputFormat,
   RadtTsOutputFormat,
   RadtTsVerificationMode,
 } from "../types";
@@ -23,6 +24,9 @@ export type RadtTsClipDraft = {
   endTime: number;
   verificationMode: RadtTsVerificationMode;
   outputFormat: RadtTsOutputFormat;
+  mediaFormat: MediaOutputFormat;
+  presenterImagePath: string;
+  savePresenterImageAsProjectDefault: boolean;
 };
 
 export function canStartTranscription(
@@ -53,8 +57,22 @@ export function canStartClip(
     draft.audioPath.trim().length > 0 &&
     draft.segmentsJsonPath.trim().length > 0 &&
     draft.outputName.trim().length > 0 &&
+    (draft.mediaFormat !== "mp4" || draft.presenterImagePath.trim().length > 0) &&
     hasBoundaries
   );
+}
+
+export function mergeRadtTsClipPreferences(
+  draft: RadtTsClipDraft,
+  preferences: Partial<RadtTsClipDraft> | undefined,
+): RadtTsClipDraft {
+  const mediaFormat = preferences?.mediaFormat ?? preferences?.outputFormat ?? draft.mediaFormat;
+  return {
+    ...draft,
+    ...preferences,
+    mediaFormat,
+    outputFormat: mediaFormat === "mp3" ? "mp3" : "wav",
+  };
 }
 
 export function buildTranscriptionRequest(
@@ -72,6 +90,7 @@ export function buildTranscriptionRequest(
 }
 
 export function buildClipRequest(draft: RadtTsClipDraft, projectId: string | null) {
+  const mediaFormat = draft.mediaFormat ?? draft.outputFormat;
   return {
     project_id: projectId,
     audio_path: draft.audioPath.trim(),
@@ -82,6 +101,10 @@ export function buildClipRequest(draft: RadtTsClipDraft, projectId: string | nul
     start_phrase: draft.boundaryMode === "phrases" ? draft.startPhrase.trim() : null,
     end_phrase: draft.boundaryMode === "phrases" ? draft.endPhrase.trim() : null,
     verification_mode: draft.verificationMode,
-    output_format: draft.outputFormat,
+    output_format: mediaFormat === "mp3" ? "mp3" : "wav",
+    media_format: mediaFormat,
+    presenter_image_path: mediaFormat === "mp4" ? draft.presenterImagePath.trim() : null,
+    save_presenter_image_as_project_default:
+      mediaFormat === "mp4" && draft.savePresenterImageAsProjectDefault,
   };
 }

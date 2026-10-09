@@ -28,6 +28,6 @@ describe("application header source contract", () => {
   });
 
   test("uses the current release as the fallback display version", () => {
-    expect(source).toContain('version: "0.2.8"');
+    expect(source).toContain('version: "0.2.12"');
   });
 });

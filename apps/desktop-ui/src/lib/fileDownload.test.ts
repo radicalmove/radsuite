@@ -40,6 +40,29 @@ describe("saveLocalArtifact", () => {
     );
   });
 
+  it("keeps a selected destination on the artifact's allowed extension", async () => {
+    const chooseDestination = vi.fn().mockResolvedValue("/Users/tester/Desktop/lesson.mp3");
+    const copyFile = vi.fn().mockResolvedValue(undefined);
+
+    await expect(
+      saveLocalArtifact(
+        {
+          sourcePath: "/private/app/outputs/lesson.vtt",
+          defaultPath: "lesson.vtt",
+          filterName: "WebVTT captions",
+          extensions: ["vtt"],
+        },
+        chooseDestination,
+        copyFile,
+      ),
+    ).resolves.toEqual({ destinationPath: "/Users/tester/Desktop/lesson.vtt" });
+
+    expect(copyFile).toHaveBeenCalledWith(
+      "/private/app/outputs/lesson.vtt",
+      "/Users/tester/Desktop/lesson.vtt",
+    );
+  });
+
   it("does not copy anything when the save dialog is cancelled", async () => {
     const chooseDestination = vi.fn().mockResolvedValue(null);
     const copyFile = vi.fn();

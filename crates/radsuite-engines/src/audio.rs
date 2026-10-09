@@ -2,12 +2,12 @@ use std::{
     ffi::OsString,
     fs,
     path::{Path, PathBuf},
-    process::Command,
 };
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::process::{ProcessError, run_process};
 use crate::runtime::windows_ffmpeg_path;
 
 const CLEANUP_FILTER: &str = "highpass=f=80,lowpass=f=12000,afftdn,loudnorm=I=-16:TP=-1.5:LRA=11";
@@ -130,6 +130,8 @@ pub enum AudioProcessingError {
     },
     #[error("{command} failed: {message}")]
     CommandFailed { command: String, message: String },
+    #[error("{command} was cancelled")]
+    Cancelled { command: String },
     #[error("{command} returned an invalid duration")]
     InvalidDuration { command: String },
     #[error("failed to prepare audio output directory")]
@@ -325,7 +327,12 @@ impl AudioProcessor {
         request: AudioProcessingRequest,
         additional_filter: Option<&str>,
     ) -> Result<AudioProcessingResult, AudioProcessingError> {
-        self.process_with_format(request, additional_filter, true)
+        self.process_studio_with_additional_filter_with_callbacks(
+            request,
+            additional_filter,
+            || false,
+            |_| {},
+        )
     }
 
     pub fn removal_filter_graph(intervals: &[AudioTimeInterval]) -> String {
@@ -413,15 +420,84 @@ impl AudioProcessor {
         request: AudioProcessingRequest,
         additional_filter: Option<&str>,
     ) -> Result<AudioProcessingResult, AudioProcessingError> {
-        self.process_with_format(request, additional_filter, false)
+        self.process_with_additional_filter_with_callbacks(
+            request,
+            additional_filter,
+            || false,
+            |_| {},
+        )
     }
 
-    fn process_with_format(
+    pub fn process_with_callbacks<C, P>(
+        &self,
+        request: AudioProcessingRequest,
+        is_cancelled: C,
+        on_progress_line: P,
+    ) -> Result<AudioProcessingResult, AudioProcessingError>
+    where
+        C: FnMut() -> bool,
+        P: FnMut(&str),
+    {
+        self.process_with_additional_filter_with_callbacks(
+            request,
+            None,
+            is_cancelled,
+            on_progress_line,
+        )
+    }
+
+    pub fn process_with_additional_filter_with_callbacks<C, P>(
+        &self,
+        request: AudioProcessingRequest,
+        additional_filter: Option<&str>,
+        is_cancelled: C,
+        on_progress_line: P,
+    ) -> Result<AudioProcessingResult, AudioProcessingError>
+    where
+        C: FnMut() -> bool,
+        P: FnMut(&str),
+    {
+        self.process_with_format_with_callbacks(
+            request,
+            additional_filter,
+            false,
+            is_cancelled,
+            on_progress_line,
+        )
+    }
+
+    pub fn process_studio_with_additional_filter_with_callbacks<C, P>(
+        &self,
+        request: AudioProcessingRequest,
+        additional_filter: Option<&str>,
+        is_cancelled: C,
+        on_progress_line: P,
+    ) -> Result<AudioProcessingResult, AudioProcessingError>
+    where
+        C: FnMut() -> bool,
+        P: FnMut(&str),
+    {
+        self.process_with_format_with_callbacks(
+            request,
+            additional_filter,
+            true,
+            is_cancelled,
+            on_progress_line,
+        )
+    }
+
+    fn process_with_format_with_callbacks<C, P>(
         &self,
         mut request: AudioProcessingRequest,
         additional_filter: Option<&str>,
         studio: bool,
-    ) -> Result<AudioProcessingResult, AudioProcessingError> {
+        mut is_cancelled: C,
+        mut on_progress_line: P,
+    ) -> Result<AudioProcessingResult, AudioProcessingError>
+    where
+        C: FnMut() -> bool,
+        P: FnMut(&str),
+    {
         Self::validate_request(&request)?;
         if !request.input_path.is_file() {
             return Err(AudioProcessingError::MissingInput {
@@ -437,29 +513,31 @@ impl AudioProcessor {
         fs::create_dir_all(parent).map_err(AudioProcessingError::PrepareOutput)?;
 
         if !request.remove_intervals.is_empty() && request.clip_end_seconds.is_none() {
-            // Needed to bound a crossfade against a short final chunk and omit an empty tail.
-            request.clip_end_seconds = Some(self.probe_duration(&request.input_path)?);
+            // Bound the crossfade against a short final chunk and omit an empty tail.
+            request.clip_end_seconds = Some(self.probe_duration_with_callbacks(
+                &request.input_path,
+                &mut is_cancelled,
+                &mut on_progress_line,
+            )?);
         }
         let args = if studio {
             Self::studio_ffmpeg_arguments(&request, additional_filter)?
         } else {
             Self::ffmpeg_arguments_with_additional_filter(&request, additional_filter)?
         };
-        let result = Command::new(&self.ffmpeg_command)
-            .args(&args)
-            .output()
-            .map_err(|source| AudioProcessingError::StartCommand {
-                command: self.ffmpeg_command.display().to_string(),
-                source,
-            })?;
-        if !result.status.success() {
-            return Err(AudioProcessingError::CommandFailed {
-                command: self.ffmpeg_command.display().to_string(),
-                message: command_output(&result.stdout, &result.stderr),
-            });
-        }
+        run_process(
+            &self.ffmpeg_command,
+            &args,
+            &mut is_cancelled,
+            &mut on_progress_line,
+        )
+        .map_err(|error| map_process_error(&self.ffmpeg_command, error))?;
 
-        let duration_seconds = self.probe_duration(&request.output_path)?;
+        let duration_seconds = self.probe_duration_with_callbacks(
+            &request.output_path,
+            &mut is_cancelled,
+            &mut on_progress_line,
+        )?;
         Ok(AudioProcessingResult {
             output_path: request.output_path,
             duration_seconds,
@@ -468,27 +546,35 @@ impl AudioProcessor {
     }
 
     pub fn probe_duration(&self, path: &Path) -> Result<f64, AudioProcessingError> {
-        let result = Command::new(&self.ffprobe_command)
-            .args([
-                OsString::from("-v"),
-                OsString::from("error"),
-                OsString::from("-show_entries"),
-                OsString::from("format=duration"),
-                OsString::from("-of"),
-                OsString::from("default=noprint_wrappers=1:nokey=1"),
-                path.to_path_buf().into_os_string(),
-            ])
-            .output()
-            .map_err(|source| AudioProcessingError::StartCommand {
-                command: self.ffprobe_command.display().to_string(),
-                source,
-            })?;
-        if !result.status.success() {
-            return Err(AudioProcessingError::CommandFailed {
-                command: self.ffprobe_command.display().to_string(),
-                message: command_output(&result.stdout, &result.stderr),
-            });
-        }
+        self.probe_duration_with_callbacks(path, || false, |_| {})
+    }
+
+    pub fn probe_duration_with_callbacks<C, P>(
+        &self,
+        path: &Path,
+        mut is_cancelled: C,
+        mut on_progress_line: P,
+    ) -> Result<f64, AudioProcessingError>
+    where
+        C: FnMut() -> bool,
+        P: FnMut(&str),
+    {
+        let args = [
+            OsString::from("-v"),
+            OsString::from("error"),
+            OsString::from("-show_entries"),
+            OsString::from("format=duration"),
+            OsString::from("-of"),
+            OsString::from("default=noprint_wrappers=1:nokey=1"),
+            path.to_path_buf().into_os_string(),
+        ];
+        let result = run_process(
+            &self.ffprobe_command,
+            &args,
+            &mut is_cancelled,
+            &mut on_progress_line,
+        )
+        .map_err(|error| map_process_error(&self.ffprobe_command, error))?;
 
         let raw = String::from_utf8_lossy(&result.stdout).trim().to_string();
         let duration_seconds = raw
@@ -504,24 +590,36 @@ impl AudioProcessor {
             .extension()
             .and_then(|extension| extension.to_str())
             .is_some_and(|extension| extension.eq_ignore_ascii_case("mp3"))
-            && let Ok(packets) = Command::new(&self.ffprobe_command)
-                .args([
-                    OsString::from("-v"),
-                    OsString::from("error"),
-                    OsString::from("-select_streams"),
-                    OsString::from("a:0"),
-                    OsString::from("-show_packets"),
-                    OsString::from("-show_entries"),
-                    OsString::from("packet=pts_time,duration_time"),
-                    OsString::from("-of"),
-                    OsString::from("csv=p=0"),
-                    path.to_path_buf().into_os_string(),
-                ])
-                .output()
-            && packets.status.success()
-            && let Some(packet_duration) = packet_timeline_duration(&packets.stdout)
         {
-            return Ok(packet_duration);
+            let args = [
+                OsString::from("-v"),
+                OsString::from("error"),
+                OsString::from("-select_streams"),
+                OsString::from("a:0"),
+                OsString::from("-show_packets"),
+                OsString::from("-show_entries"),
+                OsString::from("packet=pts_time,duration_time"),
+                OsString::from("-of"),
+                OsString::from("csv=p=0"),
+                path.to_path_buf().into_os_string(),
+            ];
+            match run_process(
+                &self.ffprobe_command,
+                &args,
+                &mut is_cancelled,
+                &mut on_progress_line,
+            ) {
+                Ok(packets) => {
+                    if let Some(packet_duration) = packet_timeline_duration(&packets.stdout) {
+                        return Ok(packet_duration);
+                    }
+                }
+                Err(error @ (ProcessError::Cancelled { .. } | ProcessError::Terminate { .. })) => {
+                    return Err(map_process_error(&self.ffprobe_command, error));
+                }
+                // Packet probing is best-effort when format duration is available.
+                Err(_) => {}
+            }
         }
         Ok(duration_seconds)
     }
@@ -534,6 +632,21 @@ impl AudioProcessor {
         threshold_db: f64,
         minimum_seconds: f64,
     ) -> Result<Vec<DetectedSilence>, AudioProcessingError> {
+        self.detect_silences_with_callbacks(path, threshold_db, minimum_seconds, || false, |_| {})
+    }
+
+    pub fn detect_silences_with_callbacks<C, P>(
+        &self,
+        path: &Path,
+        threshold_db: f64,
+        minimum_seconds: f64,
+        mut is_cancelled: C,
+        mut on_progress_line: P,
+    ) -> Result<Vec<DetectedSilence>, AudioProcessingError>
+    where
+        C: FnMut() -> bool,
+        P: FnMut(&str),
+    {
         if !threshold_db.is_finite()
             || threshold_db > 0.0
             || !minimum_seconds.is_finite()
@@ -543,30 +656,25 @@ impl AudioProcessor {
                 command: "silencedetect settings".to_string(),
             });
         }
-        let result = Command::new(&self.ffmpeg_command)
-            .args([
-                OsString::from("-hide_banner"),
-                OsString::from("-i"),
-                path.as_os_str().to_owned(),
-                OsString::from("-af"),
-                OsString::from(format!(
-                    "silencedetect=noise={threshold_db:.2}dB:d={minimum_seconds:.3}"
-                )),
-                OsString::from("-f"),
-                OsString::from("null"),
-                OsString::from("-"),
-            ])
-            .output()
-            .map_err(|source| AudioProcessingError::StartCommand {
-                command: self.ffmpeg_command.display().to_string(),
-                source,
-            })?;
-        if !result.status.success() {
-            return Err(AudioProcessingError::CommandFailed {
-                command: self.ffmpeg_command.display().to_string(),
-                message: command_output(&result.stdout, &result.stderr),
-            });
-        }
+        let args = [
+            OsString::from("-hide_banner"),
+            OsString::from("-i"),
+            path.as_os_str().to_owned(),
+            OsString::from("-af"),
+            OsString::from(format!(
+                "silencedetect=noise={threshold_db:.2}dB:d={minimum_seconds:.3}"
+            )),
+            OsString::from("-f"),
+            OsString::from("null"),
+            OsString::from("-"),
+        ];
+        let result = run_process(
+            &self.ffmpeg_command,
+            &args,
+            &mut is_cancelled,
+            &mut on_progress_line,
+        )
+        .map_err(|error| map_process_error(&self.ffmpeg_command, error))?;
         let log = String::from_utf8_lossy(&result.stderr);
         let mut open_start = None;
         let mut silences = Vec::new();
@@ -593,7 +701,8 @@ impl AudioProcessor {
             }
         }
         if let Some(start_seconds) = open_start {
-            let end_seconds = self.probe_duration(path)?;
+            let end_seconds =
+                self.probe_duration_with_callbacks(path, &mut is_cancelled, &mut on_progress_line)?;
             if end_seconds > start_seconds {
                 silences.push(DetectedSilence {
                     start_seconds,
@@ -622,13 +731,20 @@ fn packet_timeline_duration(output: &[u8]) -> Option<f64> {
     (duration.is_finite() && duration > 0.0).then_some(duration)
 }
 
-fn command_output(stdout: &[u8], stderr: &[u8]) -> String {
-    let output = String::from_utf8_lossy(if stderr.is_empty() { stdout } else { stderr });
-    let message = output.trim();
-    if message.is_empty() {
-        "no diagnostic output".to_string()
-    } else {
-        message.to_string()
+fn map_process_error(command: &Path, error: ProcessError) -> AudioProcessingError {
+    let command = command.display().to_string();
+    match error {
+        ProcessError::Start { source, .. } => {
+            AudioProcessingError::StartCommand { command, source }
+        }
+        ProcessError::Cancelled { .. } => AudioProcessingError::Cancelled { command },
+        ProcessError::Failed { message, .. } => {
+            AudioProcessingError::CommandFailed { command, message }
+        }
+        other => AudioProcessingError::CommandFailed {
+            command,
+            message: other.to_string(),
+        },
     }
 }
 

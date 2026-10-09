@@ -29,6 +29,32 @@ export function filenameFromPath(sourcePath: string, fallback: string): string {
   return filename && filename !== "." && filename !== ".." ? filename : fallback;
 }
 
+function pathExtension(sourcePath: string): string {
+  const filename = filenameFromPath(sourcePath, "");
+  const dotIndex = filename.lastIndexOf(".");
+  return dotIndex > 0 ? filename.slice(dotIndex + 1).toLowerCase() : "";
+}
+
+function replacePathExtension(sourcePath: string, extension: string): string {
+  const separatorIndex = Math.max(sourcePath.lastIndexOf("/"), sourcePath.lastIndexOf("\\"));
+  const dotIndex = sourcePath.lastIndexOf(".");
+  const normalizedExtension = extension.replace(/^\.+/, "");
+  if (dotIndex > separatorIndex && dotIndex > separatorIndex + 1) {
+    return `${sourcePath.slice(0, dotIndex)}.${normalizedExtension}`;
+  }
+  return `${sourcePath}.${normalizedExtension}`;
+}
+
+function normalizeArtifactDestination(sourcePath: string, extensions: string[]): string {
+  const allowedExtensions = extensions
+    .map((extension) => extension.replace(/^\.+/, "").toLowerCase())
+    .filter(Boolean);
+  if (allowedExtensions.length === 0 || allowedExtensions.includes(pathExtension(sourcePath))) {
+    return sourcePath;
+  }
+  return replacePathExtension(sourcePath, allowedExtensions[0]);
+}
+
 export async function saveLocalArtifact(
   options: LocalArtifactSaveOptions,
   chooseDestination: ChooseDestination,
@@ -41,8 +67,9 @@ export async function saveLocalArtifact(
 
   if (!destinationPath) return null;
 
-  await copyFile(options.sourcePath, destinationPath);
-  return { destinationPath };
+  const normalizedDestinationPath = normalizeArtifactDestination(destinationPath, options.extensions);
+  await copyFile(options.sourcePath, normalizedDestinationPath);
+  return { destinationPath: normalizedDestinationPath };
 }
 
 export async function saveLocalTextArtifact(
@@ -57,6 +84,7 @@ export async function saveLocalTextArtifact(
 
   if (!destinationPath) return null;
 
-  await writeTextFile(destinationPath, options.contents);
-  return { destinationPath };
+  const normalizedDestinationPath = normalizeArtifactDestination(destinationPath, options.extensions);
+  await writeTextFile(normalizedDestinationPath, options.contents);
+  return { destinationPath: normalizedDestinationPath };
 }

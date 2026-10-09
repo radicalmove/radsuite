@@ -2,7 +2,7 @@ name: Verify platform packages
 
 on:
   push:
-    branches: [codex/radcast-treble-0.2.11]
+    branches: [codex/radcast-cleanup-0.2.12]
   workflow_dispatch:
 
 permissions:
@@ -38,7 +38,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Validate shared version
-        run: python scripts/validate-release-version.py --tag v0.2.11
+        run: python scripts/validate-release-version.py --tag v0.2.12
       - name: Install frontend
         working-directory: apps/desktop-ui
         run: npm ci
@@ -55,7 +55,7 @@ jobs:
       - name: Upload test packages
         uses: actions/upload-artifact@v4
         with:
-          name: RADsuite-0.2.11-${{ matrix.name }}
+          name: RADsuite-0.2.12-${{ matrix.name }}
           if-no-files-found: error
           retention-days: 30
           path: |
