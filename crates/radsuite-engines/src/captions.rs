@@ -61,6 +61,7 @@ pub struct CaptionWord {
 const MIN_COMPACTABLE_GAP_SECONDS: f64 = 0.35;
 const SPEECH_INTERVAL_MERGE_TOLERANCE_SECONDS: f64 = 0.06;
 const TIMING_EPSILON_SECONDS: f64 = 1e-9;
+const FILLER_TRANSCRIPTION_PROMPT: &str = "Transcribe all spoken disfluencies exactly, including um, ums, uh, uhh, ah, ahh, erm, mm, and hesitation sounds.";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SpeechCleanupPlan {
@@ -87,6 +88,8 @@ pub enum SpeechCleanupPlanningError {
 
 #[derive(Debug, Error)]
 pub enum SpeechCleanupError {
+    #[error("speech cleanup cancelled")]
+    Cancelled,
     #[error(transparent)]
     Caption(#[from] CaptionProcessingError),
     #[error(transparent)]
@@ -301,6 +304,17 @@ impl CaptionProcessor {
         quality_mode: CaptionQualityMode,
         glossary: Option<&str>,
     ) -> Result<Vec<CaptionWord>, CaptionProcessingError> {
+        self.transcribe_words_decoded(request, quality_mode, glossary, None)
+            .map(|timeline| timeline.words)
+    }
+
+    fn transcribe_words_decoded(
+        &self,
+        request: &CaptionTranscriptionRequest,
+        quality_mode: CaptionQualityMode,
+        glossary: Option<&str>,
+        cleanup_mode: Option<FillerRemovalMode>,
+    ) -> Result<TranscribedTimeline, CaptionProcessingError> {
         validate_transcription_request(request)?;
         if !request.input_path.is_file() {
             return Err(CaptionProcessingError::MissingInput {
@@ -314,13 +328,26 @@ impl CaptionProcessor {
 
         let output_base = temporary_output_base();
         let output_path = output_base.with_extension("json");
-        let args = self.transcription_arguments(
+        let mut args = self.transcription_arguments(
             request,
             &output_base,
             &model_path,
             quality_mode,
             glossary,
         );
+        if let Some(mode) = cleanup_mode {
+            // The Python cleanup entry point uses beam 3 in both modes and no previous text.
+            if let Some(index) = args.iter().position(|arg| arg == "-bs") {
+                args[index + 1] = OsString::from("3");
+            }
+            args.extend([OsString::from("-mc"), OsString::from("0")]);
+            if mode == FillerRemovalMode::Aggressive {
+                args.extend([
+                    OsString::from("--prompt"),
+                    OsString::from(FILLER_TRANSCRIPTION_PROMPT),
+                ]);
+            }
+        }
         let result = command_for_executable(&self.whisper_command)
             .args(&args)
             .output()
@@ -346,40 +373,25 @@ impl CaptionProcessor {
         let document: WhisperDocument =
             serde_json::from_str(&contents).map_err(CaptionProcessingError::ParseTranscription)?;
 
-        Ok(document
+        let segments = document
+            .transcription
+            .iter()
+            .filter_map(|segment| {
+                let offsets = segment.offsets.as_ref()?;
+                (!segment.text.trim().is_empty() && offsets.to > offsets.from).then_some(
+                    AudioTimeInterval {
+                        start_seconds: offsets.from as f64 / 1000.0,
+                        end_seconds: offsets.to as f64 / 1000.0,
+                    },
+                )
+            })
+            .collect();
+        let words = document
             .transcription
             .into_iter()
-            .flat_map(|segment| {
-                let segment_start = segment.offsets.as_ref().map_or(0, |offsets| offsets.from);
-                let relative_to_segment = segment.tokens.iter().find_map(|token| {
-                    let text = token.text.trim();
-                    is_spoken_token(text)
-                        .then_some(token.offsets.as_ref())
-                        .flatten()
-                        .map(|offsets| offsets.from < segment_start)
-                });
-                let offset_base = if relative_to_segment.unwrap_or(false) {
-                    segment_start
-                } else {
-                    0
-                };
-                segment.tokens.into_iter().filter_map(move |token| {
-                    let text = token.text.trim();
-                    if !is_spoken_token(text) {
-                        return None;
-                    }
-                    let offsets = token.offsets?;
-                    let start_seconds = (offset_base + offsets.from) as f64 / 1000.0;
-                    let end_seconds = (offset_base + offsets.to) as f64 / 1000.0;
-                    (end_seconds > start_seconds).then_some(CaptionWord {
-                        text: text.to_string(),
-                        start_seconds,
-                        end_seconds,
-                        probability: token.probability,
-                    })
-                })
-            })
-            .collect())
+            .flat_map(segment_words)
+            .collect();
+        Ok(TranscribedTimeline { words, segments })
     }
 
     pub fn filler_intervals(
@@ -388,8 +400,9 @@ impl CaptionProcessor {
         mode: FillerRemovalMode,
     ) -> Result<Vec<AudioTimeInterval>, CaptionProcessingError> {
         let clip_start = request.clip_start_seconds.unwrap_or(0.0);
-        let mut words =
-            self.transcribe_words_with_options(request, CaptionQualityMode::Fast, None)?;
+        let mut words = self
+            .transcribe_words_decoded(request, CaptionQualityMode::Fast, None, Some(mode))?
+            .words;
         if clip_start > 0.0 {
             for word in &mut words {
                 word.start_seconds = (word.start_seconds - clip_start).max(0.0);
@@ -407,13 +420,117 @@ impl CaptionProcessor {
         remove_filler_words: bool,
         filler_mode: FillerRemovalMode,
     ) -> Result<SpeechCleanupPlan, SpeechCleanupError> {
+        self.speech_cleanup_plan_with_cancellation(
+            request,
+            total_duration_seconds,
+            max_silence_seconds,
+            remove_filler_words,
+            filler_mode,
+            &mut || false,
+        )
+    }
+
+    pub fn speech_cleanup_plan_with_cancellation(
+        &self,
+        request: &CaptionTranscriptionRequest,
+        total_duration_seconds: f64,
+        max_silence_seconds: Option<f64>,
+        remove_filler_words: bool,
+        filler_mode: FillerRemovalMode,
+        is_cancelled: &mut dyn FnMut() -> bool,
+    ) -> Result<SpeechCleanupPlan, SpeechCleanupError> {
+        validate_transcription_request(request)?;
+        // Validate duration/settings before starting any transcription commands.
+        plan_speech_cleanup(
+            &[],
+            total_duration_seconds,
+            max_silence_seconds,
+            false,
+            filler_mode,
+        )?;
         let clip_start = request.clip_start_seconds.unwrap_or(0.0);
-        let mut words = self.transcribe_words(request)?;
-        if clip_start > 0.0 {
-            for word in &mut words {
-                word.start_seconds = (word.start_seconds - clip_start).max(0.0);
-                word.end_seconds = (word.end_seconds - clip_start).max(0.0);
+        let windowed = remove_filler_words && filler_mode == FillerRemovalMode::Aggressive;
+        let window_seconds = if windowed {
+            8.0_f64.min(total_duration_seconds)
+        } else {
+            total_duration_seconds
+        };
+        let overlap = if windowed {
+            2.0_f64.min(window_seconds / 2.0)
+        } else {
+            0.0
+        };
+        let mut window_start = 0.0;
+        let mut words = Vec::new();
+        let mut segments = Vec::new();
+        loop {
+            if is_cancelled() {
+                return Err(SpeechCleanupError::Cancelled);
             }
+            let window_end = (window_start + window_seconds).min(total_duration_seconds);
+            let last_window = window_end >= total_duration_seconds - TIMING_EPSILON_SECONDS;
+            let window_request = CaptionTranscriptionRequest {
+                clip_start_seconds: Some(clip_start + window_start),
+                clip_end_seconds: Some(clip_start + window_end),
+                ..request.clone()
+            };
+            let mode = if windowed {
+                FillerRemovalMode::Aggressive
+            } else {
+                FillerRemovalMode::Normal
+            };
+            let timeline = self.transcribe_words_decoded(
+                &window_request,
+                CaptionQualityMode::Fast,
+                None,
+                Some(mode),
+            )?;
+            if is_cancelled() {
+                return Err(SpeechCleanupError::Cancelled);
+            }
+            let keep_start = window_start
+                + if window_start == 0.0 {
+                    0.0
+                } else {
+                    overlap / 2.0
+                };
+            let keep_end = window_end - if last_window { 0.0 } else { overlap / 2.0 };
+            for mut segment in timeline.segments {
+                segment.start_seconds = (segment.start_seconds - clip_start).max(keep_start);
+                segment.end_seconds = (segment.end_seconds - clip_start).min(keep_end);
+                if segment.end_seconds > segment.start_seconds {
+                    segments.push(segment);
+                }
+            }
+            for mut word in timeline.words {
+                word.start_seconds = (word.start_seconds - clip_start).max(0.0);
+                word.end_seconds = (word.end_seconds - clip_start).min(total_duration_seconds);
+                // Own a boundary-crossing word once, without splitting its duration/count.
+                let midpoint = (word.start_seconds + word.end_seconds) / 2.0;
+                if word.end_seconds > word.start_seconds
+                    && midpoint >= keep_start
+                    && midpoint < keep_end
+                {
+                    words.push(word);
+                }
+            }
+            if last_window {
+                break;
+            }
+            window_start += (window_seconds - overlap).max(0.5);
+        }
+        if words.is_empty() {
+            // Segment timestamps can still protect speech and identify long gaps when
+            // a runtime returns no usable word timestamps. They cannot identify fillers.
+            words = segments
+                .into_iter()
+                .map(|segment| CaptionWord {
+                    text: String::new(),
+                    start_seconds: segment.start_seconds,
+                    end_seconds: segment.end_seconds,
+                    probability: f64::NAN,
+                })
+                .collect();
         }
         Ok(plan_speech_cleanup(
             &words,
@@ -601,26 +718,7 @@ pub fn detect_filler_intervals(
     words: &[CaptionWord],
     mode: FillerRemovalMode,
 ) -> Vec<AudioTimeInterval> {
-    let mut intervals: Vec<AudioTimeInterval> = Vec::new();
-    for word in words {
-        if !is_filler_word(word, mode) {
-            continue;
-        }
-
-        let start_seconds = round_milliseconds((word.start_seconds - 0.02).max(0.0));
-        let end_seconds = round_milliseconds(word.end_seconds + 0.02);
-        if let Some(previous) = intervals.last_mut()
-            && start_seconds <= previous.end_seconds + 0.15
-        {
-            previous.end_seconds = previous.end_seconds.max(end_seconds);
-        } else {
-            intervals.push(AudioTimeInterval {
-                start_seconds,
-                end_seconds,
-            });
-        }
-    }
-    intervals
+    crate::fillers::detect(words, mode).intervals
 }
 
 pub fn plan_speech_cleanup(
@@ -669,23 +767,37 @@ pub fn plan_speech_cleanup(
             .then_with(|| left.end_seconds.total_cmp(&right.end_seconds))
     });
 
+    let detection = crate::fillers::detect(&ordered_words, filler_mode);
     let filler_intervals = if remove_filler_words {
-        detect_filler_intervals(&ordered_words, filler_mode)
+        detection
+            .intervals
             .into_iter()
             .filter_map(|interval| clamp_interval(interval, total_duration_seconds))
             .collect::<Vec<_>>()
     } else {
         Vec::new()
     };
-    let speech_intervals = merge_speech_intervals(
+    let mut speech_intervals = merge_speech_intervals(
         ordered_words
             .iter()
-            .filter(|word| !remove_filler_words || !is_filler_word(word, filler_mode))
-            .map(|word| AudioTimeInterval {
+            .enumerate()
+            // A rejected filler remains speech; pause cleanup must not bypass its protection.
+            .filter(|(index, _)| !remove_filler_words || !detection.accepted_words[*index])
+            .map(|(_, word)| AudioTimeInterval {
                 start_seconds: word.start_seconds,
                 end_seconds: word.end_seconds,
             }),
     );
+    if speech_intervals.is_empty() && !ordered_words.is_empty() {
+        // Python falls back to segment timing when excluding fillers empties the
+        // speech timeline. Retain the original word timeline here so leading and
+        // trailing gaps still shorten without treating the entire clip as silence.
+        speech_intervals =
+            merge_speech_intervals(ordered_words.iter().map(|word| AudioTimeInterval {
+                start_seconds: word.start_seconds,
+                end_seconds: word.end_seconds,
+            }));
+    }
 
     let (pause_intervals, removed_pause_count) = max_silence_seconds
         .map(|keep_seconds| {
@@ -702,27 +814,12 @@ pub fn plan_speech_cleanup(
     Ok(SpeechCleanupPlan {
         removal_intervals,
         removed_pause_count,
-        removed_filler_count: filler_intervals.len(),
+        removed_filler_count: if remove_filler_words {
+            detection.count
+        } else {
+            0
+        },
     })
-}
-
-fn is_filler_word(word: &CaptionWord, mode: FillerRemovalMode) -> bool {
-    let normalized = word
-        .text
-        .trim()
-        .trim_matches(|character: char| !character.is_alphanumeric())
-        .to_ascii_lowercase();
-    match mode {
-        FillerRemovalMode::Normal => {
-            matches!(normalized.as_str(), "um" | "uh" | "er") && word.probability >= 0.28
-        }
-        FillerRemovalMode::Aggressive => {
-            matches!(
-                normalized.as_str(),
-                "um" | "uh" | "er" | "erm" | "hmm" | "hm" | "mm"
-            )
-        }
-    }
 }
 
 fn merge_speech_intervals<I>(intervals: I) -> Vec<AudioTimeInterval>
@@ -819,14 +916,76 @@ fn clamp_interval(
     })
 }
 
-fn round_milliseconds(seconds: f64) -> f64 {
-    (seconds * 1000.0).round() / 1000.0
-}
-
 fn is_spoken_token(text: &str) -> bool {
     !(text.is_empty()
         || (text.starts_with("[_") && text.ends_with(']'))
         || (text.starts_with("<|") && text.ends_with("|>")))
+}
+
+fn segment_words(segment: WhisperSegment) -> Vec<CaptionWord> {
+    let segment_start = segment.offsets.as_ref().map_or(0, |offsets| offsets.from);
+    let relative = segment
+        .tokens
+        .iter()
+        .find_map(|token| {
+            is_spoken_token(token.text.trim())
+                .then_some(token.offsets.as_ref())
+                .flatten()
+                .map(|offsets| offsets.from < segment_start)
+        })
+        .unwrap_or(false);
+    let base = if relative { segment_start } else { 0 };
+    let mut words: Vec<CaptionWord> = Vec::new();
+    let mut probability_counts: Vec<usize> = Vec::new();
+    for token in segment.tokens {
+        let text = token.text.trim();
+        if !is_spoken_token(text) {
+            continue;
+        }
+        let timing = token.offsets.map(|offsets| {
+            (
+                (base + offsets.from) as f64 / 1000.0,
+                (base + offsets.to) as f64 / 1000.0,
+            )
+        });
+        let continuation = !token.text.starts_with(char::is_whitespace)
+            || text.chars().all(|character| !character.is_alphanumeric());
+        if continuation && let Some(previous) = words.last_mut() {
+            previous.text.push_str(text);
+            if let Some((start, end)) = timing {
+                if !previous.start_seconds.is_finite() {
+                    previous.start_seconds = start;
+                }
+                previous.end_seconds = previous.end_seconds.max(end);
+            }
+            if token.probability.is_finite() {
+                let count = probability_counts
+                    .last_mut()
+                    .expect("word probability count");
+                previous.probability = if *count == 0 {
+                    token.probability
+                } else {
+                    (previous.probability * *count as f64 + token.probability) / (*count + 1) as f64
+                };
+                *count += 1;
+            }
+        } else {
+            // Keep a leading piece even when it is untimed/zero-length. A later
+            // BPE continuation supplies the word duration; it must not join the prior word.
+            let (start, end) = timing.unwrap_or((f64::NAN, f64::NAN));
+            words.push(CaptionWord {
+                text: text.to_string(),
+                start_seconds: start,
+                end_seconds: end,
+                probability: token.probability,
+            });
+            probability_counts.push(usize::from(token.probability.is_finite()));
+        }
+    }
+    words
+        .into_iter()
+        .filter(|word| word.start_seconds.is_finite() && word.end_seconds > word.start_seconds)
+        .collect()
 }
 
 fn caption_prompt(glossary: Option<&str>) -> Option<String> {
@@ -846,6 +1005,11 @@ struct WhisperDocument {
     transcription: Vec<WhisperSegment>,
 }
 
+struct TranscribedTimeline {
+    words: Vec<CaptionWord>,
+    segments: Vec<AudioTimeInterval>,
+}
+
 #[derive(Debug, Deserialize)]
 struct WhisperSegment {
     #[serde(default)]
@@ -861,8 +1025,12 @@ struct WhisperToken {
     text: String,
     #[serde(default)]
     offsets: Option<WhisperOffsets>,
-    #[serde(rename = "p", default)]
+    #[serde(rename = "p", default = "unknown_probability")]
     probability: f64,
+}
+
+fn unknown_probability() -> f64 {
+    f64::NAN
 }
 
 #[derive(Debug, Deserialize)]

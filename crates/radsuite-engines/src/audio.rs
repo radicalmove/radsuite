@@ -11,6 +11,8 @@ use thiserror::Error;
 use crate::runtime::windows_ffmpeg_path;
 
 const CLEANUP_FILTER: &str = "highpass=f=80,lowpass=f=12000,afftdn,loudnorm=I=-16:TP=-1.5:LRA=11";
+const CUT_SAMPLE_RATE: f64 = 48000.0;
+const CUT_CROSSFADE_SAMPLES: u64 = 576; // 12 ms at the working sample rate.
 
 pub const RADCAST_OPTIMIZED_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=4.05,equalizer=f=200:t=q:w=1.0:g=1.75,equalizer=f=315:t=q:w=1.0:g=-0.55,equalizer=f=455:t=q:w=1.0:g=-0.2,equalizer=f=2350:t=q:w=1.0:g=-2.35,equalizer=f=3000:t=q:w=1.0:g=-1.70,equalizer=f=3850:t=q:w=1.0:g=-0.30,deesser=i=0.045:m=0.18:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-1.40,equalizer=f=6400:t=q:w=1.0:g=-1.20,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=7550";
 pub const RADCAST_NATURAL_POSTFILTER: &str = "highpass=f=65,equalizer=f=142:t=q:w=1.05:g=3.35,equalizer=f=200:t=q:w=1.0:g=1.4,equalizer=f=315:t=q:w=1.0:g=-0.4,equalizer=f=455:t=q:w=1.0:g=-0.1,equalizer=f=2350:t=q:w=1.0:g=-1.10,equalizer=f=3000:t=q:w=1.0:g=-0.60,equalizer=f=3850:t=q:w=1.0:g=-0.05,deesser=i=0.012:m=0.08:f=0.5:s=o,equalizer=f=5700:t=q:w=1.0:g=-0.45,equalizer=f=6400:t=q:w=1.0:g=-0.35,loudnorm=I=-20.75:TP=-1.5:LRA=8,lowpass=f=8200";
@@ -41,6 +43,40 @@ impl AudioOutputFormat {
 pub struct AudioTimeInterval {
     pub start_seconds: f64,
     pub end_seconds: f64,
+}
+
+fn cut_overlap(accumulated_samples: u64, next_samples: u64) -> u64 {
+    CUT_CROSSFADE_SAMPLES
+        .min(accumulated_samples)
+        .min(next_samples)
+}
+
+fn retained_sample_ranges(
+    intervals: &[AudioTimeInterval],
+    duration: Option<f64>,
+) -> Vec<(u64, Option<u64>)> {
+    let samples = |seconds: f64| (seconds * CUT_SAMPLE_RATE).round() as u64;
+    let end = duration.map(samples);
+    let mut cursor = 0;
+    let mut ranges = Vec::new();
+    for interval in intervals {
+        let start = end.map_or_else(
+            || samples(interval.start_seconds),
+            |end| samples(interval.start_seconds).min(end),
+        );
+        let stop = end.map_or_else(
+            || samples(interval.end_seconds),
+            |end| samples(interval.end_seconds).min(end),
+        );
+        if start > cursor {
+            ranges.push((cursor, Some(start)));
+        }
+        cursor = cursor.max(stop);
+    }
+    if end.is_none_or(|end| end > cursor) {
+        ranges.push((cursor, end));
+    }
+    ranges
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -196,12 +232,16 @@ impl AudioProcessor {
         args.push(request.input_path.clone().into_os_string());
 
         // Keep seeking after input so trim points are sample-accurate for encoded and WAV audio.
-        if let Some(start) = request.clip_start_seconds {
+        if request.remove_intervals.is_empty()
+            && let Some(start) = request.clip_start_seconds
+        {
             args.push(OsString::from("-ss"));
             args.push(OsString::from(format!("{start:.3}")));
         }
 
-        if let Some(end) = request.clip_end_seconds {
+        if request.remove_intervals.is_empty()
+            && let Some(end) = request.clip_end_seconds
+        {
             let start = request.clip_start_seconds.unwrap_or(0.0);
             args.push(OsString::from("-t"));
             args.push(OsString::from(format!("{:.3}", end - start)));
@@ -224,7 +264,11 @@ impl AudioProcessor {
         }
 
         if !request.remove_intervals.is_empty() {
-            let mut graph = Self::removal_filter_graph(&request.remove_intervals);
+            let mut graph = Self::removal_filter_graph_for_clip(
+                &request.remove_intervals,
+                request.clip_start_seconds.unwrap_or(0.0),
+                request.clip_end_seconds,
+            );
             let output_label = if filters.is_empty() {
                 "[outa]"
             } else {
@@ -285,29 +329,75 @@ impl AudioProcessor {
     }
 
     pub fn removal_filter_graph(intervals: &[AudioTimeInterval]) -> String {
-        let mut graph = Vec::new();
-        let mut previous_end = 0.0;
-        let mut segment_count = 0;
+        Self::removal_filter_graph_for_clip(intervals, 0.0, None)
+    }
 
-        for interval in intervals {
-            if interval.start_seconds > previous_end {
-                graph.push(format!(
-                    "[0:a]atrim=start={previous_end:.3}:end={start:.3},asetpts=PTS-STARTPTS[a{segment_count}]",
-                    start = interval.start_seconds,
-                ));
-                segment_count += 1;
-            }
-            previous_end = interval.end_seconds;
+    /// Total timeline reduction, including bounded crossfades, for export QA.
+    pub fn removal_duration_seconds(intervals: &[AudioTimeInterval], duration: f64) -> f64 {
+        if intervals.is_empty() {
+            return 0.0;
         }
+        let ranges = retained_sample_ranges(intervals, Some(duration));
+        let mut output_samples = 0;
+        for (index, (start, end)) in ranges.iter().enumerate() {
+            let samples = end.expect("bounded retained range") - start;
+            output_samples += samples
+                - if index == 0 {
+                    0
+                } else {
+                    cut_overlap(output_samples, samples)
+                };
+        }
+        ((duration * CUT_SAMPLE_RATE).round() as u64).saturating_sub(output_samples) as f64
+            / CUT_SAMPLE_RATE
+    }
 
-        graph.push(format!(
-            "[0:a]atrim=start={previous_end:.3},asetpts=PTS-STARTPTS[a{segment_count}]"
+    fn removal_filter_graph_for_clip(
+        intervals: &[AudioTimeInterval],
+        clip_start: f64,
+        clip_end: Option<f64>,
+    ) -> String {
+        let duration = clip_end.map(|end| (end - clip_start).max(0.0));
+        let ranges = retained_sample_ranges(intervals, duration);
+        if ranges.is_empty() {
+            return "[0:a]atrim=start=0:end=0,asetpts=PTS-STARTPTS[outa]".to_string();
+        }
+        let mut graph = Vec::new();
+        // Sample indices are relative to the selected clip, as in Python's waveform splicer.
+        graph.push(format!("[0:a]aresample=48000,atrim=start_sample={start}{end},asetpts=PTS-STARTPTS,asplit={count}{labels}",
+            start = (clip_start * CUT_SAMPLE_RATE).round() as u64,
+            end = clip_end.map(|end| format!(":end_sample={}", (end * CUT_SAMPLE_RATE).round() as u64)).unwrap_or_default(),
+            count = ranges.len(),
+            labels = (0..ranges.len()).map(|i| format!("[s{i}]")).collect::<String>(),
         ));
-        segment_count += 1;
-        let inputs = (0..segment_count)
-            .map(|index| format!("[a{index}]"))
-            .collect::<String>();
-        graph.push(format!("{inputs}concat=n={segment_count}:v=0:a=1[outa]"));
+        let mut lengths = Vec::new();
+        for (index, (first, last)) in ranges.iter().enumerate() {
+            graph.push(format!(
+                "[s{index}]atrim=start_sample={first}{end},asetpts=PTS-STARTPTS[a{index}]",
+                end = last
+                    .map(|last| format!(":end_sample={last}"))
+                    .unwrap_or_default()
+            ));
+            lengths.push(last.map(|last| last.saturating_sub(*first)));
+        }
+        let mut accumulated = lengths[0].unwrap_or(CUT_CROSSFADE_SAMPLES);
+        let mut label = "a0".to_string();
+        if ranges.len() == 1 {
+            graph.push("[a0]anull[outa]".to_string());
+        }
+        for (index, length) in lengths.iter().enumerate().skip(1) {
+            let overlap = cut_overlap(accumulated, length.unwrap_or(CUT_CROSSFADE_SAMPLES));
+            let output = if index + 1 == ranges.len() {
+                "outa".to_string()
+            } else {
+                format!("joined{index}")
+            };
+            graph.push(format!(
+                "[{label}][a{index}]acrossfade=ns={overlap}:c1=tri:c2=tri[{output}]"
+            ));
+            accumulated = accumulated + length.unwrap_or(CUT_CROSSFADE_SAMPLES) - overlap;
+            label = output;
+        }
         graph.join(";")
     }
 
@@ -328,7 +418,7 @@ impl AudioProcessor {
 
     fn process_with_format(
         &self,
-        request: AudioProcessingRequest,
+        mut request: AudioProcessingRequest,
         additional_filter: Option<&str>,
         studio: bool,
     ) -> Result<AudioProcessingResult, AudioProcessingError> {
@@ -346,6 +436,10 @@ impl AudioProcessor {
         };
         fs::create_dir_all(parent).map_err(AudioProcessingError::PrepareOutput)?;
 
+        if !request.remove_intervals.is_empty() && request.clip_end_seconds.is_none() {
+            // Needed to bound a crossfade against a short final chunk and omit an empty tail.
+            request.clip_end_seconds = Some(self.probe_duration(&request.input_path)?);
+        }
         let args = if studio {
             Self::studio_ffmpeg_arguments(&request, additional_filter)?
         } else {

@@ -1,0 +1,10 @@
+{
+  "installed": "/Applications/RADsuite.app",
+  "backup": "/Users/rcd58/Library/Application Support/RADsuite/local-app-backups/RADsuite-before-cleanup-parity-20261010-085833.app",
+  "previous_binary_sha256": "eaad583e427a4060d035f15f7874b7f5cefbdcb112e549fc1e1ed5f6d447f6b1",
+  "binary_sha256": "799ee805412d33c44dcb9da575454a326a67fafb1affb36a95d6abdfb4d134e8",
+  "local_adhoc_signature_verified": true,
+  "restart_required": true,
+  "public_release": false,
+  "includes_all_filler_pause_fallback": true
+}

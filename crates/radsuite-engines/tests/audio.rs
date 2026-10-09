@@ -219,8 +219,10 @@ fn audio_processing_accepts_zero_seconds_for_pause_limit() {
 }
 
 #[test]
-fn audio_processing_builds_a_concat_graph_for_filler_intervals() {
+fn audio_processing_builds_a_crossfade_graph_for_filler_intervals() {
     let args = AudioProcessor::ffmpeg_arguments(&AudioProcessingRequest {
+        clip_start_seconds: Some(2.5),
+        clip_end_seconds: Some(9.0),
         remove_intervals: vec![AudioTimeInterval {
             start_seconds: 1.25,
             end_seconds: 1.75,
@@ -237,9 +239,10 @@ fn audio_processing_builds_a_concat_graph_for_filler_intervals() {
         .find(|pair| pair[0] == "-filter_complex")
         .map(|pair| pair[1].clone())
         .expect("concat filter graph");
-    assert!(graph.contains("atrim=start=0.000:end=1.250"));
-    assert!(graph.contains("atrim=start=1.750"));
-    assert!(graph.contains("concat=n=2:v=0:a=1[outa]"));
+    assert!(graph.contains("atrim=start_sample=120000:end_sample=432000"));
+    assert!(graph.contains("atrim=start_sample=0:end_sample=60000"));
+    assert!(graph.contains("atrim=start_sample=84000:end_sample=312000"));
+    assert!(graph.contains("acrossfade=ns=576:c1=tri:c2=tri[outa]"));
     assert!(graph.contains("afftdn"));
     assert!(graph.contains("silenceremove"));
     assert!(
@@ -247,6 +250,220 @@ fn audio_processing_builds_a_concat_graph_for_filler_intervals() {
             .any(|pair| pair == ["-map", "[outa_filtered]"])
     );
     assert!(!args.contains(&"-af".to_string()));
+}
+
+#[test]
+fn removal_crossfades_match_python_duration_and_protect_selected_clip() {
+    let dir = test_dir("crossfade-real");
+    let input = dir.join("source.wav");
+    let output = dir.join("cut.wav");
+    // Four seconds of stereo, with distinct levels outside/inside the selected clip.
+    write_pcm_wav(
+        &input,
+        &(0..192000)
+            .map(|i| {
+                if i < 48000 {
+                    [0.7_f32, -0.7]
+                } else if i < 96000 {
+                    [0.2, -0.2]
+                } else if i < 144000 {
+                    [-0.2, 0.2]
+                } else {
+                    [0.8, -0.8]
+                }
+            })
+            .collect::<Vec<_>>(),
+    );
+    let result = AudioProcessor::from_commands("ffmpeg", "ffprobe")
+        .process(AudioProcessingRequest {
+            input_path: input,
+            output_path: output.clone(),
+            output_format: AudioOutputFormat::Wav,
+            clip_start_seconds: Some(1.0),
+            clip_end_seconds: Some(3.0),
+            cleanup_enabled: false,
+            max_silence_seconds: None,
+            remove_intervals: vec![AudioTimeInterval {
+                start_seconds: 0.8,
+                end_seconds: 1.2,
+            }],
+        })
+        .unwrap();
+    assert!(
+        (result.duration_seconds - 1.588).abs() < 0.0001,
+        "{}",
+        result.duration_seconds
+    );
+    let samples = read_stereo_samples(&output);
+    assert!(
+        samples
+            .iter()
+            .all(|s| s[0].abs() <= 0.201 && s[1].abs() <= 0.201)
+    );
+    let jump = samples
+        .windows(2)
+        .map(|s| (s[0][0] - s[1][0]).abs())
+        .fold(0.0, f32::max);
+    assert!(jump < 0.002, "discontinuous splice: {jump}");
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn removal_crossfades_handle_tiny_middle_and_trailing_chunks() {
+    let dir = test_dir("crossfade-tiny");
+    let input = dir.join("source.wav");
+    write_pcm_wav(&input, &vec![[0.2, -0.2]; 48000]);
+    for (name, removals, expected) in [
+        ("tiny-middle", vec![(0.4, 0.6), (0.604, 0.8)], 0.588),
+        ("tiny-tail", vec![(0.4, 0.996)], 0.4),
+        ("trailing-removal", vec![(0.4, 1.0)], 0.4),
+        ("leading-removal", vec![(0.0, 0.6)], 0.4),
+    ] {
+        let result = AudioProcessor::from_commands("ffmpeg", "ffprobe")
+            .process(AudioProcessingRequest {
+                input_path: input.clone(),
+                output_path: dir.join(format!("{name}.wav")),
+                output_format: AudioOutputFormat::Wav,
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+                cleanup_enabled: false,
+                max_silence_seconds: None,
+                remove_intervals: removals
+                    .into_iter()
+                    .map(|(start_seconds, end_seconds)| AudioTimeInterval {
+                        start_seconds,
+                        end_seconds,
+                    })
+                    .collect(),
+            })
+            .unwrap();
+        assert!(
+            (result.duration_seconds - expected).abs() < 0.0001,
+            "{name}: {}",
+            result.duration_seconds
+        );
+    }
+    fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn removal_duration_includes_crossfades_for_guarded_export_checks() {
+    let intervals = [
+        AudioTimeInterval {
+            start_seconds: 0.5,
+            end_seconds: 0.6,
+        },
+        AudioTimeInterval {
+            start_seconds: 1.5,
+            end_seconds: 1.6,
+        },
+        AudioTimeInterval {
+            start_seconds: 2.5,
+            end_seconds: 2.6,
+        },
+    ];
+    let removed = AudioProcessor::removal_duration_seconds(&intervals, 3.0);
+    assert!((removed - 0.336).abs() < 1e-9, "{removed}");
+    let removed = AudioProcessor::removal_duration_seconds(
+        &[AudioTimeInterval {
+            start_seconds: 0.4,
+            end_seconds: 0.996,
+        }],
+        1.0,
+    );
+    assert!((removed - 0.6).abs() < 1e-9, "tiny tail: {removed}");
+}
+
+#[test]
+fn real_cleanup_transcription_and_render_when_fixture_is_available() {
+    let Ok(path) = std::env::var("RADSUITE_REAL_CLEANUP_AUDIO") else {
+        return;
+    };
+    let input = PathBuf::from(path);
+    let original = fs::read(&input).unwrap();
+    let dir = test_dir("real-cleanup");
+    let processor = AudioProcessor::default();
+    let duration = processor.probe_duration(&input).unwrap();
+    let end = duration.min(12.0);
+    assert!(end > 2.0);
+    let plan = radsuite_engines::CaptionProcessor::default()
+        .speech_cleanup_plan(
+            &radsuite_engines::CaptionTranscriptionRequest {
+                input_path: input.clone(),
+                language: "en".into(),
+                clip_start_seconds: Some(2.0),
+                clip_end_seconds: Some(end),
+            },
+            end - 2.0,
+            Some(0.25),
+            true,
+            radsuite_engines::FillerRemovalMode::Aggressive,
+        )
+        .unwrap();
+    let expected_duration =
+        end - 2.0 - AudioProcessor::removal_duration_seconds(&plan.removal_intervals, end - 2.0);
+    let result = processor
+        .process(AudioProcessingRequest {
+            input_path: input.clone(),
+            output_path: dir.join("cleanup.wav"),
+            output_format: AudioOutputFormat::Wav,
+            clip_start_seconds: Some(2.0),
+            clip_end_seconds: Some(end),
+            cleanup_enabled: false,
+            max_silence_seconds: None,
+            remove_intervals: plan.removal_intervals,
+        })
+        .unwrap();
+    assert!((result.duration_seconds - expected_duration).abs() < 0.002);
+    assert_eq!(fs::read(input).unwrap(), original);
+    println!(
+        "real cleanup: {} fillers, {} pauses; {:.3} s rendered",
+        plan.removed_filler_count, plan.removed_pause_count, result.duration_seconds
+    );
+    fs::remove_dir_all(dir).unwrap();
+}
+
+fn write_pcm_wav(path: &Path, samples: &[[f32; 2]]) {
+    let mut bytes = Vec::new();
+    let length = (samples.len() * 4) as u32;
+    bytes.extend_from_slice(b"RIFF");
+    bytes.extend_from_slice(&(36 + length).to_le_bytes());
+    bytes.extend_from_slice(b"WAVEfmt ");
+    bytes.extend_from_slice(&16_u32.to_le_bytes());
+    bytes.extend_from_slice(&1_u16.to_le_bytes());
+    bytes.extend_from_slice(&2_u16.to_le_bytes());
+    bytes.extend_from_slice(&48000_u32.to_le_bytes());
+    bytes.extend_from_slice(&192000_u32.to_le_bytes());
+    bytes.extend_from_slice(&4_u16.to_le_bytes());
+    bytes.extend_from_slice(&16_u16.to_le_bytes());
+    bytes.extend_from_slice(b"data");
+    bytes.extend_from_slice(&length.to_le_bytes());
+    for sample in samples {
+        for channel in sample {
+            bytes.extend_from_slice(&((*channel * 32767.0).round() as i16).to_le_bytes());
+        }
+    }
+    fs::write(path, bytes).unwrap();
+}
+
+fn read_stereo_samples(path: &Path) -> Vec<[f32; 2]> {
+    let decoded = std::process::Command::new("ffmpeg")
+        .args(["-v", "error", "-i"])
+        .arg(path)
+        .args(["-f", "f32le", "-ac", "2", "-"])
+        .output()
+        .unwrap();
+    assert!(decoded.status.success());
+    decoded
+        .stdout
+        .chunks_exact(8)
+        .map(|s| {
+            [
+                f32::from_le_bytes(s[..4].try_into().unwrap()),
+                f32::from_le_bytes(s[4..].try_into().unwrap()),
+            ]
+        })
+        .collect()
 }
 
 #[test]

@@ -805,18 +805,26 @@ where
         let clip_start_seconds = request.clip_start_seconds.unwrap_or(0.0);
         let clip_end_seconds = request.clip_end_seconds.unwrap_or(source.duration_seconds);
         let clip_duration_seconds = clip_end_seconds - clip_start_seconds;
-        Some(caption_processor.speech_cleanup_plan(
-            &CaptionTranscriptionRequest {
-                input_path: source_path.clone(),
-                language: request.caption_language.trim().to_string(),
-                clip_start_seconds: request.clip_start_seconds,
-                clip_end_seconds: request.clip_end_seconds,
-            },
-            clip_duration_seconds,
-            request.max_silence_seconds,
-            request.remove_filler_words,
-            request.filler_removal_mode,
-        )?)
+        Some(
+            caption_processor
+                .speech_cleanup_plan_with_cancellation(
+                    &CaptionTranscriptionRequest {
+                        input_path: source_path.clone(),
+                        language: request.caption_language.trim().to_string(),
+                        clip_start_seconds: request.clip_start_seconds,
+                        clip_end_seconds: request.clip_end_seconds,
+                    },
+                    clip_duration_seconds,
+                    request.max_silence_seconds,
+                    request.remove_filler_words,
+                    request.filler_removal_mode,
+                    &mut is_cancelled,
+                )
+                .map_err(|error| match error {
+                    SpeechCleanupError::Cancelled => RadcastStorageError::Cancelled,
+                    other => RadcastStorageError::SpeechCleanup(other),
+                })?,
+        )
     } else {
         None
     };
@@ -1025,11 +1033,12 @@ where
         cleanup_enabled,
     };
     let timeline_edited = !final_request.remove_intervals.is_empty();
-    let removed_seconds = final_request
-        .remove_intervals
-        .iter()
-        .map(|interval| interval.end_seconds - interval.start_seconds)
-        .sum();
+    let selected_duration = request.clip_end_seconds.unwrap_or(source.duration_seconds)
+        - request.clip_start_seconds.unwrap_or(0.0);
+    let removed_seconds = AudioProcessor::removal_duration_seconds(
+        &final_request.remove_intervals,
+        selected_duration,
+    );
     let rendering = if request.enhancement_model.is_guarded_studio() {
         processor.process_studio_with_additional_filter(final_request, final_filter.as_deref())
     } else {

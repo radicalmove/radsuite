@@ -615,9 +615,9 @@ async fn radcast_speech_aware_pause_cleanup_uses_intervals_and_records_pause_cou
 
     let ffmpeg_args = fs::read_to_string(ffmpeg_log).expect("read ffmpeg arguments");
     assert!(ffmpeg_args.contains("-filter_complex"));
-    assert!(ffmpeg_args.contains("concat="));
-    assert!(ffmpeg_args.contains("end=0.400"));
-    assert!(ffmpeg_args.contains("end=1.600"));
+    assert!(ffmpeg_args.contains("acrossfade="));
+    assert!(ffmpeg_args.contains("end_sample=19200"));
+    assert!(ffmpeg_args.contains("end_sample=76800"));
     assert!(!ffmpeg_args.contains("silenceremove"));
     assert_eq!(output.removed_pause_count, 3);
     assert_eq!(output.removed_filler_count, 0);

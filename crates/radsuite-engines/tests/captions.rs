@@ -256,10 +256,431 @@ fn filler_detection_respects_normal_and_aggressive_modes() {
     ];
 
     let normal = detect_filler_intervals(&words, FillerRemovalMode::Normal);
-    assert_eq!(normal, vec![interval(0.23, 0.47)]);
+    assert_eq!(normal, vec![interval(0.225, 0.5)]);
 
     let aggressive = detect_filler_intervals(&words, FillerRemovalMode::Aggressive);
-    assert_eq!(aggressive, vec![interval(0.23, 0.47), interval(1.18, 1.42)]);
+    assert_eq!(
+        aggressive,
+        vec![interval(0.2225, 0.52), interval(1.165, 1.47)]
+    );
+}
+
+#[test]
+fn filler_cleanup_recognises_python_variants_and_preserves_nonfillers() {
+    for token in [
+        "ah", "ahh", "umm", "uhh", "uhm", "ummm", "errmm", "UUHH,", "'erm'",
+    ] {
+        let words = [
+            word("the", 0.0, 0.2, 0.9),
+            word(token, 0.4, 0.6, 0.9),
+            word("lecture", 0.8, 1.0, 0.9),
+        ];
+        assert_eq!(
+            detect_filler_intervals(&words, FillerRemovalMode::Aggressive),
+            vec![interval(0.365, 0.67)],
+            "{token}"
+        );
+    }
+    for token in ["hmm", "hm", "mm", "umbrella", "summary", "ahoy", "uh-oh"] {
+        let words = [
+            word("the", 0.0, 0.2, 0.9),
+            word(token, 0.4, 0.6, 0.9),
+            word("lecture", 0.8, 1.0, 0.9),
+        ];
+        assert!(
+            detect_filler_intervals(&words, FillerRemovalMode::Aggressive).is_empty(),
+            "{token}"
+        );
+    }
+}
+
+#[test]
+fn filler_cleanup_matches_saved_python_reference_cases() {
+    let fixture: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/radcast_python_fillers.json")).unwrap();
+    for case in fixture["cases"].as_array().unwrap() {
+        let words = case["words"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|w| {
+                word(
+                    w["text"].as_str().unwrap(),
+                    w["start"].as_f64().unwrap(),
+                    w["end"].as_f64().unwrap(),
+                    w["probability"].as_f64().unwrap_or(f64::NAN),
+                )
+            })
+            .collect::<Vec<_>>();
+        let mode = if case["mode"] == "normal" {
+            FillerRemovalMode::Normal
+        } else {
+            FillerRemovalMode::Aggressive
+        };
+        let plan = plan_speech_cleanup(
+            &words,
+            words.last().unwrap().end_seconds + 0.2,
+            None,
+            true,
+            mode,
+        )
+        .unwrap();
+        assert_eq!(
+            plan.removed_filler_count as u64,
+            case["count"].as_u64().unwrap(),
+            "{} {}",
+            case["name"],
+            case["mode"]
+        );
+        let expected = case["intervals"].as_array().unwrap();
+        assert_eq!(plan.removal_intervals.len(), expected.len(), "{case}");
+        for (actual, expected) in plan.removal_intervals.iter().zip(expected) {
+            assert!(
+                (actual.start_seconds - expected[0].as_f64().unwrap()).abs() < 0.000001,
+                "{case}"
+            );
+            assert!(
+                (actual.end_seconds - expected[1].as_f64().unwrap()).abs() < 0.000001,
+                "{case}"
+            );
+        }
+    }
+}
+
+#[test]
+fn filler_cleanup_protects_speech_between_fillers() {
+    let words = [
+        word("um", 0.3, 0.5, 0.9),
+        word("a", 0.52, 0.57, 0.9),
+        word("uh", 0.59, 0.8, 0.9),
+    ];
+    assert_eq!(
+        detect_filler_intervals(&words, FillerRemovalMode::Aggressive),
+        vec![interval(0.265, 0.511)]
+    );
+}
+
+#[test]
+fn filler_cleanup_checks_duration_context_and_counts_words_in_runs() {
+    for (start, end) in [(0.4, 0.45), (0.4, 1.8)] {
+        assert!(
+            detect_filler_intervals(
+                &[word("um", start, end, 0.9)],
+                FillerRemovalMode::Aggressive
+            )
+            .is_empty()
+        );
+    }
+    let crowded = [
+        word("the", 0.0, 0.4, 0.9),
+        word("um", 0.4, 0.6, 0.9),
+        word("lecture", 0.6, 0.9, 0.9),
+    ];
+    assert!(detect_filler_intervals(&crowded, FillerRemovalMode::Aggressive).is_empty());
+    let plan = plan_speech_cleanup(
+        &[
+            word("um", 0.3, 0.5, 0.01),
+            word("uh", 0.6, 0.8, 0.01),
+            word("lecture", 1.0, 1.3, 0.9),
+        ],
+        1.3,
+        None,
+        true,
+        FillerRemovalMode::Aggressive,
+    )
+    .unwrap();
+    assert_eq!(plan.removed_filler_count, 2);
+    assert_eq!(plan.removal_intervals, vec![interval(0.265, 0.87)]);
+}
+
+#[test]
+fn pause_cleanup_preserves_empty_transcripts_and_selected_pause_limits() {
+    let empty =
+        plan_speech_cleanup(&[], 3.0, Some(0.0), true, FillerRemovalMode::Aggressive).unwrap();
+    assert!(empty.removal_intervals.is_empty());
+    let words = [word("first", 0.0, 0.2, 0.9), word("second", 1.2, 1.4, 0.9)];
+    let plan =
+        plan_speech_cleanup(&words, 1.4, Some(1.0), false, FillerRemovalMode::Normal).unwrap();
+    assert!(plan.removal_intervals.is_empty());
+    let plan =
+        plan_speech_cleanup(&words, 1.4, Some(0.4), false, FillerRemovalMode::Normal).unwrap();
+    assert!((plan.removal_intervals[0].start_seconds - 0.6).abs() < 1e-9);
+    assert_eq!(plan.removal_intervals[0].end_seconds, 1.2);
+}
+
+#[test]
+fn pause_cleanup_does_not_remove_a_filler_rejected_for_long_duration() {
+    let plan = plan_speech_cleanup(
+        &[
+            word("hello", 0.0, 0.2, 0.9),
+            word("ah", 0.3, 1.8, 0.9),
+            word("world", 1.9, 2.1, 0.9),
+        ],
+        2.1,
+        Some(0.0),
+        true,
+        FillerRemovalMode::Aggressive,
+    )
+    .unwrap();
+    assert!(plan.removal_intervals.is_empty());
+    assert_eq!(plan.removed_filler_count, 0);
+}
+
+#[test]
+fn pause_cleanup_keeps_fillers_rejected_for_confidence_and_context() {
+    for words in [
+        vec![
+            word("hello", 0.0, 0.2, 0.9),
+            word("erm", 0.3, 0.6, 0.01),
+            word("world", 0.7, 0.9, 0.9),
+        ],
+        vec![
+            word("hello", 0.0, 0.3, 0.9),
+            word("um", 0.3, 0.8, 0.9),
+            word("world", 0.8, 1.0, 0.9),
+        ],
+    ] {
+        let plan = plan_speech_cleanup(
+            &words,
+            words.last().unwrap().end_seconds,
+            Some(0.0),
+            true,
+            FillerRemovalMode::Normal,
+        )
+        .unwrap();
+        assert!(plan.removal_intervals.is_empty());
+        assert_eq!(plan.removed_filler_count, 0);
+    }
+}
+
+#[test]
+fn pause_cleanup_still_shortens_gaps_when_every_word_is_an_accepted_filler() {
+    let plan = plan_speech_cleanup(
+        &[word("um", 0.5, 0.7, 0.9)],
+        3.0,
+        Some(0.2),
+        true,
+        FillerRemovalMode::Aggressive,
+    )
+    .unwrap();
+    assert_eq!(plan.removed_filler_count, 1);
+    assert_eq!(plan.removed_pause_count, 2);
+    assert_eq!(plan.removal_intervals.len(), 2);
+    assert_eq!(plan.removal_intervals[0], interval(0.2, 0.7));
+    assert!((plan.removal_intervals[1].start_seconds - 0.9).abs() < 1e-9);
+    assert_eq!(plan.removal_intervals[1].end_seconds, 3.0);
+}
+
+#[test]
+fn cleanup_transcription_uses_python_prompt_search_and_window_ownership() {
+    let dir = test_dir("cleanup-windows");
+    let log = dir.join("calls");
+    let script = format!(
+        r#"#!/bin/sh
+output=''
+offset=0
+previous=''
+for arg in "$@"; do
+  printf '%s\n' "$arg" >> '{}'
+  if [ "$previous" = '-of' ]; then output="$arg"; fi
+  if [ "$previous" = '-ot' ]; then offset="$arg"; fi
+  previous="$arg"
+done
+if [ "$offset" = '2000' ]; then
+  printf '%s' '{{"transcription":[{{"tokens":[{{"text":" hello","offsets":{{"from":2200,"to":2400}},"p":0.9}},{{"text":" um","offsets":{{"from":8700,"to":8900}},"p":0.9}},{{"text":"m","offsets":{{"from":8900,"to":9200}},"p":0.9}}]}}]}}' > "$output.json"
+else
+  printf '%s' '{{"transcription":[{{"tokens":[{{"text":" umm","offsets":{{"from":8700,"to":9200}},"p":0.9}},{{"text":" world","offsets":{{"from":10500,"to":11000}},"p":0.9}}]}}]}}' > "$output.json"
+fi
+"#,
+        log.display()
+    );
+    let whisper = write_executable(&dir, "whisper.sh", &script);
+    let input = dir.join("source.wav");
+    let model = dir.join("model.bin");
+    fs::write(&input, b"fixture").unwrap();
+    fs::write(&model, b"model").unwrap();
+    let plan = CaptionProcessor::from_commands(whisper, model)
+        .speech_cleanup_plan(
+            &CaptionTranscriptionRequest {
+                input_path: input,
+                language: "en".into(),
+                clip_start_seconds: Some(2.0),
+                clip_end_seconds: Some(12.0),
+            },
+            10.0,
+            None,
+            true,
+            FillerRemovalMode::Aggressive,
+        )
+        .unwrap();
+    let calls = fs::read_to_string(log).unwrap();
+    assert!(calls.contains("--prompt\nTranscribe all spoken disfluencies exactly"));
+    assert!(calls.contains("-mc\n0\n"));
+    assert!(calls.contains("-bs\n3\n"));
+    assert_eq!(calls.matches("-of\n").count(), 2);
+    assert!(calls.contains("-ot\n8000\n"));
+    assert_eq!(plan.removed_filler_count, 1);
+    assert_eq!(plan.removal_intervals, vec![interval(6.665, 7.27)]);
+    remove_dir(dir);
+}
+
+#[test]
+fn word_transcription_assembles_subwords_before_filler_matching() {
+    let dir = test_dir("word-pieces");
+    let whisper = write_executable(
+        &dir,
+        "whisper.sh",
+        r#"#!/bin/sh
+previous=''
+for arg in "$@"; do
+ if [ "$previous" = '-of' ]; then output="$arg"; fi
+ previous="$arg"
+done
+printf '%s' '{"transcription":[{"tokens":[{"text":" um","offsets":{"from":200,"to":300},"p":0.8},{"text":"brella","offsets":{"from":300,"to":600},"p":0.9},{"text":",","offsets":{"from":600,"to":600},"p":0.99},{"text":" ah","offsets":{"from":800,"to":900},"p":0.9},{"text":"h","offsets":{"from":900,"to":1100},"p":0.9}]}]}' > "$output.json"
+"#,
+    );
+    let input = dir.join("source.wav");
+    let model = dir.join("model.bin");
+    fs::write(&input, b"fixture").unwrap();
+    fs::write(&model, b"model").unwrap();
+    let words = CaptionProcessor::from_commands(whisper, model)
+        .transcribe_words(&CaptionTranscriptionRequest {
+            input_path: input,
+            language: "en".into(),
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+        })
+        .unwrap();
+    assert_eq!(words.len(), 2);
+    assert_eq!(words[0].text, "umbrella,");
+    assert_eq!(words[1], word("ahh", 0.8, 1.1, 0.9));
+    assert!((words[0].probability - (0.8 + 0.9 + 0.99) / 3.0).abs() < 1e-9);
+    remove_dir(dir);
+}
+
+#[test]
+fn pause_cleanup_uses_segment_timing_when_word_timing_is_unavailable() {
+    let dir = test_dir("segment-fallback");
+    let whisper = write_executable(
+        &dir,
+        "whisper.sh",
+        r#"#!/bin/sh
+previous=''
+for arg in "$@"; do
+ if [ "$previous" = '-of' ]; then output="$arg"; fi
+ previous="$arg"
+done
+printf '%s' '{"transcription":[{"text":"hello","offsets":{"from":500,"to":800}},{"text":"world","offsets":{"from":1400,"to":1700}}]}' > "$output.json"
+"#,
+    );
+    let input = dir.join("source.wav");
+    let model = dir.join("model.bin");
+    fs::write(&input, b"fixture").unwrap();
+    fs::write(&model, b"model").unwrap();
+    let plan = CaptionProcessor::from_commands(whisper, model)
+        .speech_cleanup_plan(
+            &CaptionTranscriptionRequest {
+                input_path: input,
+                language: "en".into(),
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+            },
+            2.2,
+            Some(0.2),
+            true,
+            FillerRemovalMode::Normal,
+        )
+        .unwrap();
+    assert_eq!(plan.removed_pause_count, 3);
+    assert_eq!(plan.removed_filler_count, 0);
+    assert_eq!(plan.removal_intervals.len(), 3);
+    assert!((plan.removal_intervals[1].start_seconds - 1.0).abs() < 1e-9);
+    remove_dir(dir);
+}
+
+#[test]
+fn cleanup_cancellation_stops_before_the_next_window() {
+    let dir = test_dir("cleanup-cancel");
+    let log = dir.join("calls");
+    let script = format!(
+        r#"#!/bin/sh
+previous=''
+for arg in "$@"; do
+ if [ "$previous" = '-of' ]; then output="$arg"; fi
+ previous="$arg"
+done
+printf 'call\n' >> '{}'
+printf '%s' '{{"transcription":[]}}' > "$output.json"
+"#,
+        log.display()
+    );
+    let whisper = write_executable(&dir, "whisper.sh", &script);
+    let input = dir.join("source.wav");
+    let model = dir.join("model.bin");
+    fs::write(&input, b"fixture").unwrap();
+    fs::write(&model, b"model").unwrap();
+    let mut checks = 0;
+    let error = CaptionProcessor::from_commands(whisper, model)
+        .speech_cleanup_plan_with_cancellation(
+            &CaptionTranscriptionRequest {
+                input_path: input,
+                language: "en".into(),
+                clip_start_seconds: None,
+                clip_end_seconds: None,
+            },
+            18.0,
+            None,
+            true,
+            FillerRemovalMode::Aggressive,
+            &mut || {
+                checks += 1;
+                checks >= 2
+            },
+        )
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        radsuite_engines::SpeechCleanupError::Cancelled
+    ));
+    assert_eq!(fs::read_to_string(log).unwrap().lines().count(), 1);
+    remove_dir(dir);
+}
+
+#[test]
+fn word_transcription_keeps_zero_duration_and_untimed_leading_pieces() {
+    let dir = test_dir("untimed-word-pieces");
+    let whisper = write_executable(
+        &dir,
+        "whisper.sh",
+        r#"#!/bin/sh
+previous=''
+for arg in "$@"; do
+ if [ "$previous" = '-of' ]; then output="$arg"; fi
+ previous="$arg"
+done
+printf '%s' '{"transcription":[{"tokens":[{"text":" hello","offsets":{"from":0,"to":200},"p":0.9},{"text":" um","offsets":{"from":400,"to":400},"p":0.9},{"text":"brella","offsets":{"from":400,"to":800},"p":0.9},{"text":" ah","p":0.9},{"text":"h","offsets":{"from":1000,"to":1200},"p":0.9},{"text":" world","offsets":{"from":1500,"to":1800},"p":0.9}]}]}' > "$output.json"
+"#,
+    );
+    let input = dir.join("source.wav");
+    let model = dir.join("model.bin");
+    fs::write(&input, b"fixture").unwrap();
+    fs::write(&model, b"model").unwrap();
+    let words = CaptionProcessor::from_commands(whisper, model)
+        .transcribe_words(&CaptionTranscriptionRequest {
+            input_path: input,
+            language: "en".into(),
+            clip_start_seconds: None,
+            clip_end_seconds: None,
+        })
+        .unwrap();
+    assert_eq!(words.len(), 4);
+    assert_eq!(words[1], word("umbrella", 0.4, 0.8, 0.9));
+    assert_eq!(words[2], word("ahh", 1.0, 1.2, 0.9));
+    assert_eq!(
+        detect_filler_intervals(&words, FillerRemovalMode::Aggressive).len(),
+        1
+    );
+    remove_dir(dir);
 }
 
 #[test]
@@ -346,7 +767,7 @@ fn filler_intervals_are_relative_to_the_selected_clip() {
         )
         .expect("detect clip filler interval");
 
-    assert_eq!(intervals, vec![interval(0.23, 0.47)]);
+    assert_eq!(intervals, vec![interval(0.225, 0.45)]);
     remove_dir(dir);
 }
 
@@ -459,7 +880,7 @@ fn speech_cleanup_excludes_fillers_from_pause_timeline_and_merges_overlaps() {
     )
     .expect("build filler-only cleanup plan");
 
-    assert_eq!(filler_only.removal_intervals, vec![interval(0.28, 0.52)]);
+    assert_eq!(filler_only.removal_intervals, vec![interval(0.275, 0.55)]);
     assert_eq!(filler_only.removed_pause_count, 0);
     assert_eq!(filler_only.removed_filler_count, 1);
 }

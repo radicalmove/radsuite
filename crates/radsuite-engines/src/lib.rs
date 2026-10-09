@@ -2,6 +2,7 @@ pub mod audio;
 pub mod capabilities;
 pub mod captions;
 pub mod enhancement;
+mod fillers;
 pub mod registry;
 mod runtime;
 mod studio;
