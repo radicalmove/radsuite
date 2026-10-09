@@ -1,0 +1,13 @@
+{
+  "apps/desktop-ui/src-tauri/src/main.rs": "4289cba6ed803f47be57a4947acd1b18837d1d1ef92783b2603cda362c7a1f72",
+  "apps/desktop-ui/src/components/RadcastWorkspace.svelte": "e8455c042d9a7789e86b4007b49f39b22963d1ec7fa20d41c4128b0b400425ed",
+  "apps/desktop-ui/src/styles.css": "58dc1b27d4609d583b1c5319506cf59272937a19f35b25b7edd053400d088613",
+  "apps/desktop-ui/src/types.ts": "dccb16d0f72b7191ee84f92997d516558c39abb07499052c40362a5953da6c8e",
+  "crates/radsuite-desktop/src/commands.rs": "1afae2a96032514714207b8fe1dc127e386d9c56d54f37930a501f297bf2d8ab",
+  "crates/radsuite-desktop/src/radcast.rs": "ebfab6eadeec252e9881bd98d058a2fb1300cf3c5c99d94347d74753ed9896be",
+  "crates/radsuite-desktop/tests/radcast_contracts.rs": "6b1c789456e67f11348bd3a4e9e43028513944915a9fb9eac9e13e2a33a3801b",
+  "crates/radsuite-engines/src/audio.rs": "6035bc807017e43994427092bae2257549b272265ec04bea4c4d9a1a12b3f454",
+  "crates/radsuite-engines/src/enhancement.rs": "5e45ae12e55bf12993f15a21440ee4fff66adea55dbf7a432ef903c3724218c3",
+  "crates/radsuite-engines/src/lib.rs": "6e723db70a9a0ad13a0abf7376330583abc533885fe5f79596d1d4a66292a34d",
+  "crates/radsuite-engines/tests/audio.rs": "e83a241e201f1ec5a6b952c6233d7d232d4e5d7ac8b3bc9746e96cba5253f87b"
+}

@@ -1,0 +1,52 @@
+{
+  "_id": "6735ae0703e3b0052158e4a5",
+  "id": "alibabasglab/MossFormer2_SE_48K",
+  "private": false,
+  "tags": [
+    "license:apache-2.0",
+    "region:us"
+  ],
+  "downloads": 0,
+  "likes": 27,
+  "modelId": "alibabasglab/MossFormer2_SE_48K",
+  "author": "alibabasglab",
+  "sha": "eff8c97925c8bec812af707814b3e5d777fd4503",
+  "lastModified": "2024-11-26T08:39:49.000Z",
+  "gated": false,
+  "disabled": false,
+  "model-index": null,
+  "config": {},
+  "cardData": {
+    "license": "apache-2.0"
+  },
+  "siblings": [
+    {
+      "rfilename": ".gitattributes",
+      "blobId": "a6344aac8c09253b3b630fb776ae94478aa0275b",
+      "size": 1519
+    },
+    {
+      "rfilename": "README.md",
+      "blobId": "3bd127640b52490ba6eda7c91738d5f3b826863b",
+      "size": 2176
+    },
+    {
+      "rfilename": "last_best_checkpoint",
+      "blobId": "98b04fb38c032a55f03f4a7583600e7e112b8e09",
+      "size": 24
+    },
+    {
+      "rfilename": "last_best_checkpoint.pt",
+      "blobId": "8fd037f31a765a5ec8a1c71c54ebb460d1712fb5",
+      "size": 221552019,
+      "lfs": {
+        "sha256": "03692b9f773bbd6bb43b9c5a41f96b1e28affd66e13796b7bec66ad3d8b227c6",
+        "size": 221552019,
+        "pointerSize": 134
+      }
+    }
+  ],
+  "spaces": [],
+  "createdAt": "2024-11-14T08:00:07.000Z",
+  "usedStorage": 221552019
+}

@@ -1,0 +1,86 @@
+{
+  "config": {
+    "onset_relative_db": -9.0,
+    "full_relative_db": -12.0,
+    "maximum_original": 0.2,
+    "frame_seconds": 0.02,
+    "expansion_frames_each_side": 8,
+    "smoothing_frames": 5,
+    "energy_guard_max_loss_db": 0.1,
+    "offline_whole_recording_statistics": true
+  },
+  "median_eligible_model_gain_db": -4.3647423292896805,
+  "triggered_windows": [
+    {
+      "start_seconds": 4.0,
+      "end_seconds": 5.0,
+      "gain_db": -25.48485993675658,
+      "relative_gain_db": -21.1201176074669,
+      "original_weight": 0.2
+    },
+    {
+      "start_seconds": 4.5,
+      "end_seconds": 5.5,
+      "gain_db": -32.17367571390701,
+      "relative_gain_db": -27.80893338461733,
+      "original_weight": 0.2
+    },
+    {
+      "start_seconds": 67.0,
+      "end_seconds": 68.0,
+      "gain_db": -25.918865174341637,
+      "relative_gain_db": -21.554122845051957,
+      "original_weight": 0.2
+    },
+    {
+      "start_seconds": 138.0,
+      "end_seconds": 139.0,
+      "gain_db": -27.014998603320844,
+      "relative_gain_db": -22.650256274031165,
+      "original_weight": 0.2
+    },
+    {
+      "start_seconds": 138.5,
+      "end_seconds": 139.5,
+      "gain_db": -29.94438910258376,
+      "relative_gain_db": -25.57964677329408,
+      "original_weight": 0.2
+    },
+    {
+      "start_seconds": 139.0,
+      "end_seconds": 140.0,
+      "gain_db": -27.779835026972883,
+      "relative_gain_db": -23.415092697683203,
+      "original_weight": 0.2
+    },
+    {
+      "start_seconds": 140.0,
+      "end_seconds": 141.0,
+      "gain_db": -28.78607762318534,
+      "relative_gain_db": -24.42133529389566,
+      "original_weight": 0.2
+    }
+  ],
+  "initial_energy_guard_conflict_frames": 0,
+  "energy_guard_bypassed_intervals": [],
+  "remaining_energy_guard_conflicts": 0,
+  "minimum_protected_candidate_vs_model_frame_gain_db": 0.0,
+  "active_frame_count": 335,
+  "frame_count": 7174,
+  "active_intervals": [
+    {
+      "start_seconds": 3.8000000000000003,
+      "end_seconds": 5.7
+    },
+    {
+      "start_seconds": 66.8,
+      "end_seconds": 68.2
+    },
+    {
+      "start_seconds": 137.8,
+      "end_seconds": 141.20000000000002
+    }
+  ],
+  "sample_count": 6887520,
+  "note": "Source-periodicity/modulation and frame energy are protection proxies, not semantic speech or reverb estimates."
+}

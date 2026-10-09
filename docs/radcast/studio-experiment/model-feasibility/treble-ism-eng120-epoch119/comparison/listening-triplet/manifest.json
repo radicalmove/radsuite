@@ -1,0 +1,137 @@
+{
+  "source_timeline_seconds": [
+    20,
+    32
+  ],
+  "source_mask_file": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/source_masks.npz",
+  "source_mask_sha256": "f0c1a6af56afc8e3e5e5dc9afe0bc361c935565e44040d4bcf9dd9486152e9d9",
+  "mask": "Sliced fixed full-original protected speech/pause masks; identical for all clips.",
+  "target_speech_rms_before_headroom_dbfs": -26.525212441310607,
+  "common_headroom_gain_db": 0,
+  "method": "Only downward constant gains; no processing/model runs. Lowest speech RMS of THIS group; common sample peak <=\u22123dBFS.",
+  "files": {
+    "B": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/listening-triplet/B_target20-32_matched.wav",
+      "sha256": "b7cffd821cefa7ba60b4bcf9d12e16996b049ca726a0d26c9c32095d07d1fdbe",
+      "role": "Prior preferred local B (bounded-tail r3), unapproved for promotion",
+      "sample_count": 576000,
+      "original_speech_rms_dbfs": -23.50436846577864,
+      "static_match_gain_db": -3.0208439755319674,
+      "common_headroom_gain_db": 0,
+      "total_static_gain_db": -3.0208439755319674,
+      "matched_metrics": {
+        "pcm_sha256": "ce9be52401655bd5ee88d90a6421aa838307959edd50194233c7a235ee400955",
+        "duration_seconds": 12.0,
+        "rms_dbfs": -27.197091507437797,
+        "sample_peak_dbfs": -7.103845637246444,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -26.525212298763968,
+        "pause_rms_dbfs": -84.55481541903117,
+        "speech_pause_contrast_db": 58.029603120267204,
+        "speech_frames": 514,
+        "pause_frames": 23,
+        "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -41.09144802880102,
+          "body": -7.6434456205867995,
+          "mid": -0.9340575467833709,
+          "presence": -17.49213994004551,
+          "sibilants": -25.24751288156601,
+          "air": -32.30895938801236
+        },
+        "rolloff_95_hz": 726.5625,
+        "hf_bands_db_relative": {
+          "6000-7000": -33.522140849621834,
+          "7000-8000": -35.33917599091018,
+          "8000-9000": -35.28538462039616,
+          "9000-10000": -37.66857327974874,
+          "10000-12000": -39.926348571281565,
+          "12000-16000": -47.27084413725236
+        }
+      },
+      "Adobe_offset_seconds": null
+    },
+    "model_dry20": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/listening-triplet/model_dry20_target20-32_matched.wav",
+      "sha256": "53243f6109fda37c4fa1e347a19f091ccd0e8f72bd0d0548163f9124b27ebd64",
+      "role": "Single accepted-for-listening preservation repair; not human approved",
+      "sample_count": 576000,
+      "original_speech_rms_dbfs": -23.887367816500063,
+      "static_match_gain_db": -2.637844624810544,
+      "common_headroom_gain_db": 0,
+      "total_static_gain_db": -2.637844624810544,
+      "matched_metrics": {
+        "pcm_sha256": "45c70dd7404be60c84bcea50b4ec890ca3917c65c03e323ca7cbc138f7de00e3",
+        "duration_seconds": 12.0,
+        "rms_dbfs": -27.197087147610457,
+        "sample_peak_dbfs": -6.780593170086119,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -26.5252125020408,
+        "pause_rms_dbfs": -80.31380962106783,
+        "speech_pause_contrast_db": 53.78859711902703,
+        "speech_frames": 514,
+        "pause_frames": 23,
+        "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -39.32489850394872,
+          "body": -7.258952275305615,
+          "mid": -1.0020352755091382,
+          "presence": -18.168552070109552,
+          "sibilants": -26.44688868569365,
+          "air": -33.595346438126576
+        },
+        "rolloff_95_hz": 726.5625,
+        "hf_bands_db_relative": {
+          "6000-7000": -34.6991284850272,
+          "7000-8000": -36.70176704208427,
+          "8000-9000": -36.52287605736869,
+          "9000-10000": -38.973425582399564,
+          "10000-12000": -41.275028410906046,
+          "12000-16000": -48.8392071136808
+        }
+      },
+      "Adobe_offset_seconds": null
+    },
+    "Adobe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/listening-triplet/Adobe_target20-32_matched.wav",
+      "sha256": "f9a6b8eb976753cbd4c29f2859878ad2bddb23e552967df8a3f13982761278b9",
+      "role": "Preferred edited opaque reference; not clean ground truth",
+      "sample_count": 576000,
+      "original_speech_rms_dbfs": -26.525212441310607,
+      "static_match_gain_db": 0.0,
+      "common_headroom_gain_db": 0,
+      "total_static_gain_db": 0.0,
+      "matched_metrics": {
+        "pcm_sha256": "7885ffa0c6624c0ada338d72896e51d1785c72c0cd9e65cee9d0945643561ed9",
+        "duration_seconds": 12.0,
+        "rms_dbfs": -27.19700217633101,
+        "sample_peak_dbfs": -6.213037935377258,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -26.525212441310607,
+        "pause_rms_dbfs": -63.407093695382876,
+        "speech_pause_contrast_db": 36.88188125407227,
+        "speech_frames": 514,
+        "pause_frames": 23,
+        "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -25.17736051141955,
+          "body": -4.939417520266605,
+          "mid": -2.030768992975559,
+          "presence": -13.738316065865131,
+          "sibilants": -21.412043902390092,
+          "air": -35.734423855594954
+        },
+        "rolloff_95_hz": 1476.5625,
+        "hf_bands_db_relative": {
+          "6000-7000": -30.11567935554175,
+          "7000-8000": -35.62246792000613,
+          "8000-9000": -39.1768102707369,
+          "9000-10000": -42.96279120584036,
+          "10000-12000": -42.602862385493225,
+          "12000-16000": -43.9050669163218
+        }
+      },
+      "Adobe_offset_seconds": -2.239
+    }
+  }
+}

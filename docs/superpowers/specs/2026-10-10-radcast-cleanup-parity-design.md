@@ -1,0 +1,13 @@
+# RADcast speech cleanup parity
+
+The user has authorised implementation of the Python RADcast filler behaviour and a check/update of long-pause shortening. The reference is `/Users/rcd58/RADcast/src/radcast/services/speech_cleanup.py`.
+
+Port the explicit filler vocabulary and repeated-letter recognition, 80 ms–1.35 s run limits, Normal/Aggressive confidence and context checks, mode-specific gap-limited padding, and word counts. Never join filler intervals across an intervening spoken word. Preserve Normal/Aggressive controls.
+
+Use the existing local whisper.cpp engine with Python-equivalent cleanup decoding: beam 3 in both modes (the effective Python cleanup entry-point behaviour), no previous text context, and the original disfluency prompt for Aggressive. Aggressive uses 8 s windows with 2 s overlap, keeping each word in the window containing its midpoint and projecting times into the selected clip. This avoids splitting/counting a boundary word twice. Reassemble subword tokens before filler matching, averaging finite token probabilities for word confidence. Cancellation is checked between windows. Caption generation keeps its separate profiles. Normal Python cleanup's faster-whisper VAD is not replicated: whisper.cpp requires a separate VAD model, which is not an existing runtime prerequisite.
+
+Retain Python's speech-aware pause policy: merge speech within 60 ms; shorten only gaps strictly longer than max(350 ms, selected retained pause); keep the beginning of each gap; include leading/trailing gaps; leave no-transcript inputs unchanged. Use segment timestamps as a fallback when words are unavailable. Verify pause-only and combined cleanup, including zero retained pause and clip-relative times. Correct rejected-filler handling for duration, confidence and context rejection so the pause planner cannot remove speech that the filler planner protected.
+
+Render cuts with linear 12 ms crossfades bounded by the accumulated output and each next chunk's length, matching Python's splicer. Round clip-relative cut points to 48 kHz sample indices. Apply the selected clip before clip-relative removal intervals, and account for shortened output duration. Use FFmpeg, preserving local model/runtime compatibility and normal export filters.
+
+Verify against the Python pure planning functions on identical timing fixtures, deterministic CLI tests, actual FFmpeg waveform cuts (including tiny chunks and selected clips), and the existing engine/desktop tests. Recognition parity across faster-whisper and whisper.cpp is not guaranteed; do not claim an acoustic quality ranking without a listening comparison.

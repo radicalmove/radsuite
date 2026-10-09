@@ -11,6 +11,8 @@ use uuid::Uuid;
 
 use crate::DbError;
 
+// async_trait emits must_use on boxed futures; Rust 1.99 also marks that type must_use.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait ProjectRepository {
     async fn insert_project(&self, project: &Project) -> Result<(), DbError>;
@@ -285,6 +287,8 @@ fn parse_role(value: &str) -> Result<ProjectRole, DbError> {
     }
 }
 
+// async_trait emits must_use on boxed futures; Rust 1.99 also marks that type must_use.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait CourseModuleRepository {
     async fn insert_course_module(&self, module: &CourseModule) -> Result<(), DbError>;
@@ -522,6 +526,8 @@ pub struct ReferenceCitationUsage {
     pub citation_text: String,
 }
 
+// async_trait emits must_use on boxed futures; Rust 1.99 also marks that type must_use.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait ReferenceEntryRepository {
     async fn insert_reference_entry(&self, entry: &ReferenceEntry) -> Result<(), DbError>;
@@ -1027,6 +1033,8 @@ pub struct CitationDocumentAnalysis {
     pub citations: Vec<Citation>,
 }
 
+// async_trait emits must_use on boxed futures; Rust 1.99 also marks that type must_use.
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait CitationDocumentRepository {
     async fn insert_document_analysis(

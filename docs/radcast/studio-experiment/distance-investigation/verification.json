@@ -1,0 +1,142 @@
+{
+  "date": "2026-10-09",
+  "fresh_independent_saved_output_checks": true,
+  "verified_input_source_and_code_paths": 36,
+  "verified_paths": {
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/prepared.wav": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/highpassed.wav": "bc0e8d4af75b1329b4b8586805d770a7c18bfe4d6fa7892d467f5fc8bdb19cee",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/model_raw.wav": "e79d722b41e8d62cbf44ab198ad7dbcfb34ae31ec04c8f913cb5acabba0958b6",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/cleanup.wav": "7a95d9f51941d8f48a30ade71da18f4e2f22e930f231725befd34105f91d7ecc",
+    "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3": "3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627",
+    "/Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-88ada395.mp3": "6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9",
+    "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/audio_work/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-7524c22d.mp3": "f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad",
+    "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room.wav": "529735b02af4462cba871edd69606da2dae9c2102fd03dab7f41221ca696a91b",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean_model.wav": "3aee4349cce4aba37f9f407f04d0a35f3fc373143a1082aae0b0ca778fe594a3",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room_model.wav": "265fa51682a8a7527221bf20fb88a9b9482001884b49468aa5d14bd434ad6d4f",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean.wav": "07d24d6da81163ae9f58dd3119c30de028088ee4aa45f85404ea878eeb5b6a85",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room.wav": "fca54fd95c81279fdc920bc80766ff0760183a0bc4598588bdf3babe681ad0e5",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean_model.wav": "87fcc59f0c85de27a3f4b74f0f3b7bc3e860dc3dbfc6f1344ede75d3c40899b6",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room_model.wav": "51eeb3f625a3d06a9436d21e5ca8e5782e801699a69b58ed119f2fea53504ee6",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/README.md": "2ab4f0cfbe1b29a5e59dbfd6dc36452085c69778fb27d81f144bd6eb7be24a81",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/config.json": "e69986483774f01893d2727503addc49ef201d19e6e1a266b8d4e971e28c478d",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/inference.py": "933c44915fc62332616ee31daba3714a5eb05c5696212147b4a803774ce6b8f6",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/inference.sh": "c629666348d7246f6e006f72e23a4932b5160a256edab6dddb7208cc47ab975c",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/models/generator_SEMamba_time_d4.py": "ff82f2f6a907da311b4c27d0cfc3dfe6485a0de06248ac491c3a1913639742a7",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/models/codec_module_time_d4.py": "55144dc929626a0f0f66ebfa729852abef6fc63cb8e66fe49615b0b624900145",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/reuse/models/mamba_block2_SEMamba.py": "4aed8861ac17bc8a92b6df53575ef54ab3e742c439a17c89c0cf0ae3c6c13956",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/sgmse/README.md": "2343fc510203b978b357b2c49f1b59931e0799098d46f06c5272341162087d32",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/sgmse/LICENSE": "8748956d2e5afe9dfc8311188b4119dacc7c5293b0561e7cca7a21cf80e54caa",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/research/sgmse/sgmse/model.py": "27ecc3733fb2b915e47c76d1523a96c2a693cb7ba7cce8ea5e2170c8f69cf047",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/target_phrase_model_unblended.wav": "c16914d0d0ae0a85537363a0080cabaf5b0a88ef4c0ca0f819be346b40643bc7",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/target_phrase_original20.wav": "96524c18cbce6e6fcf4ce70a0af12e97bc66bbe757192fca05af1583eab16927",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-lufs/target_phrase_model_unblended.wav": "58831cb951a0b0fd9ed0679ae0e4194cf7f0b1d9d212c9d2f85b7151c90c52c6",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-lufs/target_phrase_original20.wav": "96524c18cbce6e6fcf4ce70a0af12e97bc66bbe757192fca05af1583eab16927",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/quiet_articulation_model_unblended.wav": "4b99a9b7fbde98e3157de0d39da40c05cfd17807ddb10b83da3703bb01254d62",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/quiet_articulation_original20.wav": "bd2d68d5127fd86d0656d33da06fefcf6651669507c889fb7d3e97b4f04c25a2",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/louder_passage_model_unblended.wav": "1d708eaa556c4180b55d403e02abf8f79d83ba0134edfa311d3d89b5131b28d6",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/louder_passage_original20.wav": "6c0b9e5d6257796ccab2612370c1a40e1572fe6b23eb7de4dce7607e278a8fcc",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/phrase_ending_model_unblended.wav": "9644bb9360817113013fc6058a685daade0fe8626883f79840ae205a2f822a1a",
+    "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/phrase_ending_original20.wav": "7e0ec6ddd8c2efb288ff668efddb6a67abd7165d161e0e973efc350cb517a762"
+  },
+  "clips": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/target_phrase_model_unblended.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 576000,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.500000107953426
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/target_phrase_original20.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 576000,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.50000007901115
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-lufs/target_phrase_model_unblended.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 576000,
+      "scalar_replay_max_error": 2.9802322387695312e-08,
+      "loudness": {
+        "integrated_lufs": -26.61,
+        "true_peak_dbfs": -6.09,
+        "loudness_range_lu": 4.4
+      }
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-lufs/target_phrase_original20.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 576000,
+      "scalar_replay_max_error": 0.0,
+      "loudness": {
+        "integrated_lufs": -26.61,
+        "true_peak_dbfs": -6.04,
+        "loudness_range_lu": 4.4
+      }
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/quiet_articulation_model_unblended.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 144000,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.499999888394722
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/quiet_articulation_original20.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 144000,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.49999987150784
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/louder_passage_model_unblended.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 480000,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.49999993010111
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/louder_passage_original20.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 480000,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.499999978064103
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/phrase_ending_model_unblended.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 158400,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.499999598317334
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/distance-investigation/listening-rms/phrase_ending_original20.wav",
+      "finite": true,
+      "format": "FLOAT",
+      "samples": 158400,
+      "static_replay_exact": true,
+      "speech_rms_dbfs": -26.500000073147373
+    }
+  ],
+  "target_lufs_spread_lu": 0.0,
+  "reference_hashes_unchanged": true,
+  "exact_blend_replay_max_error": 0.0,
+  "new_model_inferences": 0,
+  "new_full_candidates": 0,
+  "preset_integration": false,
+  "scope": "Saved-stage scalar-copy and evidence verification. No new enhancement implementation, native tests or model tests rerun; no listening or full-source acceptance claim.",
+  "analysis_code_sha256": "5ab871e9e0bd7aef5648448aea5f6d497d72e08100fc17896b5e6725184e8002",
+  "report_sha256": "b0c00be0707f8358c42278b275ac078ea7f6c8a89566b4eab95e37e3a801fb72"
+}

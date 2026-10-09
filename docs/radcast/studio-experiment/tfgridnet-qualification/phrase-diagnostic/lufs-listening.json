@@ -1,0 +1,37 @@
+{
+  "files": {
+    "TFGrid": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/lufs/weeks_forward_TFGrid.wav",
+      "sha256": "6e446f8f40e2fbe4907969a365744bbc299fab3a2e7fdf54bb8a6906b9cfc49f",
+      "extra_static_gain_db": -0.2799999999999976,
+      "loudness": {
+        "integrated_lufs": -23.22,
+        "true_peak_dbfs": -4.39,
+        "loudness_range_lu": 0.9
+      }
+    },
+    "Treble": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/lufs/weeks_forward_Treble.wav",
+      "sha256": "58c8ada6df363f79815f061c7e93d6fbc9fca5eb37f19773c7def1580ea12908",
+      "extra_static_gain_db": 0.0,
+      "loudness": {
+        "integrated_lufs": -23.24,
+        "true_peak_dbfs": -3.75,
+        "loudness_range_lu": 1.1
+      }
+    },
+    "Adobe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/phrase-diagnostic/lufs/weeks_forward_Adobe.wav",
+      "sha256": "e7b5966c5c0a8ac3c928ff9067dc26d7531f7ec614265094aa170a345651464e",
+      "extra_static_gain_db": -0.639999999999997,
+      "loudness": {
+        "integrated_lufs": -23.25,
+        "true_peak_dbfs": -3.61,
+        "loudness_range_lu": 0.7
+      }
+    }
+  },
+  "measured_spread_lu": 0.030000000000001137,
+  "static_gain_only": true,
+  "no_new_model_inference": true
+}

@@ -105,7 +105,7 @@
 
   const fallbackStatus: AppStatus = {
     app_name: "RADsuite",
-    version: "0.2.8",
+    version: "0.2.12",
     database_ready: false,
     sync_configured: false,
     engines: [],

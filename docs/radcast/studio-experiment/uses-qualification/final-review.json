@@ -1,0 +1,11 @@
+{
+  "reviewer": "/root/dereverb_research",
+  "state": "no_material_blocker_to_reporting_qualification_rejection",
+  "artifact_hashes_verified": 32,
+  "report_links_verified": 13,
+  "all_six_room_scores_recomputed": true,
+  "trained_equivalence_recomputed": true,
+  "clarification_addressed": "TFGridNet publisher metadata verified; binary not downloaded/loaded.",
+  "human_listening_performed": false,
+  "finnegan_candidate_created": false
+}

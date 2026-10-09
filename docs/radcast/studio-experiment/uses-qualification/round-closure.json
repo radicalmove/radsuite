@@ -1,0 +1,12 @@
+{
+  "state": "qualification_rejected_round_closed",
+  "model_family": "legacy USES; not USES2",
+  "qualification_uses_calls": 8,
+  "new_treble_calls": 0,
+  "full_finnegan_renders": 0,
+  "remaining_full_render_budget": 0,
+  "reason": "Both speakers fail fixed early/late paired-benefit gates; no Finnegan trial permitted.",
+  "proximity_gap_resolved": false,
+  "full_length_human_approved": false,
+  "no_default_or_native_changes": true
+}

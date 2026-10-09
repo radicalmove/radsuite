@@ -1,0 +1,16 @@
+{
+  "files": {
+    "adaptive_preservation.py": "cb7b71f38ca967bf5a5062c6503d752f5f7414f08b736c30b1c344a129d4b9c0",
+    "test_adaptive_preservation.py": "61aba7a32faa45f7518a13ac539074a0a0da5a89546c7a949c21238ed1a1f4de"
+  },
+  "initial_tests": {
+    "new_red_failures": 8,
+    "new_green": 8,
+    "suite_total": 58,
+    "suite_skips": 0,
+    "suite_failures": 0,
+    "suite_seconds": 14.32,
+    "real_model_enabled": true
+  },
+  "stop": "One first attempt rejected; no delivery export or ASR approval. Coverage repair separately designed."
+}

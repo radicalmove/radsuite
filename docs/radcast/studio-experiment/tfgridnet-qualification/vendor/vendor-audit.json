@@ -1,0 +1,30 @@
+{
+  "publisher_commit": "6be80495bca76d8406ca11e5971a9954949ac9c1",
+  "source_sha256": "d96ff955828b2a2edbd4d83bc2e3f8c74ed7f5d9e9b8c8b2463cbc4f08ded4d5",
+  "classes": [
+    {
+      "name": "TFGridNetV3",
+      "ast_sha256": "38b27a21e6d1e7ccde65520fdeab02ba0c30e6cabfb1bdc6c848884528a406fd"
+    },
+    {
+      "name": "GridNetV3Block",
+      "ast_sha256": "3e13f6943f967a1f8febd689651d1cf0eaf39943ffd828068bcf23554901180c"
+    },
+    {
+      "name": "LayerNormalization",
+      "ast_sha256": "e365ce1524670abea256cf03c60c87e3f3bbde3ec02c363d1ab401f137cb8781"
+    },
+    {
+      "name": "AllHeadPReLULayerNormalization4DC",
+      "ast_sha256": "100a45e2ab7daf927b6d38af09faa537fbd883adabe33bfcb2f9dfeef589b851"
+    }
+  ],
+  "files": {
+    "compat.py": "8124ade2bd27159d524435db9827d2a5ce4e4a08b343fd513af79d8f61937723",
+    "LICENSE": "4696c3c9551da6fef1368be1e4ed2c80cf13e55448c6dcf2aba9462f5ff29ef5",
+    "__init__.py": "4d14b54478e71f9652348e005c73d8a7459f599b13328667a4e6e3778eb206e1",
+    "model.py": "109d1e20f226bb09b50abfb0dd82adfbc9843f816e6561299de026b42653dc1d",
+    "get_layer.py": "f8821d9566f326f75e69339eca18fa3b84d81b84915502dddbfe64b30dc0884e"
+  },
+  "adaptation": "Import rewrites only, native torch complex compatibility; all four publisher class ASTs unchanged."
+}

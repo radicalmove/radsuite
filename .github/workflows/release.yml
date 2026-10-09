@@ -58,7 +58,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            ffmpeg
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
@@ -99,10 +100,10 @@ jobs:
       - name: Install frontend dependencies
         working-directory: apps/desktop-ui
         run: npm ci
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
+      - name: Verify pinned prebuilt Tauri CLI
+        run: npx --yes --package "@tauri-apps/cli@$TAURI_CLI_VERSION" tauri --version
       - name: Build Apple Silicon package
-        run: cargo tauri build --bundles app,dmg
+        run: npx --yes --package "@tauri-apps/cli@$TAURI_CLI_VERSION" tauri build --bundles app,dmg
       - name: Label Apple Silicon assets
         run: |
           mkdir -p "$RUNNER_TEMP/release-assets"
@@ -137,10 +138,10 @@ jobs:
       - name: Install frontend dependencies
         working-directory: apps/desktop-ui
         run: npm ci
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version "$TAURI_CLI_VERSION" --locked
+      - name: Verify pinned prebuilt Tauri CLI
+        run: npx --yes --package "@tauri-apps/cli@$TAURI_CLI_VERSION" tauri --version
       - name: Build Intel package
-        run: cargo tauri build --bundles app,dmg
+        run: npx --yes --package "@tauri-apps/cli@$TAURI_CLI_VERSION" tauri build --bundles app,dmg
       - name: Label Intel assets
         run: |
           mkdir -p "$RUNNER_TEMP/release-assets"
@@ -175,10 +176,10 @@ jobs:
       - name: Install frontend dependencies
         working-directory: apps/desktop-ui
         run: npm ci
-      - name: Install Tauri CLI
-        run: cargo install tauri-cli --version $env:TAURI_CLI_VERSION --locked
+      - name: Verify pinned prebuilt Tauri CLI
+        run: npx --yes --package "@tauri-apps/cli@$env:TAURI_CLI_VERSION" tauri --version
       - name: Build Windows packages
-        run: cargo tauri build --bundles msi,nsis
+        run: npx --yes --package "@tauri-apps/cli@$env:TAURI_CLI_VERSION" tauri build --bundles msi,nsis
       - name: Label Windows assets
         shell: pwsh
         run: |

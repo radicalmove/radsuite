@@ -1,0 +1,103 @@
+{
+  "method": "5 s windows from original 10\u201380 s; common original speech-energy masks; reference stable offset -2.239 s; not individual word loudness or a mastering recommendation.",
+  "windows": [
+    {
+      "original_start_seconds": 10,
+      "original": -28.394602905853418,
+      "studio_v1": -29.809069610055296,
+      "reference": -21.465085984556886
+    },
+    {
+      "original_start_seconds": 15,
+      "original": -28.175455947632088,
+      "studio_v1": -30.640987412047245,
+      "reference": -23.293434748346154
+    },
+    {
+      "original_start_seconds": 20,
+      "original": -31.94275131291385,
+      "studio_v1": -34.427658567406674,
+      "reference": -24.7246480349473
+    },
+    {
+      "original_start_seconds": 25,
+      "original": -29.52455050976779,
+      "studio_v1": -31.98868275169648,
+      "reference": -23.730510798605398
+    },
+    {
+      "original_start_seconds": 30,
+      "original": -33.42926157450272,
+      "studio_v1": -36.334411532520136,
+      "reference": -24.758490646846667
+    },
+    {
+      "original_start_seconds": 35,
+      "original": -33.99182446155866,
+      "studio_v1": -37.25820657377376,
+      "reference": -26.723523407779513
+    },
+    {
+      "original_start_seconds": 40,
+      "original": -26.54621180748881,
+      "studio_v1": -28.99971293057302,
+      "reference": -22.30374998761096
+    },
+    {
+      "original_start_seconds": 45,
+      "original": -22.776683083237323,
+      "studio_v1": -24.76276036775421,
+      "reference": -24.09348183011174
+    },
+    {
+      "original_start_seconds": 50,
+      "original": -17.958036713071973,
+      "studio_v1": -20.32770324976837,
+      "reference": -23.916437257447917
+    },
+    {
+      "original_start_seconds": 55,
+      "original": -18.171150502567684,
+      "studio_v1": -20.263640091594233,
+      "reference": -25.093189977339996
+    },
+    {
+      "original_start_seconds": 60,
+      "original": -16.684742676892213,
+      "studio_v1": -19.306655799936795,
+      "reference": -25.24853653875063
+    },
+    {
+      "original_start_seconds": 65,
+      "original": -41.1470858149848,
+      "studio_v1": -47.19311283055329,
+      "reference": -44.95724445243221
+    },
+    {
+      "original_start_seconds": 70,
+      "original": -13.364755374513013,
+      "studio_v1": -15.573032503234003,
+      "reference": -21.05815634343381
+    },
+    {
+      "original_start_seconds": 75,
+      "original": -12.734414373388958,
+      "studio_v1": -14.751299775424076,
+      "reference": -20.175464386888187
+    }
+  ],
+  "summary": {
+    "original": {
+      "std_db": 8.279764409750028,
+      "p90_minus_p10_db": 19.4623040302151
+    },
+    "studio_v1": {
+      "std_db": 8.97114924127277,
+      "p90_minus_p10_db": 20.287948569152835
+    },
+    "reference": {
+      "std_db": 5.771830712345887,
+      "p90_minus_p10_db": 5.100792111300116
+    }
+  }
+}

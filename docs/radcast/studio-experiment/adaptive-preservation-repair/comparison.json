@@ -1,0 +1,377 @@
+{
+  "state": "technical_checks_pass_human_listening_pending",
+  "inputs": {
+    "old": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/CRJU160_modeltrial_ISM120_best119_dry20.wav",
+      "sha256": "944a3d1b3d95ea5aa208e0aa3c1547608c929c4163823df854abd37bef7e4be5"
+    },
+    "adaptive": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/CRJU160_adaptive_original_preservation.wav",
+      "sha256": "2c458317c69230165dd3353a394af7648b2c74d84142ac42235d17bf82a3d1ee"
+    },
+    "Adobe": {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav",
+      "sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4"
+    },
+    "original": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/prepared.wav",
+      "sha256": "68efd1800ad3ed51cc2ecd95daf9e06c14049f2561c1147d3882eca20d088c71"
+    }
+  },
+  "groups": {
+    "target_phrase": {
+      "timeline": [
+        20,
+        32
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/target_phrase_old.wav",
+          "sha256": "53243f6109fda37c4fa1e347a19f091ccd0e8f72bd0d0548163f9124b27ebd64",
+          "sample_count": 576000,
+          "static_gain_db": -2.637844624810544,
+          "speech_rms_dbfs": -26.5252125020408,
+          "loudness": {
+            "integrated_lufs": -26.56,
+            "true_peak_dbfs": -6.78,
+            "loudness_range_lu": 2.4
+          }
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/target_phrase_adaptive.wav",
+          "sha256": "cb51ca704b5e4b71ddcda6836d0dc0de6cd0850eb10387739034b925ce58706a",
+          "sample_count": 576000,
+          "static_gain_db": -2.1611561392319416,
+          "speech_rms_dbfs": -26.525212347441144,
+          "loudness": {
+            "integrated_lufs": -26.49,
+            "true_peak_dbfs": -6.61,
+            "loudness_range_lu": 2.5
+          }
+        },
+        "Adobe": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/target_phrase_Adobe.wav",
+          "sha256": "f9a6b8eb976753cbd4c29f2859878ad2bddb23e552967df8a3f13982761278b9",
+          "sample_count": 576000,
+          "static_gain_db": 0.0,
+          "speech_rms_dbfs": -26.525212441310607,
+          "loudness": {
+            "integrated_lufs": -26.52,
+            "true_peak_dbfs": -6.2,
+            "loudness_range_lu": 1.5
+          }
+        }
+      }
+    },
+    "quiet": {
+      "timeline": [
+        19.5,
+        22.5
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/quiet_old.wav",
+          "sha256": "da347b109d9ced9151a1bb79d38c1bd00fbb7bb258f08089a55434a3ad34b377",
+          "sample_count": 144000,
+          "static_gain_db": -4.077024092212838,
+          "speech_rms_dbfs": -27.494792752728806,
+          "loudness": {
+            "integrated_lufs": -27.87,
+            "true_peak_dbfs": -8.22,
+            "loudness_range_lu": 0.8
+          }
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/quiet_adaptive.wav",
+          "sha256": "8c29751abcdc11468cee9bc7774893fa6a5772d79355ed22ac460e5515c1049a",
+          "sample_count": 144000,
+          "static_gain_db": -3.6657382967179224,
+          "speech_rms_dbfs": -27.494792102420618,
+          "loudness": {
+            "integrated_lufs": -27.91,
+            "true_peak_dbfs": -8.12,
+            "loudness_range_lu": 0.8
+          }
+        },
+        "Adobe": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/quiet_Adobe.wav",
+          "sha256": "f02c057d0d0ed407fab7f69ac8e941b188435ebffa072da3febc6d5458e89743",
+          "sample_count": 144000,
+          "static_gain_db": 0.0,
+          "speech_rms_dbfs": -27.49479235616388,
+          "loudness": {
+            "integrated_lufs": -27.6,
+            "true_peak_dbfs": -7.97,
+            "loudness_range_lu": 0.7
+          }
+        }
+      }
+    },
+    "loud": {
+      "timeline": [
+        70,
+        80
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/loud_old.wav",
+          "sha256": "63272349fe035c2cf22873d34d7dbb528e469956986bb312c187369dabf25c90",
+          "sample_count": 480000,
+          "static_gain_db": -2.9474007606247845,
+          "speech_rms_dbfs": -22.54368678151273,
+          "loudness": {
+            "integrated_lufs": -23.02,
+            "true_peak_dbfs": -7.41,
+            "loudness_range_lu": 4.1
+          }
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/loud_adaptive.wav",
+          "sha256": "57364500654fb3564b1665d9d003fcb9b01e80f18b012119439d962eeb49ed3b",
+          "sample_count": 480000,
+          "static_gain_db": -2.876974513581935,
+          "speech_rms_dbfs": -22.54368669153312,
+          "loudness": {
+            "integrated_lufs": -22.97,
+            "true_peak_dbfs": -7.03,
+            "loudness_range_lu": 4.1
+          }
+        },
+        "Adobe": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/loud_Adobe.wav",
+          "sha256": "3d30ef84076730f366126ece9a2f4095a330eb69e6b47beb9ca08dd0c4e58719",
+          "sample_count": 480000,
+          "static_gain_db": 0.0,
+          "speech_rms_dbfs": -22.54368647647531,
+          "loudness": {
+            "integrated_lufs": -22.65,
+            "true_peak_dbfs": -5.55,
+            "loudness_range_lu": 4.5
+          }
+        }
+      }
+    },
+    "ending": {
+      "timeline": [
+        137,
+        143.49
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/ending_old.wav",
+          "sha256": "d2ec0c14a0f3360d7af7d39b614f15efd016287b6fb271eb95d08a43c1bcdc6b",
+          "sample_count": 311520,
+          "global_calibration_gain_db": 0.0,
+          "common_audition_gain_db": 1.0377909015663214
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/ending_adaptive.wav",
+          "sha256": "0dc39337513acb5c6d80598e047f12094afc71137ce46d9748db18c7cec047b7",
+          "sample_count": 311520,
+          "global_calibration_gain_db": 0.2184571452828993,
+          "common_audition_gain_db": 1.0377909015663214
+        },
+        "original": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/ending_original.wav",
+          "sha256": "c39d4c66ce9e29f3be41c9783e45408a61b437157598cf9e53289d1580c69568",
+          "sample_count": 311520,
+          "global_calibration_gain_db": -2.10080835676104,
+          "common_audition_gain_db": 1.0377909015663214
+        }
+      },
+      "note": "Common audition gain after global typical-gain calibration; local faint loss remains audible. No local RMS matching. Missing-material excerpt magnifies very faint content; no semantic speech classification."
+    },
+    "opening": {
+      "timeline": [
+        0,
+        8
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/opening_old.wav",
+          "sha256": "46bf3b17356c32a8d634cdb170123a9cffd6545b36105d2ab4777cf5711525af",
+          "sample_count": 384000,
+          "global_calibration_gain_db": 0.0,
+          "common_audition_gain_db": 5.437003838210812
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/opening_adaptive.wav",
+          "sha256": "c795fd107fedb098c592d34466dc16e08c95db199950b03478b497ee6bb5232b",
+          "sample_count": 384000,
+          "global_calibration_gain_db": 0.2184571452828993,
+          "common_audition_gain_db": 5.437003838210812
+        },
+        "original": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/opening_original.wav",
+          "sha256": "7d420435c979d6009f0a622936c76cd6f1c7dd34a9448088defff6a6c65eff7b",
+          "sample_count": 384000,
+          "global_calibration_gain_db": -2.10080835676104,
+          "common_audition_gain_db": 5.437003838210812
+        }
+      },
+      "note": "Common audition gain after global typical-gain calibration; local faint loss remains audible. No local RMS matching. Missing-material excerpt magnifies very faint content; no semantic speech classification."
+    },
+    "missed_material": {
+      "timeline": [
+        2,
+        3.5
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/missed_material_old.wav",
+          "sha256": "f0dbb7c4210e4fe66cccf1ab5a8fe773e3256a020a7f94b5b738599a29437c53",
+          "sample_count": 72000,
+          "global_calibration_gain_db": 0.0,
+          "common_audition_gain_db": 48.715618774967346
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/missed_material_adaptive.wav",
+          "sha256": "4da619322e9e8f637ffe14664225212525b2afc31f8c254aeaa6917c4bdddf88",
+          "sample_count": 72000,
+          "global_calibration_gain_db": 0.2184571452828993,
+          "common_audition_gain_db": 48.715618774967346
+        },
+        "original": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/missed_material_original.wav",
+          "sha256": "e0323d8615eac8bc263a8d7324ae504f89f711f8ec58337591451479d1a78c12",
+          "sample_count": 72000,
+          "global_calibration_gain_db": -2.10080835676104,
+          "common_audition_gain_db": 48.715618774967346
+        }
+      },
+      "note": "Common audition gain after global typical-gain calibration; local faint loss remains audible. No local RMS matching. Missing-material excerpt magnifies very faint content; no semantic speech classification."
+    },
+    "internal": {
+      "timeline": [
+        66,
+        69
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/internal_old.wav",
+          "sha256": "359b68645e004f67ad0a2a11971f3a21834a4ae8569f420d15667200d75c0c99",
+          "sample_count": 144000,
+          "global_calibration_gain_db": 0.0,
+          "common_audition_gain_db": 16.13376940687325
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/internal_adaptive.wav",
+          "sha256": "f2aedb602827ab7dacc88a900a25c5f93b5850e6521460c034b7212c21db178c",
+          "sample_count": 144000,
+          "global_calibration_gain_db": 0.2184571452828993,
+          "common_audition_gain_db": 16.13376940687325
+        },
+        "original": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/internal_original.wav",
+          "sha256": "e6227bbe636d3fe23cdac3bb446e7c4d29ef525b7f4cf977aedfd77773b73b19",
+          "sample_count": 144000,
+          "global_calibration_gain_db": -2.10080835676104,
+          "common_audition_gain_db": 16.13376940687325
+        }
+      },
+      "note": "Common audition gain after global typical-gain calibration; local faint loss remains audible. No local RMS matching. Missing-material excerpt magnifies very faint content; no semantic speech classification."
+    },
+    "intro": {
+      "timeline": [
+        0,
+        12
+      ],
+      "files": {
+        "old": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/intro_old.wav",
+          "sha256": "ea53acc648b1f811c1581a0e9a737a86ef6bc90a5bc4e8d02a4998d2614913d4",
+          "sample_count": 576000,
+          "global_calibration_gain_db": 0.0,
+          "common_audition_gain_db": 3.4459200585266103
+        },
+        "adaptive": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/intro_adaptive.wav",
+          "sha256": "b395716b9d2391ef280b71682dfdd2599be028d5f1af3f7a0c7873859af551fe",
+          "sample_count": 576000,
+          "global_calibration_gain_db": 0.2184571452828993,
+          "common_audition_gain_db": 3.4459200585266103
+        },
+        "original": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/intro_original.wav",
+          "sha256": "d65754ffe1998822e4694f967f824a7f9658bcd6a8e56abab80a47e60f92cdcf",
+          "sample_count": 576000,
+          "global_calibration_gain_db": -2.10080835676104,
+          "common_audition_gain_db": 3.4459200585266103
+        }
+      },
+      "note": "Common audition gain after global typical-gain calibration; local faint loss remains audible. No local RMS matching. Missing-material excerpt magnifies very faint content; no semantic speech classification."
+    }
+  },
+  "known_controls": {
+    "p232": {
+      "clean": {
+        "protection_reference": "Analytic0.8*saved_model+0.2*same_input, before downstream; not a new model inference.",
+        "active_frames": 0,
+        "energy_bypass_intervals": [],
+        "output_identical_to_saved_model": true,
+        "paired_clean_si_sdr_db": 24.497503191992447
+      },
+      "synthetic_room": {
+        "protection_reference": "Analytic0.8*saved_model+0.2*same_input, before downstream; not a new model inference.",
+        "active_frames": 0,
+        "energy_bypass_intervals": [],
+        "output_identical_to_saved_model": true,
+        "paired_clean_si_sdr_db": 11.110706958327668
+      }
+    },
+    "p257": {
+      "clean": {
+        "protection_reference": "Analytic0.8*saved_model+0.2*same_input, before downstream; not a new model inference.",
+        "active_frames": 0,
+        "energy_bypass_intervals": [],
+        "output_identical_to_saved_model": true,
+        "paired_clean_si_sdr_db": 24.833260823396145
+      },
+      "synthetic_room": {
+        "protection_reference": "Analytic0.8*saved_model+0.2*same_input, before downstream; not a new model inference.",
+        "active_frames": 0,
+        "energy_bypass_intervals": [],
+        "output_identical_to_saved_model": true,
+        "paired_clean_si_sdr_db": 11.350253218063918
+      }
+    }
+  },
+  "new_model_inferences": 0,
+  "delivery_export": false,
+  "note": "Static audition copies. Technical acceptance does not grant naturalness, identity or Adobe parity.",
+  "target_lufs": {
+    "old": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-lufs/target_phrase_old.wav",
+      "sha256": "53243f6109fda37c4fa1e347a19f091ccd0e8f72bd0d0548163f9124b27ebd64",
+      "sample_count": 576000,
+      "total_static_gain_db": -2.637844624810544,
+      "loudness": {
+        "integrated_lufs": -26.56,
+        "true_peak_dbfs": -6.78,
+        "loudness_range_lu": 2.4
+      }
+    },
+    "adaptive": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-lufs/target_phrase_adaptive.wav",
+      "sha256": "b89a6f602326d8372dd4824ded10a6a5ffdf76a9497685a2d1681bb8d37bff93",
+      "sample_count": 576000,
+      "total_static_gain_db": -2.231156139231942,
+      "loudness": {
+        "integrated_lufs": -26.51,
+        "true_peak_dbfs": -6.68,
+        "loudness_range_lu": 2.6
+      }
+    },
+    "Adobe": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-lufs/target_phrase_Adobe.wav",
+      "sha256": "a64ab11a137ac11301e80717edfdd438ad4f92856048a0589056c3b5532c41d2",
+      "sample_count": 576000,
+      "total_static_gain_db": -0.03999999999999915,
+      "loudness": {
+        "integrated_lufs": -26.57,
+        "true_peak_dbfs": -6.24,
+        "loudness_range_lu": 1.4
+      }
+    }
+  }
+}

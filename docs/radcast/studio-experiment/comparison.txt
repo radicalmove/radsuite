@@ -1,0 +1,61 @@
+RADcast calibration measurements
+
+All levels dB; speech/pause masks are energy proxies, not ASR/VAD.
+Spectral bands are speech-energy shares, not absolute EQ gain. Edited files are not timing-comparable.
+
+| File | Hz | Duration | LUFS | dBTP | Speech/pause contrast | Rolloff95 |
+|---|---:|---:|---:|---:|---:|---:|
+| original | 48000 | 143.49 | -18.54 | -1.82 | 37.28 | 1031.25 |
+| optimized | 48000 | 132.00 | -20.29 | -1.41 | 45.75 | 984.38 |
+| natural_double_plus | 48000 | 132.00 | -21.10 | -1.31 | 33.64 | 2648.44 |
+| reference | 48000 | 135.20 | -25.24 | -4.13 | 42.01 | 2015.62 |
+| studio_v1 | 48000 | 143.49 | -20.75 | -2.29 | 51.05 | 1078.12 |
+| studio_v1_tail | 48000 | 143.49 | -20.75 | -2.11 | 51.21 | 1101.56 |
+
+original
+Path: /Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3
+SHA256: 3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627
+Bands (dB of total speech spectrum): {'sub': -27.548289242057695, 'body': -4.735754685816692, 'mid': -1.978871466228642, 'presence': -16.683257041214695, 'sibilants': -22.13317318043057, 'air': -32.80063605698845}
+Alignment: lag=None, block spread=None, envelope=None
+QA: None
+
+
+optimized
+Path: /Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-88ada395.mp3
+SHA256: 6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9
+Bands (dB of total speech spectrum): {'sub': -18.880271241938956, 'body': -3.245759384750416, 'mid': -3.0511938794098317, 'presence': -18.698797542683735, 'sibilants': -23.59068832573336, 'air': -36.61621954778783}
+Alignment: lag=-5.431, block spread=3.3770000000000002, envelope=0.5134341201021735
+QA: None
+Edited/different timing: pause metrics use own mask; global correlations and spectrum cannot establish preservation.
+
+natural_double_plus
+Path: /Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/audio_work/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-7524c22d.mp3
+SHA256: f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad
+Bands (dB of total speech spectrum): {'sub': -25.343070764434522, 'body': -5.8758395259286536, 'mid': -1.9617271705777157, 'presence': -11.06820778491974, 'sibilants': -16.22592411624287, 'air': -61.795697331049276}
+Alignment: lag=-5.438, block spread=0.6210000000000004, envelope=0.5177296962743619
+QA: None
+Edited/different timing: pause metrics use own mask; global correlations and spectrum cannot establish preservation.
+
+reference
+Path: /Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav
+SHA256: e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4
+Bands (dB of total speech spectrum): {'sub': -24.120184251801376, 'body': -5.922255352410736, 'mid': -1.7773915270763907, 'presence': -11.862976908618199, 'sibilants': -19.66183467738253, 'air': -35.01677523584371}
+Alignment: lag=-2.238, block spread=0.6200000000000001, envelope=0.4800433612998871
+QA: None
+Edited/different timing: pause metrics use own mask; global correlations and spectrum cannot establish preservation.
+
+studio_v1
+Path: /Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/CRJU160_studio_v1_df18_air75.wav
+SHA256: e76418a638fd1f5501c62d9659933d89faff2e558c3a194c09075f293b5e4257
+Bands (dB of total speech spectrum): {'sub': -28.57616064189577, 'body': -4.737430635477796, 'mid': -1.9932595075029989, 'presence': -16.56770551547885, 'sibilants': -20.977405137132102, 'air': -31.55566264337034}
+Alignment: lag=0.0, block spread=0.0, envelope=0.9931210666759639
+QA: []
+
+
+studio_v1_tail
+Path: /Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/CRJU160_studio_v1_df18_air75_tail30.wav
+SHA256: f287c040ff206b47a1863b8102394db5e16db800fb15d9d927e2bb536054b3c6
+Bands (dB of total speech spectrum): {'sub': -28.700523168833247, 'body': -4.868814814494582, 'mid': -1.935901643799998, 'presence': -16.406401426320382, 'sibilants': -20.58858367447499, 'air': -31.16215974805329}
+Alignment: lag=0.0, block spread=0.0, envelope=0.991976880803369
+QA: []
+

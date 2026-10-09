@@ -1,0 +1,70 @@
+RADcast calibration measurements
+
+All levels dB; speech/pause masks are energy proxies, not ASR/VAD.
+Spectral bands are speech-energy shares, not absolute EQ gain. Edited files are not timing-comparable.
+
+| File | Hz | Duration | LUFS | dBTP | Speech/pause contrast | Rolloff95 |
+|---|---:|---:|---:|---:|---:|---:|
+| original | 48000 | 143.49 | -18.54 | -1.82 | 35.40 | 1031.25 |
+| optimized | 48000 | 132.00 | -20.29 | -1.41 | 53.68 | 1007.81 |
+| natural_double_plus | 48000 | 132.00 | -21.10 | -1.31 | 33.84 | 2671.88 |
+| reference | 48000 | 135.20 | -25.24 | -4.13 | 41.02 | 2062.50 |
+| studio_v1 | 48000 | 143.49 | -20.75 | -2.29 | 56.85 | 1078.12 |
+| studio_r2_wpe65 | 48000 | 143.49 | -21.63 | -1.55 | 44.22 | 1171.88 |
+| studio_r2_wpe35 | 48000 | 143.49 | -21.65 | -1.55 | 44.22 | 1171.88 |
+
+original
+Path: /Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted_TRIMMED_HANDLES.mp3
+SHA256: 3bdb5e393e06a275d333ed8d6fd015516d0af55a25f38232eb245efd3c6a3627
+Bands (dB of total speech spectrum): {'sub': -27.538457984267932, 'body': -4.7355036371683985, 'mid': -1.9812687621086214, 'presence': -16.665783785193774, 'sibilants': -22.010660836777923, 'air': -32.294568651291904}
+Alignment: lag=None, block spread=None, envelope=None
+QA: None
+
+
+optimized
+Path: /Users/rcd58/Desktop/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-88ada395.mp3
+SHA256: 6f1e681454bf1c93a6e6080a2f1a64d31be503c8e60f0de9cfd28d30af2ff3c9
+Bands (dB of total speech spectrum): {'sub': -18.877927382181575, 'body': -3.2483333919417037, 'mid': -3.0540791553137843, 'presence': -18.655500234139765, 'sibilants': -23.190578725806382, 'air': -35.80729612267064}
+Alignment: lag=-5.431, block spread=3.3770000000000002, envelope=0.5134341201021735
+QA: None
+Edited/different timing: pause metrics use own mask; global correlations and spectrum cannot establish preservation.
+
+natural_double_plus
+Path: /Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/audio_work/CRJU160_1.1.1_core_terms_charged_vs_convicted-radcast-7524c22d.mp3
+SHA256: f7ced65e82ff91231b9eab307ce47318f06762c3ab216b06055284152ba51dad
+Bands (dB of total speech spectrum): {'sub': -25.32346091912824, 'body': -5.873520422855993, 'mid': -1.9647057944464716, 'presence': -11.063217327536393, 'sibilants': -16.190547482031683, 'air': -61.70768072186036}
+Alignment: lag=-5.438, block spread=0.6210000000000004, envelope=0.5177296962743619
+QA: None
+Edited/different timing: pause metrics use own mask; global correlations and spectrum cannot establish preservation.
+
+reference
+Path: /Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav
+SHA256: e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4
+Bands (dB of total speech spectrum): {'sub': -24.097999610721107, 'body': -5.9221451703846295, 'mid': -1.7807718127974645, 'presence': -11.854356931022334, 'sibilants': -19.534678632676336, 'air': -34.517256017425744}
+Alignment: lag=-2.238, block spread=0.6200000000000001, envelope=0.4800433612998871
+QA: None
+Edited/different timing: pause metrics use own mask; global correlations and spectrum cannot establish preservation.
+
+studio_v1
+Path: /Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/CRJU160_studio_v1_df18_air75.wav
+SHA256: e76418a638fd1f5501c62d9659933d89faff2e558c3a194c09075f293b5e4257
+Bands (dB of total speech spectrum): {'sub': -28.572637016218554, 'body': -4.738309742968488, 'mid': -1.995403587886386, 'presence': -16.5522594255984, 'sibilants': -20.861538620119102, 'air': -31.060963704572405}
+Alignment: lag=0.0, block spread=0.0, envelope=0.9931210666759639
+QA: [{'code': 'quiet_speech_loss', 'detail': 'A modulated voiced-speech window lost >12 dB relative to typical source/output gain'}]
+
+
+studio_r2_wpe65
+Path: /Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision2/CRJU160_studio_r2_wpe65_level8_presence2.wav
+SHA256: f6c8eb34fa24b4dc7a36df04dc8430177ec47d20eb708301d076a6a627eebdd1
+Bands (dB of total speech spectrum): {'sub': -29.401271675577426, 'body': -5.506768830049877, 'mid': -1.6715460017939736, 'presence': -15.398406300601845, 'sibilants': -21.384125187928163, 'air': -31.01099928984803}
+Alignment: lag=0.0, block spread=0.0, envelope=0.9077071279729908
+QA: []
+
+
+studio_r2_wpe35
+Path: /Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/revision2/CRJU160_studio_r2_wpe35_level8_presence2.wav
+SHA256: 2a129c401efdff49c8fa7e4326b4685b1dcbd20e927c8226afd06880a417515e
+Bands (dB of total speech spectrum): {'sub': -29.402106079446515, 'body': -5.493251569154017, 'mid': -1.6766239077492964, 'presence': -15.409707023192105, 'sibilants': -21.387872248014503, 'air': -31.01302392339136}
+Alignment: lag=0.0, block spread=0.0, envelope=0.907544751500018
+QA: []
+

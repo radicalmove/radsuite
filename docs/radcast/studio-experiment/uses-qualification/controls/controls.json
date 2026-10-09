@@ -1,0 +1,3923 @@
+{
+  "schema_version": 1,
+  "status": "rejected",
+  "accepted_for_finnegan": false,
+  "source_manifest": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/controls.json",
+  "source_manifest_sha256": "13286c07a6080da71b54a53e0d3f139e18b9b90b196ccbaa3a6765fb8986ccf9",
+  "first_utterances": 2,
+  "synthetic_rir": {
+    "synthetic_not_measured_room": true,
+    "seed": 20261009,
+    "direct_gain": 1,
+    "early_taps_seconds": [
+      0.014,
+      0.037
+    ],
+    "early_tap_gains": [
+      0.25,
+      0.12
+    ],
+    "late_start_seconds": 0.05,
+    "late_decay_parameter_seconds": 0.65,
+    "late_rir_l2_norm": 0.35,
+    "late_tap_density": 0.05,
+    "rir_length_seconds": 0.8,
+    "tail_truncated_to_source_sample_count": true
+  },
+  "inference_counts": {
+    "uses": 8,
+    "new_treble": 0
+  },
+  "runtime": {
+    "executable": "/Users/rcd58/.radcast/experiments/uses-qualification/runtime/bin/python",
+    "platform": "darwin"
+  },
+  "source_code_sha256": {
+    "uses_controls.py": "e97334180775b77b324b77320aacfe3825b9b1f15bbaa6323332bf6d0437baca",
+    "uses_trial.py": "d2f9a31f066de05b33e6ab0923afb6b9e7edf029595a20e50f3f0ead555ea0e4",
+    "analysis.py": "621330f679dc16c766b2b27b0120e0920fab99157e350211d718c70db97f8f08",
+    "model_trial.py": "55c42110ffcae0dd82b4169fc239b597e33281903af973a9b6c4d375e5d04ddf"
+  },
+  "qualification": {
+    "passed": false,
+    "reasons": [
+      "p232/early: paired improvement below 1.0 dB",
+      "p232/late: paired improvement below 1.0 dB",
+      "p257/early: paired improvement below 1.0 dB",
+      "p257/late: paired improvement below 1.0 dB",
+      "p232/early: no completed same-input Treble comparison",
+      "p232/late: no completed same-input Treble comparison",
+      "p257/early: no completed same-input Treble comparison",
+      "p257/late: no completed same-input Treble comparison"
+    ],
+    "comparisons": {
+      "p232": {},
+      "p257": {}
+    },
+    "thresholds": {
+      "early_and_late_vs_untreated_db": 1.0,
+      "early_vs_treble_db": 1.0,
+      "late_minimum_vs_treble_db": -1.0
+    },
+    "scope": "Experimental synthetic-room evidence only; a pass permits one Finnegan trial, not voice-quality approval"
+  },
+  "speakers": {
+    "p232": {
+      "common_additional_headroom_gain": 1.0,
+      "prior_common_input_gain": 1,
+      "selection": {
+        "first_utterances": 2,
+        "start_sample": 0,
+        "end_sample": 475203,
+        "sample_count": 475203,
+        "full_source_sample_count": 1209892,
+        "duration_seconds": 9.9000625,
+        "source_boundaries": [
+          {
+            "filename": "p232_002.wav",
+            "start_sample": 0,
+            "samples": 130330,
+            "transcript": "Ask her to bring these things with her from the store."
+          },
+          {
+            "filename": "p232_003.wav",
+            "start_sample": 130330,
+            "samples": 344873,
+            "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+          }
+        ],
+        "context": "First two complete licensed utterances; no midword cut or inference segmentation"
+      },
+      "source_boundaries": [
+        {
+          "filename": "p232_002.wav",
+          "start_sample": 0,
+          "samples": 130330,
+          "transcript": "Ask her to bring these things with her from the store."
+        },
+        {
+          "filename": "p232_003.wav",
+          "start_sample": 130330,
+          "samples": 344873,
+          "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+        }
+      ],
+      "conditions": {
+        "clean": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_clean_input.wav",
+            "sha256": "6ed755154c2f18c29adbef87f9d2aae7e61fcaadcc22a23e83da5ed0e627713c",
+            "pcm_sha256": "2e475f235bc85cf188770bab4476ac39f889ed4a258879527ab17087f1437c83",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_clean_masks.npz",
+            "sha256": "9738bba36e59a4500de93cc4705230271032a533e0960aa0495b18d93a88fbaa"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_clean_uses_output.wav",
+            "sha256": "90a32336c4f78b894766f02f04f83bb703fc994bde0544b913f2aae141cf977a",
+            "pcm_sha256": "9aa258b5b4ae091c61571af49df61807273239092d7bf510dd7d8902cc8bfa07",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 70.9983564169379,
+            "model_inference_seconds": 70.9983564169379,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 475203,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 396165120,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 9,
+              "atf_block_calls": 60,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 10,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 70.99822925007902,
+              "process_peak_rss_bytes": 2724986880,
+              "output_sample_count": 475203
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "2e475f235bc85cf188770bab4476ac39f889ed4a258879527ab17087f1437c83",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.346205322139294,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835676638984,
+              "pause_rms_dbfs": -51.87228877539171,
+              "speech_pause_contrast_db": 29.910453098752726,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.162233410523871,
+                "body": -3.6635782535032897,
+                "mid": -3.22904795849528,
+                "presence": -13.850285769210748,
+                "sibilants": -17.475973238511973,
+                "air": -26.25644939795417
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -27.577277397131404,
+                "7000-8000": -29.979426396932567,
+                "8000-9000": -32.01058436851032,
+                "9000-10000": -33.25531469102817,
+                "10000-12000": -31.97334845654609,
+                "12000-16000": -31.999572820849625
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "9aa258b5b4ae091c61571af49df61807273239092d7bf510dd7d8902cc8bfa07",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -24.259255896052046,
+              "sample_peak_dbfs": -7.570725356548291,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.874183837775085,
+              "pause_rms_dbfs": -67.27784758263726,
+              "speech_pause_contrast_db": 43.40366374486218,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.204468081236831,
+                "body": -3.5316108053591155,
+                "mid": -3.54879059638976,
+                "presence": -12.460181286760857,
+                "sibilants": -16.16208984969668,
+                "air": -24.958524952732706
+              },
+              "rolloff_95_hz": 2062.5,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.276723665072772,
+                "7000-8000": -28.676664713195024,
+                "8000-9000": -30.70441369078366,
+                "9000-10000": -31.948128455223824,
+                "10000-12000": -30.669527952049656,
+                "12000-16000": -30.72281241081173
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "3cfa540f1b0d2a485fcd07d8c350451a87fe8ea9af8808775b152bebaa7f7578",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.346907971731675,
+              "sample_peak_dbfs": -7.570725356548291,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835913454728,
+              "pause_rms_dbfs": -65.36549965795284,
+              "speech_pause_contrast_db": 43.40366374449811,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.204468081322045,
+                "body": -3.531610804431598,
+                "mid": -3.548790596795861,
+                "presence": -12.460181292019488,
+                "sibilants": -16.16208984630068,
+                "air": -24.95852495630607
+              },
+              "rolloff_95_hz": 2062.5,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.276723662448376,
+                "7000-8000": -28.676664712102212,
+                "8000-9000": -30.704413685581695,
+                "9000-10000": -31.94812845335101,
+                "10000-12000": -30.66952796152894,
+                "12000-16000": -30.722812421326182
+              },
+              "speech_window_gain_db": [
+                -3.3728949996797084,
+                -3.8668966583684163,
+                -3.19782012121903,
+                -1.7824696328833336,
+                -1.6018240636305647,
+                -4.237788135849291,
+                -4.025544071175012,
+                -2.864183821498771,
+                -0.8047808581543094,
+                -0.46851564296963777,
+                -2.482409786489665,
+                -1.6365359955519896,
+                -0.745658152399223,
+                -0.7151942013116956,
+                -0.9147905839754961,
+                -2.6775527886589106,
+                -2.3200526932614975,
+                -0.7116362036750266
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.0512611630724153,
+              "worst_speech_window_gain_relative_db": -2.1865269727768757,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": -0.003,
+              "waveform_correlation": 0.2216768568985956,
+              "envelope_correlation": 0.9563290296098456,
+              "speech_envelope_shape_correlation": 0.9668947532564839,
+              "block_lags_seconds": [
+                -0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 1.9123481611361015,
+            "alignment": {
+              "speech_window_gain_db": [
+                -3.3728949996797084,
+                -3.8668966583684163,
+                -3.19782012121903,
+                -1.7824696328833336,
+                -1.6018240636305647,
+                -4.237788135849291,
+                -4.025544071175012,
+                -2.864183821498771,
+                -0.8047808581543094,
+                -0.46851564296963777,
+                -2.482409786489665,
+                -1.6365359955519896,
+                -0.745658152399223,
+                -0.7151942013116956,
+                -0.9147905839754961,
+                -2.6775527886589106,
+                -2.3200526932614975,
+                -0.7116362036750266
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.0512611630724153,
+              "worst_speech_window_gain_relative_db": -2.1865269727768757,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": -0.003,
+              "waveform_correlation": 0.2216768568985956,
+              "envelope_correlation": 0.9563290296098456,
+              "speech_envelope_shape_correlation": 0.9668947532564839,
+              "block_lags_seconds": [
+                -0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 334.42258641508647,
+            "output_si_sdr_db": 9.66040167587736,
+            "improvement_db": -324.7621847392091
+          }
+        },
+        "early": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_early_input.wav",
+            "sha256": "975b812c891999fdcc4d2ad79b2b8b1e27cf963bfb2f60b02083bf15590090f3",
+            "pcm_sha256": "3c217aa516c825a1cceac4c6484308298138df6eacabc9fba9678b27c9c8cc1c",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_early_masks.npz",
+            "sha256": "75553cc1e7fb9b520d771fa6bbf415e7a653f30aec458c6ffc5475a46d741de4"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_early_uses_output.wav",
+            "sha256": "65b28e861db2680f48a08f5a531c0172e8b96f8bbf65fb7a50c48ad2b2653a7f",
+            "pcm_sha256": "3fd573cbc4d2fcf2707cb7661754d81633d59f11327d0bf0d4f7d9c86f2dc60b",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 72.75602591701318,
+            "model_inference_seconds": 72.75602591701318,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 475203,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 2724986880,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 9,
+              "atf_block_calls": 60,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 10,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 72.7558141250629,
+              "process_peak_rss_bytes": 2778447872,
+              "output_sample_count": 475203
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "2e475f235bc85cf188770bab4476ac39f889ed4a258879527ab17087f1437c83",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.346205322139294,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835676638984,
+              "pause_rms_dbfs": -51.87228877539171,
+              "speech_pause_contrast_db": 29.910453098752726,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.162233410523871,
+                "body": -3.6635782535032897,
+                "mid": -3.22904795849528,
+                "presence": -13.850285769210748,
+                "sibilants": -17.475973238511973,
+                "air": -26.25644939795417
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -27.577277397131404,
+                "7000-8000": -29.979426396932567,
+                "8000-9000": -32.01058436851032,
+                "9000-10000": -33.25531469102817,
+                "10000-12000": -31.97334845654609,
+                "12000-16000": -31.999572820849625
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "3fd573cbc4d2fcf2707cb7661754d81633d59f11327d0bf0d4f7d9c86f2dc60b",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -24.18728684202952,
+              "sample_peak_dbfs": -6.589731046394979,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.802215347583207,
+              "pause_rms_dbfs": -66.88674133263342,
+              "speech_pause_contrast_db": 43.08452598505021,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -16.137839879473088,
+                "body": -3.694579081592523,
+                "mid": -3.3918664409696078,
+                "presence": -12.125073658979215,
+                "sibilants": -15.941262800021532,
+                "air": -24.79858361382602
+              },
+              "rolloff_95_hz": 2132.8125,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.143955107987335,
+                "7000-8000": -28.398459646168057,
+                "8000-9000": -30.540196284082825,
+                "9000-10000": -31.81973125910947,
+                "10000-12000": -30.532137693571396,
+                "12000-16000": -30.52089718739223
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "af6b9c0aa312609924f95c8c1d4e626063122485319e3a174dbaf19122b23525",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.346906945859924,
+              "sample_peak_dbfs": -6.589731046394979,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835451413563,
+              "pause_rms_dbfs": -65.04636145758526,
+              "speech_pause_contrast_db": 43.0845260061717,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -16.137839875464262,
+                "body": -3.6945790797754423,
+                "mid": -3.391866442176397,
+                "presence": -12.12507366436531,
+                "sibilants": -15.941262800446335,
+                "air": -24.798583608991823
+              },
+              "rolloff_95_hz": 2132.8125,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.143955110378396,
+                "7000-8000": -28.39845965164759,
+                "8000-9000": -30.540196263338228,
+                "9000-10000": -31.819731252948426,
+                "10000-12000": -30.532137701176193,
+                "12000-16000": -30.52089718697493
+              },
+              "speech_window_gain_db": [
+                -3.1302961495625112,
+                -3.4408295663381825,
+                -2.951896166007387,
+                -1.7645437579307783,
+                -4.1940156430091715,
+                -3.909807261067302,
+                -2.7751957077996248,
+                -0.9987359651242933,
+                -0.7917127116055498,
+                -2.021619488390605,
+                -1.4236980761014484,
+                -0.8992884655284112,
+                -0.8455894983182735,
+                -0.6674692840241103,
+                -2.7035789023522176,
+                -2.29038362143394,
+                -0.2865023386974726
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.021619488390605,
+              "worst_speech_window_gain_relative_db": -2.1723961546185664,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.003,
+              "waveform_correlation": 0.2249551659228623,
+              "envelope_correlation": 0.9544322038296446,
+              "speech_envelope_shape_correlation": 0.9642843957334104,
+              "block_lags_seconds": [
+                0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 1.8403796709442233,
+            "alignment": {
+              "speech_window_gain_db": [
+                -3.1302961495625112,
+                -3.4408295663381825,
+                -2.951896166007387,
+                -1.7645437579307783,
+                -4.1940156430091715,
+                -3.909807261067302,
+                -2.7751957077996248,
+                -0.9987359651242933,
+                -0.7917127116055498,
+                -2.021619488390605,
+                -1.4236980761014484,
+                -0.8992884655284112,
+                -0.8455894983182735,
+                -0.6674692840241103,
+                -2.7035789023522176,
+                -2.29038362143394,
+                -0.2865023386974726
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.021619488390605,
+              "worst_speech_window_gain_relative_db": -2.1723961546185664,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.003,
+              "waveform_correlation": 0.2249551659228623,
+              "envelope_correlation": 0.9544322038296446,
+              "speech_envelope_shape_correlation": 0.9642843957334104,
+              "block_lags_seconds": [
+                0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 11.12285806348604,
+            "output_si_sdr_db": 7.478254722985355,
+            "improvement_db": -3.6446033405006855
+          }
+        },
+        "late": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_late_input.wav",
+            "sha256": "82b2d552283dade90af0fdb1283ded5f1270f4f75ae6606727a00b7244e1ad4b",
+            "pcm_sha256": "bd39287fd0221a84ed8fe3635255d1316bc8deccf132ff2771ad079b2d7c5ef0",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_late_masks.npz",
+            "sha256": "bf72e7c2dcf918c80fd0238cd54c54b8b0911ebb98bf885e627bceb44a5c82ee"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_late_uses_output.wav",
+            "sha256": "0731cc65de50b210ea11dea94507793ca49174c56f4915fd063b55d80ece71c5",
+            "pcm_sha256": "489b5e6c1af23581d69e28ff9f2185028f9d541a7279cb6a824de67f3eebe236",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 69.63506524998229,
+            "model_inference_seconds": 69.63506524998229,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 475203,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 2778447872,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 9,
+              "atf_block_calls": 60,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 10,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 69.63491879100911,
+              "process_peak_rss_bytes": 2778447872,
+              "output_sample_count": 475203
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "2e475f235bc85cf188770bab4476ac39f889ed4a258879527ab17087f1437c83",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.346205322139294,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835676638984,
+              "pause_rms_dbfs": -51.87228877539171,
+              "speech_pause_contrast_db": 29.910453098752726,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.162233410523871,
+                "body": -3.6635782535032897,
+                "mid": -3.22904795849528,
+                "presence": -13.850285769210748,
+                "sibilants": -17.475973238511973,
+                "air": -26.25644939795417
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -27.577277397131404,
+                "7000-8000": -29.979426396932567,
+                "8000-9000": -32.01058436851032,
+                "9000-10000": -33.25531469102817,
+                "10000-12000": -31.97334845654609,
+                "12000-16000": -31.999572820849625
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "489b5e6c1af23581d69e28ff9f2185028f9d541a7279cb6a824de67f3eebe236",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -24.583351995339132,
+              "sample_peak_dbfs": -7.587334416558452,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -24.19827645562637,
+              "pause_rms_dbfs": -72.87183770853747,
+              "speech_pause_contrast_db": 48.6735612529111,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.375761612499186,
+                "body": -3.5669802767838688,
+                "mid": -3.564789624452484,
+                "presence": -12.152506694974328,
+                "sibilants": -15.776389086770452,
+                "air": -24.82502633765927
+              },
+              "rolloff_95_hz": 2203.125,
+              "hf_bands_db_relative": {
+                "6000-7000": -25.921226329101216,
+                "7000-8000": -28.259225178140042,
+                "8000-9000": -30.332396998357577,
+                "9000-10000": -31.704484756918173,
+                "10000-12000": -30.455665773533195,
+                "12000-16000": -31.02271081628784
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "b718a1d6a68089ae221f046e4b7bc805bf24d1e1b680c30d9413dd2578bc9ba1",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.346911077837763,
+              "sample_peak_dbfs": -7.587334416558452,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835538124987,
+              "pause_rms_dbfs": -70.63539679380344,
+              "speech_pause_contrast_db": 48.67356125567845,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.375761614201831,
+                "body": -3.5669802767879677,
+                "mid": -3.5647896253798566,
+                "presence": -12.15250669036733,
+                "sibilants": -15.77638908106779,
+                "air": -24.825026328537557
+              },
+              "rolloff_95_hz": 2203.125,
+              "hf_bands_db_relative": {
+                "6000-7000": -25.921226326459784,
+                "7000-8000": -28.259225168120942,
+                "8000-9000": -30.332396993749917,
+                "9000-10000": -31.704484750967616,
+                "10000-12000": -30.455665759839494,
+                "12000-16000": -31.02271080437362
+              },
+              "speech_window_gain_db": [
+                -3.4636601245813523,
+                -4.116929633205681,
+                -3.5862593757139836,
+                -2.1287292950248857,
+                -1.8983817134743197,
+                -4.210375392142983,
+                -4.2343157572359535,
+                -3.0989816513407584,
+                -1.0083939524430048,
+                -0.718240449569602,
+                -2.7067699176192006,
+                -1.839786104082014,
+                -0.9929621931106176,
+                -1.1065577600381262,
+                -1.224105179236052,
+                -3.2301557334391546,
+                -2.8533959952690817,
+                -0.9489388456855953
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.417749606322043,
+              "worst_speech_window_gain_relative_db": -1.8165661509139106,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": -0.003,
+              "waveform_correlation": 0.22068416491753048,
+              "envelope_correlation": 0.955083850234358,
+              "speech_envelope_shape_correlation": 0.9646201042417863,
+              "block_lags_seconds": [
+                -0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 2.2364407789873866,
+            "alignment": {
+              "speech_window_gain_db": [
+                -3.4636601245813523,
+                -4.116929633205681,
+                -3.5862593757139836,
+                -2.1287292950248857,
+                -1.8983817134743197,
+                -4.210375392142983,
+                -4.2343157572359535,
+                -3.0989816513407584,
+                -1.0083939524430048,
+                -0.718240449569602,
+                -2.7067699176192006,
+                -1.839786104082014,
+                -0.9929621931106176,
+                -1.1065577600381262,
+                -1.224105179236052,
+                -3.2301557334391546,
+                -2.8533959952690817,
+                -0.9489388456855953
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.417749606322043,
+              "worst_speech_window_gain_relative_db": -1.8165661509139106,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": -0.003,
+              "waveform_correlation": 0.22068416491753048,
+              "envelope_correlation": 0.955083850234358,
+              "speech_envelope_shape_correlation": 0.9646201042417863,
+              "block_lags_seconds": [
+                -0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 10.475334659724309,
+            "output_si_sdr_db": 8.817534312561193,
+            "improvement_db": -1.657800347163116
+          }
+        },
+        "composite": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_composite_input.wav",
+            "sha256": "87ea202900d6e634e554c1c99a45d39c10570ca172cd07d7141b5b194d5e991d",
+            "pcm_sha256": "3976302225c0e781e278f161a486364827e51e239dab71b2253382ceda03a711",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_composite_masks.npz",
+            "sha256": "bf72e7c2dcf918c80fd0238cd54c54b8b0911ebb98bf885e627bceb44a5c82ee"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_composite_uses_output.wav",
+            "sha256": "78a4fbd8417f7d4e393c7a65d02bd67ae4495e425f1b94343bfaa3d609178bd0",
+            "pcm_sha256": "abf51194a211df2abb8c707015fea8d83693165a8f5ccc4caa318227b357af00",
+            "sample_count": 475203,
+            "shape": [
+              475203
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 69.99728175008204,
+            "model_inference_seconds": 69.99728175008204,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 475203,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 2778447872,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 9,
+              "atf_block_calls": 60,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 10,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                619,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 69.9971217920538,
+              "process_peak_rss_bytes": 2778447872,
+              "output_sample_count": 475203
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "2e475f235bc85cf188770bab4476ac39f889ed4a258879527ab17087f1437c83",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.346205322139294,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835676638984,
+              "pause_rms_dbfs": -51.87228877539171,
+              "speech_pause_contrast_db": 29.910453098752726,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -15.162233410523871,
+                "body": -3.6635782535032897,
+                "mid": -3.22904795849528,
+                "presence": -13.850285769210748,
+                "sibilants": -17.475973238511973,
+                "air": -26.25644939795417
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -27.577277397131404,
+                "7000-8000": -29.979426396932567,
+                "8000-9000": -32.01058436851032,
+                "9000-10000": -33.25531469102817,
+                "10000-12000": -31.97334845654609,
+                "12000-16000": -31.999572820849625
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "abf51194a211df2abb8c707015fea8d83693165a8f5ccc4caa318227b357af00",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -24.491431369978415,
+              "sample_peak_dbfs": -6.57703306553977,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -24.1063575767502,
+              "pause_rms_dbfs": -70.35973094515421,
+              "speech_pause_contrast_db": 46.25337336840401,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -16.234273713026415,
+                "body": -3.6676710667780887,
+                "mid": -3.4799001734265533,
+                "presence": -11.814942140812157,
+                "sibilants": -15.56329997656812,
+                "air": -24.520197922338006
+              },
+              "rolloff_95_hz": 2320.3125,
+              "hf_bands_db_relative": {
+                "6000-7000": -25.786649391600378,
+                "7000-8000": -27.974829733854957,
+                "8000-9000": -30.169305359968174,
+                "9000-10000": -31.545182917143872,
+                "10000-12000": -30.24116856131851,
+                "12000-16000": -30.34655573175594
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "f7adfdfc455aee2e24e1deec221038c38f1547323250a3459f84b75d379f6ad6",
+              "duration_seconds": 9.9000625,
+              "rms_dbfs": -22.34690941083226,
+              "sample_peak_dbfs": -6.57703306553977,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -21.961835617604027,
+              "pause_rms_dbfs": -68.21520899275967,
+              "speech_pause_contrast_db": 46.25337337515565,
+              "speech_frames": 453,
+              "pause_frames": 1,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -16.234273710022087,
+                "body": -3.6676710659013074,
+                "mid": -3.4799001746459197,
+                "presence": -11.814942138940374,
+                "sibilants": -15.563299977490185,
+                "air": -24.520197923308462
+              },
+              "rolloff_95_hz": 2320.3125,
+              "hf_bands_db_relative": {
+                "6000-7000": -25.78664939160079,
+                "7000-8000": -27.97482972886484,
+                "8000-9000": -30.169305354026022,
+                "9000-10000": -31.545182922112396,
+                "10000-12000": -30.241168571356805,
+                "12000-16000": -30.34655572760258
+              },
+              "speech_window_gain_db": [
+                -3.1734676820236922,
+                -3.681278585818333,
+                -3.3220467680881223,
+                -2.1302709203134267,
+                -4.325035443433843,
+                -4.114549755671905,
+                -2.9690695237537468,
+                -1.2542074949415203,
+                -1.112933085614795,
+                -2.320771816079564,
+                -1.6632288290909574,
+                -1.1302632413874631,
+                -1.203685699309533,
+                -0.9456614001756019,
+                -3.1102668365519732,
+                -2.687834848938918,
+                -0.5305005775513856
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.320771816079564,
+              "worst_speech_window_gain_relative_db": -2.004263627354279,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.003,
+              "waveform_correlation": 0.22535610571011205,
+              "envelope_correlation": 0.9521180435501678,
+              "speech_envelope_shape_correlation": 0.9605848393119498,
+              "block_lags_seconds": [
+                0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 2.144521900111215,
+            "alignment": {
+              "speech_window_gain_db": [
+                -3.1734676820236922,
+                -3.681278585818333,
+                -3.3220467680881223,
+                -2.1302709203134267,
+                -4.325035443433843,
+                -4.114549755671905,
+                -2.9690695237537468,
+                -1.2542074949415203,
+                -1.112933085614795,
+                -2.320771816079564,
+                -1.6632288290909574,
+                -1.1302632413874631,
+                -1.203685699309533,
+                -0.9456614001756019,
+                -3.1102668365519732,
+                -2.687834848938918,
+                -0.5305005775513856
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0,
+                7.5,
+                8.0,
+                8.5
+              ],
+              "speech_window_gain_median_db": -2.320771816079564,
+              "worst_speech_window_gain_relative_db": -2.004263627354279,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.003,
+              "waveform_correlation": 0.22535610571011205,
+              "envelope_correlation": 0.9521180435501678,
+              "speech_envelope_shape_correlation": 0.9605848393119498,
+              "block_lags_seconds": [
+                0.003
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 7.880478437821406,
+            "output_si_sdr_db": 7.029748884422289,
+            "improvement_db": -0.850729553399117
+          }
+        }
+      },
+      "old_treble": {
+        "model": {
+          "checkpoint_epoch": 119,
+          "model_directory": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/model",
+          "artifact_sha256": {
+            "config.ini": "22aad5d5f95312051b755b61cbf050d68cf55d86bb1800931964f4b65983573b",
+            "checkpoints/model_119.ckpt.best": "a3cc6a842ee7674c9763dabbe16ffd562cf617aed961b797dd0bc39d1e422fd1"
+          },
+          "load_audit": {
+            "tensor_count": 133,
+            "element_count": 2167969,
+            "missing": [],
+            "unexpected": [],
+            "shape_mismatches": []
+          },
+          "versions": {
+            "torch": "2.1.1",
+            "torchaudio": "2.1.1",
+            "deepfilternet": "0.5.6",
+            "deepfilterlib": "0.5.6",
+            "numpy": "1.26.2",
+            "scipy": "1.11.4",
+            "soundfile": "0.12.1"
+          },
+          "device": "cpu",
+          "sample_rate": 48000,
+          "effective_runtime_config": {
+            "train": {
+              "seed": "43",
+              "device": "cpu",
+              "model": "deepfilternet3",
+              "jit": "false",
+              "mask_only": "false",
+              "df_only": "false",
+              "batch_size": "64",
+              "batch_size_eval": "64",
+              "num_workers": "8",
+              "max_sample_len_s": "3.0",
+              "p_atten_lim": "0.0",
+              "overfit": "false",
+              "max_epochs": "120",
+              "log_freq": "100",
+              "log_timings": "True",
+              "validation_criteria": "loss",
+              "validation_criteria_rule": "min",
+              "early_stopping_patience": "25",
+              "global_ds_sampling_f": "1",
+              "num_prefetch_batches": "8",
+              "dataloader_snrs": "-100,-5,0,5,10,20,40",
+              "detect_anomaly": "false",
+              "batch_size_scheduling": "0/16,2/24,5/32,10/64,20/128,40/9999",
+              "start_eval": "false",
+              "validation_set_caching": "false",
+              "cp_blacklist": "",
+              "dataloader_gains": "-6,0,6"
+            },
+            "distortion": {
+              "p_reverb": "1.0",
+              "p_bandwidth_ext": "0.0",
+              "p_clipping": "0.0",
+              "p_air_absorption": "0.0",
+              "p_zeroing": "0.0",
+              "p_interfer_sp": "0.0"
+            },
+            "df": {
+              "sr": "48000",
+              "fft_size": "960",
+              "hop_size": "480",
+              "nb_erb": "32",
+              "nb_df": "96",
+              "norm_tau": "1",
+              "lsnr_max": "35",
+              "lsnr_min": "-15",
+              "min_nb_erb_freqs": "2",
+              "pad_mode": "output",
+              "df_order": "5",
+              "df_lookahead": "2"
+            },
+            "deepfilternet": {
+              "conv_lookahead": "2",
+              "conv_ch": "64",
+              "conv_depthwise": "True",
+              "emb_hidden_dim": "256",
+              "emb_num_layers": "3",
+              "enc_linear_groups": "32",
+              "linear_groups": "16",
+              "conv_dec_mode": "transposed",
+              "convt_depthwise": "False",
+              "mask_pf": "False",
+              "df_hidden_dim": "256",
+              "df_num_layers": "2",
+              "dfop_method": "df",
+              "group_shuffle": "False",
+              "conv_kernel": "1,3",
+              "df_gru_skip": "groupedlinear",
+              "df_pathway_kernel_size_t": "5",
+              "enc_concat": "False",
+              "conv_kernel_inp": "3,3",
+              "emb_gru_skip": "none",
+              "df_n_iter": "1",
+              "convt_kernel": "1,3",
+              "lsnr_dropout": "False",
+              "emb_gru_skip_enc": "none",
+              "pf_beta": "0.02"
+            },
+            "localsnrloss": {
+              "factor": "1e-3"
+            },
+            "maskloss": {
+              "factor": "0",
+              "mask": "spec",
+              "gamma": "0.3",
+              "gamma_pred": "0.3",
+              "f_under": "1",
+              "max_freq": "0"
+            },
+            "spectralloss": {
+              "factor_magnitude": "0",
+              "factor_complex": "0",
+              "gamma": "0.3",
+              "factor_under": "1"
+            },
+            "dfalphaloss": {
+              "factor": "0.0"
+            },
+            "multiresspecloss": {
+              "factor": "500",
+              "factor_complex": "500",
+              "gamma": "0.3",
+              "fft_sizes": "256,512,1024,2048"
+            },
+            "optim": {
+              "lr": "0.001",
+              "momentum": "0",
+              "weight_decay": "1e-12",
+              "weight_decay_end": "0.01",
+              "optimizer": "adamw",
+              "lr_min": "1e-06",
+              "lr_warmup": "0.0001",
+              "warmup_epochs": "3",
+              "lr_cycle_mul": "1.0",
+              "lr_cycle_decay": "0.5",
+              "lr_cycle_limit": "1",
+              "lr_update_per_epoch": "False",
+              "lr_cycle_epochs": "-1"
+            },
+            "sdrloss": {
+              "factor": "0.0",
+              "segmental_ws": "0"
+            },
+            "asrloss": {
+              "factor": "0",
+              "factor_lm": "0",
+              "loss_lm": "CrossEntropy",
+              "model": "base.en"
+            },
+            "settings": {}
+          },
+          "initialization_seconds": 3.4928772090934217,
+          "processing": "observed-spectrum ERB gains and complex multi-frame filters",
+          "postfilter": false,
+          "attenuation_limit_db": null,
+          "original_inference_blend": 0,
+          "delay_compensation_samples": 480,
+          "context": "whole input; no segmented decoding or chunk joins"
+        },
+        "conditions": {
+          "clean": {
+            "artifact": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean_model.wav",
+              "sha256": "3aee4349cce4aba37f9f407f04d0a35f3fc373143a1082aae0b0ca778fe594a3",
+              "sample_count": 1209892
+            },
+            "analysis_headroom_gain": 1.0,
+            "technical_issues": [],
+            "preservation": {
+              "source_metrics": {
+                "pcm_sha256": "2e475f235bc85cf188770bab4476ac39f889ed4a258879527ab17087f1437c83",
+                "duration_seconds": 9.9000625,
+                "rms_dbfs": -22.346205322139294,
+                "sample_peak_dbfs": -6.020599913279624,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -21.961835676638984,
+                "pause_rms_dbfs": -51.87228877539171,
+                "speech_pause_contrast_db": 29.910453098752726,
+                "speech_frames": 453,
+                "pause_frames": 1,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -15.162233410523871,
+                  "body": -3.6635782535032897,
+                  "mid": -3.22904795849528,
+                  "presence": -13.850285769210748,
+                  "sibilants": -17.475973238511973,
+                  "air": -26.25644939795417
+                },
+                "rolloff_95_hz": 1640.625,
+                "hf_bands_db_relative": {
+                  "6000-7000": -27.577277397131404,
+                  "7000-8000": -29.979426396932567,
+                  "8000-9000": -32.01058436851032,
+                  "9000-10000": -33.25531469102817,
+                  "10000-12000": -31.97334845654609,
+                  "12000-16000": -31.999572820849625
+                }
+              },
+              "raw_output_metrics": {
+                "pcm_sha256": "c6281d3f7964081dd35272fec0eed7e230a202b607607230ffc957ad0363ccc6",
+                "duration_seconds": 9.9000625,
+                "rms_dbfs": -24.05565908804622,
+                "sample_peak_dbfs": -7.394032369922879,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -23.671421325762118,
+                "pause_rms_dbfs": -52.314214927672936,
+                "speech_pause_contrast_db": 28.642793601910817,
+                "speech_frames": 453,
+                "pause_frames": 1,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -15.46834591303828,
+                  "body": -3.911534119448504,
+                  "mid": -3.0745316969941436,
+                  "presence": -13.33379428193269,
+                  "sibilants": -16.884571757531525,
+                  "air": -25.558589580702144
+                },
+                "rolloff_95_hz": 1781.25,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.87053417427734,
+                  "7000-8000": -29.210402506909,
+                  "8000-9000": -31.32201187012562,
+                  "9000-10000": -32.58774926487036,
+                  "10000-12000": -31.23987414404532,
+                  "12000-16000": -31.30582993990132
+                }
+              },
+              "normalized_output_metrics": {
+                "pcm_sha256": "792b2441d99c8340e594bbd0f1d17b2b387f53dcee8c1f863a5faa24ceac1a29",
+                "duration_seconds": 9.9000625,
+                "rms_dbfs": -22.346073235787735,
+                "sample_peak_dbfs": -7.394032369922879,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -21.96183547350291,
+                "pause_rms_dbfs": -50.60462907036131,
+                "speech_pause_contrast_db": 28.642793596858404,
+                "speech_frames": 453,
+                "pause_frames": 1,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -15.46834591112501,
+                  "body": -3.9115341212163415,
+                  "mid": -3.0745316966506673,
+                  "presence": -13.333794272697208,
+                  "sibilants": -16.884571754723662,
+                  "air": -25.55858958570671
+                },
+                "rolloff_95_hz": 1781.25,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.87053416802155,
+                  "7000-8000": -29.21040249669697,
+                  "8000-9000": -31.32201187547205,
+                  "9000-10000": -32.58774927535213,
+                  "10000-12000": -31.239874148693985,
+                  "12000-16000": -31.30582994084937
+                },
+                "speech_window_gain_db": [
+                  -1.6608846395454466,
+                  -1.940967509892533,
+                  -2.0570589413427527,
+                  -1.7852600731363686,
+                  -1.4461345628131104,
+                  -1.6981766464572325,
+                  -1.7859156469980897,
+                  -1.7425656061856887,
+                  -1.7926541414967223,
+                  -1.4023909657650078,
+                  -1.4314862641293962,
+                  -1.6195303929258769,
+                  -1.8096449060317734,
+                  -1.8175041444541387,
+                  -1.794674923118301,
+                  -1.7224997444730925,
+                  -1.4716275480800203
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0,
+                  7.5,
+                  8.0,
+                  8.5
+                ],
+                "speech_window_gain_median_db": -1.7425656061856887,
+                "worst_speech_window_gain_relative_db": -0.314493335157064,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.9981477912366901,
+                "envelope_correlation": 0.998782398548649,
+                "speech_envelope_shape_correlation": 0.9991766029948707,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "analysis_gain_compensation_db": 1.7095856491231345,
+              "alignment": {
+                "speech_window_gain_db": [
+                  -1.6608846395454466,
+                  -1.940967509892533,
+                  -2.0570589413427527,
+                  -1.7852600731363686,
+                  -1.4461345628131104,
+                  -1.6981766464572325,
+                  -1.7859156469980897,
+                  -1.7425656061856887,
+                  -1.7926541414967223,
+                  -1.4023909657650078,
+                  -1.4314862641293962,
+                  -1.6195303929258769,
+                  -1.8096449060317734,
+                  -1.8175041444541387,
+                  -1.794674923118301,
+                  -1.7224997444730925,
+                  -1.4716275480800203
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0,
+                  7.5,
+                  8.0,
+                  8.5
+                ],
+                "speech_window_gain_median_db": -1.7425656061856887,
+                "worst_speech_window_gain_relative_db": -0.314493335157064,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.9981477912366901,
+                "envelope_correlation": 0.998782398548649,
+                "speech_envelope_shape_correlation": 0.9991766029948707,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "watchdog": [],
+              "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+            },
+            "paired": {
+              "input_si_sdr_db": 334.42258641508647,
+              "output_si_sdr_db": 24.30072092919975,
+              "improvement_db": -310.1218654858867
+            },
+            "selected_output": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_clean_historical_treble_output.wav",
+              "sha256": "1c31fe20b9cbb5d42c27e3e0b6aefb503184411df04d3476f01e46358f4cc14f",
+              "pcm_sha256": "c6281d3f7964081dd35272fec0eed7e230a202b607607230ffc957ad0363ccc6",
+              "sample_count": 475203,
+              "shape": [
+                475203
+              ],
+              "sample_rate": 48000,
+              "finite": true,
+              "dtype": "float32",
+              "format": "float32 WAV"
+            },
+            "selection": {
+              "first_utterances": 2,
+              "start_sample": 0,
+              "end_sample": 475203,
+              "sample_count": 475203,
+              "full_source_sample_count": 1209892,
+              "duration_seconds": 9.9000625,
+              "source_boundaries": [
+                {
+                  "filename": "p232_002.wav",
+                  "start_sample": 0,
+                  "samples": 130330,
+                  "transcript": "Ask her to bring these things with her from the store."
+                },
+                {
+                  "filename": "p232_003.wav",
+                  "start_sample": 130330,
+                  "samples": 344873,
+                  "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+                }
+              ],
+              "context": "First two complete licensed utterances; no midword cut or inference segmentation"
+            }
+          },
+          "composite": {
+            "artifact": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room_model.wav",
+              "sha256": "265fa51682a8a7527221bf20fb88a9b9482001884b49468aa5d14bd434ad6d4f",
+              "sample_count": 1209892
+            },
+            "analysis_headroom_gain": 1.0,
+            "technical_issues": [],
+            "preservation": {
+              "source_metrics": {
+                "pcm_sha256": "2e475f235bc85cf188770bab4476ac39f889ed4a258879527ab17087f1437c83",
+                "duration_seconds": 9.9000625,
+                "rms_dbfs": -22.346205322139294,
+                "sample_peak_dbfs": -6.020599913279624,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -21.961835676638984,
+                "pause_rms_dbfs": -51.87228877539171,
+                "speech_pause_contrast_db": 29.910453098752726,
+                "speech_frames": 453,
+                "pause_frames": 1,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -15.162233410523871,
+                  "body": -3.6635782535032897,
+                  "mid": -3.22904795849528,
+                  "presence": -13.850285769210748,
+                  "sibilants": -17.475973238511973,
+                  "air": -26.25644939795417
+                },
+                "rolloff_95_hz": 1640.625,
+                "hf_bands_db_relative": {
+                  "6000-7000": -27.577277397131404,
+                  "7000-8000": -29.979426396932567,
+                  "8000-9000": -32.01058436851032,
+                  "9000-10000": -33.25531469102817,
+                  "10000-12000": -31.97334845654609,
+                  "12000-16000": -31.999572820849625
+                }
+              },
+              "raw_output_metrics": {
+                "pcm_sha256": "694bf0dd10fd10e6a362758a76ded130a448dfd0d521c1fd952604a44f847551",
+                "duration_seconds": 9.9000625,
+                "rms_dbfs": -23.673780472697924,
+                "sample_peak_dbfs": -6.2264712821594035,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -23.28935882400867,
+                "pause_rms_dbfs": -55.966388461520744,
+                "speech_pause_contrast_db": 32.67702963751208,
+                "speech_frames": 453,
+                "pause_frames": 1,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -15.954257356579815,
+                  "body": -3.740467643094325,
+                  "mid": -3.103625091427231,
+                  "presence": -13.874476667442826,
+                  "sibilants": -17.633837811363954,
+                  "air": -26.395548862564695
+                },
+                "rolloff_95_hz": 1617.1875,
+                "hf_bands_db_relative": {
+                  "6000-7000": -27.661271195235955,
+                  "7000-8000": -29.800866794621278,
+                  "8000-9000": -32.03160836808191,
+                  "9000-10000": -33.490701030427964,
+                  "10000-12000": -32.11921502223211,
+                  "12000-16000": -32.18014291189575
+                }
+              },
+              "normalized_output_metrics": {
+                "pcm_sha256": "f6e574c2161ea9b90f1dd4a073d1c1371022c5c84ab69901e3cb2fe5064f86e1",
+                "duration_seconds": 9.9000625,
+                "rms_dbfs": -22.34625708726537,
+                "sample_peak_dbfs": -6.2264712821594035,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -21.961835438576,
+                "pause_rms_dbfs": -54.63886506743488,
+                "speech_pause_contrast_db": 32.677029628858875,
+                "speech_frames": 453,
+                "pause_frames": 1,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -15.954257357978687,
+                  "body": -3.7404676429046866,
+                  "mid": -3.1036250921915904,
+                  "presence": -13.874476660749275,
+                  "sibilants": -17.63383780788662,
+                  "air": -26.395548860973737
+                },
+                "rolloff_95_hz": 1617.1875,
+                "hf_bands_db_relative": {
+                  "6000-7000": -27.661271200449317,
+                  "7000-8000": -29.800866797780458,
+                  "8000-9000": -32.0316083769493,
+                  "9000-10000": -33.49070102565436,
+                  "10000-12000": -32.11921502113404,
+                  "12000-16000": -32.18014290133631
+                },
+                "speech_window_gain_db": [
+                  -0.9540105039025165,
+                  -1.2292746650622073,
+                  -1.5120441367303856,
+                  -1.5171984161182017,
+                  -1.290335920073733,
+                  -0.7938976052504001,
+                  -0.8581084754812902,
+                  -1.6250832850232155,
+                  -1.6644871974782647,
+                  -0.6618881835019542,
+                  -0.878995630088415,
+                  -1.564915407547587,
+                  -1.8544162711921797,
+                  -1.5551522863446592,
+                  -1.4150339003245649,
+                  -1.3804983821702865,
+                  -1.3467817395736703
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0,
+                  7.5,
+                  8.0,
+                  8.5
+                ],
+                "speech_window_gain_median_db": -1.3804983821702865,
+                "worst_speech_window_gain_relative_db": -0.47391788902189314,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.964409458903672,
+                "envelope_correlation": 0.9923591397555734,
+                "speech_envelope_shape_correlation": 0.9928031654584307,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "analysis_gain_compensation_db": 1.3275231473696856,
+              "alignment": {
+                "speech_window_gain_db": [
+                  -0.9540105039025165,
+                  -1.2292746650622073,
+                  -1.5120441367303856,
+                  -1.5171984161182017,
+                  -1.290335920073733,
+                  -0.7938976052504001,
+                  -0.8581084754812902,
+                  -1.6250832850232155,
+                  -1.6644871974782647,
+                  -0.6618881835019542,
+                  -0.878995630088415,
+                  -1.564915407547587,
+                  -1.8544162711921797,
+                  -1.5551522863446592,
+                  -1.4150339003245649,
+                  -1.3804983821702865,
+                  -1.3467817395736703
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0,
+                  7.5,
+                  8.0,
+                  8.5
+                ],
+                "speech_window_gain_median_db": -1.3804983821702865,
+                "worst_speech_window_gain_relative_db": -0.47391788902189314,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.964409458903672,
+                "envelope_correlation": 0.9923591397555734,
+                "speech_envelope_shape_correlation": 0.9928031654584307,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "watchdog": [],
+              "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+            },
+            "paired": {
+              "input_si_sdr_db": 7.880478437821406,
+              "output_si_sdr_db": 11.239561802350613,
+              "improvement_db": 3.359083364529207
+            },
+            "selected_output": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p232_composite_historical_treble_output.wav",
+              "sha256": "11c12c8077d53faba659edb513bdb1e0105a56bb9c09ab21f678e4b7e8e54200",
+              "pcm_sha256": "694bf0dd10fd10e6a362758a76ded130a448dfd0d521c1fd952604a44f847551",
+              "sample_count": 475203,
+              "shape": [
+                475203
+              ],
+              "sample_rate": 48000,
+              "finite": true,
+              "dtype": "float32",
+              "format": "float32 WAV"
+            },
+            "selection": {
+              "first_utterances": 2,
+              "start_sample": 0,
+              "end_sample": 475203,
+              "sample_count": 475203,
+              "full_source_sample_count": 1209892,
+              "duration_seconds": 9.9000625,
+              "source_boundaries": [
+                {
+                  "filename": "p232_002.wav",
+                  "start_sample": 0,
+                  "samples": 130330,
+                  "transcript": "Ask her to bring these things with her from the store."
+                },
+                {
+                  "filename": "p232_003.wav",
+                  "start_sample": 130330,
+                  "samples": 344873,
+                  "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+                }
+              ],
+              "context": "First two complete licensed utterances; no midword cut or inference segmentation"
+            }
+          }
+        },
+        "reported_paired_room": {
+          "input_si_sdr_db": 7.782897804070003,
+          "output_si_sdr_db": 11.110706958327668,
+          "improvement_db": 3.3278091542576655
+        },
+        "reported_paired_room_scope": "Historical full-source scores; not selected-prefix comparison scores",
+        "note": "Historical full-source inference then selected prefix; no new clean/composite Treble inference"
+      }
+    },
+    "p257": {
+      "common_additional_headroom_gain": 1.0,
+      "prior_common_input_gain": 1,
+      "selection": {
+        "first_utterances": 2,
+        "start_sample": 0,
+        "end_sample": 398282,
+        "sample_count": 398282,
+        "full_source_sample_count": 1208843,
+        "duration_seconds": 8.297541666666667,
+        "source_boundaries": [
+          {
+            "filename": "p257_002.wav",
+            "start_sample": 0,
+            "samples": 133254,
+            "transcript": "Ask her to bring these things with her from the store."
+          },
+          {
+            "filename": "p257_003.wav",
+            "start_sample": 133254,
+            "samples": 265028,
+            "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+          }
+        ],
+        "context": "First two complete licensed utterances; no midword cut or inference segmentation"
+      },
+      "source_boundaries": [
+        {
+          "filename": "p257_002.wav",
+          "start_sample": 0,
+          "samples": 133254,
+          "transcript": "Ask her to bring these things with her from the store."
+        },
+        {
+          "filename": "p257_003.wav",
+          "start_sample": 133254,
+          "samples": 265028,
+          "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+        }
+      ],
+      "conditions": {
+        "clean": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_clean_input.wav",
+            "sha256": "8f1c21111b53e70758f1d651a582f8e72c26a75ff80b6a484ee616b49785b029",
+            "pcm_sha256": "52daf6749bd3ddf7cc38ea7e9cd863d4d5a4147b8279e48910186c8ccc436ebc",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_clean_masks.npz",
+            "sha256": "854a7cd10022f48f5691feb65f189d625fe5e7a786c7897b751059bdfdef553f"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_clean_uses_output.wav",
+            "sha256": "2d972e83cbd659f207f3eacf06ab459c79c566aea3a682eb0ae0af1653746378",
+            "pcm_sha256": "cc50203af8d48b310a7e121b76a9c154f0a95222fdcc4ee97e449041f4079765",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 61.90152150008362,
+            "model_inference_seconds": 61.90152150008362,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 398282,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 2778447872,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 8,
+              "atf_block_calls": 54,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 9,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 61.90115258307196,
+              "process_peak_rss_bytes": 2778447872,
+              "output_sample_count": 398282
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "52daf6749bd3ddf7cc38ea7e9cd863d4d5a4147b8279e48910186c8ccc436ebc",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.10087503837056,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.58758154807896,
+              "pause_rms_dbfs": -41.4462183729685,
+              "speech_pause_contrast_db": 17.858636824889544,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -20.27042858539356,
+                "body": -3.8355573003823413,
+                "mid": -2.9245481039829846,
+                "presence": -13.666566256825552,
+                "sibilants": -20.883709999809554,
+                "air": -20.90336948137046
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.758067522578063,
+                "7000-8000": -28.17680734493763,
+                "8000-9000": -26.886780607865415,
+                "9000-10000": -28.600397973158348,
+                "10000-12000": -27.719834211368596,
+                "12000-16000": -25.224047842774098
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "cc50203af8d48b310a7e121b76a9c154f0a95222fdcc4ee97e449041f4079765",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -26.850523287366926,
+              "sample_peak_dbfs": -6.181533520135067,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -26.33494119930278,
+              "pause_rms_dbfs": -43.620350227814114,
+              "speech_pause_contrast_db": 17.285409028511335,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -28.844665259353988,
+                "body": -4.382126334008013,
+                "mid": -2.7421348923387896,
+                "presence": -11.484341057528189,
+                "sibilants": -18.63921777825181,
+                "air": -18.654175082455083
+              },
+              "rolloff_95_hz": 2507.8125,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.507513165103752,
+                "7000-8000": -25.929712157466824,
+                "8000-9000": -24.640370076266287,
+                "9000-10000": -26.370032860540256,
+                "10000-12000": -25.479109816419804,
+                "12000-16000": -22.959584660182287
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "69226be366f022da31778757239c84ff3a73b77f198426e50b7a08a0de2ebb69",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.1031634710078,
+              "sample_peak_dbfs": -6.181533520135067,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.587581382952724,
+              "pause_rms_dbfs": -40.87299039641293,
+              "speech_pause_contrast_db": 17.285409013460207,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -28.844665258960823,
+                "body": -4.3821263329858775,
+                "mid": -2.7421348929101947,
+                "presence": -11.484341059849426,
+                "sibilants": -18.639217775385113,
+                "air": -18.65417507978219
+              },
+              "rolloff_95_hz": 2507.8125,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.50751316204292,
+                "7000-8000": -25.929712157845636,
+                "8000-9000": -24.64037007524955,
+                "9000-10000": -26.37003285506279,
+                "10000-12000": -25.479109805777746,
+                "12000-16000": -22.95958466212487
+              },
+              "speech_window_gain_db": [
+                -2.8151495135437314,
+                -3.075125565818127,
+                -2.7577117886028786,
+                -1.843164765769405,
+                -1.8755277477346413,
+                -4.1465549106207655,
+                -6.090119004732165,
+                -4.817423199423468,
+                -2.4666450027900555,
+                -2.4956473955922602,
+                -2.867755757119568,
+                -3.0942834105014567,
+                -3.396328251409207,
+                -2.667291682323766,
+                -1.0546142980958941
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -2.8151495135437314,
+              "worst_speech_window_gain_relative_db": -3.274969491188434,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.002,
+              "waveform_correlation": 0.14650565149511915,
+              "envelope_correlation": 0.9319889923335705,
+              "speech_envelope_shape_correlation": 0.9394128686158257,
+              "block_lags_seconds": [
+                0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 2.747359651223821,
+            "alignment": {
+              "speech_window_gain_db": [
+                -2.8151495135437314,
+                -3.075125565818127,
+                -2.7577117886028786,
+                -1.843164765769405,
+                -1.8755277477346413,
+                -4.1465549106207655,
+                -6.090119004732165,
+                -4.817423199423468,
+                -2.4666450027900555,
+                -2.4956473955922602,
+                -2.867755757119568,
+                -3.0942834105014567,
+                -3.396328251409207,
+                -2.667291682323766,
+                -1.0546142980958941
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -2.8151495135437314,
+              "worst_speech_window_gain_relative_db": -3.274969491188434,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.002,
+              "waveform_correlation": 0.14650565149511915,
+              "envelope_correlation": 0.9319889923335705,
+              "speech_envelope_shape_correlation": 0.9394128686158257,
+              "block_lags_seconds": [
+                0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 331.90103175463764,
+            "output_si_sdr_db": 8.40685768801764,
+            "improvement_db": -323.49417406662
+          }
+        },
+        "early": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_early_input.wav",
+            "sha256": "df2840150083fc1d6e800ae205b9ae2e36189ae9a62713182db40a3d3d6fb4ef",
+            "pcm_sha256": "1f2cf19cb2003a2fd0a8c9f324a94c5de15c295b2dfb2b8d57112cb32f94ec41",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_early_masks.npz",
+            "sha256": "854a7cd10022f48f5691feb65f189d625fe5e7a786c7897b751059bdfdef553f"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_early_uses_output.wav",
+            "sha256": "188919986c078df47dc9e36c424529dcac64063bc0d1ba08217466a92bf27b83",
+            "pcm_sha256": "b8ba27b3b8ea792b6711df9ace2ab4ef3666f819a2028dbfcb83153beac2eb64",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 62.6009591659531,
+            "model_inference_seconds": 62.6009591659531,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 398282,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 2778447872,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 8,
+              "atf_block_calls": 54,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 9,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 62.60082779196091,
+              "process_peak_rss_bytes": 2805301248,
+              "output_sample_count": 398282
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "52daf6749bd3ddf7cc38ea7e9cd863d4d5a4147b8279e48910186c8ccc436ebc",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.10087503837056,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.58758154807896,
+              "pause_rms_dbfs": -41.4462183729685,
+              "speech_pause_contrast_db": 17.858636824889544,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -20.27042858539356,
+                "body": -3.8355573003823413,
+                "mid": -2.9245481039829846,
+                "presence": -13.666566256825552,
+                "sibilants": -20.883709999809554,
+                "air": -20.90336948137046
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.758067522578063,
+                "7000-8000": -28.17680734493763,
+                "8000-9000": -26.886780607865415,
+                "9000-10000": -28.600397973158348,
+                "10000-12000": -27.719834211368596,
+                "12000-16000": -25.224047842774098
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "b8ba27b3b8ea792b6711df9ace2ab4ef3666f819a2028dbfcb83153beac2eb64",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -26.56414957687128,
+              "sample_peak_dbfs": -6.193115056703714,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -26.048523745791474,
+              "pause_rms_dbfs": -43.427587532337746,
+              "speech_pause_contrast_db": 17.379063786546272,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -29.561970005849613,
+                "body": -4.577423984270712,
+                "mid": -2.6279848624332,
+                "presence": -11.38449344105444,
+                "sibilants": -18.4895990684493,
+                "air": -18.614254495336432
+              },
+              "rolloff_95_hz": 2578.125,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.358488708818136,
+                "7000-8000": -25.780797995947648,
+                "8000-9000": -24.66323852485899,
+                "9000-10000": -26.11410346064851,
+                "10000-12000": -25.448598477414855,
+                "12000-16000": -22.973389653599195
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "b9991e58487cddac166a20af35784009cf1e1baeb85b3ca608be8eb8baac4558",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.10320714370425,
+              "sample_peak_dbfs": -6.193115056703714,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.587581312626206,
+              "pause_rms_dbfs": -40.966645097122196,
+              "speech_pause_contrast_db": 17.37906378449599,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -29.561969996310566,
+                "body": -4.577423982326748,
+                "mid": -2.6279848624638955,
+                "presence": -11.38449344922439,
+                "sibilants": -18.489599062441975,
+                "air": -18.61425450028573
+              },
+              "rolloff_95_hz": 2578.125,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.35848870657171,
+                "7000-8000": -25.780797998382653,
+                "8000-9000": -24.663238525620038,
+                "9000-10000": -26.114103478182344,
+                "10000-12000": -25.448598483428484,
+                "12000-16000": -22.97338965467865
+              },
+              "speech_window_gain_db": [
+                -2.4324551893529818,
+                -2.6688388952682383,
+                -2.4186779357633093,
+                -1.846250624732282,
+                -2.117343673767253,
+                -3.5617013129872426,
+                -5.693183025815741,
+                -4.659982883379125,
+                -2.292165148047299,
+                -2.0552921833673694,
+                -2.457298690008421,
+                -2.77946281164533,
+                -3.145054524619895,
+                -2.4529045032600467,
+                -1.0725809766720849
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -2.4529045032600467,
+              "worst_speech_window_gain_relative_db": -3.2402785225556943,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.002,
+              "waveform_correlation": 0.16400575558011066,
+              "envelope_correlation": 0.9281754866030835,
+              "speech_envelope_shape_correlation": 0.9340211401778957,
+              "block_lags_seconds": [
+                0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 2.460942197712516,
+            "alignment": {
+              "speech_window_gain_db": [
+                -2.4324551893529818,
+                -2.6688388952682383,
+                -2.4186779357633093,
+                -1.846250624732282,
+                -2.117343673767253,
+                -3.5617013129872426,
+                -5.693183025815741,
+                -4.659982883379125,
+                -2.292165148047299,
+                -2.0552921833673694,
+                -2.457298690008421,
+                -2.77946281164533,
+                -3.145054524619895,
+                -2.4529045032600467,
+                -1.0725809766720849
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -2.4529045032600467,
+              "worst_speech_window_gain_relative_db": -3.2402785225556943,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.002,
+              "waveform_correlation": 0.16400575558011066,
+              "envelope_correlation": 0.9281754866030835,
+              "speech_envelope_shape_correlation": 0.9340211401778957,
+              "block_lags_seconds": [
+                0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 11.683544029103327,
+            "output_si_sdr_db": 6.628175110865221,
+            "improvement_db": -5.0553689182381065
+          }
+        },
+        "late": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_late_input.wav",
+            "sha256": "d40a635e522d7b8dd62058ddd4bc287c5e119a5b17f70ab15e22f0738c43e262",
+            "pcm_sha256": "d8415ef456002d3407b303f1d05d92764dcc94aae0a8b76395c17c2fd07e0217",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_late_masks.npz",
+            "sha256": "6d8a332f1ab8456c9eb2b0602c69f2dd9b029f483db8918115b126de8590c01c"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_late_uses_output.wav",
+            "sha256": "be79bf8506c48ba837ea787690e0cef12ba092a250281e66f0b24ba1d0dcab57",
+            "pcm_sha256": "1f7fc90428b2c94f4d285f4363e838be02e2cde0bf36eb4aaba0b64326435d94",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 62.8251326669706,
+            "model_inference_seconds": 62.8251326669706,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 398282,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 2805301248,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 8,
+              "atf_block_calls": 54,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 9,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 62.82501420902554,
+              "process_peak_rss_bytes": 2805301248,
+              "output_sample_count": 398282
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "52daf6749bd3ddf7cc38ea7e9cd863d4d5a4147b8279e48910186c8ccc436ebc",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.10087503837056,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.58758154807896,
+              "pause_rms_dbfs": -41.4462183729685,
+              "speech_pause_contrast_db": 17.858636824889544,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -20.27042858539356,
+                "body": -3.8355573003823413,
+                "mid": -2.9245481039829846,
+                "presence": -13.666566256825552,
+                "sibilants": -20.883709999809554,
+                "air": -20.90336948137046
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.758067522578063,
+                "7000-8000": -28.17680734493763,
+                "8000-9000": -26.886780607865415,
+                "9000-10000": -28.600397973158348,
+                "10000-12000": -27.719834211368596,
+                "12000-16000": -25.224047842774098
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "1f7fc90428b2c94f4d285f4363e838be02e2cde0bf36eb4aaba0b64326435d94",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -27.19679724999296,
+              "sample_peak_dbfs": -6.114229064703981,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -26.68151199256755,
+              "pause_rms_dbfs": -43.5380160541652,
+              "speech_pause_contrast_db": 16.856504061597647,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -29.696698152551058,
+                "body": -4.4422117240209,
+                "mid": -2.7097558165313536,
+                "presence": -11.125033984581258,
+                "sibilants": -18.417981701651925,
+                "air": -19.649474740498913
+              },
+              "rolloff_95_hz": 2343.75,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.23723995586853,
+                "7000-8000": -26.02522316445355,
+                "8000-9000": -24.496827705985616,
+                "9000-10000": -26.748243104738542,
+                "10000-12000": -26.163843807628243,
+                "12000-16000": -25.596227514586325
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "baa529ba99e1255d7c9d498f10b01b0efb7e5bac92deb6ad25215e71be141ef5",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.102867022892788,
+              "sample_peak_dbfs": -6.114229064703981,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.587581765475676,
+              "pause_rms_dbfs": -40.44408581815041,
+              "speech_pause_contrast_db": 16.856504052674737,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -29.696698141240407,
+                "body": -4.44221172279946,
+                "mid": -2.7097558176441727,
+                "presence": -11.125033983188752,
+                "sibilants": -18.41798170167455,
+                "air": -19.649474737099396
+              },
+              "rolloff_95_hz": 2343.75,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.23723995717846,
+                "7000-8000": -26.025223168055245,
+                "8000-9000": -24.496827709906256,
+                "9000-10000": -26.74824310906388,
+                "10000-12000": -26.16384379355737,
+                "12000-16000": -25.596227505196843
+              },
+              "speech_window_gain_db": [
+                -2.577338323872343,
+                -3.072435998820138,
+                -3.119647044579605,
+                -2.3530277700564883,
+                -2.3775905711128815,
+                -3.563746116618277,
+                -6.1851312771543885,
+                -4.96935017373997,
+                -2.6005366743491947,
+                -2.7241168884724294,
+                -3.2322297232403363,
+                -3.7659702816292895,
+                -4.159175060103481,
+                -3.2323578003952,
+                -1.2292139655804697
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -3.119647044579605,
+              "worst_speech_window_gain_relative_db": -3.0654842325747835,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": -0.002,
+              "waveform_correlation": 0.14727018512526271,
+              "envelope_correlation": 0.9314877202333364,
+              "speech_envelope_shape_correlation": 0.9376720677428395,
+              "block_lags_seconds": [
+                -0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 3.093930444488592,
+            "alignment": {
+              "speech_window_gain_db": [
+                -2.577338323872343,
+                -3.072435998820138,
+                -3.119647044579605,
+                -2.3530277700564883,
+                -2.3775905711128815,
+                -3.563746116618277,
+                -6.1851312771543885,
+                -4.96935017373997,
+                -2.6005366743491947,
+                -2.7241168884724294,
+                -3.2322297232403363,
+                -3.7659702816292895,
+                -4.159175060103481,
+                -3.2323578003952,
+                -1.2292139655804697
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -3.119647044579605,
+              "worst_speech_window_gain_relative_db": -3.0654842325747835,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": -0.002,
+              "waveform_correlation": 0.14727018512526271,
+              "envelope_correlation": 0.9314877202333364,
+              "speech_envelope_shape_correlation": 0.9376720677428395,
+              "block_lags_seconds": [
+                -0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 9.992498915438944,
+            "output_si_sdr_db": 7.442055146029642,
+            "improvement_db": -2.550443769409302
+          }
+        },
+        "composite": {
+          "input": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_composite_input.wav",
+            "sha256": "e7a56113ec51a0f01052ec25b36e5a72e5ee3cb509135b66ecaef26a3d485470",
+            "pcm_sha256": "491e6ece670097952c1857d2e0ac94502d48e7c128c5f2b0d1642269a1a1bbd7",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "masks": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_composite_masks.npz",
+            "sha256": "6d8a332f1ab8456c9eb2b0602c69f2dd9b029f483db8918115b126de8590c01c"
+          },
+          "output": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_composite_uses_output.wav",
+            "sha256": "851a3cd5c9090755d59b99d7fc29ce2eba83dc9ae7a9a0cc11553db187df5950",
+            "pcm_sha256": "1db51e2dcd13725f84749a794ba258176b1f0b4d9831bb71234d25c8a292546c",
+            "sample_count": 398282,
+            "shape": [
+              398282
+            ],
+            "sample_rate": 48000,
+            "finite": true,
+            "dtype": "float32",
+            "format": "float32 WAV"
+          },
+          "processing": {
+            "wall_seconds": 65.64114220801275,
+            "model_inference_seconds": 65.64114220801275,
+            "trace": {
+              "mode": "dereverb",
+              "memory_indices": [
+                1
+              ],
+              "observed_separator_modes": [],
+              "sample_rate": 48000,
+              "sample_count": 398282,
+              "fft": 1536,
+              "hop": 768,
+              "frequency_bins": 769,
+              "threads": 4,
+              "whole_utterance": true,
+              "external_chunks": 1,
+              "memory_reset": "upstream local initialization per forward",
+              "process_peak_rss_before_bytes": 2805301248,
+              "execution_backend": "bounded_features",
+              "upstream_separator_forward_called": false,
+              "upstream_uses_forward_called": false,
+              "memory_initialization_count": 1,
+              "memory_reuse_count": 8,
+              "atf_block_calls": 54,
+              "segment_size": 64,
+              "memory_size": 20,
+              "segment_count": 9,
+              "post_encoder_time_halo": 1,
+              "pre_decoder_time_halo": 1,
+              "final_padding_after_bottleneck": true,
+              "maximum_post_encoder_frames": 66,
+              "maximum_post_encoder_elements": 12993024,
+              "external_audio_chunks": 1,
+              "audio_crossfade": false,
+              "whole_utterance_stft": true,
+              "memory_state_carried_across_segments": true,
+              "input_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "output_spectrum_shape": [
+                1,
+                519,
+                769
+              ],
+              "silence_bypass": false,
+              "model_forward_calls": 0,
+              "learned_backend_invocations": 1,
+              "wall_seconds": 65.64100474992301,
+              "process_peak_rss_bytes": 2805301248,
+              "output_sample_count": 398282
+            },
+            "whole_input": true
+          },
+          "technical_issues": [],
+          "preservation": {
+            "source_metrics": {
+              "pcm_sha256": "52daf6749bd3ddf7cc38ea7e9cd863d4d5a4147b8279e48910186c8ccc436ebc",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.10087503837056,
+              "sample_peak_dbfs": -6.020599913279624,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.58758154807896,
+              "pause_rms_dbfs": -41.4462183729685,
+              "speech_pause_contrast_db": 17.858636824889544,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -20.27042858539356,
+                "body": -3.8355573003823413,
+                "mid": -2.9245481039829846,
+                "presence": -13.666566256825552,
+                "sibilants": -20.883709999809554,
+                "air": -20.90336948137046
+              },
+              "rolloff_95_hz": 1640.625,
+              "hf_bands_db_relative": {
+                "6000-7000": -26.758067522578063,
+                "7000-8000": -28.17680734493763,
+                "8000-9000": -26.886780607865415,
+                "9000-10000": -28.600397973158348,
+                "10000-12000": -27.719834211368596,
+                "12000-16000": -25.224047842774098
+              }
+            },
+            "raw_output_metrics": {
+              "pcm_sha256": "1db51e2dcd13725f84749a794ba258176b1f0b4d9831bb71234d25c8a292546c",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -26.834186593869575,
+              "sample_peak_dbfs": -6.22077206082801,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -26.31880094571708,
+              "pause_rms_dbfs": -43.38015034085799,
+              "speech_pause_contrast_db": 17.06134939514091,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -29.666323935982106,
+                "body": -4.5577048215849185,
+                "mid": -2.6991254950700263,
+                "presence": -11.104565990566606,
+                "sibilants": -18.125476602874826,
+                "air": -18.319548073961723
+              },
+              "rolloff_95_hz": 2695.3125,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.035136626033857,
+                "7000-8000": -25.399941828487414,
+                "8000-9000": -24.323499772167928,
+                "9000-10000": -25.863723753251705,
+                "10000-12000": -25.166557259296276,
+                "12000-16000": -22.68080852850259
+              }
+            },
+            "normalized_output_metrics": {
+              "pcm_sha256": "392e22e64b62d9a2f71fbddbd4cbaebc3bc105465404845948801d11c1b584b1",
+              "duration_seconds": 8.297541666666667,
+              "rms_dbfs": -24.102967529092147,
+              "sample_peak_dbfs": -6.22077206082801,
+              "clipped_samples": 0,
+              "speech_rms_dbfs": -23.587581880944665,
+              "pause_rms_dbfs": -40.648931269564805,
+              "speech_pause_contrast_db": 17.06134938862014,
+              "speech_frames": 368,
+              "pause_frames": 12,
+              "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+              "bands_db_relative": {
+                "sub": -29.66632392930947,
+                "body": -4.557704821113466,
+                "mid": -2.699125495861858,
+                "presence": -11.104565991506005,
+                "sibilants": -18.125476602016082,
+                "air": -18.319548055566397
+              },
+              "rolloff_95_hz": 2695.3125,
+              "hf_bands_db_relative": {
+                "6000-7000": -24.035136622236884,
+                "7000-8000": -25.399941830252715,
+                "8000-9000": -24.323499775314787,
+                "9000-10000": -25.86372375363538,
+                "10000-12000": -25.16655723898165,
+                "12000-16000": -22.68080848740871
+              },
+              "speech_window_gain_db": [
+                -2.4865400624318896,
+                -2.7730015045789806,
+                -2.68467659190971,
+                -2.4512946579251857,
+                -2.8685163992299465,
+                -3.2811400093001852,
+                -5.896333839328033,
+                -4.8163534572886535,
+                -2.4447011790601083,
+                -2.3479738821747413,
+                -2.7914705940083966,
+                -3.31738103177079,
+                -3.7590727800840407,
+                -2.8803272512391773,
+                -1.266874241035048
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -2.7914705940083966,
+              "worst_speech_window_gain_relative_db": -3.1048632453196365,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.002,
+              "waveform_correlation": 0.16169794129376464,
+              "envelope_correlation": 0.9222622287064802,
+              "speech_envelope_shape_correlation": 0.9281978010861206,
+              "block_lags_seconds": [
+                0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "analysis_gain_compensation_db": 2.731219397638121,
+            "alignment": {
+              "speech_window_gain_db": [
+                -2.4865400624318896,
+                -2.7730015045789806,
+                -2.68467659190971,
+                -2.4512946579251857,
+                -2.8685163992299465,
+                -3.2811400093001852,
+                -5.896333839328033,
+                -4.8163534572886535,
+                -2.4447011790601083,
+                -2.3479738821747413,
+                -2.7914705940083966,
+                -3.31738103177079,
+                -3.7590727800840407,
+                -2.8803272512391773,
+                -1.266874241035048
+              ],
+              "speech_window_starts_seconds": [
+                0.0,
+                0.5,
+                1.0,
+                1.5,
+                2.0,
+                2.5,
+                3.0,
+                3.5,
+                4.0,
+                4.5,
+                5.0,
+                5.5,
+                6.0,
+                6.5,
+                7.0
+              ],
+              "speech_window_gain_median_db": -2.7914705940083966,
+              "worst_speech_window_gain_relative_db": -3.1048632453196365,
+              "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+              "lag_seconds": 0.002,
+              "waveform_correlation": 0.16169794129376464,
+              "envelope_correlation": 0.9222622287064802,
+              "speech_envelope_shape_correlation": 0.9281978010861206,
+              "block_lags_seconds": [
+                0.002
+              ],
+              "block_lag_spread_seconds": 0.0
+            },
+            "watchdog": [],
+            "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+          },
+          "paired": {
+            "input_si_sdr_db": 7.792166604563261,
+            "output_si_sdr_db": 6.174987612625509,
+            "improvement_db": -1.6171789919377515
+          }
+        }
+      },
+      "old_treble": {
+        "model": {
+          "checkpoint_epoch": 119,
+          "model_directory": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/model",
+          "artifact_sha256": {
+            "config.ini": "22aad5d5f95312051b755b61cbf050d68cf55d86bb1800931964f4b65983573b",
+            "checkpoints/model_119.ckpt.best": "a3cc6a842ee7674c9763dabbe16ffd562cf617aed961b797dd0bc39d1e422fd1"
+          },
+          "load_audit": {
+            "tensor_count": 133,
+            "element_count": 2167969,
+            "missing": [],
+            "unexpected": [],
+            "shape_mismatches": []
+          },
+          "versions": {
+            "torch": "2.1.1",
+            "torchaudio": "2.1.1",
+            "deepfilternet": "0.5.6",
+            "deepfilterlib": "0.5.6",
+            "numpy": "1.26.2",
+            "scipy": "1.11.4",
+            "soundfile": "0.12.1"
+          },
+          "device": "cpu",
+          "sample_rate": 48000,
+          "effective_runtime_config": {
+            "train": {
+              "seed": "43",
+              "device": "cpu",
+              "model": "deepfilternet3",
+              "jit": "false",
+              "mask_only": "false",
+              "df_only": "false",
+              "batch_size": "64",
+              "batch_size_eval": "64",
+              "num_workers": "8",
+              "max_sample_len_s": "3.0",
+              "p_atten_lim": "0.0",
+              "overfit": "false",
+              "max_epochs": "120",
+              "log_freq": "100",
+              "log_timings": "True",
+              "validation_criteria": "loss",
+              "validation_criteria_rule": "min",
+              "early_stopping_patience": "25",
+              "global_ds_sampling_f": "1",
+              "num_prefetch_batches": "8",
+              "dataloader_snrs": "-100,-5,0,5,10,20,40",
+              "detect_anomaly": "false",
+              "batch_size_scheduling": "0/16,2/24,5/32,10/64,20/128,40/9999",
+              "start_eval": "false",
+              "validation_set_caching": "false",
+              "cp_blacklist": "",
+              "dataloader_gains": "-6,0,6"
+            },
+            "distortion": {
+              "p_reverb": "1.0",
+              "p_bandwidth_ext": "0.0",
+              "p_clipping": "0.0",
+              "p_air_absorption": "0.0",
+              "p_zeroing": "0.0",
+              "p_interfer_sp": "0.0"
+            },
+            "df": {
+              "sr": "48000",
+              "fft_size": "960",
+              "hop_size": "480",
+              "nb_erb": "32",
+              "nb_df": "96",
+              "norm_tau": "1",
+              "lsnr_max": "35",
+              "lsnr_min": "-15",
+              "min_nb_erb_freqs": "2",
+              "pad_mode": "output",
+              "df_order": "5",
+              "df_lookahead": "2"
+            },
+            "deepfilternet": {
+              "conv_lookahead": "2",
+              "conv_ch": "64",
+              "conv_depthwise": "True",
+              "emb_hidden_dim": "256",
+              "emb_num_layers": "3",
+              "enc_linear_groups": "32",
+              "linear_groups": "16",
+              "conv_dec_mode": "transposed",
+              "convt_depthwise": "False",
+              "mask_pf": "False",
+              "df_hidden_dim": "256",
+              "df_num_layers": "2",
+              "dfop_method": "df",
+              "group_shuffle": "False",
+              "conv_kernel": "1,3",
+              "df_gru_skip": "groupedlinear",
+              "df_pathway_kernel_size_t": "5",
+              "enc_concat": "False",
+              "conv_kernel_inp": "3,3",
+              "emb_gru_skip": "none",
+              "df_n_iter": "1",
+              "convt_kernel": "1,3",
+              "lsnr_dropout": "False",
+              "emb_gru_skip_enc": "none",
+              "pf_beta": "0.02"
+            },
+            "localsnrloss": {
+              "factor": "1e-3"
+            },
+            "maskloss": {
+              "factor": "0",
+              "mask": "spec",
+              "gamma": "0.3",
+              "gamma_pred": "0.3",
+              "f_under": "1",
+              "max_freq": "0"
+            },
+            "spectralloss": {
+              "factor_magnitude": "0",
+              "factor_complex": "0",
+              "gamma": "0.3",
+              "factor_under": "1"
+            },
+            "dfalphaloss": {
+              "factor": "0.0"
+            },
+            "multiresspecloss": {
+              "factor": "500",
+              "factor_complex": "500",
+              "gamma": "0.3",
+              "fft_sizes": "256,512,1024,2048"
+            },
+            "optim": {
+              "lr": "0.001",
+              "momentum": "0",
+              "weight_decay": "1e-12",
+              "weight_decay_end": "0.01",
+              "optimizer": "adamw",
+              "lr_min": "1e-06",
+              "lr_warmup": "0.0001",
+              "warmup_epochs": "3",
+              "lr_cycle_mul": "1.0",
+              "lr_cycle_decay": "0.5",
+              "lr_cycle_limit": "1",
+              "lr_update_per_epoch": "False",
+              "lr_cycle_epochs": "-1"
+            },
+            "sdrloss": {
+              "factor": "0.0",
+              "segmental_ws": "0"
+            },
+            "asrloss": {
+              "factor": "0",
+              "factor_lm": "0",
+              "loss_lm": "CrossEntropy",
+              "model": "base.en"
+            },
+            "settings": {}
+          },
+          "initialization_seconds": 3.4928772090934217,
+          "processing": "observed-spectrum ERB gains and complex multi-frame filters",
+          "postfilter": false,
+          "attenuation_limit_db": null,
+          "original_inference_blend": 0,
+          "delay_compensation_samples": 480,
+          "context": "whole input; no segmented decoding or chunk joins"
+        },
+        "conditions": {
+          "clean": {
+            "artifact": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean_model.wav",
+              "sha256": "87fcc59f0c85de27a3f4b74f0f3b7bc3e860dc3dbfc6f1344ede75d3c40899b6",
+              "sample_count": 1208843
+            },
+            "analysis_headroom_gain": 1.0,
+            "technical_issues": [],
+            "preservation": {
+              "source_metrics": {
+                "pcm_sha256": "52daf6749bd3ddf7cc38ea7e9cd863d4d5a4147b8279e48910186c8ccc436ebc",
+                "duration_seconds": 8.297541666666667,
+                "rms_dbfs": -24.10087503837056,
+                "sample_peak_dbfs": -6.020599913279624,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -23.58758154807896,
+                "pause_rms_dbfs": -41.4462183729685,
+                "speech_pause_contrast_db": 17.858636824889544,
+                "speech_frames": 368,
+                "pause_frames": 12,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -20.27042858539356,
+                  "body": -3.8355573003823413,
+                  "mid": -2.9245481039829846,
+                  "presence": -13.666566256825552,
+                  "sibilants": -20.883709999809554,
+                  "air": -20.90336948137046
+                },
+                "rolloff_95_hz": 1640.625,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.758067522578063,
+                  "7000-8000": -28.17680734493763,
+                  "8000-9000": -26.886780607865415,
+                  "9000-10000": -28.600397973158348,
+                  "10000-12000": -27.719834211368596,
+                  "12000-16000": -25.224047842774098
+                }
+              },
+              "raw_output_metrics": {
+                "pcm_sha256": "6f8b2f89753ce7252ed53653f1097262936811ae402cb89bbdd40d5cedeb9f07",
+                "duration_seconds": 8.297541666666667,
+                "rms_dbfs": -25.84550395818256,
+                "sample_peak_dbfs": -6.961701690823028,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -25.33202979682532,
+                "pause_rms_dbfs": -44.10229698511657,
+                "speech_pause_contrast_db": 18.770267188291246,
+                "speech_frames": 368,
+                "pause_frames": 12,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -19.250317414644595,
+                  "body": -4.044145678562568,
+                  "mid": -2.85739221199408,
+                  "presence": -13.239543985874969,
+                  "sibilants": -20.379902503214527,
+                  "air": -20.371066116399717
+                },
+                "rolloff_95_hz": 1734.375,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.106789645667646,
+                  "7000-8000": -27.545409818475385,
+                  "8000-9000": -26.359823652961175,
+                  "9000-10000": -28.138152612634446,
+                  "10000-12000": -27.21709857437943,
+                  "12000-16000": -24.639885802477053
+                }
+              },
+              "normalized_output_metrics": {
+                "pcm_sha256": "93f35d05611c559f77abbf369dd65ea68b51e33f1fa9d73ea4786090e4a12e7d",
+                "duration_seconds": 8.297541666666667,
+                "rms_dbfs": -24.101055374860756,
+                "sample_peak_dbfs": -6.961701690823028,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -23.58758121349623,
+                "pause_rms_dbfs": -42.357848404181865,
+                "speech_pause_contrast_db": 18.770267190685637,
+                "speech_frames": 368,
+                "pause_frames": 12,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -19.250317415347403,
+                  "body": -4.044145680794137,
+                  "mid": -2.857392211210942,
+                  "presence": -13.239543979520448,
+                  "sibilants": -20.379902508595784,
+                  "air": -20.371066092910546
+                },
+                "rolloff_95_hz": 1734.375,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.10678966254533,
+                  "7000-8000": -27.545409818245442,
+                  "8000-9000": -26.35982365113163,
+                  "9000-10000": -28.138152568772256,
+                  "10000-12000": -27.21709857772341,
+                  "12000-16000": -24.639885758691698
+                },
+                "speech_window_gain_db": [
+                  -1.8208845727873753,
+                  -1.7637425125519184,
+                  -1.8583188606652534,
+                  -2.0644606066027533,
+                  -1.9175587343890608,
+                  -1.568261361921116,
+                  -1.9630264413602891,
+                  -2.0382592459444115,
+                  -1.9848549086130587,
+                  -1.6591829428944385,
+                  -1.6102389669345472,
+                  -1.5726572830993581,
+                  -1.650245192637616,
+                  -1.7083692770507886,
+                  -1.5764862632735723
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.0,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0
+                ],
+                "speech_window_gain_median_db": -1.7637425125519184,
+                "worst_speech_window_gain_relative_db": -0.30071809405083494,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.9982368890953002,
+                "envelope_correlation": 0.9987254366986693,
+                "speech_envelope_shape_correlation": 0.9987548816299294,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "analysis_gain_compensation_db": 1.7444482487463624,
+              "alignment": {
+                "speech_window_gain_db": [
+                  -1.8208845727873753,
+                  -1.7637425125519184,
+                  -1.8583188606652534,
+                  -2.0644606066027533,
+                  -1.9175587343890608,
+                  -1.568261361921116,
+                  -1.9630264413602891,
+                  -2.0382592459444115,
+                  -1.9848549086130587,
+                  -1.6591829428944385,
+                  -1.6102389669345472,
+                  -1.5726572830993581,
+                  -1.650245192637616,
+                  -1.7083692770507886,
+                  -1.5764862632735723
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.0,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0
+                ],
+                "speech_window_gain_median_db": -1.7637425125519184,
+                "worst_speech_window_gain_relative_db": -0.30071809405083494,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.9982368890953002,
+                "envelope_correlation": 0.9987254366986693,
+                "speech_envelope_shape_correlation": 0.9987548816299294,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "watchdog": [],
+              "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+            },
+            "paired": {
+              "input_si_sdr_db": 331.90103175463764,
+              "output_si_sdr_db": 24.515378060591885,
+              "improvement_db": -307.38565369404574
+            },
+            "selected_output": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_clean_historical_treble_output.wav",
+              "sha256": "cbf1fd305ec369566934a8e191858324d544f76fe68d3f5e3f9b5404712eb9aa",
+              "pcm_sha256": "6f8b2f89753ce7252ed53653f1097262936811ae402cb89bbdd40d5cedeb9f07",
+              "sample_count": 398282,
+              "shape": [
+                398282
+              ],
+              "sample_rate": 48000,
+              "finite": true,
+              "dtype": "float32",
+              "format": "float32 WAV"
+            },
+            "selection": {
+              "first_utterances": 2,
+              "start_sample": 0,
+              "end_sample": 398282,
+              "sample_count": 398282,
+              "full_source_sample_count": 1208843,
+              "duration_seconds": 8.297541666666667,
+              "source_boundaries": [
+                {
+                  "filename": "p257_002.wav",
+                  "start_sample": 0,
+                  "samples": 133254,
+                  "transcript": "Ask her to bring these things with her from the store."
+                },
+                {
+                  "filename": "p257_003.wav",
+                  "start_sample": 133254,
+                  "samples": 265028,
+                  "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+                }
+              ],
+              "context": "First two complete licensed utterances; no midword cut or inference segmentation"
+            }
+          },
+          "composite": {
+            "artifact": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room_model.wav",
+              "sha256": "51eeb3f625a3d06a9436d21e5ca8e5782e801699a69b58ed119f2fea53504ee6",
+              "sample_count": 1208843
+            },
+            "analysis_headroom_gain": 1.0,
+            "technical_issues": [],
+            "preservation": {
+              "source_metrics": {
+                "pcm_sha256": "52daf6749bd3ddf7cc38ea7e9cd863d4d5a4147b8279e48910186c8ccc436ebc",
+                "duration_seconds": 8.297541666666667,
+                "rms_dbfs": -24.10087503837056,
+                "sample_peak_dbfs": -6.020599913279624,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -23.58758154807896,
+                "pause_rms_dbfs": -41.4462183729685,
+                "speech_pause_contrast_db": 17.858636824889544,
+                "speech_frames": 368,
+                "pause_frames": 12,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -20.27042858539356,
+                  "body": -3.8355573003823413,
+                  "mid": -2.9245481039829846,
+                  "presence": -13.666566256825552,
+                  "sibilants": -20.883709999809554,
+                  "air": -20.90336948137046
+                },
+                "rolloff_95_hz": 1640.625,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.758067522578063,
+                  "7000-8000": -28.17680734493763,
+                  "8000-9000": -26.886780607865415,
+                  "9000-10000": -28.600397973158348,
+                  "10000-12000": -27.719834211368596,
+                  "12000-16000": -25.224047842774098
+                }
+              },
+              "raw_output_metrics": {
+                "pcm_sha256": "8ad8391eec18a4aec34c438fae05c8789446f56006bc2b065df1b6de12eff145",
+                "duration_seconds": 8.297541666666667,
+                "rms_dbfs": -25.494129862654237,
+                "sample_peak_dbfs": -6.838437796035492,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -24.979572915551543,
+                "pause_rms_dbfs": -44.653479793518784,
+                "speech_pause_contrast_db": 19.67390687796724,
+                "speech_frames": 368,
+                "pause_frames": 12,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -21.548290064698925,
+                  "body": -3.608788261495821,
+                  "mid": -3.062977556674078,
+                  "presence": -13.806164628443485,
+                  "sibilants": -20.940536920038312,
+                  "air": -21.19708558012716
+                },
+                "rolloff_95_hz": 1640.625,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.678988766503853,
+                  "7000-8000": -28.027870794814334,
+                  "8000-9000": -27.232097130821767,
+                  "9000-10000": -28.725681847715016,
+                  "10000-12000": -27.98941743941957,
+                  "12000-16000": -25.575721680744085
+                }
+              },
+              "normalized_output_metrics": {
+                "pcm_sha256": "7e47be46cc07943e6f868b26fc74255ee325c30abea015a6da3fc422642775d0",
+                "duration_seconds": 8.297541666666667,
+                "rms_dbfs": -24.10213843690457,
+                "sample_peak_dbfs": -6.838437796035492,
+                "clipped_samples": 0,
+                "speech_rms_dbfs": -23.58758148979968,
+                "pause_rms_dbfs": -43.261488371022466,
+                "speech_pause_contrast_db": 19.673906881222788,
+                "speech_frames": 368,
+                "pause_frames": 12,
+                "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+                "bands_db_relative": {
+                  "sub": -21.54829006683898,
+                  "body": -3.608788259022797,
+                  "mid": -3.062977557489109,
+                  "presence": -13.806164640310998,
+                  "sibilants": -20.94053691839295,
+                  "air": -21.197085595496983
+                },
+                "rolloff_95_hz": 1640.625,
+                "hf_bands_db_relative": {
+                  "6000-7000": -26.678988769213696,
+                  "7000-8000": -28.027870793692664,
+                  "8000-9000": -27.232097130406203,
+                  "9000-10000": -28.725681852873866,
+                  "10000-12000": -27.98941743848669,
+                  "12000-16000": -25.575721721189492
+                },
+                "speech_window_gain_db": [
+                  -1.851832840539446,
+                  -1.0989261675002286,
+                  -0.9815833435755135,
+                  -2.2418501194255698,
+                  -2.744097852251894,
+                  -1.1103039099620138,
+                  -1.1494250605617893,
+                  -1.3397355125473043,
+                  -1.3398223646609366,
+                  -1.4507713131424644,
+                  -1.5428642825797925,
+                  -1.2792444973993318,
+                  -1.0215985943358221,
+                  -1.2191046181647411,
+                  -1.6024309204948948
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.0,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0
+                ],
+                "speech_window_gain_median_db": -1.3397355125473043,
+                "worst_speech_window_gain_relative_db": -1.4043623397045897,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.9693103666509594,
+                "envelope_correlation": 0.99064471955679,
+                "speech_envelope_shape_correlation": 0.9902590431021798,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "analysis_gain_compensation_db": 1.3919913674725848,
+              "alignment": {
+                "speech_window_gain_db": [
+                  -1.851832840539446,
+                  -1.0989261675002286,
+                  -0.9815833435755135,
+                  -2.2418501194255698,
+                  -2.744097852251894,
+                  -1.1103039099620138,
+                  -1.1494250605617893,
+                  -1.3397355125473043,
+                  -1.3398223646609366,
+                  -1.4507713131424644,
+                  -1.5428642825797925,
+                  -1.2792444973993318,
+                  -1.0215985943358221,
+                  -1.2191046181647411,
+                  -1.6024309204948948
+                ],
+                "speech_window_starts_seconds": [
+                  0.0,
+                  0.5,
+                  1.0,
+                  1.5,
+                  2.0,
+                  2.5,
+                  3.0,
+                  3.5,
+                  4.0,
+                  4.5,
+                  5.0,
+                  5.5,
+                  6.0,
+                  6.5,
+                  7.0
+                ],
+                "speech_window_gain_median_db": -1.3397355125473043,
+                "worst_speech_window_gain_relative_db": -1.4043623397045897,
+                "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+                "lag_seconds": 0.0,
+                "waveform_correlation": 0.9693103666509594,
+                "envelope_correlation": 0.99064471955679,
+                "speech_envelope_shape_correlation": 0.9902590431021798,
+                "block_lags_seconds": [
+                  0.0
+                ],
+                "block_lag_spread_seconds": 0.0
+              },
+              "watchdog": [],
+              "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+            },
+            "paired": {
+              "input_si_sdr_db": 7.792166604563261,
+              "output_si_sdr_db": 11.916198526172321,
+              "improvement_db": 4.124031921609061
+            },
+            "selected_output": {
+              "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/controls/p257_composite_historical_treble_output.wav",
+              "sha256": "f65b2f0a67ab5e3ecdf7c5396506ac3cfb250fcc6da594509b1a20f329e16218",
+              "pcm_sha256": "8ad8391eec18a4aec34c438fae05c8789446f56006bc2b065df1b6de12eff145",
+              "sample_count": 398282,
+              "shape": [
+                398282
+              ],
+              "sample_rate": 48000,
+              "finite": true,
+              "dtype": "float32",
+              "format": "float32 WAV"
+            },
+            "selection": {
+              "first_utterances": 2,
+              "start_sample": 0,
+              "end_sample": 398282,
+              "sample_count": 398282,
+              "full_source_sample_count": 1208843,
+              "duration_seconds": 8.297541666666667,
+              "source_boundaries": [
+                {
+                  "filename": "p257_002.wav",
+                  "start_sample": 0,
+                  "samples": 133254,
+                  "transcript": "Ask her to bring these things with her from the store."
+                },
+                {
+                  "filename": "p257_003.wav",
+                  "start_sample": 133254,
+                  "samples": 265028,
+                  "transcript": "Six spoons of fresh snow peas, five thick slabs of blue cheese, and maybe a snack for her brother Bob."
+                }
+              ],
+              "context": "First two complete licensed utterances; no midword cut or inference segmentation"
+            }
+          }
+        },
+        "reported_paired_room": {
+          "input_si_sdr_db": 7.55448058671128,
+          "output_si_sdr_db": 11.350253218063918,
+          "improvement_db": 3.795772631352637
+        },
+        "reported_paired_room_scope": "Historical full-source scores; not selected-prefix comparison scores",
+        "note": "Historical full-source inference then selected prefix; no new clean/composite Treble inference"
+      }
+    }
+  },
+  "failures": [],
+  "events": [
+    {
+      "timestamp_utc": "2026-10-08T20:07:55.193839+00:00",
+      "message": "USES initialized; eight whole-utterance native48k controls, sequential"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:07:55.200219+00:00",
+      "message": "uses start p232/clean: 475203 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:09:06.325883+00:00",
+      "message": "uses complete p232/clean: 70.998s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:09:06.334754+00:00",
+      "message": "uses start p232/early: 475203 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:10:19.379410+00:00",
+      "message": "uses complete p232/early: 72.756s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:10:19.387216+00:00",
+      "message": "uses start p232/late: 475203 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:11:29.129919+00:00",
+      "message": "uses complete p232/late: 69.635s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:11:29.136646+00:00",
+      "message": "uses start p232/composite: 475203 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:12:39.251090+00:00",
+      "message": "uses complete p232/composite: 69.997s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:12:39.260104+00:00",
+      "message": "uses start p257/clean: 398282 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:13:41.278360+00:00",
+      "message": "uses complete p257/clean: 61.902s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:13:41.288936+00:00",
+      "message": "uses start p257/early: 398282 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:14:44.013215+00:00",
+      "message": "uses complete p257/early: 62.601s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:14:44.021821+00:00",
+      "message": "uses start p257/late: 398282 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:15:46.956621+00:00",
+      "message": "uses complete p257/late: 62.825s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:15:46.963739+00:00",
+      "message": "uses start p257/composite: 398282 samples, whole input"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:16:52.710968+00:00",
+      "message": "uses complete p257/composite: 65.641s; issues=[]"
+    },
+    {
+      "timestamp_utc": "2026-10-08T20:16:52.816530+00:00",
+      "message": "Controls finished: rejected; accepted_for_finnegan=False"
+    }
+  ],
+  "limitations": [
+    "Clean recordings are licensed natural speech, not asserted perfectly anechoic.",
+    "Energy masks and normalized watchdogs are acoustic proxies; legitimate room changes can trigger spectral warnings.",
+    "Only clean-control watchdog warnings gate preservation; all condition clipping/count/finite/timing failures gate qualification.",
+    "SI-SDR is paired signal error, not perceptual distance, articulation or speaker identity.",
+    "Historical Treble outputs were inferred on the full old control then sliced; rescaling/slicing does not establish a new prefix model run.",
+    "New Treble early/late comparisons run only if all eight USES controls pass prerequisites."
+  ],
+  "model": {
+    "tensor_count": 261,
+    "element_count": 3052492,
+    "missing": [],
+    "unexpected": [],
+    "shape_mismatches": [],
+    "model_family": "legacy USES (ASRU 2023)",
+    "is_uses2_checkpoint": false,
+    "code_revision": "bfc13cecfd0a07ed8e21d733b0ce130a1c69211a",
+    "model_revision": "927a9ecea245120a6f2d88c2552864b937ec5ab9",
+    "config_sha256": "3cd7b57bdb541672fea82d9ab16a04ce63299ac4b108907a5c406b2dd1dc8793",
+    "checkpoint_sha256": "6b2a0c78b2eea566fcfd39b0d77ffc0102b0baf6af60a4a1f4dee93995081121",
+    "vendor_audit_sha256": "e437f492feeaa635760d66c06b56453129b0db20ad940ea603f42530a18fe67e",
+    "vendor_symbol_count": 11,
+    "device": "cpu",
+    "dtype": "float32",
+    "torch_version": "2.1.1",
+    "threads": 4,
+    "weights_only": true,
+    "sample_rate": 48000,
+    "upstream_default_fs": 8000,
+    "fft": 1536,
+    "hop": 768,
+    "frequency_bins": 769,
+    "complex_representation": "native torch complex",
+    "normalize_variance": "torch.std(correction=1), restored exactly once",
+    "output_peak_normalization": false,
+    "resampling": false,
+    "cascade": false,
+    "mode": "dereverb",
+    "memory_types": 2,
+    "memory_reset": "one local initialization per whole utterance",
+    "execution_backend": "bounded_features",
+    "upstream_class_asts_unchanged": true,
+    "trained_backend_equivalence_verified": true,
+    "adapter_sha256": "d2f9a31f066de05b33e6ab0923afb6b9e7edf029595a20e50f3f0ead555ea0e4",
+    "uses_bounded_sha256": "a9377d7a49b3474cd94814fe84780597febde2eddd511dd616ebfcc48f3abf7a",
+    "backend_sha256": "a9377d7a49b3474cd94814fe84780597febde2eddd511dd616ebfcc48f3abf7a",
+    "backend_equivalence_requirement": "Trained whole-utterance comparison required before bounded full-file rendering",
+    "execution_config": {
+      "backend": "bounded_features",
+      "device": "cpu",
+      "dtype": "float32",
+      "torch_version": "2.1.1",
+      "threads": 4,
+      "sample_rate": 48000,
+      "fft": 1536,
+      "hop": 768,
+      "frequency_bins": 769,
+      "channels": 1,
+      "num_spk": 1,
+      "ref_channel": 0,
+      "segment_size": 64,
+      "memory_size": 20,
+      "memory_types": 2,
+      "atf_blocks": 6,
+      "mode": "dereverb",
+      "memory_index": 1,
+      "memory_initializations_per_utterance": 1,
+      "normalize_variance_correction": 1,
+      "variance_restorations": 1,
+      "external_audio_chunks": 1,
+      "audio_crossfade": false,
+      "resampling": false,
+      "output_peak_normalization": false,
+      "post_encoder_time_halo": 1,
+      "pre_decoder_time_halo": 1,
+      "final_padding_after_bottleneck": true,
+      "whole_utterance_stft": true
+    },
+    "equivalence_report_sha256": "5e7f7601919487d522f4f0aec813303e997b7e0f4d125a40db514e70fdcc269a"
+  },
+  "prerequisites": {
+    "passed": false,
+    "reasons": [
+      "p232/early: paired improvement below 1.0 dB",
+      "p232/late: paired improvement below 1.0 dB",
+      "p257/early: paired improvement below 1.0 dB",
+      "p257/late: paired improvement below 1.0 dB"
+    ],
+    "minimum_early_and_late_improvement_db": 1.0
+  },
+  "peak_process_rss": 2805301248,
+  "rss_units": "bytes on macOS; kilobytes on Linux"
+}

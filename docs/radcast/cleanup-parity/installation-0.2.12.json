@@ -1,0 +1,21 @@
+{
+  "version": "0.2.12",
+  "installed_app": "/Applications/RADsuite.app",
+  "previous_app_backup": "/Users/rcd58/Library/Application Support/RADsuite/local-app-backups/RADsuite-before-0.2.12-20261010-115145.app",
+  "binary_sha256": "f21031a1a47bc67bb63f9b93af539b9810e683d60d99fc464e75deee189ff12f",
+  "signature_verified": true,
+  "restart_required": false,
+  "release_status_at_install": "pending",
+  "old_0.2.11_process_closed": true,
+  "old_0.2.11_app_copies_moved_to_trash": [
+    {
+      "from": "/Users/rcd58/Library/Application Support/RADsuite/local-app-backups/RADsuite-before-cleanup-parity-20261010-085833.app",
+      "trash": "/Users/rcd58/.Trash/RADsuite-before-cleanup-parity-20261010-085833.app"
+    },
+    {
+      "from": "/Users/rcd58/Library/Application Support/RADsuite/local-app-backups/RADsuite-before-0.2.12-20261010-115145.app",
+      "trash": "/Users/rcd58/.Trash/RADsuite-before-0.2.12-20261010-115145.app"
+    }
+  ],
+  "public_release": "deferred at user request"
+}

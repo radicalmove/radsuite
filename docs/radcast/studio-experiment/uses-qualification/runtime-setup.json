@@ -1,0 +1,10 @@
+{
+  "original_runtime_files_checked": 34,
+  "all_unchanged": true,
+  "experiment_executable": "/Users/rcd58/.radcast/experiments/uses-qualification/runtime/bin/python",
+  "package_source": "/Users/rcd58/.radcast/venv311/lib/python3.11/site-packages",
+  "package_source_write_denied": true,
+  "network_denied_during_inference": true,
+  "new_packages_installed": 0,
+  "source_subset_audit_pending": true
+}

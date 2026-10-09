@@ -1,0 +1,147 @@
+{
+  "source_metrics": {
+    "pcm_sha256": "6616a23e2617cb2cf937e6db5638d6be71173dcb0b8c976de2f020dc23f8212e",
+    "duration_seconds": 3.0,
+    "rms_dbfs": -33.405476504000404,
+    "sample_peak_dbfs": -14.97012502105318,
+    "clipped_samples": 0,
+    "speech_rms_dbfs": -33.198016406616844,
+    "pause_rms_dbfs": null,
+    "speech_pause_contrast_db": null,
+    "speech_frames": 143,
+    "pause_frames": 0,
+    "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+    "bands_db_relative": {
+      "sub": -39.06631842514721,
+      "body": -6.948056409324266,
+      "mid": -1.124958110391138,
+      "presence": -16.336473482084,
+      "sibilants": -26.369133492239097,
+      "air": -32.25853657015053
+    },
+    "rolloff_95_hz": 726.5625,
+    "hf_bands_db_relative": {
+      "6000-7000": -34.65683465358196,
+      "7000-8000": -36.655755003200575,
+      "8000-9000": -35.070624719231596,
+      "9000-10000": -38.05458465098704,
+      "10000-12000": -39.651399065326906,
+      "12000-16000": -47.32875334138833
+    }
+  },
+  "raw_output_metrics": {
+    "pcm_sha256": "56def8a4737162b8e12f3716ce951bb56bad68f245a8ece1757eeb137ce50dec",
+    "duration_seconds": 3.0,
+    "rms_dbfs": -43.69442127011669,
+    "sample_peak_dbfs": -25.142614771435767,
+    "clipped_samples": 0,
+    "speech_rms_dbfs": -43.48687593254772,
+    "pause_rms_dbfs": null,
+    "speech_pause_contrast_db": null,
+    "speech_frames": 143,
+    "pause_frames": 0,
+    "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+    "bands_db_relative": {
+      "sub": -39.411188981114805,
+      "body": -6.961756903261619,
+      "mid": -1.1221069858396855,
+      "presence": -16.310782456048088,
+      "sibilants": -26.367834101575674,
+      "air": -32.263600474551126
+    },
+    "rolloff_95_hz": 726.5625,
+    "hf_bands_db_relative": {
+      "6000-7000": -34.67608566256568,
+      "7000-8000": -36.677182239534076,
+      "8000-9000": -35.0689137676294,
+      "9000-10000": -38.06216025921481,
+      "10000-12000": -39.68872624639403,
+      "12000-16000": -47.23935354862558
+    }
+  },
+  "normalized_output_metrics": {
+    "pcm_sha256": "f172057c00ddfc06edc953c6f6c6caa5e016030662edd83071b2ac0de681cdc0",
+    "duration_seconds": 3.0,
+    "rms_dbfs": -33.40556146247546,
+    "sample_peak_dbfs": -25.142614771435767,
+    "clipped_samples": 0,
+    "speech_rms_dbfs": -33.19801612490649,
+    "pause_rms_dbfs": null,
+    "speech_pause_contrast_db": null,
+    "speech_frames": 143,
+    "pause_frames": 0,
+    "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+    "bands_db_relative": {
+      "sub": -39.41118891250354,
+      "body": -6.961756899873162,
+      "mid": -1.1221069861359647,
+      "presence": -16.31078246922725,
+      "sibilants": -26.367834162306206,
+      "air": -32.26360049673033
+    },
+    "rolloff_95_hz": 726.5625,
+    "hf_bands_db_relative": {
+      "6000-7000": -34.67608568711644,
+      "7000-8000": -36.677182335161675,
+      "8000-9000": -35.06891377973752,
+      "9000-10000": -38.06216033415484,
+      "10000-12000": -39.68872624005287,
+      "12000-16000": -47.239353462524804
+    },
+    "speech_window_gain_db": [
+      -10.31050012268336,
+      -10.258426434132,
+      -10.250690202293452,
+      -10.292016866850194,
+      -10.291946636566756
+    ],
+    "speech_window_starts_seconds": [
+      0.0,
+      0.5,
+      1.0,
+      1.5,
+      2.0
+    ],
+    "speech_window_gain_median_db": -10.291946636566756,
+    "worst_speech_window_gain_relative_db": -0.01855348611660368,
+    "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+    "lag_seconds": 0.0,
+    "waveform_correlation": 0.9854141660860632,
+    "envelope_correlation": 0.9999275016762448,
+    "speech_envelope_shape_correlation": 0.9999272490663993,
+    "block_lags_seconds": [
+      0.0
+    ],
+    "block_lag_spread_seconds": 0.0
+  },
+  "analysis_gain_compensation_db": 10.288859525930874,
+  "alignment": {
+    "speech_window_gain_db": [
+      -10.31050012268336,
+      -10.258426434132,
+      -10.250690202293452,
+      -10.292016866850194,
+      -10.291946636566756
+    ],
+    "speech_window_starts_seconds": [
+      0.0,
+      0.5,
+      1.0,
+      1.5,
+      2.0
+    ],
+    "speech_window_gain_median_db": -10.291946636566756,
+    "worst_speech_window_gain_relative_db": -0.01855348611660368,
+    "speech_window_method": "1 s windows / .5 s hop; source periodicity and modulation proxy; gain relative to median to remove global mastering gain; not transcript validation",
+    "lag_seconds": 0.0,
+    "waveform_correlation": 0.9854141660860632,
+    "envelope_correlation": 0.9999275016762448,
+    "speech_envelope_shape_correlation": 0.9999272490663993,
+    "block_lags_seconds": [
+      0.0
+    ],
+    "block_lag_spread_seconds": 0.0
+  },
+  "watchdog": [],
+  "eligibility": "Paired source-frame acoustic proxy; no transcript, speaker-identity or listening certification"
+}

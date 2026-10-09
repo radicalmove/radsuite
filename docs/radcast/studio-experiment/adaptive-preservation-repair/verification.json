@@ -1,0 +1,242 @@
+{
+  "state": "saved_artifacts_verified_human_listening_pending",
+  "runtime_files_unchanged": 34,
+  "protected_references_unchanged": 4,
+  "first_attempt_snapshots_unchanged": true,
+  "adapter_sha256": "46238793e826ad60aa2b45ad575611fcf2fc2f37f59e9d93a6eda8953ee52286",
+  "input_stems_unchanged": true,
+  "adaptive_cleanup_replay_exact": true,
+  "target_cleanup_bit_identical_to_raw": true,
+  "downstream_replay_max_errors": {
+    "pause": 0.0,
+    "presence": 0.0,
+    "levelled": 0.0,
+    "master": 0.0
+  },
+  "remaining_energy_guard_conflicts": 0,
+  "original_and_baseline_watchdogs": [],
+  "sample_count": 6887520,
+  "sample_rate": 48000,
+  "working_format": "FLOAT",
+  "active_sample_count": 556795,
+  "unblended_sample_fraction": 0.9191588554370804,
+  "mean_original_weight": 0.015471461425883322,
+  "maximum_original_weight": 0.2,
+  "sample_activity_note": "Interpolation extends nonzero frame support about10ms each side; blend percentages are not echo removal measurements.",
+  "master_loudness": {
+    "integrated_lufs": -22.6,
+    "true_peak_dbfs": -1.55,
+    "loudness_range_lu": 7.5
+  },
+  "mp3_sha256": "2fe7ee83382057948af5c8b60fea2ac5a9262709d1041a7c595c4fbeb9dc83ca",
+  "export_watchdog": [],
+  "audition_clips": [
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/target_phrase_old.wav",
+      "sha256": "53243f6109fda37c4fa1e347a19f091ccd0e8f72bd0d0548163f9124b27ebd64",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/target_phrase_adaptive.wav",
+      "sha256": "cb51ca704b5e4b71ddcda6836d0dc0de6cd0850eb10387739034b925ce58706a",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/target_phrase_Adobe.wav",
+      "sha256": "f9a6b8eb976753cbd4c29f2859878ad2bddb23e552967df8a3f13982761278b9",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/quiet_old.wav",
+      "sha256": "da347b109d9ced9151a1bb79d38c1bd00fbb7bb258f08089a55434a3ad34b377",
+      "samples": 144000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/quiet_adaptive.wav",
+      "sha256": "8c29751abcdc11468cee9bc7774893fa6a5772d79355ed22ac460e5515c1049a",
+      "samples": 144000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/quiet_Adobe.wav",
+      "sha256": "f02c057d0d0ed407fab7f69ac8e941b188435ebffa072da3febc6d5458e89743",
+      "samples": 144000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/loud_old.wav",
+      "sha256": "63272349fe035c2cf22873d34d7dbb528e469956986bb312c187369dabf25c90",
+      "samples": 480000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/loud_adaptive.wav",
+      "sha256": "57364500654fb3564b1665d9d003fcb9b01e80f18b012119439d962eeb49ed3b",
+      "samples": 480000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/loud_Adobe.wav",
+      "sha256": "3d30ef84076730f366126ece9a2f4095a330eb69e6b47beb9ca08dd0c4e58719",
+      "samples": 480000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/ending_old.wav",
+      "sha256": "98566bbc42cf5efe7ad881e09a5ccf6c13b9a4818b62ddf468b707d1ffa4581a",
+      "samples": 158400,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/ending_adaptive.wav",
+      "sha256": "3d7137500e533ac343bc8f5d4feccdd5fe50dc36060587c6955d46f7ee012b97",
+      "samples": 158400,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-rms/ending_Adobe.wav",
+      "sha256": "fd8426ef0f212f2f39bf3bc9a5779907da973f11d71299fcbc00ba3c24c987a4",
+      "samples": 158400,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/ending_old.wav",
+      "sha256": "d2ec0c14a0f3360d7af7d39b614f15efd016287b6fb271eb95d08a43c1bcdc6b",
+      "samples": 311520,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/ending_adaptive.wav",
+      "sha256": "0dc39337513acb5c6d80598e047f12094afc71137ce46d9748db18c7cec047b7",
+      "samples": 311520,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/ending_original.wav",
+      "sha256": "c39d4c66ce9e29f3be41c9783e45408a61b437157598cf9e53289d1580c69568",
+      "samples": 311520,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/opening_old.wav",
+      "sha256": "46bf3b17356c32a8d634cdb170123a9cffd6545b36105d2ab4777cf5711525af",
+      "samples": 384000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/opening_adaptive.wav",
+      "sha256": "c795fd107fedb098c592d34466dc16e08c95db199950b03478b497ee6bb5232b",
+      "samples": 384000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/opening_original.wav",
+      "sha256": "7d420435c979d6009f0a622936c76cd6f1c7dd34a9448088defff6a6c65eff7b",
+      "samples": 384000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/missed_material_old.wav",
+      "sha256": "f0dbb7c4210e4fe66cccf1ab5a8fe773e3256a020a7f94b5b738599a29437c53",
+      "samples": 72000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/missed_material_adaptive.wav",
+      "sha256": "4da619322e9e8f637ffe14664225212525b2afc31f8c254aeaa6917c4bdddf88",
+      "samples": 72000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/missed_material_original.wav",
+      "sha256": "e0323d8615eac8bc263a8d7324ae504f89f711f8ec58337591451479d1a78c12",
+      "samples": 72000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/internal_old.wav",
+      "sha256": "359b68645e004f67ad0a2a11971f3a21834a4ae8569f420d15667200d75c0c99",
+      "samples": 144000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/internal_adaptive.wav",
+      "sha256": "f2aedb602827ab7dacc88a900a25c5f93b5850e6521460c034b7212c21db178c",
+      "samples": 144000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/internal_original.wav",
+      "sha256": "e6227bbe636d3fe23cdac3bb446e7c4d29ef525b7f4cf977aedfd77773b73b19",
+      "samples": 144000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/intro_old.wav",
+      "sha256": "ea53acc648b1f811c1581a0e9a737a86ef6bc90a5bc4e8d02a4998d2614913d4",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/intro_adaptive.wav",
+      "sha256": "b395716b9d2391ef280b71682dfdd2599be028d5f1af3f7a0c7873859af551fe",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-faint/intro_original.wav",
+      "sha256": "d65754ffe1998822e4694f967f824a7f9658bcd6a8e56abab80a47e60f92cdcf",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-lufs/target_phrase_old.wav",
+      "sha256": "53243f6109fda37c4fa1e347a19f091ccd0e8f72bd0d0548163f9124b27ebd64",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-lufs/target_phrase_adaptive.wav",
+      "sha256": "b89a6f602326d8372dd4824ded10a6a5ffdf76a9497685a2d1681bb8d37bff93",
+      "samples": 576000,
+      "static_replay_exact": true
+    },
+    {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/adaptive-preservation-repair/listening-lufs/target_phrase_Adobe.wav",
+      "sha256": "a64ab11a137ac11301e80717edfdd438ad4f92856048a0589056c3b5532c41d2",
+      "samples": 576000,
+      "static_replay_exact": true
+    }
+  ],
+  "rms_spread_db": {
+    "target_phrase": 1.5459965752029348e-07,
+    "quiet": 6.503081877440309e-07,
+    "loud": 3.0503741754728253e-07,
+    "ending": 1.403038325520356e-07
+  },
+  "target_lufs": {
+    "old": {
+      "integrated_lufs": -26.56,
+      "true_peak_dbfs": -6.78,
+      "loudness_range_lu": 2.4
+    },
+    "adaptive": {
+      "integrated_lufs": -26.51,
+      "true_peak_dbfs": -6.68,
+      "loudness_range_lu": 2.6
+    },
+    "Adobe": {
+      "integrated_lufs": -26.57,
+      "true_peak_dbfs": -6.24,
+      "loudness_range_lu": 1.4
+    }
+  },
+  "target_lufs_spread": 0.05999999999999872,
+  "comparison_metadata_note": "Three short ending RMS clips independently verified here. Original comparison ending key was replaced by faint ending metadata; future script uses short_ending. Audio and original comparison preserved.",
+  "new_candidate_renders": 0,
+  "new_model_inferences": 0
+}

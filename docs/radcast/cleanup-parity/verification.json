@@ -1,0 +1,23 @@
+{
+  "cargo_command": "cargo test -p radsuite-engines -p radsuite-desktop -- --quiet",
+  "tests_passed": 190,
+  "suites_passed": 14,
+  "python_reference_cases": 60,
+  "real_cleanup_smoke": {
+    "enabled": true,
+    "fillers_detected": 0,
+    "pauses_shortened": 2,
+    "duration_seconds": 8.918,
+    "original_unchanged": true
+  },
+  "clippy": "cargo clippy -p radsuite-engines -p radsuite-desktop --all-targets -- -D warnings: passed",
+  "frontend_build": "svelte-check: 0 errors/0 warnings; vite build: passed",
+  "local_bundle": "cargo tauri build --bundles app --config with updater artifacts disabled: passed",
+  "installed_signature": "codesign --verify --deep --strict: passed",
+  "limitations": [
+    "Whisper.cpp replaces faster-whisper; recognition and VAD do not exactly match.",
+    "Window midpoint ownership prevents splitting/counting boundary words twice.",
+    "Rejected fillers remain protected speech during combined pause cleanup."
+  ],
+  "code_review": "Reviewed and resolved token assembly, crossfade duration accounting, all-filler pause fallback; no remaining blockers."
+}

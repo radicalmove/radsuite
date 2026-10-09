@@ -1,0 +1,79 @@
+{
+  "model_revision": "daad000927daa131e7692376a71c8144bcbfa6f8",
+  "code_revision": "bfc13cecfd0a07ed8e21d733b0ce130a1c69211a",
+  "files": {
+    "hf-metadata.json": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/hf-metadata.json",
+      "url": "https://huggingface.co/api/models/kohei0209/tfgridnet_urgent25/revision/daad000927daa131e7692376a71c8144bcbfa6f8?blobs=true",
+      "bytes": 7352,
+      "sha256": "e23bbc628404862702c58d83060d0fa9b553eb7250f877d5d48a886474629bcb"
+    },
+    "config.yaml": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/config.yaml",
+      "url": "https://huggingface.co/kohei0209/tfgridnet_urgent25/resolve/daad000927daa131e7692376a71c8144bcbfa6f8/exp/enh_train_enh_tfgridnet_dm_raw/config.yaml",
+      "bytes": 6426,
+      "sha256": "9591c84a91349834fb7a31a021fa4d0858b46c001c6aa7ab096f0ee502684a61"
+    },
+    "model.pth": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/model.pth",
+      "url": "https://huggingface.co/kohei0209/tfgridnet_urgent25/resolve/daad000927daa131e7692376a71c8144bcbfa6f8/exp/enh_train_enh_tfgridnet_dm_raw/valid.loss.ave_5best.pth",
+      "bytes": 34192512,
+      "sha256": "8350b6f84bb5de01646b7cebe9d19d5b1fc4318cd85c31d242caccc2442d276e"
+    },
+    "README.md": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/README.md",
+      "url": "https://huggingface.co/kohei0209/tfgridnet_urgent25/resolve/daad000927daa131e7692376a71c8144bcbfa6f8/README.md",
+      "bytes": 10013,
+      "sha256": "a302b657119d27181fc9a98e7046dde1ac23c26927ed3dd581be5a117437b4c0"
+    },
+    "meta.yaml": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/meta.yaml",
+      "url": "https://huggingface.co/kohei0209/tfgridnet_urgent25/resolve/daad000927daa131e7692376a71c8144bcbfa6f8/meta.yaml",
+      "bytes": 301,
+      "sha256": "22a403c586ed1a5d7de046bca68a3bf80bebefd2c8dbe69077d3c7bfd6ffe5f7"
+    },
+    "tfgridnetv3_separator.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/tfgridnetv3_separator.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/separator/tfgridnetv3_separator.py",
+      "bytes": 15059,
+      "sha256": "748c1eabba3cecea91b355510c472e6c0a0d8957fa7f439673f26dc0b5239baa"
+    },
+    "publisher-tfgridnetv3_separator.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/publisher-tfgridnetv3_separator.py",
+      "url": "https://raw.githubusercontent.com/kohei0209/espnet/urgent2025/espnet2/enh/separator/tfgridnetv3_separator.py",
+      "bytes": 15056,
+      "sha256": "d96ff955828b2a2edbd4d83bc2e3f8c74ed7f5d9e9b8c8b2463cbc4f08ded4d5"
+    },
+    "publisher-preprocessor.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/publisher-preprocessor.py",
+      "url": "https://raw.githubusercontent.com/kohei0209/espnet/urgent2025/espnet2/train/preprocessor.py",
+      "bytes": 102142,
+      "sha256": "c62c2076c030bf567fc1a07fe1ca84a15323ed704511ba3fe5bfd42ae9584389"
+    },
+    "LICENSE-espnet": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/LICENSE-espnet",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/LICENSE",
+      "bytes": 11372,
+      "sha256": "4696c3c9551da6fef1368be1e4ed2c80cf13e55448c6dcf2aba9462f5ff29ef5"
+    },
+    "publisher-pinned-preprocessor.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/publisher-pinned-preprocessor.py",
+      "url": "https://raw.githubusercontent.com/kohei0209/espnet/6be80495bca76d8406ca11e5971a9954949ac9c1/espnet2/train/preprocessor.py",
+      "bytes": 102142,
+      "sha256": "c62c2076c030bf567fc1a07fe1ca84a15323ed704511ba3fe5bfd42ae9584389"
+    },
+    "publisher-get-layer.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/publisher-get-layer.py",
+      "url": "https://raw.githubusercontent.com/kohei0209/espnet/6be80495bca76d8406ca11e5971a9954949ac9c1/espnet2/torch_utils/get_layer_from_string.py",
+      "bytes": 1411,
+      "sha256": "f8821d9566f326f75e69339eca18fa3b84d81b84915502dddbfe64b30dc0884e"
+    },
+    "publisher-pinned-tfgridnetv3_separator.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/artifacts/publisher-pinned-tfgridnetv3_separator.py",
+      "url": "https://raw.githubusercontent.com/kohei0209/espnet/6be80495bca76d8406ca11e5971a9954949ac9c1/espnet2/enh/separator/tfgridnetv3_separator.py",
+      "bytes": 15056,
+      "sha256": "d96ff955828b2a2edbd4d83bc2e3f8c74ed7f5d9e9b8c8b2463cbc4f08ded4d5"
+    }
+  },
+  "publisher_code_revision": "6be80495bca76d8406ca11e5971a9954949ac9c1"
+}

@@ -1,0 +1,688 @@
+{
+  "inputs": {
+    "previous": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-repair-dry20/CRJU160_modeltrial_ISM120_best119_dry20.wav",
+      "sha256": "944a3d1b3d95ea5aa208e0aa3c1547608c929c4163823df854abd37bef7e4be5"
+    },
+    "presence": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/CRJU160_presence_body1_definition2_detail1p5.wav",
+      "sha256": "203a5b995aa3a30ae8694a478962c7de0f24aa23d15b37065cf0c2685549f194"
+    },
+    "Adobe": {
+      "path": "/Users/rcd58/OpenAI Projects/AI Explainer Video/Build/CRJU160_1.1.1_rev1/final_mix_v2-enhanced-v2.wav",
+      "sha256": "e8f2b1ca328160180a874a9c10abf08ab8ae4793d1b9ade256c2925b505661b4"
+    }
+  },
+  "masks": "Same full-original-derived 20ms masks sliced for each group",
+  "Adobe_offset_seconds": -2.239,
+  "groups": {
+    "target_phrase": {
+      "timeline": [
+        20,
+        32
+      ],
+      "common_headroom_db": 0.0,
+      "target_speech_rms_dbfs": -26.525212441310607,
+      "files": {
+        "previous": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/target_phrase_previous.wav",
+          "sha256": "53243f6109fda37c4fa1e347a19f091ccd0e8f72bd0d0548163f9124b27ebd64",
+          "static_gain_db": -2.637844624810544,
+          "sample_count": 576000,
+          "metrics": {
+            "pcm_sha256": "45c70dd7404be60c84bcea50b4ec890ca3917c65c03e323ca7cbc138f7de00e3",
+            "duration_seconds": 12.0,
+            "rms_dbfs": -27.197087147610457,
+            "sample_peak_dbfs": -6.780593170086119,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -26.5252125020408,
+            "pause_rms_dbfs": -80.31380962106783,
+            "speech_pause_contrast_db": 53.78859711902703,
+            "speech_frames": 514,
+            "pause_frames": 23,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -39.32489850394872,
+              "body": -7.258952275305615,
+              "mid": -1.0020352755091382,
+              "presence": -18.168552070109552,
+              "sibilants": -26.44688868569365,
+              "air": -33.595346438126576
+            },
+            "rolloff_95_hz": 726.5625,
+            "hf_bands_db_relative": {
+              "6000-7000": -34.6991284850272,
+              "7000-8000": -36.70176704208427,
+              "8000-9000": -36.52287605736869,
+              "9000-10000": -38.973425582399564,
+              "10000-12000": -41.275028410906046,
+              "12000-16000": -48.8392071136808
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -26.56,
+            "true_peak_dbfs": -6.78,
+            "loudness_range_lu": 2.4
+          }
+        },
+        "presence": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/target_phrase_presence.wav",
+          "sha256": "d573ff10c0df903db7fb10305ee2a443902a21c096ebc444790d88c978e53b42",
+          "static_gain_db": -2.3789439895029822,
+          "sample_count": 576000,
+          "metrics": {
+            "pcm_sha256": "178e00e1e0065b9a2f60a831d7ad2735a61a5b4162ffac2b671d0fee99c0d0f1",
+            "duration_seconds": 12.0,
+            "rms_dbfs": -27.19708672174007,
+            "sample_peak_dbfs": -6.80961275188409,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -26.525212535713383,
+            "pause_rms_dbfs": -79.96834204638304,
+            "speech_pause_contrast_db": 53.443129510669664,
+            "speech_frames": 514,
+            "pause_frames": 23,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -39.17514275185787,
+              "body": -6.8998712143672805,
+              "mid": -1.132477051921069,
+              "presence": -16.722548969153543,
+              "sibilants": -24.56678210536414,
+              "air": -33.26850255148123
+            },
+            "rolloff_95_hz": 750.0,
+            "hf_bands_db_relative": {
+              "6000-7000": -33.30133346624838,
+              "7000-8000": -35.84090159798272,
+              "8000-9000": -36.03315507362662,
+              "9000-10000": -38.716498872613045,
+              "10000-12000": -41.249245873626776,
+              "12000-16000": -49.03987132290197
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -26.57,
+            "true_peak_dbfs": -6.8,
+            "loudness_range_lu": 2.4
+          }
+        },
+        "Adobe": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/target_phrase_Adobe.wav",
+          "sha256": "f9a6b8eb976753cbd4c29f2859878ad2bddb23e552967df8a3f13982761278b9",
+          "static_gain_db": 0.0,
+          "sample_count": 576000,
+          "metrics": {
+            "pcm_sha256": "7885ffa0c6624c0ada338d72896e51d1785c72c0cd9e65cee9d0945643561ed9",
+            "duration_seconds": 12.0,
+            "rms_dbfs": -27.19700217633101,
+            "sample_peak_dbfs": -6.213037935377258,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -26.525212441310607,
+            "pause_rms_dbfs": -63.407093695382876,
+            "speech_pause_contrast_db": 36.88188125407227,
+            "speech_frames": 514,
+            "pause_frames": 23,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -25.17736051141955,
+              "body": -4.939417520266605,
+              "mid": -2.030768992975559,
+              "presence": -13.738316065865131,
+              "sibilants": -21.412043902390092,
+              "air": -35.734423855594954
+            },
+            "rolloff_95_hz": 1476.5625,
+            "hf_bands_db_relative": {
+              "6000-7000": -30.11567935554175,
+              "7000-8000": -35.62246792000613,
+              "8000-9000": -39.1768102707369,
+              "9000-10000": -42.96279120584036,
+              "10000-12000": -42.602862385493225,
+              "12000-16000": -43.9050669163218
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -26.52,
+            "true_peak_dbfs": -6.2,
+            "loudness_range_lu": 1.5
+          }
+        }
+      }
+    },
+    "quiet_articulation": {
+      "timeline": [
+        19.5,
+        22.5
+      ],
+      "common_headroom_db": 0.0,
+      "target_speech_rms_dbfs": -27.49479235616388,
+      "files": {
+        "previous": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/quiet_articulation_previous.wav",
+          "sha256": "da347b109d9ced9151a1bb79d38c1bd00fbb7bb258f08089a55434a3ad34b377",
+          "static_gain_db": -4.077024092212838,
+          "sample_count": 144000,
+          "metrics": {
+            "pcm_sha256": "b3af558a91a2e8190a3a79e3ed0aa06bfdf54fde22bf667e08053559dc014244",
+            "duration_seconds": 3.0,
+            "rms_dbfs": -27.67207631927971,
+            "sample_peak_dbfs": -8.219773295981387,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -27.494792752728806,
+            "pause_rms_dbfs": null,
+            "speech_pause_contrast_db": null,
+            "speech_frames": 144,
+            "pause_frames": 0,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -40.37762150427281,
+              "body": -8.208616311966738,
+              "mid": -0.8955659728776435,
+              "presence": -14.99345627184843,
+              "sibilants": -25.413189674616,
+              "air": -31.908466069048174
+            },
+            "rolloff_95_hz": 750.0,
+            "hf_bands_db_relative": {
+              "6000-7000": -33.81594285756342,
+              "7000-8000": -36.124178210915595,
+              "8000-9000": -34.68742005397236,
+              "9000-10000": -37.70253962355723,
+              "10000-12000": -39.34572602566296,
+              "12000-16000": -47.30827289523029
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -27.87,
+            "true_peak_dbfs": -8.22,
+            "loudness_range_lu": 0.8
+          }
+        },
+        "presence": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/quiet_articulation_presence.wav",
+          "sha256": "34b871a2c04dec68ae17008208e8149f35a17d0b97518223ec7f8d92af3957f0",
+          "static_gain_db": -3.8039280145314684,
+          "sample_count": 144000,
+          "metrics": {
+            "pcm_sha256": "a0f549fcebc2d100632cc8e861e86595d71f1154b7bffa8d248eebc65a3b842b",
+            "duration_seconds": 3.0,
+            "rms_dbfs": -27.672075544159863,
+            "sample_peak_dbfs": -8.234596191540865,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -27.494792274568027,
+            "pause_rms_dbfs": null,
+            "speech_pause_contrast_db": null,
+            "speech_frames": 144,
+            "pause_frames": 0,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -40.15655552227297,
+              "body": -7.868589413661654,
+              "mid": -1.02891151952503,
+              "presence": -13.733834760421038,
+              "sibilants": -23.503138780337235,
+              "air": -31.576135451575006
+            },
+            "rolloff_95_hz": 1382.8125,
+            "hf_bands_db_relative": {
+              "6000-7000": -32.40642438803968,
+              "7000-8000": -35.232518621394846,
+              "8000-9000": -34.19164999841774,
+              "9000-10000": -37.451761302500195,
+              "10000-12000": -39.31353267089918,
+              "12000-16000": -47.49980198678643
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -27.8,
+            "true_peak_dbfs": -8.23,
+            "loudness_range_lu": 0.7
+          }
+        },
+        "Adobe": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/quiet_articulation_Adobe.wav",
+          "sha256": "f02c057d0d0ed407fab7f69ac8e941b188435ebffa072da3febc6d5458e89743",
+          "static_gain_db": 0.0,
+          "sample_count": 144000,
+          "metrics": {
+            "pcm_sha256": "720e810a7b5ad1c8b7fc8cff5c79928a72dc4c146a139d4be68464a22e09051f",
+            "duration_seconds": 3.0,
+            "rms_dbfs": -27.672048741813345,
+            "sample_peak_dbfs": -7.99878545149439,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -27.49479235616388,
+            "pause_rms_dbfs": null,
+            "speech_pause_contrast_db": null,
+            "speech_frames": 144,
+            "pause_frames": 0,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -25.60055798678015,
+              "body": -6.413677069817949,
+              "mid": -1.6789613773422916,
+              "presence": -11.024420749622909,
+              "sibilants": -19.962702897683684,
+              "air": -33.761741462708635
+            },
+            "rolloff_95_hz": 2062.5,
+            "hf_bands_db_relative": {
+              "6000-7000": -28.538353645100486,
+              "7000-8000": -32.83474455597214,
+              "8000-9000": -37.817772854026394,
+              "9000-10000": -39.587960281290506,
+              "10000-12000": -40.41865350774021,
+              "12000-16000": -42.63486984615686
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -27.6,
+            "true_peak_dbfs": -7.97,
+            "loudness_range_lu": 0.7
+          }
+        }
+      }
+    },
+    "louder_passage": {
+      "timeline": [
+        70,
+        80
+      ],
+      "common_headroom_db": 0.0,
+      "target_speech_rms_dbfs": -22.54368647647531,
+      "files": {
+        "previous": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/louder_passage_previous.wav",
+          "sha256": "63272349fe035c2cf22873d34d7dbb528e469956986bb312c187369dabf25c90",
+          "static_gain_db": -2.9474007606247845,
+          "sample_count": 480000,
+          "metrics": {
+            "pcm_sha256": "5aa0bf6d969f56117365d5014aa3d9b05dd804ba5c149c7b686dcf38ad6309ce",
+            "duration_seconds": 10.0,
+            "rms_dbfs": -23.311188494869832,
+            "sample_peak_dbfs": -7.428853587062706,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -22.54368678151273,
+            "pause_rms_dbfs": -65.49955956035477,
+            "speech_pause_contrast_db": 42.955872778842036,
+            "speech_frames": 419,
+            "pause_frames": 50,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -29.71196481610807,
+              "body": -4.782240255165325,
+              "mid": -2.102955078790533,
+              "presence": -14.996404767926855,
+              "sibilants": -17.637662923027193,
+              "air": -28.589250868902344
+            },
+            "rolloff_95_hz": 1500.0,
+            "hf_bands_db_relative": {
+              "6000-7000": -26.52342234795988,
+              "7000-8000": -30.11720239809389,
+              "8000-9000": -32.40477278001289,
+              "9000-10000": -34.30390297763446,
+              "10000-12000": -35.4130189973458,
+              "12000-16000": -38.23168774491584
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -23.02,
+            "true_peak_dbfs": -7.41,
+            "loudness_range_lu": 4.1
+          }
+        },
+        "presence": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/louder_passage_presence.wav",
+          "sha256": "681657ec4bf1c2afd648267111955422e812f31096a07aca09d02fc62e79ca96",
+          "static_gain_db": -2.8498038116015714,
+          "sample_count": 480000,
+          "metrics": {
+            "pcm_sha256": "6ea070b294299311c31f9d0c806971ef4adc43528663d46c781d9125a43a8344",
+            "duration_seconds": 10.0,
+            "rms_dbfs": -23.311180091391392,
+            "sample_peak_dbfs": -6.094853454323878,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -22.543686737660682,
+            "pause_rms_dbfs": -64.46590586514667,
+            "speech_pause_contrast_db": 41.92221912748599,
+            "speech_frames": 419,
+            "pause_frames": 50,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -29.757130356726012,
+              "body": -4.5687038911080355,
+              "mid": -2.3820263977433402,
+              "presence": -13.523899744357955,
+              "sibilants": -15.846209712647141,
+              "air": -28.485626703610308
+            },
+            "rolloff_95_hz": 2531.25,
+            "hf_bands_db_relative": {
+              "6000-7000": -25.2979108034558,
+              "7000-8000": -29.39576159764778,
+              "8000-9000": -32.04456705681258,
+              "9000-10000": -34.22853427022361,
+              "10000-12000": -35.57582370507117,
+              "12000-16000": -38.59980668842682
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -22.98,
+            "true_peak_dbfs": -6.09,
+            "loudness_range_lu": 4.2
+          }
+        },
+        "Adobe": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/louder_passage_Adobe.wav",
+          "sha256": "3d30ef84076730f366126ece9a2f4095a330eb69e6b47beb9ca08dd0c4e58719",
+          "static_gain_db": 0.0,
+          "sample_count": 480000,
+          "metrics": {
+            "pcm_sha256": "24b038670e15e2d9e1759d771fe72d413da8005240b451eaf5f25506cf71868b",
+            "duration_seconds": 10.0,
+            "rms_dbfs": -23.311195313175812,
+            "sample_peak_dbfs": -5.548578725675387,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -22.54368647647531,
+            "pause_rms_dbfs": -63.58359838156041,
+            "speech_pause_contrast_db": 41.03991190508509,
+            "speech_frames": 419,
+            "pause_frames": 50,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -24.107711451722377,
+              "body": -5.8279911277265795,
+              "mid": -1.747933272026888,
+              "presence": -13.376897984357148,
+              "sibilants": -16.98680483165749,
+              "air": -38.58523178724784
+            },
+            "rolloff_95_hz": 2203.125,
+            "hf_bands_db_relative": {
+              "6000-7000": -24.78857902260653,
+              "7000-8000": -32.69507258650369,
+              "8000-9000": -41.66353187174568,
+              "9000-10000": -45.51540581277699,
+              "10000-12000": -46.26896099579389,
+              "12000-16000": -47.296527689536944
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -22.65,
+            "true_peak_dbfs": -5.55,
+            "loudness_range_lu": 4.5
+          }
+        }
+      }
+    },
+    "phrase_ending": {
+      "timeline": [
+        38.5,
+        41.8
+      ],
+      "common_headroom_db": 0.0,
+      "target_speech_rms_dbfs": -29.096685323651155,
+      "files": {
+        "previous": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/phrase_ending_previous.wav",
+          "sha256": "69dc5e2d93fad8c31599d064137fbedc16ce7b715e57c0c96da3b24fc277dcb6",
+          "static_gain_db": -0.3942501133937846,
+          "sample_count": 158400,
+          "metrics": {
+            "pcm_sha256": "3e11ddb3c6a06910e68c5f15b7b228aff80662f4f648ba274186acbcbd13897f",
+            "duration_seconds": 3.3,
+            "rms_dbfs": -29.718158972097658,
+            "sample_peak_dbfs": -10.27914397083669,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -29.096685177301126,
+            "pause_rms_dbfs": -81.13378466527594,
+            "speech_pause_contrast_db": 52.037099487974814,
+            "speech_frames": 143,
+            "pause_frames": 3,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -41.16333940831251,
+              "body": -15.971311555487677,
+              "mid": -0.13731121300505428,
+              "presence": -24.975400365195203,
+              "sibilants": -26.716738478273815,
+              "air": -33.46634146419758
+            },
+            "rolloff_95_hz": 632.8125,
+            "hf_bands_db_relative": {
+              "6000-7000": -35.23763416980387,
+              "7000-8000": -36.08293615518746,
+              "8000-9000": -38.00789615570588,
+              "9000-10000": -37.34607303616309,
+              "10000-12000": -40.11852221886855,
+              "12000-16000": -49.8271861630181
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -24.58,
+            "true_peak_dbfs": -10.27,
+            "loudness_range_lu": 0.1
+          }
+        },
+        "presence": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/phrase_ending_presence.wav",
+          "sha256": "414a17353bdbc4ff2d0a31f33b215d41147f80b50723819a459f434c91ea9e33",
+          "static_gain_db": 0.0,
+          "sample_count": 158400,
+          "metrics": {
+            "pcm_sha256": "00cf9d4c814d18fadef9395f940ad140f283e548fd6ee770258b24d319e3676d",
+            "duration_seconds": 3.3,
+            "rms_dbfs": -29.718158425531826,
+            "sample_peak_dbfs": -10.23685256164445,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -29.096685323651155,
+            "pause_rms_dbfs": -80.53780173073545,
+            "speech_pause_contrast_db": 51.441116407084294,
+            "speech_frames": 143,
+            "pause_frames": 3,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -40.94982816135942,
+              "body": -15.538330947696817,
+              "mid": -0.16281950590565614,
+              "presence": -23.09511700815306,
+              "sibilants": -24.710133667936024,
+              "air": -33.0486625221259
+            },
+            "rolloff_95_hz": 632.8125,
+            "hf_bands_db_relative": {
+              "6000-7000": -33.70178028389028,
+              "7000-8000": -35.077478077137826,
+              "8000-9000": -37.36105442030292,
+              "9000-10000": -36.9738400742653,
+              "10000-12000": -39.95761763650532,
+              "12000-16000": -49.879577032853504
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -25.03,
+            "true_peak_dbfs": -10.24,
+            "loudness_range_lu": 0.2
+          }
+        },
+        "Adobe": {
+          "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-rms/phrase_ending_Adobe.wav",
+          "sha256": "7b192a5061e72101de44aa39019aafc65571daab275d55e362cec39b4b428eff",
+          "static_gain_db": -3.0703720210902716,
+          "sample_count": 158400,
+          "metrics": {
+            "pcm_sha256": "12b2920dadeff9ddafeb2a7b5a64f7047a24dbdc6b228bfe7ceeb234eb5eef5c",
+            "duration_seconds": 3.3,
+            "rms_dbfs": -29.71816235290114,
+            "sample_peak_dbfs": -8.457280968471988,
+            "clipped_samples": 0,
+            "speech_rms_dbfs": -29.096685462503334,
+            "pause_rms_dbfs": -79.84088951234378,
+            "speech_pause_contrast_db": 50.74420404984045,
+            "speech_frames": 143,
+            "pause_frames": 3,
+            "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+            "bands_db_relative": {
+              "sub": -28.175192174645606,
+              "body": -8.991850444466081,
+              "mid": -0.693296630019705,
+              "presence": -20.049078923647304,
+              "sibilants": -20.246849567446006,
+              "air": -32.57718060541455
+            },
+            "rolloff_95_hz": 984.375,
+            "hf_bands_db_relative": {
+              "6000-7000": -30.02902278186037,
+              "7000-8000": -33.06302998825024,
+              "8000-9000": -34.04306480708508,
+              "9000-10000": -39.96157063222565,
+              "10000-12000": -44.84879321677272,
+              "12000-16000": -46.086243971069045
+            }
+          },
+          "loudness": {
+            "integrated_lufs": -25.23,
+            "true_peak_dbfs": -8.45,
+            "loudness_range_lu": 0.2
+          }
+        }
+      }
+    }
+  },
+  "note": "All clips cut from full recordings. Static down-only audition gains; no enhancement or EQ per excerpt. No quality score.",
+  "target_lufs_control": {
+    "timeline": [
+      20,
+      32
+    ],
+    "target_lufs": -26.57,
+    "files": {
+      "previous": {
+        "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-lufs/target_phrase_previous.wav",
+        "sha256": "ad5d6a0a42b6dca1f64640eae41567cf1e3fd97ba09b03ae1ac92782cd44963b",
+        "additional_static_gain_db": -0.010000000000001563,
+        "total_static_gain_db": -2.6478446248105456,
+        "sample_count": 576000,
+        "loudness": {
+          "integrated_lufs": -26.57,
+          "true_peak_dbfs": -6.79,
+          "loudness_range_lu": 2.4
+        },
+        "metrics": {
+          "pcm_sha256": "2da62b50872cb1d248778f8470f87c334a5552ff5ba6ddc1e0a054e56731406c",
+          "duration_seconds": 12.0,
+          "rms_dbfs": -27.20708695392728,
+          "sample_peak_dbfs": -6.790593129207979,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -26.535212308357615,
+          "pause_rms_dbfs": -80.32380943208454,
+          "speech_pause_contrast_db": 53.78859712372693,
+          "speech_frames": 514,
+          "pause_frames": 23,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -39.32489845920275,
+            "body": -7.258952276800987,
+            "mid": -1.002035275319035,
+            "presence": -18.16855206082382,
+            "sibilants": -26.446888694210568,
+            "air": -33.59534643246933
+          },
+          "rolloff_95_hz": 726.5625,
+          "hf_bands_db_relative": {
+            "6000-7000": -34.69912849622385,
+            "7000-8000": -36.7017670442608,
+            "8000-9000": -36.52287605368025,
+            "9000-10000": -38.97342557135877,
+            "10000-12000": -41.275028404990124,
+            "12000-16000": -48.83920712813612
+          }
+        }
+      },
+      "presence": {
+        "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-lufs/target_phrase_presence.wav",
+        "sha256": "d573ff10c0df903db7fb10305ee2a443902a21c096ebc444790d88c978e53b42",
+        "additional_static_gain_db": 0.0,
+        "total_static_gain_db": -2.3789439895029822,
+        "sample_count": 576000,
+        "loudness": {
+          "integrated_lufs": -26.57,
+          "true_peak_dbfs": -6.8,
+          "loudness_range_lu": 2.4
+        },
+        "metrics": {
+          "pcm_sha256": "178e00e1e0065b9a2f60a831d7ad2735a61a5b4162ffac2b671d0fee99c0d0f1",
+          "duration_seconds": 12.0,
+          "rms_dbfs": -27.19708672174007,
+          "sample_peak_dbfs": -6.80961275188409,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -26.525212535713383,
+          "pause_rms_dbfs": -79.96834204638304,
+          "speech_pause_contrast_db": 53.443129510669664,
+          "speech_frames": 514,
+          "pause_frames": 23,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -39.17514275185787,
+            "body": -6.8998712143672805,
+            "mid": -1.132477051921069,
+            "presence": -16.722548969153543,
+            "sibilants": -24.56678210536414,
+            "air": -33.26850255148123
+          },
+          "rolloff_95_hz": 750.0,
+          "hf_bands_db_relative": {
+            "6000-7000": -33.30133346624838,
+            "7000-8000": -35.84090159798272,
+            "8000-9000": -36.03315507362662,
+            "9000-10000": -38.716498872613045,
+            "10000-12000": -41.249245873626776,
+            "12000-16000": -49.03987132290197
+          }
+        }
+      },
+      "Adobe": {
+        "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/presence-probe/listening-lufs/target_phrase_Adobe.wav",
+        "sha256": "f4a332267f87021ccf800aad9a8dff9fecc290ec05346b22256239b3fcfbdfa4",
+        "additional_static_gain_db": -0.05000000000000071,
+        "total_static_gain_db": -0.05000000000000071,
+        "sample_count": 576000,
+        "loudness": {
+          "integrated_lufs": -26.58,
+          "true_peak_dbfs": -6.25,
+          "loudness_range_lu": 1.4
+        },
+        "metrics": {
+          "pcm_sha256": "ed1f70ec8966e7e3e103e60f091f6fa3557eab15041e814a98a71e13768cde29",
+          "duration_seconds": 12.0,
+          "rms_dbfs": -27.247002188182652,
+          "sample_peak_dbfs": -6.263037993692604,
+          "clipped_samples": 0,
+          "speech_rms_dbfs": -26.5752124531623,
+          "pause_rms_dbfs": -63.45709369974011,
+          "speech_pause_contrast_db": 36.88188124657781,
+          "speech_frames": 514,
+          "pause_frames": 23,
+          "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+          "bands_db_relative": {
+            "sub": -25.17736052420211,
+            "body": -4.939417520585372,
+            "mid": -2.0307689924636976,
+            "presence": -13.73831607094904,
+            "sibilants": -21.41204389612376,
+            "air": -35.734423899496896
+          },
+          "rolloff_95_hz": 1476.5625,
+          "hf_bands_db_relative": {
+            "6000-7000": -30.11567935584282,
+            "7000-8000": -35.622467920800894,
+            "8000-9000": -39.176810325692706,
+            "9000-10000": -42.96279117800474,
+            "10000-12000": -42.602862473855936,
+            "12000-16000": -43.90506695650197
+          }
+        }
+      }
+    }
+  }
+}

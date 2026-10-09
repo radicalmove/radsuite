@@ -1,0 +1,26 @@
+{
+  "room_control": {
+    "rms_change_db": -0.0042708221160813,
+    "difference_signal_db_relative": -27.227794771432077,
+    "correlation": 0.9990530029320844
+  },
+  "cleanup": {
+    "rms_change_db": -0.015676521069477596,
+    "difference_signal_db_relative": -28.057620526189908,
+    "correlation": 0.9992182138884798
+  },
+  "presence": {
+    "rms_change_db": -0.01644337831397938,
+    "difference_signal_db_relative": -28.111948946002357,
+    "correlation": 0.999228047968468
+  },
+  "levelled": {
+    "rms_change_db": -0.09520370413719584,
+    "difference_signal_db_relative": -27.78955646808506,
+    "correlation": 0.9992191109612002
+  },
+  "gain_curve": {
+    "maximum_phrase_difference_db": 1.1547314281441396,
+    "rms_phrase_difference_db": 0.2984796609202361
+  }
+}

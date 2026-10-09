@@ -1,0 +1,27 @@
+{
+  "original": {
+    "quiet_passage_dbfs": -32.570096382872656,
+    "later_passage_dbfs": -15.145838503142691,
+    "difference_db": 17.424257879729964
+  },
+  "studio_v1": {
+    "quiet_passage_dbfs": -34.87277952683006,
+    "later_passage_dbfs": -17.265453033607756,
+    "difference_db": 17.607326493222303
+  },
+  "reference": {
+    "quiet_passage_dbfs": -26.012245164276976,
+    "later_passage_dbfs": -22.706425762284226,
+    "difference_db": 3.30581940199275
+  },
+  "studio_r2_wpe65": {
+    "quiet_passage_dbfs": -23.450218438547616,
+    "later_passage_dbfs": -18.537344757315914,
+    "difference_db": 4.9128736812317015
+  },
+  "studio_r2_wpe35": {
+    "quiet_passage_dbfs": -23.462282950788765,
+    "later_passage_dbfs": -18.558729561899277,
+    "difference_db": 4.903553388889488
+  }
+}

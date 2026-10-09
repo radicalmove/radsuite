@@ -17,7 +17,8 @@ jobs:
             libwebkit2gtk-4.1-dev \
             libayatana-appindicator3-dev \
             librsvg2-dev \
-            patchelf
+            patchelf \
+            ffmpeg
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
@@ -27,6 +28,8 @@ jobs:
       - run: cargo test --workspace --all-features
 
   windows-engines:
+    # Windows validation is paused while development targets Apple Silicon.
+    if: false
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4

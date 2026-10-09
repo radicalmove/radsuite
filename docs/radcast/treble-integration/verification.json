@@ -1,0 +1,51 @@
+{
+  "python_suite": {
+    "run": 132,
+    "skipped_optional_model_checks": 5,
+    "failed": 0
+  },
+  "latest_treble_tests": {
+    "run": 7,
+    "failed": 0
+  },
+  "engine_suite": {
+    "run": 46,
+    "failed": 0
+  },
+  "desktop_contracts": {
+    "run": 20,
+    "failed": 0
+  },
+  "real_embedded_treble_wav_mp3_exports": {
+    "run": 1,
+    "failed": 0
+  },
+  "ui_suite": {
+    "run": 178,
+    "failed": 0
+  },
+  "svelte_check": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "style_contract": "passed",
+  "finnegan_pcm_reproduction": "exact",
+  "model_reference_level_gain_reproduction": "exact",
+  "protected_references": "all four unchanged",
+  "review": "read-only independent review: no remaining blockers",
+  "limitations": "Progress/cancellation wait for the existing synchronous Python process to exit. Local opt-in preset; no claim of Adobe parity.",
+  "installed_version": "0.2.11",
+  "local_signature": "verified",
+  "ui_option": "Studio \u2014 Treble (recommended); Studio \u2014 Classic",
+  "version_manifests": "consistent",
+  "label_tests": {
+    "rust": 4,
+    "ui": 3,
+    "failed": 0
+  },
+  "fresh_treble_tests": {
+    "run": 7,
+    "failed": 0
+  },
+  "fresh_clippy": "passed with warnings denied"
+}

@@ -1314,6 +1314,40 @@ button:disabled {
   padding: var(--s-2) 0;
 }
 
+.radcast-silence-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-sm);
+}
+
+.radcast-silence-options label {
+  display: grid;
+  gap: 5px;
+  color: var(--fg-2);
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.radcast-silence-analysis {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  padding: var(--s-3);
+  border-radius: var(--r-sm);
+  color: var(--fg-2);
+  background: var(--bg-panel-alt);
+  font-size: 0.76rem;
+}
+
+.radcast-silence-analysis strong { color: var(--fg-1); }
+
+@media (max-width: 560px) {
+  .radcast-silence-options { grid-template-columns: 1fr; }
+}
+
 .radcast-range-label,
 .radtts-range-label {
   display: flex;

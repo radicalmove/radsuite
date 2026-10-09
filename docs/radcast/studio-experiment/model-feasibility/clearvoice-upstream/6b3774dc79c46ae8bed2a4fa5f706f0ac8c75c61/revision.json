@@ -1,0 +1,8 @@
+{
+  "code_revision": "6b3774dc79c46ae8bed2a4fa5f706f0ac8c75c61",
+  "model_revision": "eff8c97925c8bec812af707814b3e5d777fd4503",
+  "metadata_urls": [
+    "https://api.github.com/repos/modelscope/ClearerVoice-Studio/commits/main",
+    "https://huggingface.co/api/models/alibabasglab/MossFormer2_SE_48K?blobs=true"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "original_proof_sha256": "09d04cd5d1f61ba4fae75ba4478f93d6da4c46955bfd35aa6e6e8d3eb7e0cdee",
+  "shared_input_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/smoke/input.wav",
+  "shared_input_sha256": "747d7fc1f98b684993eeef0fc5af13512e5dca8c2f60ce941f37657cb340f7e2",
+  "original_source_reference": {
+    "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav",
+    "sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+    "sample_count": 1209892
+  },
+  "source_slice": [
+    48000,
+    244800
+  ],
+  "recorded_environment": {
+    "PYTORCH_ENABLE_MPS_FALLBACK": null
+  },
+  "observed_cpu_fallback": "aten::im2col automatic builtin fallback; no forced environment change",
+  "model_identity_equal_to_controls": true,
+  "selected_device": "mps",
+  "teacher_diagnostic_does_not_qualify_full_length": true
+}

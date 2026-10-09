@@ -1,0 +1,117 @@
+{
+  "model_revision": "927a9ecea245120a6f2d88c2552864b937ec5ab9",
+  "code_revision": "bfc13cecfd0a07ed8e21d733b0ce130a1c69211a",
+  "files": {
+    "hf-metadata.json": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/hf-metadata.json",
+      "url": "https://huggingface.co/api/models/espnet/Wangyou_Zhang_universal_train_enh_uses_refch0_2mem_raw/revision/927a9ecea245120a6f2d88c2552864b937ec5ab9?blobs=true",
+      "bytes": 5565,
+      "sha256": "8dfbe5ee25e88909d00aed08fd60a497b45cbc3290299202bdde3d6e14a6ade3"
+    },
+    "config.yaml": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/config.yaml",
+      "url": "https://huggingface.co/espnet/Wangyou_Zhang_universal_train_enh_uses_refch0_2mem_raw/resolve/927a9ecea245120a6f2d88c2552864b937ec5ab9/exp/enh_train_enh_uses_refch0_2mem_raw/config.yaml",
+      "bytes": 5040,
+      "sha256": "3cd7b57bdb541672fea82d9ab16a04ce63299ac4b108907a5c406b2dd1dc8793"
+    },
+    "meta.yaml": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/meta.yaml",
+      "url": "https://huggingface.co/espnet/Wangyou_Zhang_universal_train_enh_uses_refch0_2mem_raw/resolve/927a9ecea245120a6f2d88c2552864b937ec5ab9/meta.yaml",
+      "bytes": 275,
+      "sha256": "cdd67e661b279b7c999c88f5a24bdab74c5ffcdff1b25c24b4f6ed9bc78830af"
+    },
+    "README.md": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/README.md",
+      "url": "https://huggingface.co/espnet/Wangyou_Zhang_universal_train_enh_uses_refch0_2mem_raw/resolve/927a9ecea245120a6f2d88c2552864b937ec5ab9/README.md",
+      "bytes": 9939,
+      "sha256": "bff3a82ae770a14f061dac769109fa2f874f7532595936c364957122543e9b6c"
+    },
+    "20epoch.pth": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/20epoch.pth",
+      "url": "https://huggingface.co/espnet/Wangyou_Zhang_universal_train_enh_uses_refch0_2mem_raw/resolve/927a9ecea245120a6f2d88c2552864b937ec5ab9/exp/enh_train_enh_uses_refch0_2mem_raw/20epoch.pth",
+      "bytes": 12279888,
+      "sha256": "6b2a0c78b2eea566fcfd39b0d77ffc0102b0baf6af60a4a1f4dee93995081121"
+    },
+    "LICENSE-espnet": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/LICENSE-espnet",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/LICENSE",
+      "bytes": 11372,
+      "sha256": "4696c3c9551da6fef1368be1e4ed2c80cf13e55448c6dcf2aba9462f5ff29ef5"
+    },
+    "uses.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/uses.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/layers/uses.py",
+      "bytes": 17233,
+      "sha256": "cf666616693d3f2ed6d804780b2e6e768dcd8545f5de933d695f7918cce8e6e3"
+    },
+    "uses_separator.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/uses_separator.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/separator/uses_separator.py",
+      "bytes": 9874,
+      "sha256": "be01dd72c1a92be733d7a8f1a6fa3f2163561a2500266b96d061d9640714bc69"
+    },
+    "stft_encoder.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/stft_encoder.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/encoder/stft_encoder.py",
+      "bytes": 7183,
+      "sha256": "bb76ea25b4cb02b26bc668887f540d5952c714c746ebf6cfc9299723b807ff45"
+    },
+    "stft_decoder.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/stft_decoder.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/decoder/stft_decoder.py",
+      "bytes": 8590,
+      "sha256": "4187de232932da18804392b08bf8de3dabdcbf7bca39c6c9e1a46bed10ea8e79"
+    },
+    "enh_inference.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/enh_inference.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/bin/enh_inference.py",
+      "bytes": 25604,
+      "sha256": "17002cdf6b751f4d6396435763efcdcad0e316e4d3d7c723b955f810012712bb"
+    },
+    "dptnet.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/dptnet.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/layers/dptnet.py",
+      "bytes": 6653,
+      "sha256": "16aa8e9a09b955aa425b586d43cc26e1203ffc16837b34ee8cbe42e0b7dc2e17"
+    },
+    "tcn.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/tcn.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/layers/tcn.py",
+      "bytes": 16279,
+      "sha256": "c2dd523ebf5e34b35017207dacc8c23e1b0bc3b399c8bf360f66c4fb3cc9a9cd"
+    },
+    "get_layer_from_string.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/get_layer_from_string.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/torch_utils/get_layer_from_string.py",
+      "bytes": 1411,
+      "sha256": "f8821d9566f326f75e69339eca18fa3b84d81b84915502dddbfe64b30dc0884e"
+    },
+    "stft.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/stft.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/layers/stft.py",
+      "bytes": 5234,
+      "sha256": "827763e26be6ede1556414d6918763385774bfa39afbc6229267fbe67980d7d6"
+    },
+    "espnet_model.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/espnet_model.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/espnet_model.py",
+      "bytes": 33511,
+      "sha256": "aa35b508897f314171226b9a7e1bef573fe406d47f0b3d999979051274086341"
+    },
+    "uses2_separator.py": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/uses-qualification/artifacts/uses2_separator.py",
+      "url": "https://raw.githubusercontent.com/espnet/espnet/bfc13cecfd0a07ed8e21d733b0ce130a1c69211a/espnet2/enh/separator/uses2_separator.py",
+      "bytes": 12736,
+      "sha256": "a039fab2d183d8f6fd269a0232b5590b6ff689f98a1c1f94c3e9ee89fdffa5b9"
+    }
+  },
+  "uses2_review": {
+    "user_correction": "ESPnet includes USES2-Comp and USES2-Swin, added2025.",
+    "user_provenance_instruction": "No official checkpoint found; treat any checkpoint separately as unverified until card/config establishes provenance.",
+    "decision": "Continue provenance-verified legacyUSES; never label itUSES2. USES2 source/recipe not a trained binary.",
+    "source_verified": true,
+    "public_checkpoint_verified": false,
+    "model_inference_started": true,
+    "inference_note": "Only one-second licensed clean smoke, not a Finnegan candidate. LegacyUSES explicitlylabelled."
+  }
+}

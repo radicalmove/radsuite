@@ -1,0 +1,8 @@
+espnet: '202409'
+files:
+  model_file: exp/enh_train_enh_tfgridnet_dm_raw/valid.loss.ave_5best.pth
+python: 3.10.8 | packaged by conda-forge | (main, Nov 22 2022, 08:26:04) [GCC 10.4.0]
+timestamp: 1734226672.681362
+torch: 2.3.1
+yaml_files:
+  train_config: exp/enh_train_enh_tfgridnet_dm_raw/config.yaml

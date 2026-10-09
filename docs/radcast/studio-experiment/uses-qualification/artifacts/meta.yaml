@@ -1,0 +1,8 @@
+espnet: '202301'
+files:
+  model_file: exp/enh_train_enh_uses_refch0_2mem_raw/20epoch.pth
+python: "3.8.16 (default, Mar  2 2023, 03:21:46) \n[GCC 11.2.0]"
+timestamp: 1696137339.402181
+torch: 2.0.1
+yaml_files:
+  train_config: exp/enh_train_enh_uses_refch0_2mem_raw/config.yaml

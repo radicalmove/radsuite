@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "state": "awaiting_human_presence_and_articulation_result",
+  "full_render_count": 1,
+  "remaining_render_budget": 0,
+  "candidate": "CRJU160_presence_body1_definition2_detail1p5.wav",
+  "technical_qa_accepted": true,
+  "extra_eq": [[180, 0.8, 1.0], [3000, 0.8, 2.0], [5200, 1.0, 1.5]],
+  "new_model_inference": false,
+  "baseline_original_blend": 0.20,
+  "compression_reproduced_exactly": true,
+  "asr_listening_flag": "Recognizer skips introductory phrase after probe; check before/after intro audio. Waveform guards and energy retention do not prove articulation.",
+  "primary_comparison": "listening-lufs/",
+  "human_result": null,
+  "production_approval": false,
+  "integration_authorized": false,
+  "promotion_authorized": false,
+  "native_application_changed": false
+}

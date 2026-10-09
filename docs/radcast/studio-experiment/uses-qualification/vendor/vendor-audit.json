@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "model_family": "legacy USES (ASRU 2023)",
+  "is_uses2_checkpoint": false,
+  "code_revision": "bfc13cecfd0a07ed8e21d733b0ce130a1c69211a",
+  "model_revision": "927a9ecea245120a6f2d88c2552864b937ec5ab9",
+  "source_hashes": {
+    "uses.py": "cf666616693d3f2ed6d804780b2e6e768dcd8545f5de933d695f7918cce8e6e3",
+    "uses_separator.py": "be01dd72c1a92be733d7a8f1a6fa3f2163561a2500266b96d061d9640714bc69",
+    "dptnet.py": "16aa8e9a09b955aa425b586d43cc26e1203ffc16837b34ee8cbe42e0b7dc2e17",
+    "tcn.py": "c2dd523ebf5e34b35017207dacc8c23e1b0bc3b399c8bf360f66c4fb3cc9a9cd",
+    "get_layer_from_string.py": "f8821d9566f326f75e69339eca18fa3b84d81b84915502dddbfe64b30dc0884e",
+    "LICENSE-espnet": "4696c3c9551da6fef1368be1e4ed2c80cf13e55448c6dcf2aba9462f5ff29ef5"
+  },
+  "symbols": [
+    {
+      "name": "USES",
+      "source_file": "uses.py",
+      "vendor_file": "uses.py",
+      "ast_sha256": "5853b2c3540659e9ffd87c1e2413e5b45b79e65d852b1993b71622b325cd2e4c"
+    },
+    {
+      "name": "ATFBlock",
+      "source_file": "uses.py",
+      "vendor_file": "uses.py",
+      "ast_sha256": "ec7f1fb83103177e7b93a46c1e6186ee58cc0ac150f67b899cc122f83871ee5c"
+    },
+    {
+      "name": "ChannelAttention",
+      "source_file": "uses.py",
+      "vendor_file": "uses.py",
+      "ast_sha256": "e20bc2b40fae9feed38ee5daee36c4254bb718f4f6b3b9e6343687b76298a427"
+    },
+    {
+      "name": "ChannelTAC",
+      "source_file": "uses.py",
+      "vendor_file": "uses.py",
+      "ast_sha256": "7ddc26e684907b16971f40ebb447e24f2f151f999bdd2369f08fee060d5a04b0"
+    },
+    {
+      "name": "LayerNormalization",
+      "source_file": "uses.py",
+      "vendor_file": "uses.py",
+      "ast_sha256": "cd015c2c0720dcaf437db16cda4301b2fe17744cf3bd8fabc2c5deeb0d5159a4"
+    },
+    {
+      "name": "USESSeparator",
+      "source_file": "uses_separator.py",
+      "vendor_file": "uses_separator.py",
+      "ast_sha256": "71b05742e3adfbd7f640b6e4f320d0825244bbb4e0399902b6ab1261202005e1"
+    },
+    {
+      "name": "ImprovedTransformerLayer",
+      "source_file": "dptnet.py",
+      "vendor_file": "dptnet.py",
+      "ast_sha256": "f84686b920e26ac9b4b9615bbb59d64e25bf09853bb8f231f4f4895ee80edd26"
+    },
+    {
+      "name": "choose_norm",
+      "source_file": "tcn.py",
+      "vendor_file": "tcn.py",
+      "ast_sha256": "f3b82adec041bcae189a8dcee02b6e3c9fa0daff16e76e590e4fb9a21cdbe36e"
+    },
+    {
+      "name": "ChannelwiseLayerNorm",
+      "source_file": "tcn.py",
+      "vendor_file": "tcn.py",
+      "ast_sha256": "7542a8892323cf3da8915f4f5ed18c52ce3a24990b4da49e1996bb27e1a6094b"
+    },
+    {
+      "name": "GlobalLayerNorm",
+      "source_file": "tcn.py",
+      "vendor_file": "tcn.py",
+      "ast_sha256": "78c22e841e9c588d7c6e320d2ed6af54f455fa30a7c8307c1bafa3c17d105640"
+    },
+    {
+      "name": "get_layer",
+      "source_file": "get_layer_from_string.py",
+      "vendor_file": "get_layer_from_string.py",
+      "ast_sha256": "5670dc28703dc51fb16a5155c50fbb17972d5b4403ef1b450edd4257577ac080"
+    }
+  ],
+  "constants": {
+    "tcn.EPS": "torch.finfo(torch.get_default_dtype()).eps"
+  },
+  "compatibility": {
+    "native_complex_only": true,
+    "legacy_get_activation": "explicitly unsupported; pinned linear branch only",
+    "abs_separator": "parameter-free torch.nn.Module"
+  },
+  "files": {
+    "radcast_uses_vendor/LICENSE": "4696c3c9551da6fef1368be1e4ed2c80cf13e55448c6dcf2aba9462f5ff29ef5",
+    "radcast_uses_vendor/README.md": "d722f115d02ff9764ec6f9207b1886f70fd844aeb6cb605a08645c2211bdd1ce",
+    "radcast_uses_vendor/__init__.py": "058870ce1bc3147d446a3570aafe015e623e14de403861123a1d7b2138c3e5f7",
+    "radcast_uses_vendor/compat.py": "f98606028f9bce5c82105bb67ceaf4f21caa3093352864b696190064122f91a9",
+    "radcast_uses_vendor/dptnet.py": "e5170d2189b611731ee010a51d4d70ba43227873213a04f11ceee2861fa9632c",
+    "radcast_uses_vendor/get_layer_from_string.py": "42883c0ba170f216ed671953b604bdbbeb905ccede5347b4a7a969d6ff5b3400",
+    "radcast_uses_vendor/tcn.py": "7cc429ca6444f15c98f22f6ada49d0e6c2c2c8d2cbf0c7a73d90eab902e43f0c",
+    "radcast_uses_vendor/uses.py": "13ce49c5bc6ac47d6e8ab144ff3ab076b69c56d724c81f85e731dcea54b2247f",
+    "radcast_uses_vendor/uses_separator.py": "c2ea8ac632a18597c7ad2652dac1218bad06d0cf40fbe0017eb7ad7071f5ab74"
+  }
+}

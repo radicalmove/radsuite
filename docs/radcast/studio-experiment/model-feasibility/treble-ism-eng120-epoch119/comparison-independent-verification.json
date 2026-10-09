@@ -1,0 +1,15 @@
+{
+  "comparison_paths_hash_verified": 56,
+  "common_content_and_handle_groups_matched": 6,
+  "triplet_sample_count": 576000,
+  "triplet_speech_rms_dbfs": [
+    -26.525212441310607,
+    -26.525212298763968,
+    -26.5252125020408
+  ],
+  "triplet_max_rms_spread_db": 2.032768335880064e-07,
+  "B_historical_hash_unchanged": true,
+  "render_code_hashes_unchanged": true,
+  "all_json_valid": true,
+  "format_scope": "Generated experiment WAVs are mono48kFLOAT; supplied reference encoding unchanged"
+}

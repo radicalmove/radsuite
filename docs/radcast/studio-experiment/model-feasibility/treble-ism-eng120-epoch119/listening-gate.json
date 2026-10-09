@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "state": "human_feedback_received_presence_gap",
+  "candidate": "finnegan-repair-dry20/CRJU160_modeltrial_ISM120_best119_dry20.wav",
+  "technical_qa_accepted": true,
+  "explicit_original_blend": 0.2,
+  "initial_trial_rejected": true,
+  "initial_watchdog_code": "quiet_speech_loss",
+  "model_render_count": 2,
+  "remaining_model_render_budget": 0,
+  "comparison": "comparison/listening-triplet/manifest.json",
+  "criterion": "Material audible active-speech dryness improvement over B with natural Finnegan identity, consonants, breaths, quiet detail and dynamics; compare remaining gap to Adobe honestly.",
+  "human_result": "human-listening-result.json",
+  "human_articulation_approval": null,
+  "production_approval": false,
+  "integration_authorized": false,
+  "promotion_authorized": false,
+  "native_application_changed": false,
+  "native_studio_revision": "r2",
+  "remaining_gap": "Adobe voice presence remains preferred"
+}

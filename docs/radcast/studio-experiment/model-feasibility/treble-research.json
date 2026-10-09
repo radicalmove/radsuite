@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "date": "2026-10-09",
+  "lead": "TrebleTechnologies/iwaenc2026milo",
+  "repository_revision": "8e7998acd7e2beb2776fdcc5231731891383bbc7",
+  "repository_url": "https://github.com/TrebleTechnologies/iwaenc2026milo/tree/8e7998acd7e2beb2776fdcc5231731891383bbc7",
+  "conclusion": "qualified_for_one_isolated_feasibility_evaluation_not_deployment",
+  "qualification_basis": [
+    "Inspectable partially dereverberated speech training target, not only reverb augmentation",
+    "Paired dry-speech evaluation on noisy reverberant mixtures",
+    "Native 48000 Hz single-channel observed-spectrum ERB masking and complex filtering",
+    "Public ISM weights included in MIT-licensed author repository"
+  ],
+  "proposed_artifact": {
+    "model_directory": "evaluation/models/ISM-eng-120",
+    "best_checkpoint": "checkpoints/model_119.ckpt.best",
+    "best_checkpoint_epoch": 119,
+    "best_checkpoint_size_bytes": 8715794,
+    "best_checkpoint_git_blob_sha1": "3d0167bbc893f33f1358d2047ad5a2adedb8d8f4",
+    "latest_checkpoint": "checkpoints/model_120.ckpt",
+    "latest_checkpoint_size_bytes": 8715194,
+    "latest_checkpoint_git_blob_sha1": "7a11b1d1d66e5cddade92b91dddfa19fea368ab0",
+    "config_size_bytes": 2144,
+    "config_git_blob_sha1": "a1fc064626d46fb94a32e4f41de85388cf6776d6",
+    "downloaded_sha256": null,
+    "tensor_metadata_inspected": false
+  },
+  "native_config": {
+    "model": "deepfilternet3",
+    "sample_rate": 48000,
+    "fft_size": 960,
+    "hop_size": 480,
+    "erb_bands": 32,
+    "complex_filter_bins": 96,
+    "complex_filter_order": 5,
+    "lookahead_frames": 2,
+    "reverb_augmentation_probability": 1.0,
+    "bandwidth_extension_probability": 0.0,
+    "postfilter": false
+  },
+  "training_target": {
+    "kind": "partially_dereverberated_speech_with_dry_component",
+    "paper_reported_dry_component_factor": 0.3,
+    "paper_reported_target_decay_seconds": 0.05,
+    "paper_reported_late_offset_ms": 5,
+    "exact_historical_settings_independently_reconstructed": false,
+    "reason": "Training upstream commit and target-setting environment are not pinned in the released setup"
+  },
+  "paper": "https://arxiv.org/html/2608.20971v1",
+  "audited_upstream_revision": "d375b2d8309e0935d165700c91da9de862a99c31",
+  "runtime": {
+    "training_version_reported": "0.5.7pre",
+    "installed_radcast_df_version": "0.5.6",
+    "cuda_required": false,
+    "cpu_supported_in_author_evaluator": true,
+    "actual_load_compatibility_tested": false,
+    "actual_runtime_cost_tested": false,
+    "load_audit_required": "Reject unexplained missing/unexpected learned keys or size-mismatch dropping; stock loader is non-strict",
+    "export_caveat": "Author evaluator writes 16 kHz enhanced examples; use native float inference, not evaluator export"
+  },
+  "licence": {
+    "repository_code": "MIT",
+    "included_weights": "Repository MIT distribution interpretation; no separate checkpoint restriction/declaration found",
+    "third_party_dataset_terms_separate": true
+  },
+  "unresolved": [
+    "Actual checkpoint compatibility and deterministic repeatability",
+    "Full-file sample count, latency compensation and chunk behavior",
+    "Clean-input identity and paired room-only benefit",
+    "Finnegan audible dryness improvement over B with natural articulation",
+    "Apple Silicon CPU wall time and peak memory",
+    "Exact historical training target settings are not independently reproducible"
+  ],
+  "hybrid_weights_available": false,
+  "no_hybrid_performance_claim_for_ism": true,
+  "actions": {
+    "small_primary_code_config_licence_fetches": true,
+    "weight_download": false,
+    "package_install": false,
+    "model_execution": false,
+    "audio_render": false,
+    "app_source_change": false
+  }
+}

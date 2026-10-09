@@ -1,0 +1,30 @@
+HTTP/1.1 206 206
+Content-Type: application/zip ;charset=UTF-8
+Content-Length: 311276
+Connection: keep-alive
+Date: Thu, 08 Oct 2026 12:42:23 GMT
+Server: Apache
+Strict-Transport-Security: max-age=31536000
+X-Content-Type-Options: nosniff
+X-Frame-Options: SAMEORIGIN
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), geolocation=(), microphone=()
+Content-Security-Policy: default-src 'self' https: data: blob:; script-src 'self' https: 'unsafe-inline' 'unsafe-eval'; style-src 'self' https: 'unsafe-inline'; img-src 'self' https: data: blob:; font-src 'self' https: data:; connect-src 'self' https: wss:; frame-src 'self' https:; frame-ancestors 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https:
+Vary: Origin,Access-Control-Request-Method,Access-Control-Request-Headers
+DSPACE-XSRF-TOKEN: d8a93403-7652-4ab0-a604-9cc11280c4db
+Set-Cookie: DSPACE-XSRF-COOKIE=d8a93403-7652-4ab0-a604-9cc11280c4db; Path=/server; Secure; HttpOnly; SameSite=None
+Content-Language: en
+Last-Modified: Mon, 21 Aug 2017 10:31:59 GMT
+ETag: "34eb1c0ba7ef667e9b966866c542fc16"
+Accept-Ranges: bytes
+Expires: Thu, 08 Oct 2026 13:42:23 GMT
+Cache-Control: private,no-cache
+Access-Control-Expose-Headers: Accept-Ranges
+Content-Disposition: attachment; filename="clean_testset_wav.zip"; filename*=UTF-8''clean_testset_wav.zip
+Content-Range: bytes 1788424-2099699/154332064
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 0
+Strict-Transport-Security: max-age=31536000 ; includeSubDomains
+X-Frame-Options: DENY
+Set-Cookie: RCKBMHKB=027ff8be59-56fd-48QeVVaz_x_nf3Qz7WSTvpduGSeFngTBYhkdnyHb9NkqiG4OSBSmtgdZfRqiX7_iH5Gfs; path=/; SameSite=None; Secure
+

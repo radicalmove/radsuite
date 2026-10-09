@@ -1,0 +1,178 @@
+{
+  "source_timeline_seconds": [
+    20,
+    32
+  ],
+  "source_mask_file": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/finnegan-primary/source_masks.npz",
+  "source_mask_sha256": "f0c1a6af56afc8e3e5e5dc9afe0bc361c935565e44040d4bcf9dd9486152e9d9",
+  "mask": "Sliced fixed full-original protected speech/pause masks; identical for all clips.",
+  "target_speech_rms_before_headroom_dbfs": -38.42999947795756,
+  "common_headroom_gain_db": 0,
+  "method": "Only downward constant gains; no processing/model runs. Lowest speech RMS of THIS group; common sample peak <=\u22123dBFS.",
+  "files": {
+    "original": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/target-stage-comparison/original_target20-32_matched.wav",
+      "sha256": "0b26452ca0240e36a0683ec4a3dedfe9632e0d5fdea04e35b398908ca0fb2343",
+      "role": "Saved cleanup-stage diagnostic; no downstream presence/level/compression/master",
+      "sample_count": 576000,
+      "original_speech_rms_dbfs": -33.23017080579735,
+      "static_match_gain_db": -5.1998286721602085,
+      "common_headroom_gain_db": 0,
+      "total_static_gain_db": -5.1998286721602085,
+      "matched_metrics": {
+        "pcm_sha256": "8e01b8c607bc6a21170e864c3fdd0688404024fea7ac3218781c6f2d10819f4f",
+        "duration_seconds": 12.0,
+        "rms_dbfs": -39.101551085443745,
+        "sample_peak_dbfs": -18.082334482463335,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -38.429999293407775,
+        "pause_rms_dbfs": -70.51277461717926,
+        "speech_pause_contrast_db": 32.082775323771486,
+        "speech_frames": 514,
+        "pause_frames": 23,
+        "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -38.084195725398544,
+          "body": -7.178403098025894,
+          "mid": -0.9880829849536252,
+          "presence": -20.16264782221887,
+          "sibilants": -27.413097383908983,
+          "air": -34.1024238355501
+        },
+        "rolloff_95_hz": 703.125,
+        "hf_bands_db_relative": {
+          "6000-7000": -35.721943782690786,
+          "7000-8000": -37.21411490090793,
+          "8000-9000": -37.03555584357504,
+          "9000-10000": -39.44628413566838,
+          "10000-12000": -41.863601130317804,
+          "12000-16000": -49.12870542377631
+        }
+      },
+      "Adobe_offset_seconds": null
+    },
+    "B_cleanup": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/target-stage-comparison/B_cleanup_target20-32_matched.wav",
+      "sha256": "b14f62d730058b66b7939b9fde88b6cd6efb486e449973fb4efdeb2f7cdf4bfa",
+      "role": "Saved cleanup-stage diagnostic; no downstream presence/level/compression/master",
+      "sample_count": 576000,
+      "original_speech_rms_dbfs": -35.01179658397031,
+      "static_match_gain_db": -3.4182028939872495,
+      "common_headroom_gain_db": 0,
+      "total_static_gain_db": -3.4182028939872495,
+      "matched_metrics": {
+        "pcm_sha256": "14d2a8122b3955abcc2c5660e59aa2fca5500265e0cf57a57a6e3cedf60065c4",
+        "duration_seconds": 12.0,
+        "rms_dbfs": -39.10186932386204,
+        "sample_peak_dbfs": -17.931226379735758,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -38.42999954191278,
+        "pause_rms_dbfs": -84.75306452116955,
+        "speech_pause_contrast_db": 46.32306497925677,
+        "speech_frames": 514,
+        "pause_frames": 23,
+        "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -41.603689971177246,
+          "body": -7.9533461935926795,
+          "mid": -0.832007903524301,
+          "presence": -19.515979349200045,
+          "sibilants": -26.245935693828667,
+          "air": -32.83832737125196
+        },
+        "rolloff_95_hz": 703.125,
+        "hf_bands_db_relative": {
+          "6000-7000": -34.44466054509919,
+          "7000-8000": -35.942255058478025,
+          "8000-9000": -35.788419887362856,
+          "9000-10000": -38.18001635944594,
+          "10000-12000": -40.546636148125465,
+          "12000-16000": -47.89416812249595
+        }
+      },
+      "Adobe_offset_seconds": null
+    },
+    "model_cleanup_dry20": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/target-stage-comparison/model_cleanup_dry20_target20-32_matched.wav",
+      "sha256": "f37f60020326f02563738405474ba566a6a9fb9e8ff9f2b5b3bacae110801c7d",
+      "role": "Saved cleanup-stage diagnostic; no downstream presence/level/compression/master",
+      "sample_count": 576000,
+      "original_speech_rms_dbfs": -37.12885199727254,
+      "static_match_gain_db": -1.3011474806850174,
+      "common_headroom_gain_db": 0,
+      "total_static_gain_db": -1.3011474806850174,
+      "matched_metrics": {
+        "pcm_sha256": "226ae3a52a3d567651e4edc48aeb7bd5cc9cf1e36db88796217f67f2df5aae21",
+        "duration_seconds": 12.0,
+        "rms_dbfs": -39.101842918715256,
+        "sample_peak_dbfs": -17.970193621070887,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -38.42999945443124,
+        "pause_rms_dbfs": -80.01283488680066,
+        "speech_pause_contrast_db": 41.58283543236942,
+        "speech_frames": 514,
+        "pause_frames": 23,
+        "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -39.67731328715032,
+          "body": -7.488167018854474,
+          "mid": -0.9140938204952058,
+          "presence": -20.366060762758362,
+          "sibilants": -27.437635114579813,
+          "air": -34.14117378300002
+        },
+        "rolloff_95_hz": 703.125,
+        "hf_bands_db_relative": {
+          "6000-7000": -35.53265604921379,
+          "7000-8000": -37.29721763043228,
+          "8000-9000": -37.08760292781255,
+          "9000-10000": -39.47896564865196,
+          "10000-12000": -41.83789019462668,
+          "12000-16000": -49.35904562574677
+        }
+      },
+      "Adobe_offset_seconds": null
+    },
+    "model_raw_rejected": {
+      "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/comparison/target-stage-comparison/model_raw_rejected_target20-32_matched.wav",
+      "sha256": "8c4a3e69b78dbca9085d53460a4883c794bd6bbb0eb6851c9558e460d436111d",
+      "role": "Rejected raw model diagnostic, not a listening candidate",
+      "sample_count": 576000,
+      "original_speech_rms_dbfs": -38.42999947795756,
+      "static_match_gain_db": 0.0,
+      "common_headroom_gain_db": 0,
+      "total_static_gain_db": 0.0,
+      "matched_metrics": {
+        "pcm_sha256": "d2edb77172e0bd1ee84dc4441d004883a80ec5fefeb602ad6a5794692c957bad",
+        "duration_seconds": 12.0,
+        "rms_dbfs": -39.1018792094662,
+        "sample_peak_dbfs": -17.980819846763527,
+        "clipped_samples": 0,
+        "speech_rms_dbfs": -38.42999947795756,
+        "pause_rms_dbfs": -94.45375923926917,
+        "speech_pause_contrast_db": 56.02375976131162,
+        "speech_frames": 514,
+        "pause_frames": 23,
+        "mask_method": "4 s local energy proxy, 2 s overlap; 300 ms articulation protection; 360 ms guarded pauses; not semantic VAD",
+        "bands_db_relative": {
+          "sub": -40.213537625629286,
+          "body": -7.613139726299853,
+          "mid": -0.8862589837995211,
+          "presence": -20.431417976253577,
+          "sibilants": -27.434272119528273,
+          "air": -34.17277886662695
+        },
+        "rolloff_95_hz": 703.125,
+        "hf_bands_db_relative": {
+          "6000-7000": -35.45397645554118,
+          "7000-8000": -37.34438946120413,
+          "8000-9000": -37.124946479786914,
+          "9000-10000": -39.50884578762017,
+          "10000-12000": -41.841124502285716,
+          "12000-16000": -49.47229016554129
+        }
+      },
+      "Adobe_offset_seconds": null
+    }
+  }
+}

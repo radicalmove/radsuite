@@ -1,0 +1,14 @@
+{
+  "installed": "/Applications/RADsuite.app",
+  "backup": "/Users/rcd58/Library/Application Support/RADsuite/local-app-backups/RADsuite-before-Treble-20261009-114825.app",
+  "previous_binary_sha256": "23e29427c05eaa7a310a10a547d532151c57abb7dd402650fe52688ce637889f",
+  "binary_sha256": "eaad583e427a4060d035f15f7874b7f5cefbdcb112e549fc1e1ed5f6d447f6b1",
+  "version": "0.2.11",
+  "built_in_treble_helper": true,
+  "backup_version": "0.2.10",
+  "ui_verified": true,
+  "ui_option": "Studio \u2014 Treble (recommended); Studio \u2014 Classic",
+  "previous_project_selection_preserved": "RADcast Natural++",
+  "public_update_banner": false,
+  "local_adhoc_signature_verified": true
+}

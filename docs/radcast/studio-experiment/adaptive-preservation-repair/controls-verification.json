@@ -1,0 +1,136 @@
+{
+  "control_manifest_path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/controls.json",
+  "control_manifest_sha256": "13286c07a6080da71b54a53e0d3f139e18b9b90b196ccbaa3a6765fb8986ccf9",
+  "speakers": {
+    "p232": {
+      "clean": {
+        "paths": {
+          "clean": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav",
+            "sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+            "sample_count": 1209892
+          },
+          "synthetic_room": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room.wav",
+            "sha256": "529735b02af4462cba871edd69606da2dae9c2102fd03dab7f41221ca696a91b",
+            "sample_count": 1209892
+          },
+          "clean_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean_model.wav",
+            "sha256": "3aee4349cce4aba37f9f407f04d0a35f3fc373143a1082aae0b0ca778fe594a3",
+            "sample_count": 1209892
+          },
+          "synthetic_room_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room_model.wav",
+            "sha256": "265fa51682a8a7527221bf20fb88a9b9482001884b49468aa5d14bd434ad6d4f",
+            "sample_count": 1209892
+          }
+        },
+        "input_key": "clean",
+        "model_key": "clean_model",
+        "protection_reference": "decision-only float32(.8*saved_model+.2*same_input), no inference",
+        "active_frames": 0,
+        "bit_identical_to_saved_model": true,
+        "energy_bypass_intervals": [],
+        "paired_clean_si_sdr_db": 24.497503191992447
+      },
+      "synthetic_room": {
+        "paths": {
+          "clean": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean.wav",
+            "sha256": "9d4dd1e707eb333f29fca4d44715742b8b5771fbc3c832790d60455368e28dc0",
+            "sample_count": 1209892
+          },
+          "synthetic_room": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room.wav",
+            "sha256": "529735b02af4462cba871edd69606da2dae9c2102fd03dab7f41221ca696a91b",
+            "sample_count": 1209892
+          },
+          "clean_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_clean_model.wav",
+            "sha256": "3aee4349cce4aba37f9f407f04d0a35f3fc373143a1082aae0b0ca778fe594a3",
+            "sample_count": 1209892
+          },
+          "synthetic_room_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p232_synthetic_room_model.wav",
+            "sha256": "265fa51682a8a7527221bf20fb88a9b9482001884b49468aa5d14bd434ad6d4f",
+            "sample_count": 1209892
+          }
+        },
+        "input_key": "synthetic_room",
+        "model_key": "synthetic_room_model",
+        "protection_reference": "decision-only float32(.8*saved_model+.2*same_input), no inference",
+        "active_frames": 0,
+        "bit_identical_to_saved_model": true,
+        "energy_bypass_intervals": [],
+        "paired_clean_si_sdr_db": 11.110706958327668
+      }
+    },
+    "p257": {
+      "clean": {
+        "paths": {
+          "clean": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean.wav",
+            "sha256": "07d24d6da81163ae9f58dd3119c30de028088ee4aa45f85404ea878eeb5b6a85",
+            "sample_count": 1208843
+          },
+          "synthetic_room": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room.wav",
+            "sha256": "fca54fd95c81279fdc920bc80766ff0760183a0bc4598588bdf3babe681ad0e5",
+            "sample_count": 1208843
+          },
+          "clean_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean_model.wav",
+            "sha256": "87fcc59f0c85de27a3f4b74f0f3b7bc3e860dc3dbfc6f1344ede75d3c40899b6",
+            "sample_count": 1208843
+          },
+          "synthetic_room_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room_model.wav",
+            "sha256": "51eeb3f625a3d06a9436d21e5ca8e5782e801699a69b58ed119f2fea53504ee6",
+            "sample_count": 1208843
+          }
+        },
+        "input_key": "clean",
+        "model_key": "clean_model",
+        "protection_reference": "decision-only float32(.8*saved_model+.2*same_input), no inference",
+        "active_frames": 0,
+        "bit_identical_to_saved_model": true,
+        "energy_bypass_intervals": [],
+        "paired_clean_si_sdr_db": 24.833260823396145
+      },
+      "synthetic_room": {
+        "paths": {
+          "clean": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean.wav",
+            "sha256": "07d24d6da81163ae9f58dd3119c30de028088ee4aa45f85404ea878eeb5b6a85",
+            "sample_count": 1208843
+          },
+          "synthetic_room": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room.wav",
+            "sha256": "fca54fd95c81279fdc920bc80766ff0760183a0bc4598588bdf3babe681ad0e5",
+            "sample_count": 1208843
+          },
+          "clean_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_clean_model.wav",
+            "sha256": "87fcc59f0c85de27a3f4b74f0f3b7bc3e860dc3dbfc6f1344ede75d3c40899b6",
+            "sample_count": 1208843
+          },
+          "synthetic_room_model": {
+            "path": "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/model-feasibility/treble-ism-eng120-epoch119/controls/p257_synthetic_room_model.wav",
+            "sha256": "51eeb3f625a3d06a9436d21e5ca8e5782e801699a69b58ed119f2fea53504ee6",
+            "sample_count": 1208843
+          }
+        },
+        "input_key": "synthetic_room",
+        "model_key": "synthetic_room_model",
+        "protection_reference": "decision-only float32(.8*saved_model+.2*same_input), no inference",
+        "active_frames": 0,
+        "bit_identical_to_saved_model": true,
+        "energy_bypass_intervals": [],
+        "paired_clean_si_sdr_db": 11.350253218063918
+      }
+    }
+  },
+  "new_inferences": 0,
+  "note": "Two speakers, one synthetic room; zero false activation here is not general recovery or dereverberation validation."
+}

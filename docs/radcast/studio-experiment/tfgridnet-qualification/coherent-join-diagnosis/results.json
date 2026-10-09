@@ -1,0 +1,48 @@
+[
+  {
+    "speaker": "p232",
+    "condition": "late",
+    "nn_replay_bit_identical": true,
+    "coherent_protected_worst_db": -0.1683340338547406,
+    "original_combined_energy_worst_db": -1.0502469181530325,
+    "neural_window_forwards": 5,
+    "window_paths": [
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p232_late_window0.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p232_late_window1.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p232_late_window2.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p232_late_window3.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p232_late_window4.wav"
+    ],
+    "definition_sha256": "09400434e463289c03e654758340d5ab550cfe32e659fedece2112b739cbb3b9"
+  },
+  {
+    "speaker": "p257",
+    "condition": "late",
+    "nn_replay_bit_identical": true,
+    "coherent_protected_worst_db": -0.8167853417397899,
+    "original_combined_energy_worst_db": -2.131172174557736,
+    "neural_window_forwards": 4,
+    "window_paths": [
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_late_window0.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_late_window1.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_late_window2.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_late_window3.wav"
+    ],
+    "definition_sha256": "09400434e463289c03e654758340d5ab550cfe32e659fedece2112b739cbb3b9"
+  },
+  {
+    "speaker": "p257",
+    "condition": "composite",
+    "nn_replay_bit_identical": true,
+    "coherent_protected_worst_db": -0.55999357785006,
+    "original_combined_energy_worst_db": -2.0886747598239945,
+    "neural_window_forwards": 4,
+    "window_paths": [
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_composite_window0.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_composite_window1.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_composite_window2.wav",
+      "/Users/rcd58/Documents/RADsuite/docs/radcast/studio-experiment/tfgridnet-qualification/coherent-join-diagnosis/p257_composite_window3.wav"
+    ],
+    "definition_sha256": "09400434e463289c03e654758340d5ab550cfe32e659fedece2112b739cbb3b9"
+  }
+]
