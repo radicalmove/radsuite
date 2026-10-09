@@ -1148,10 +1148,13 @@ fn radcast_capabilities_explain_each_local_enhancement_backend() {
         processor,
     );
 
+    // These fake commands make legacy helpers available. Guarded Studio models
+    // independently require their optional local Python/model runtime.
     assert!(
         capabilities
             .enhancement_models
             .iter()
+            .filter(|model| !model.id.is_guarded_studio())
             .all(|model| model.available || model.id == EnhancementModel::None)
     );
     assert!(
