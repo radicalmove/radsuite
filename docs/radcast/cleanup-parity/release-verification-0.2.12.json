@@ -12,5 +12,8 @@
   "release_manifest_validation": "passed",
   "macos_bundle": "built and signature verified",
   "review": "no remaining blockers",
-  "release_cli": "verified pinned prebuilt tauri-cli 2.9.6; uses same mechanism as prior successful three-platform package workflow"
+  "release_cli": "verified pinned prebuilt tauri-cli 2.9.6; uses same mechanism as prior successful three-platform package workflow",
+  "rust_1.99_clippy": "workspace all targets/all features with warnings denied passed",
+  "delivery_scope": "local Apple Silicon installation and GitHub source merge; public installers deferred",
+  "intel_windows_builds": "cancelled at user request"
 }

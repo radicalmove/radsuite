@@ -466,7 +466,9 @@ fn read_stereo_samples(path: &Path) -> Vec<[f32; 2]> {
     assert!(decoded.status.success());
     decoded
         .stdout
-        .chunks_exact(8)
+        .as_chunks::<8>()
+        .0
+        .iter()
         .map(|s| {
             [
                 f32::from_le_bytes(s[..4].try_into().unwrap()),
