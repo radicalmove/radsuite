@@ -1,8 +1,6 @@
 name: Verify platform packages
 
 on:
-  push:
-    branches: [codex/radcast-cleanup-0.2.12]
   workflow_dispatch:
 
 permissions:
